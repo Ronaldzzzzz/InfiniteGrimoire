@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 
 export interface PickerItem {
   key: string;
@@ -33,6 +33,10 @@ export function Picker({
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const baseId = useId();
+  const listId = `${baseId}-list`;
+  const optionId = (i: number): string => `${baseId}-opt-${i}`;
+  const activeIndex = items.findIndex((i) => i.key === activeKey);
 
   const enabled = items.filter((i) => !i.disabled);
 
@@ -58,6 +62,12 @@ export function Picker({
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open]);
 
+  // keep the keyboard-active option visible in a long list
+  useEffect(() => {
+    if (!open || activeIndex < 0) return;
+    document.getElementById(optionId(activeIndex))?.scrollIntoView?.({ block: 'nearest' });
+  }, [open, activeIndex]);
+
   const choose = (item: PickerItem): void => {
     if (item.disabled) return;
     onSelect(item.key);
@@ -72,6 +82,7 @@ export function Picker({
     }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
+      listRef.current?.focus();
       if (enabled.length === 0) return;
       const i = enabled.findIndex((x) => x.key === activeKey);
       const step = e.key === 'ArrowDown' ? 1 : -1;
@@ -79,11 +90,17 @@ export function Picker({
       setActiveKey(enabled[next]!.key);
       return;
     }
-    if (e.key === 'Enter') {
+    // Enter selects only from the list; on a header button it is that button's own action
+    if (e.key === 'Enter' && e.target === listRef.current) {
       e.preventDefault();
       const item = enabled.find((x) => x.key === activeKey);
       if (item) choose(item);
     }
+  };
+
+  const onBlur = (e: FocusEvent): void => {
+    const next = e.relatedTarget as Node | null;
+    if (!next || !rootRef.current?.contains(next)) setOpen(false);
   };
 
   let lastGroup: string | undefined;
@@ -95,16 +112,25 @@ export function Picker({
         className="picker-button"
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? listId : undefined}
         aria-label={buttonLabel}
         onClick={toggle}
       >
         {buttonContent} <span aria-hidden="true">▾</span>
       </button>
       {open && (
-        <div className={`picker-pop picker-pop-${align}`}>
+        <div className={`picker-pop picker-pop-${align}`} onKeyDown={onKeyDown} onBlur={onBlur}>
           {header && <div className="picker-header">{header}</div>}
-          <ul ref={listRef} role="listbox" tabIndex={-1} className="picker-list" aria-label={buttonLabel} onKeyDown={onKeyDown}>
-            {items.map((item) => {
+          <ul
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            tabIndex={-1}
+            className="picker-list"
+            aria-label={buttonLabel}
+            aria-activedescendant={activeIndex >= 0 ? optionId(activeIndex) : undefined}
+          >
+            {items.map((item, i) => {
               const heading = item.group !== undefined && item.group !== lastGroup;
               lastGroup = item.group;
               return (
@@ -115,6 +141,7 @@ export function Picker({
                     </li>
                   )}
                   <li
+                    id={optionId(i)}
                     role="option"
                     aria-label={item.label}
                     aria-selected={Boolean(item.selected)}

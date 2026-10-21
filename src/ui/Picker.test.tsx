@@ -72,6 +72,59 @@ describe('Picker', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
+  it('exposes the active option to assistive tech and links the button to the list', () => {
+    const { open } = setup();
+    open();
+    const button = screen.getByRole('button', { name: '選擇' });
+    const list = screen.getByRole('listbox');
+    expect(button.getAttribute('aria-controls')).toBe(list.id);
+    expect(list.getAttribute('aria-activedescendant')).toBe(screen.getByRole('option', { name: 'Alpha' }).id);
+    fireEvent.keyDown(list, { key: 'ArrowDown' });
+    expect(list.getAttribute('aria-activedescendant')).toBe(screen.getByRole('option', { name: 'Gamma' }).id);
+  });
+
+  it('scrolls the active option into view when moving with the keyboard', () => {
+    const scroll = vi.fn();
+    const orig = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      const { open } = setup();
+      open();
+      scroll.mockClear();
+      fireEvent.keyDown(screen.getByRole('listbox'), { key: 'ArrowDown' });
+      expect(scroll).toHaveBeenCalled();
+      expect(scroll.mock.contexts.at(-1)).toBe(screen.getByRole('option', { name: 'Gamma' }));
+    } finally {
+      Element.prototype.scrollIntoView = orig;
+    }
+  });
+
+  it('keeps keyboard control after the header button takes focus', () => {
+    const { open, onSelect } = setup();
+    open();
+    const sort = screen.getByRole('button', { name: '排序' });
+    sort.focus();
+    fireEvent.keyDown(sort, { key: 'Enter' }); // Enter on the header button is the button's own action
+    expect(onSelect).not.toHaveBeenCalled();
+    fireEvent.keyDown(sort, { key: 'ArrowDown' }); // arrows bring focus back to the list
+    expect(document.activeElement).toBe(screen.getByRole('listbox'));
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith('c');
+    open();
+    fireEvent.keyDown(screen.getByRole('button', { name: '排序' }), { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('closes when focus leaves the picker', () => {
+    const { open } = setup();
+    open();
+    const list = screen.getByRole('listbox');
+    fireEvent.focusOut(list, { relatedTarget: screen.getByRole('button', { name: '排序' }) });
+    expect(screen.getByRole('listbox')).toBeTruthy();
+    fireEvent.focusOut(list, { relatedTarget: document.body });
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
   it('stays open with the same active option when items are re-rendered', () => {
     const onSelect = vi.fn();
     const { rerender } = render(<Picker buttonLabel="選擇" buttonContent="x" items={ITEMS} onSelect={onSelect} />);
