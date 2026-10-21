@@ -8,6 +8,7 @@ import { GrimoirePanel } from './GrimoirePanel';
 import { Hud } from './Hud';
 import { InventoryBar } from './InventoryBar';
 import { OfflineOverlay } from './OfflineOverlay';
+import { SaveErrorBanner } from './SaveErrorBanner';
 import { emptySlots, SynthesisPanel, type Slots } from './SynthesisPanel';
 import { useConnStatus, useGame } from './useGame';
 import { ZonePanel } from './ZonePanel';
@@ -33,6 +34,7 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
   return (
     <div className="app">
       <Hud snapshot={snapshot} data={data} runtime={runtime} />
+      <SaveErrorBanner status={status} />
       <main className="main">
         <div className="battle">
           <BattleCanvas runtime={runtime} />

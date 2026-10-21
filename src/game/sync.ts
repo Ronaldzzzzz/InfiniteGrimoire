@@ -5,7 +5,11 @@ import type { GameRuntime } from './runtime';
 
 export const UPLOAD_INTERVAL_MS = 30_000;
 export const RETRY_MS = 5_000;
-export type ConnStatus = 'online' | 'offline';
+/** Consecutive non-network, non-auth upload failures before the status becomes 'error'. */
+export const ERROR_AFTER_FAILURES = 2;
+/** 'error': the server is reachable but keeps refusing uploads, so progress may not be saved. */
+export type ConnStatus = 'online' | 'offline' | 'error';
+type UploadResult = 'done' | 'network' | 'auth' | 'error';
 
 interface Timers {
   setInterval: typeof setInterval;
@@ -24,6 +28,7 @@ export class SyncController {
   private _status: ConnStatus = 'online';
   private uploading: Promise<unknown> | null = null;
   private retrying = false;
+  private failures = 0;
   private statusListeners = new Set<(s: ConnStatus) => void>();
   private authListeners = new Set<() => void>();
 
@@ -66,6 +71,12 @@ export class SyncController {
     this.scheduleRetry();
   }
 
+  /** Records a non-network upload result and returns the status the server is reachable with. */
+  private reachableStatus(result: 'done' | 'error'): ConnStatus {
+    this.failures = result === 'done' ? 0 : this.failures + 1;
+    return this.failures >= ERROR_AFTER_FAILURES ? 'error' : 'online';
+  }
+
   private scheduleRetry(): void {
     this.timers.setTimeout(() => void this.retry(), RETRY_MS);
   }
@@ -80,13 +91,13 @@ export class SyncController {
     this.retrying = false;
     if (result === 'auth') return; // stay paused; UI returns to onboarding
     // done, or a non-network error (server is reachable): resume
-    this.setStatus('online');
+    this.setStatus(this.reachableStatus(result));
     this.runtime.setPaused(false);
   }
 
   /** Runs one upload. Never throws. */
-  private doUpload(opts?: { keepalive?: boolean }): Promise<'done' | 'network' | 'auth' | 'error'> {
-    const run = async (): Promise<'done' | 'network' | 'auth' | 'error'> => {
+  private doUpload(opts?: { keepalive?: boolean }): Promise<UploadResult> {
+    const run = async (): Promise<UploadResult> => {
       try {
         const { game, revision } = this.runtime.getSnapshot();
         const out = await this.api.upload(game, revision, opts);
@@ -116,7 +127,9 @@ export class SyncController {
 
   async uploadNow(opts?: { keepalive?: boolean }): Promise<void> {
     if (this.uploading || this.retrying || this.runtime.getSnapshot().synthPending) return;
-    if ((await this.doUpload(opts)) === 'network') this.goOffline();
+    const result = await this.doUpload(opts);
+    if (result === 'network') this.goOffline();
+    else if (result !== 'auth') this.setStatus(this.reachableStatus(result));
   }
 
   async synthesize(inputs: ItemId[]): Promise<SynthResult | null> {

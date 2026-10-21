@@ -167,6 +167,58 @@ describe('SyncController', () => {
     expect(synthesize).toHaveBeenCalledTimes(1);
     expect(synthesize).toHaveBeenCalledWith(expect.anything(), 8, ['el:fire:1', 'el:fire:1']);
   });
+  it('two consecutive non-network upload failures set status error; a success clears it', async () => {
+    const rt = mk();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const upload = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('bad', 400))
+      .mockRejectedValueOnce(new ApiError('bad', 400))
+      .mockResolvedValue({ kind: 'ok', revision: 9 });
+    const sync = new SyncController(rt, fakeApi({ upload }));
+    const statuses: string[] = [];
+    sync.onStatus((s) => statuses.push(s));
+    await sync.uploadNow();
+    expect(sync.status).toBe('online');
+    await sync.uploadNow();
+    expect(sync.status).toBe('error');
+    expect(rt.getSnapshot().paused).toBe(false);
+    await sync.uploadNow();
+    expect(sync.status).toBe('online');
+    expect(statuses).toEqual(['error', 'online']);
+    warn.mockRestore();
+  });
+  it('failures separated by a success, or auth errors, do not set error', async () => {
+    const rt = mk();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const upload = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('bad', 400))
+      .mockResolvedValueOnce({ kind: 'ok', revision: 9 })
+      .mockRejectedValueOnce(new ApiError('bad', 400))
+      .mockRejectedValueOnce(new AuthError('401'));
+    const sync = new SyncController(rt, fakeApi({ upload }));
+    for (let i = 0; i < 4; i++) await sync.uploadNow();
+    expect(sync.status).toBe('online');
+    warn.mockRestore();
+  });
+  it('an error during the offline retry counts toward the error status', async () => {
+    const rt = mk();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const upload = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('bad', 400))
+      .mockRejectedValueOnce(new NetworkError('x'))
+      .mockRejectedValueOnce(new ApiError('bad', 400));
+    const sync = new SyncController(rt, fakeApi({ upload }));
+    await sync.uploadNow();
+    await sync.uploadNow();
+    expect(sync.status).toBe('offline');
+    await vi.advanceTimersByTimeAsync(RETRY_MS);
+    expect(sync.status).toBe('error');
+    expect(rt.getSnapshot().paused).toBe(false);
+    warn.mockRestore();
+  });
   it('setRevision ignores lower revisions', () => {
     const rt = mk();
     rt.setRevision(2);
