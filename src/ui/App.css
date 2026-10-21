@@ -73,3 +73,9 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
   .battle { flex: 0 0 45vh; min-height: 0; height: 45vh; }
   .side { flex: 1 1 auto; max-width: none; border-left: 0; border-top: 1px solid var(--line); }
 }
+
+.grimoire-controls { display: flex; gap: 8px; margin-bottom: 8px; }
+.grimoire-svg { width: 100%; aspect-ratio: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; touch-action: none; cursor: grab; }
+.grimoire-node { cursor: pointer; outline: none; }
+.grimoire-node:focus-visible circle { stroke: var(--gold); stroke-width: 4; }
+.grimoire-hint { min-height: 1.5em; margin-top: 8px; color: var(--gold); }
