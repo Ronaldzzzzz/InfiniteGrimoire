@@ -191,6 +191,35 @@ describe('synthesize', () => {
     expect(out.state.inventory).toEqual({ 'el:thunder:1': 2 });
   });
 
+  it('inputs that are not item ids return 400 and commit nothing', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    for (const bad of [['constructor', 'constructor'], ['el:thunder:1', '__proto__'], ['el:dark:1', 'el:thunder:1']]) {
+      const res = await app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs: bad }, body.token));
+      expect(res.status, bad.join('+')).toBe(400);
+    }
+    expect(store.saves.get(body.playerId)?.revision).toBe(0);
+    expect(store.synthEvents).toHaveLength(0);
+  });
+
+  it('a synthesis result that fails parseState is a 500 and is not committed', async () => {
+    // a recipe whose outcome is not a known spell cannot come from real data; it stands in for any engine bug
+    const broken = {
+      ...gameData,
+      recipes: [...gameData.recipes, { id: 'ghost', inputs: ['mat:slime_gel', 'mat:slime_gel'], outcomes: [{ spellId: 'ghost', weight: 1 }] }],
+    };
+    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: broken });
+    const { body } = await guest();
+    clock += 30_000;
+    const res = await app.request(
+      '/api/synthesize',
+      json({ state: withInv({ 'mat:slime_gel': 2 }), baseRevision: 0, inputs: ['mat:slime_gel', 'mat:slime_gel'] }, body.token),
+    );
+    expect(res.status).toBe(500);
+    expect(store.saves.get(body.playerId)?.revision).toBe(0);
+    expect(store.synthEvents).toHaveLength(0);
+  });
+
   it('concurrent synthesize with same baseRevision', async () => {
     // Both requests pass the revision precheck before either commits, so only the store's CAS can stop the second.
     class GatedStore extends MemoryStore {

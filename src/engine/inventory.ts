@@ -1,8 +1,11 @@
 import { MAX_ELEMENT_GRADE, elementItem, type ElementId, type Inventory, type ItemId } from './types';
 
+/** Own-property count only: inherited Object members (e.g. "constructor") are never stock. */
+const countOf = (inv: Inventory, id: ItemId): number => (Object.hasOwn(inv, id) ? (inv[id] ?? 0) : 0);
+
 export function addItems(inv: Inventory, items: ItemId[]): Inventory {
   const out: Inventory = { ...inv };
-  for (const id of items) out[id] = (out[id] ?? 0) + 1;
+  for (const id of items) out[id] = countOf(out, id) + 1;
   return out;
 }
 
@@ -10,7 +13,7 @@ export function addItems(inv: Inventory, items: ItemId[]): Inventory {
 export function removeItems(inv: Inventory, items: ItemId[]): Inventory | null {
   const out: Inventory = { ...inv };
   for (const id of items) {
-    const have = out[id] ?? 0;
+    const have = countOf(out, id);
     if (have < 1) return null;
     if (have === 1) delete out[id];
     else out[id] = have - 1;

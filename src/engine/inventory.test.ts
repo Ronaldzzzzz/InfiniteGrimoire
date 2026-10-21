@@ -13,6 +13,11 @@ describe('inventory', () => {
     expect(removeItems(inv, ['a', 'a'])).toBeNull();
     expect(inv).toEqual({ a: 1 });
   });
+  it('inherited Object properties are never counted as stock', () => {
+    expect(removeItems({}, ['constructor'])).toBeNull();
+    expect(removeItems({}, ['toString', 'toString'])).toBeNull();
+    expect(addItems({}, ['constructor', 'constructor'])).toEqual({ constructor: 2 });
+  });
   it('removeItems succeeds and drops zero keys', () => {
     const inv = { a: 2, b: 1 };
     expect(removeItems(inv, ['a', 'b'])).toEqual({ a: 1 });

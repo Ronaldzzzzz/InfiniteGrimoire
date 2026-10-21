@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono';
 import { createInitialState, type GameState } from '../src/engine/state';
-import { parseState, serialize } from '../src/engine/save';
+import { ITEM_ID_RE, parseState, serialize } from '../src/engine/save';
 import { comboKey, synthesize } from '../src/engine/synthesis';
 import { validateUpload } from '../src/engine/validate';
 import type { Rng } from '../src/engine/rng';
@@ -170,12 +170,14 @@ export function createApp(deps: AppDeps): Hono<Env> {
   app.post('/api/synthesize', async (c) => {
     const body = await readJson(c);
     const inputs = body.inputs;
-    if (!Array.isArray(inputs) || inputs.length > 8 || !inputs.every((i) => typeof i === 'string')) {
+    if (!Array.isArray(inputs) || inputs.length > 8 || !inputs.every((i) => typeof i === 'string' && ITEM_ID_RE.test(i))) {
       throw new HttpError(400, 'invalid inputs');
     }
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
     const { state, result } = synthesize(checked.state, inputs as string[], data, deps.rng());
+    // never persist a state the next request could not parse
+    if (!parseState(JSON.parse(serialize(state)), data)) return c.json({ error: 'internal error' }, 500);
     // the synthesis result is the new current state; the anchor still only advances by time
     const done = await store.commitSave(checked.playerId, checked.revision, serialize(state), checked.t, checked.advanceAnchor);
     if (!done) return conflict(c, checked.playerId);
