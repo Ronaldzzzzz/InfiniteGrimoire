@@ -26,6 +26,25 @@ export const MAX_WINDOW_MS = 180_000;
 /** An accepted save becomes the new anchor once the anchor is at least this old. */
 export const ANCHOR_ADVANCE_MS = 60_000;
 
+/**
+ * Applies the inventory change of a synthesis (before -> after, exactly as the engine applied it:
+ * inputs out, refunds back in) to the anchor. Counts may go negative: a negative count is the debt
+ * for inputs gained after the anchor, so re-acquiring them still has to fit the window's gain bound.
+ * The anchor is never parsed by parseState; validateUpload only does arithmetic on its inventory.
+ */
+export function chargeAnchor(anchor: GameState, before: GameState, after: GameState): GameState {
+  const inventory: Record<string, number> = { ...anchor.inventory };
+  const keys = new Set([...Object.keys(before.inventory), ...Object.keys(after.inventory)]);
+  for (const k of keys) {
+    const delta = (Object.hasOwn(after.inventory, k) ? after.inventory[k]! : 0) - (Object.hasOwn(before.inventory, k) ? before.inventory[k]! : 0);
+    if (delta === 0) continue;
+    const next = (Object.hasOwn(inventory, k) ? inventory[k]! : 0) + delta;
+    if (next === 0) delete inventory[k];
+    else inventory[k] = next;
+  }
+  return { ...anchor, inventory };
+}
+
 type Env = { Variables: { player: PlayerRow } };
 type Ctx = Context<Env>;
 
@@ -99,7 +118,16 @@ export function createApp(deps: AppDeps): Hono<Env> {
   });
 
   type Checked =
-    | { ok: true; state: GameState; revision: number; t: number; playerId: string; advanceAnchor: boolean }
+    | {
+        ok: true;
+        state: GameState;
+        revision: number;
+        t: number;
+        playerId: string;
+        advanceAnchor: boolean;
+        anchor: GameState;
+        anchorAt: number;
+      }
     | { ok: false; res: Response };
 
   /** Shared by PUT /api/save and POST /api/synthesize: 400 / 409 / 422 handling. */
@@ -142,6 +170,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
       t,
       playerId: player.id,
       advanceAnchor: t - save.anchorAt >= ANCHOR_ADVANCE_MS,
+      anchor,
+      anchorAt: save.anchorAt,
     };
   }
 
@@ -156,13 +186,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
   app.put('/api/save', async (c) => {
     const checked = await checkUpload(c, await readJson(c));
     if (!checked.ok) return checked.res;
-    const done = await store.commitSave(
-      checked.playerId,
-      checked.revision,
-      serialize(checked.state),
-      checked.t,
-      checked.advanceAnchor,
-    );
+    const committed = serialize(checked.state);
+    const anchor = checked.advanceAnchor ? { state: committed, at: checked.t } : null;
+    const done = await store.commitSave(checked.playerId, checked.revision, committed, checked.t, anchor);
     if (!done) return conflict(c, checked.playerId);
     return c.json({ revision: checked.revision + 1 });
   });
@@ -178,8 +204,14 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const { state, result } = synthesize(checked.state, inputs as string[], data, deps.rng());
     // never persist a state the next request could not parse
     if (!parseState(JSON.parse(serialize(state)), data)) return c.json({ error: 'internal error' }, 500);
-    // the synthesis result is the new current state; the anchor still only advances by time
-    const done = await store.commitSave(checked.playerId, checked.revision, serialize(state), checked.t, checked.advanceAnchor);
+    // The synthesis result is the new current state. The anchor advances only by time; otherwise
+    // what the synthesis spent is also taken out of the anchor (same CAS), so a later upload
+    // cannot "restore" the inputs for free and re-roll.
+    const committed = serialize(state);
+    const anchor = checked.advanceAnchor
+      ? { state: committed, at: checked.t }
+      : { state: serialize(chargeAnchor(checked.anchor, checked.state, state)), at: checked.anchorAt };
+    const done = await store.commitSave(checked.playerId, checked.revision, committed, checked.t, anchor);
     if (!done) return conflict(c, checked.playerId);
     const resultKey = 'spellId' in result ? `${result.kind}:${result.spellId}` : result.kind;
     await store.recordSynthesis(checked.playerId, checked.t, comboKey(inputs as string[]), resultKey);

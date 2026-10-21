@@ -1,4 +1,4 @@
-import type { PlayerRow, SaveRow, Store } from './store';
+import type { AnchorWrite, PlayerRow, SaveRow, Store } from './store';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -58,14 +58,14 @@ export class D1Store implements Store {
       : null;
   }
 
-  async commitSave(playerId: string, baseRevision: number, state: string, now: number, advanceAnchor: boolean): Promise<boolean> {
+  async commitSave(playerId: string, baseRevision: number, state: string, now: number, anchor: AnchorWrite | null): Promise<boolean> {
     // one statement, one CAS on revision: the anchor moves together with the save or not at all
-    const stmt = advanceAnchor
+    const stmt = anchor
       ? this.db
           .prepare(
             'UPDATE saves SET prev_state = state, prev_saved_at = saved_at, state = ?, revision = revision + 1, saved_at = ?, anchor_state = ?, anchor_at = ? WHERE player_id = ? AND revision = ?',
           )
-          .bind(state, now, state, now, playerId, baseRevision)
+          .bind(state, now, anchor.state, anchor.at, playerId, baseRevision)
       : this.db
           .prepare(
             'UPDATE saves SET prev_state = state, prev_saved_at = saved_at, state = ?, revision = revision + 1, saved_at = ? WHERE player_id = ? AND revision = ?',

@@ -258,20 +258,22 @@ describe('MemoryStore.commitSave', () => {
   it('stale baseRevision returns false and leaves the save unchanged', async () => {
     const s = new MemoryStore();
     await s.createPlayer(player, 'A', 0);
-    expect(await s.commitSave('p', 0, 'B', 10, false)).toBe(true);
-    expect(await s.commitSave('p', 0, 'C', 20, true)).toBe(false);
+    expect(await s.commitSave('p', 0, 'B', 10, null)).toBe(true);
+    expect(await s.commitSave('p', 0, 'C', 20, { state: 'C', at: 20 })).toBe(false);
     expect(await s.getSave('p')).toMatchObject({
       state: 'B', revision: 1, savedAt: 10, prevState: 'A', prevSavedAt: 0, anchorState: 'A', anchorAt: 0,
     });
   });
-  it('advances the anchor only when asked, in the same commit', async () => {
+  it('writes the anchor only when given one, in the same commit', async () => {
     const s = new MemoryStore();
     await s.createPlayer(player, 'A', 0);
     expect(await s.getSave('p')).toMatchObject({ anchorState: 'A', anchorAt: 0 });
-    await s.commitSave('p', 0, 'B', 10, false);
+    await s.commitSave('p', 0, 'B', 10, null);
     expect(await s.getSave('p')).toMatchObject({ state: 'B', anchorState: 'A', anchorAt: 0 });
-    await s.commitSave('p', 1, 'C', 70, true);
+    await s.commitSave('p', 1, 'C', 70, { state: 'C', at: 70 });
     expect(await s.getSave('p')).toMatchObject({ state: 'C', revision: 2, anchorState: 'C', anchorAt: 70 });
+    await s.commitSave('p', 2, 'D', 80, { state: 'A2', at: 70 });
+    expect(await s.getSave('p')).toMatchObject({ state: 'D', revision: 3, anchorState: 'A2', anchorAt: 70 });
   });
 });
 
@@ -404,6 +406,66 @@ describe('anchor window', () => {
     clock += 1000;
     const learned = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
     expect((await app.request('/api/save', json({ state: learned, baseRevision: 2 }, body.token, 'PUT'))).status).toBe(200);
+  });
+
+  it('restoring synthesis inputs inside one window is rejected: no free re-rolls', async () => {
+    // The reviewer's probe: restore the two inputs, synthesize again, repeat. Every restore now counts
+    // as gain against the anchor, so re-rolls are paid for by the window's farming allowance and the
+    // restores are rejected once they exceed it (here: 100 cycles at 100 ms within ~20 s).
+    const { body } = await guest();
+    const inputs = ['el:thunder:1', 'el:thunder:1'];
+    const two = { 'el:thunder:1': 2 };
+    let revision = 0;
+    const statuses: string[] = [];
+    let paid = 0;
+    const t0 = clock;
+    for (let i = 0; i < 100; i++) {
+      clock += 100;
+      const current = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
+      const restored = { ...current, inventory: two };
+      const put = await app.request('/api/save', json({ state: restored, baseRevision: revision }, body.token, 'PUT'));
+      revision = ((await put.json()) as { revision: number }).revision;
+      statuses.push(`put${put.status}`);
+      if (put.status !== 200) continue;
+      clock += 100;
+      const syn = await app.request('/api/synthesize', json({ state: restored, baseRevision: revision, inputs }, body.token));
+      const out = (await syn.json()) as { revision: number; state: GameState; result?: { kind: string } };
+      revision = out.revision;
+      statuses.push(`syn${syn.status}:${out.result?.kind ?? ''}`);
+      if (syn.status === 200) paid += 2 - (out.state.inventory['el:thunder:1'] ?? 0);
+    }
+    expect(statuses).toContain('put422');
+    // every element spent by synthesis fits what the window could have produced
+    const limit = maxGain(createInitialState(gameData), clock - t0, gameData).elements.thunder * GAIN_TOLERANCE + GAIN_SLACK;
+    expect(paid, statuses.join(' ')).toBeLessThanOrEqual(limit);
+    // and the synth events are exactly the paid ones: 2 for the learn, 1 net per duplicate
+    expect(paid).toBe(2 + (store.synthEvents.length - 1));
+  });
+
+  it('the anchor is charged with what a synthesis spent', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const s1 = withInv({ 'el:thunder:1': 3, 'el:fire:1': 1 });
+    await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'));
+    clock += 1000;
+    await app.request('/api/synthesize', json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token));
+    // anchor (initial, empty inventory) minus the two spent inputs: the debt is carried as -2
+    expect(JSON.parse(store.saves.get(body.playerId)!.anchorState).inventory).toEqual({ 'el:thunder:1': -2 });
+  });
+
+  it('synthesis then honest farming in the same window is accepted', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const s1 = withInv({ 'el:thunder:1': 2 });
+    expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
+    clock += 1000;
+    const syn = await app.request('/api/synthesize', json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token));
+    expect(syn.status).toBe(200);
+    const after = (await syn.json()) as { state: GameState; revision: number };
+    expect(store.saves.get(body.playerId)!.anchorAt).toBe(clock - 31_000);
+    const r = await playHonestly(body.token, after, { uploadEveryMs: 20_000, until: (_g, ms) => ms >= 60_000 });
+    expect(r.statuses.every((st) => st === 200), r.statuses.join(',')).toBe(true);
+    expect(r.statuses.length).toBe(3);
   });
 
   it('server-owned fields are checked against the current save, not just the anchor', async () => {

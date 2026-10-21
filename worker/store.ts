@@ -18,15 +18,21 @@ export interface SaveRow {
   anchorAt: number;
 }
 
+export interface AnchorWrite {
+  state: string;
+  at: number;
+}
+
 export interface Store {
   createPlayer(p: PlayerRow, initialState: string, now: number): Promise<void>;
   findPlayerByTokenHash(hash: string): Promise<PlayerRow | null>;
   getSave(playerId: string): Promise<SaveRow | null>;
   /**
    * revision 等於 baseRevision 時，把目前存檔移到 prev，寫入新存檔並讓 revision+1；不一致時回傳 false。
-   * advanceAnchor 為 true 時，同一次寫入也把錨點移到新存檔（anchorState = state, anchorAt = now）。
+   * anchor 不為 null 時，同一次寫入（同一個 CAS）也把錨點改成 anchor.state / anchor.at；
+   * 錨點只會隨 revision 一起變，所以呼叫端依讀到的錨點算出的新錨點不會覆蓋別人的寫入。
    */
-  commitSave(playerId: string, baseRevision: number, state: string, now: number, advanceAnchor: boolean): Promise<boolean>;
+  commitSave(playerId: string, baseRevision: number, state: string, now: number, anchor: AnchorWrite | null): Promise<boolean>;
   recordRejection(playerId: string, now: number, reasons: string[]): Promise<number>;
   markSuspicious(playerId: string): Promise<void>;
   recordSynthesis(playerId: string, now: number, combo: string, result: string): Promise<void>;
@@ -65,7 +71,7 @@ export class MemoryStore implements Store {
     return s ? { ...s } : null;
   }
 
-  async commitSave(playerId: string, baseRevision: number, state: string, now: number, advanceAnchor: boolean): Promise<boolean> {
+  async commitSave(playerId: string, baseRevision: number, state: string, now: number, anchor: AnchorWrite | null): Promise<boolean> {
     const s = this.saves.get(playerId);
     if (!s || s.revision !== baseRevision) return false;
     this.saves.set(playerId, {
@@ -75,8 +81,8 @@ export class MemoryStore implements Store {
       savedAt: now,
       prevState: s.state,
       prevSavedAt: s.savedAt,
-      anchorState: advanceAnchor ? state : s.anchorState,
-      anchorAt: advanceAnchor ? now : s.anchorAt,
+      anchorState: anchor ? anchor.state : s.anchorState,
+      anchorAt: anchor ? anchor.at : s.anchorAt,
     });
     return true;
   }
