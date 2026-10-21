@@ -53,6 +53,15 @@ describe('SynthesisPanel', () => {
     expect(onSlotsChange).not.toHaveBeenCalled();
   });
 
+  it('asks to retry when the server state was adopted instead (null result)', async () => {
+    const sync = { synthesize: vi.fn(async () => null) };
+    const onSlotsChange = vi.fn();
+    render(<SynthesisPanel snapshot={snap({ 'el:fire:1': 1, 'el:wind:1': 1 })} sync={sync} data={gameData} slots={['el:fire:1', 'el:wind:1']} onSlotsChange={onSlotsChange} />);
+    fireEvent.click(button());
+    await waitFor(() => expect(screen.getByText('存檔已同步，請再試一次')).toBeTruthy());
+    expect(onSlotsChange).not.toHaveBeenCalled();
+  });
+
   it('removes an item when its slot is clicked', () => {
     const onSlotsChange = vi.fn();
     render(<SynthesisPanel snapshot={snap({ 'el:fire:1': 1 })} sync={{ synthesize: vi.fn() }} data={gameData} slots={['el:fire:1', null]} onSlotsChange={onSlotsChange} />);

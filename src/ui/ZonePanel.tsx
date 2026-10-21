@@ -12,7 +12,7 @@ export function ZonePanel({ snapshot, data, runtime }: { snapshot: Snapshot; dat
           <li key={z.id}>
             <button
               type="button"
-              disabled={!unlocked}
+              disabled={!unlocked || current}
               className={current ? 'current' : ''}
               onClick={() => runtime.travel(z.id)}
             >

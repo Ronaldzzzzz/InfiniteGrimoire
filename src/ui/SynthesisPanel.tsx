@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { comboKey, SYNTH_SLOTS, type SynthResult } from '../engine/synthesis';
 import type { GameData, ItemId } from '../engine/types';
 import type { Snapshot } from '../game/runtime';
-import { itemName, SYNTH_ERROR_MESSAGE, synthMessage } from './messages';
+import { itemName, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 
 export type Slots = (ItemId | null)[];
 export const emptySlots = (): Slots => Array<ItemId | null>(SYNTH_SLOTS).fill(null);
@@ -41,6 +41,9 @@ export function SynthesisPanel({
       if (result) {
         setMessage(synthMessage(result, data));
         onSlotsChange(emptySlots());
+      } else {
+        // busy, offline, or the server sent its own state back (conflict / rejected)
+        setMessage(SYNTH_RETRY_MESSAGE);
       }
     } catch {
       setMessage(SYNTH_ERROR_MESSAGE);

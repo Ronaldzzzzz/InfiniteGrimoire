@@ -31,5 +31,6 @@ export function synthMessage(result: SynthResult, data: GameData): string {
 }
 
 export const SYNTH_ERROR_MESSAGE = '連線異常，請稍後再試';
+export const SYNTH_RETRY_MESSAGE = '存檔已同步，請再試一次';
 export const SAVE_ERROR_MESSAGE = '存檔失敗，進度可能沒有保存，請重新整理';
 export const BOSS_HINT = '魔王打不動？可以回到前一個地點繼續累積元素';
