@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
+import { Application, BitmapFont, BitmapText, Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import type { BattleEvent, MonsterInstance } from '../engine/battle';
 import type { Snapshot } from '../game/runtime';
 import { createRng } from '../engine/rng';
@@ -26,6 +26,8 @@ interface MonsterView {
   angle: number;
   /** current on-screen radius */
   r: number;
+  lastFrac: number;
+  hadStatus: boolean;
 }
 
 interface Effect {
@@ -36,6 +38,19 @@ interface Effect {
 }
 
 const tint = (c: string): number => parseInt(c.slice(1), 16);
+
+const DMG_FONT = 'ig-dmg';
+let dmgFontInstalled = false;
+function ensureDamageFont(): void {
+  if (dmgFontInstalled) return;
+  BitmapFont.install({
+    name: DMG_FONT,
+    style: { fontFamily: 'system-ui, sans-serif', fontSize: 32, fontWeight: 'bold', fill: '#ffffff', stroke: { color: '#000000', width: 4 } },
+    chars: [['0', '9']],
+    resolution: 2,
+  });
+  dmgFontInstalled = true;
+}
 
 export class BattleView {
   private readonly app = new Application();
@@ -74,6 +89,7 @@ export class BattleView {
     this.world.addChild(this.ring);
     this.hero = this.makeHero();
     this.world.addChild(this.hero);
+    ensureDamageFont();
     this.ready_ = true;
     this.app.ticker.add((t) => this.tick(t.deltaMS));
   }
@@ -130,7 +146,7 @@ export class BattleView {
     root.addChild(body, fx, hpBar);
     this.world.addChild(root);
     const angle = pickSpawnAngle([...this.monsters.values()].map((v) => v.angle), this.rng);
-    return { root, body, hpBar, fx, size, born: this.time, pos: { x: 0, y: 0 }, angle, r: this.extent(size) };
+    return { root, body, hpBar, fx, size, born: this.time, pos: { x: 0, y: 0 }, angle, r: this.extent(size), lastFrac: -1, hadStatus: false };
   }
 
   sync(snapshot: Snapshot): void {
@@ -187,14 +203,18 @@ export class BattleView {
   }
 
   private drawHp(v: MonsterView, m: MonsterInstance): void {
-    const w = Math.max(24, v.size);
     const frac = Math.max(0, Math.min(1, m.hp / m.maxHp));
+    if (frac === v.lastFrac) return;
+    v.lastFrac = frac;
+    const w = Math.max(24, v.size);
     v.hpBar.clear();
     v.hpBar.rect(-w / 2, -v.size / 2 - 9, w, 4).fill('#3a2a2a');
     v.hpBar.rect(-w / 2, -v.size / 2 - 9, w * frac, 4).fill(frac > 0.35 ? COLORS.rune : '#e2643b');
   }
 
   private drawStatus(v: MonsterView, m: MonsterInstance): void {
+    if (m.statuses.length === 0 && !v.hadStatus) return;
+    v.hadStatus = m.statuses.length > 0;
     const g = v.fx;
     g.clear();
     const s = v.size;
@@ -384,7 +404,10 @@ export class BattleView {
 
   private floatText(text: string, color: string, x: number, y: number, fixedSize = false): void {
     const fontSize = fixedSize ? IMMUNE_FONT_PX : 16 * this.unit;
-    const t = new Text({ text, style: { fill: color, fontSize, fontWeight: 'bold', stroke: { color: '#000000', width: 3 } } });
+    // numbers use a shared bitmap font; 無效 stays a Text (Pixi caches its texture by content)
+    const t = /^\d+$/.test(text)
+      ? new BitmapText({ text, style: { fontFamily: DMG_FONT, fontSize } })
+      : new Text({ text, style: { fill: color, fontSize, fontWeight: 'bold', stroke: { color: '#000000', width: 3 } } });
     // targets can still be off-screen: keep the result readable inside the view
     const at = clampToView({ x, y }, this.w, this.h, TEXT_MARGIN);
     t.anchor.set(0.5, 1);
