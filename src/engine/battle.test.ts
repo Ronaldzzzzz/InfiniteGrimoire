@@ -92,7 +92,8 @@ describe('battle', () => {
 
   it('normals keep spawning while the boss is active, up to maxAlive, without the boss counting', () => {
     const boss = { uid: 1, defId: 'boss1', hp: 1e9, maxHp: 1e9, x: 0.5, statuses: [] };
-    let r = { game: base('zb'), battle: { ...createBattle('zb'), bossActive: true, monsters: [boss], nextUid: 2 }, events: [] as BattleEvent[] };
+    const start: BattleState = { ...createBattle('zb'), bossActive: true, monsters: [boss], nextUid: 2 };
+    let r: { game: GameState; battle: BattleState; events: BattleEvent[] } = { game: base('zb'), battle: start, events: [] };
     const rng = createRng(5);
     let normalSpawns = 0;
     for (let t = 0; t < 2000; t += STEP_MS) {
