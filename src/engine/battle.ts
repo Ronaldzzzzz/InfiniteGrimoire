@@ -195,13 +195,15 @@ export function stepBattle(
     if (def.boss) {
       bossActive = false;
       if (!defeatedBosses.includes(zone.bossId)) defeatedBosses = [...defeatedBosses, zone.bossId];
+      // the counter stays at killsForBoss while the boss lives (so the validator sees the carried kills)
+      if ((zoneKills[zone.id] ?? 0) !== 0) zoneKills = { ...zoneKills, [zone.id]: 0 };
       const next = data.zones.find((z) => z.order === zone.order + 1);
       if (next && !unlockedZones.includes(next.id)) unlockedZones = [...unlockedZones, next.id];
       events.push({ type: 'bossDefeated', zoneId: zone.id, unlockedZoneId: next?.id ?? null });
     } else if (!bossWasActive && !bossActive) {
       const kills = (zoneKills[zone.id] ?? 0) + 1;
       if (kills >= zone.killsForBoss) {
-        zoneKills = { ...zoneKills, [zone.id]: 0 };
+        zoneKills = { ...zoneKills, [zone.id]: zone.killsForBoss };
         bossActive = true;
         spawn(zone.bossId, true);
       } else {

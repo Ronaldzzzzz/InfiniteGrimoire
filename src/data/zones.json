@@ -40,7 +40,7 @@
       "cinder_wisp"
     ],
     "bossId": "ash_dragon",
-    "killsForBoss": 18,
+    "killsForBoss": 25,
     "maxAlive": 6,
     "spawnIntervalMs": 2000
   }

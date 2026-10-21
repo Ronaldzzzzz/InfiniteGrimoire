@@ -75,8 +75,8 @@ export function runBot(opts: BotOptions): BotResult {
     const best = bestSpell();
     if (game.equipped !== best.id) game = equipSpell(game, best.id);
 
-    // a boss the equipped spells cannot hurt halts spawning for good: retreat and farm below
-    // until something new is learned (a human player would do the same by travelling)
+    // a boss the learned spells cannot hurt never dies and its fight does not count toward kills:
+    // retreat and farm below until something new is learned (a human would travel the same way)
     const spells = game.learned.map((id) => data.spells[id]!);
     if (blockedAtLearned !== game.learned.length) blocked.clear();
     const bossDef = data.monsters[data.zones.find((z) => z.id === game.currentZone)!.bossId]!;

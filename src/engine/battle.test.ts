@@ -104,6 +104,24 @@ describe('battle', () => {
     expect(r.battle.monsters.some((m) => m.defId === 'boss1')).toBe(true);
   });
 
+  it('zoneKills stays at killsForBoss while the boss lives and resets when it falls', () => {
+    const rng = createRng(7);
+    let game = base('z1', 'strong');
+    let battle = createBattle('z1');
+    let sawBossAlive = false;
+    for (let t = 0; t < 12000; t += STEP_MS) {
+      const r = stepBattle(game, battle, data, rng);
+      game = r.game; battle = r.battle;
+      if (battle.bossActive) {
+        sawBossAlive = true;
+        expect(game.zoneKills.z1).toBe(3);
+      }
+    }
+    expect(sawBossAlive).toBe(true);
+    expect(game.defeatedBosses).toContain('boss1');
+    expect(game.zoneKills.z1).toBe(0);
+  });
+
   it('defeating last zone boss unlocks nothing', () => {
     const d2: GameData = { ...data, zones: [data.zones[1]!] };
     const rng = createRng(2);
