@@ -29,6 +29,7 @@
 - **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
 
 **尚未完成（下一位接手者的待辦）：**
+0. **試玩回饋修正（優先）**：使用者第一次試玩後，設計已寫在 `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`（新版面、元素表分類、自製選擇器、正圓戰場、卡頓調查）。下一步：使用者審閱該文件 → 用 superpowers:writing-plans 寫實作計畫 → 執行。文件中標【待決策】的項目由實作者決定並記錄。做完後再進行下面第 1 項的畫面驗收。
 1. **畫面驗收從未做過**：用 `npm run dev` 在 1280px、360px 兩種寬度玩到第三個地點；在 DevTools 切 Offline，確認斷線遮罩出現、恢復後繼續；確認存檔失敗提示條、「無效」浮字、連鎖閃電等特效。
 2. **部署**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。**
 3. **合併**：畫面驗收通過後，由使用者決定合併 `main` 或開 PR。
@@ -106,5 +107,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-21（Claude Code，Opus 5.5）**：使用者在本機試玩 MVP，回報戰鬥畫面太大、元素列表沒分類且離合成區遠、想要圓形戰場、有些微卡頓，另外原生下拉選單看不到魔法階級也不能排序。已寫成設計文件 `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`，草圖 `docs/design/mockups/layout-v1.html`（使用者選 B 案）。停在：等使用者審閱設計文件。下一步：寫實作計畫。
 
 - **2026-10-21（Claude Code，Opus 5.5）**：完成設計規格、MVP 計畫，以及以 subagent-driven-development 執行全部 14 個任務、最終審查與修正（含防作弊錨點窗口、合成重擲漏洞）。branch `feat/mvp-core-loop` 已 push 到 GitHub。停在：畫面驗收與部署尚未進行。下一步：見第 3 節待辦。

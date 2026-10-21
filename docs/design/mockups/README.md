@@ -7,3 +7,4 @@
 - `grimoire-v3-pentagram.html`：採用的五芒星方案（外圈相鄰混合、中央不相鄰混合）
 
 這些檔案是 HTML 片段，原本由 brainstorming 工具外框包裝。直接用瀏覽器打開也能看，只是少了外框樣式。
+- `layout-v1.html`：試玩回饋後的新版面（A／B 兩案，使用者選 **B**：面板分兩欄，元素表緊貼合成槽）。對應 `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`
