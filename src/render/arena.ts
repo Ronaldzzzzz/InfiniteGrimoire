@@ -32,6 +32,11 @@ export function stopRadius(a: Arena, heroR: number, monsterR: number): number {
   return Math.max(lo, Math.min(hi, ENGINE_STOP_X * a.radius));
 }
 
+/** Radius of the circle around a centred box of half-extents (hw, hh): boxes inside such circles never overlap. */
+export function boxRadius(hw: number, hh: number): number {
+  return Math.hypot(hw, hh);
+}
+
 export function monsterDistance(a: Arena, stop: number, x: number): number {
   const t = Math.max(0, Math.min(1, (x - ENGINE_STOP_X) / (1 - ENGINE_STOP_X)));
   return stop + t * (a.radius - stop);

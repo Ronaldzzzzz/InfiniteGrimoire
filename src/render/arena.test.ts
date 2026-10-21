@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '../engine/rng';
 import {
   angleGap,
+  boxRadius,
   clampToView,
   ENGINE_STOP_X,
   makeArena,
@@ -60,6 +61,27 @@ describe('monster placement', () => {
     expect(monsterDistance(a, stop, 0.5)).toBeLessThan(monsterDistance(a, stop, 0.8));
     expect(monsterDistance(a, stop, 0)).toBe(stop);
     expect(monsterDistance(a, stop, 2)).toBe(a.radius);
+  });
+});
+
+describe('boxRadius', () => {
+  it('keeps the hero box and a monster box (with its hp bar) apart at the stop ring, at any angle', () => {
+    const u = 1.18;
+    const hero = { hw: 11 * u, hh: 19 * u };
+    for (const size of [28, 56]) {
+      const mw = Math.max(12, size / 2) * u;
+      const top = (size / 2 + 9) * u; // hp bar sits 9px above the body
+      const bottom = (size / 2) * u;
+      const a = makeArena(426, 746, 28 * u);
+      const stop = stopRadius(a, boxRadius(hero.hw, hero.hh), boxRadius(mw, top));
+      for (let i = 0; i < 64; i++) {
+        const p = polarPoint(a, (i / 64) * Math.PI * 2, stop);
+        const dx = Math.abs(p.x - a.center.x);
+        const overlapX = dx < hero.hw + mw;
+        const overlapY = p.y - top < a.center.y + hero.hh && p.y + bottom > a.center.y - hero.hh;
+        expect(overlapX && overlapY, `size ${size} angle ${i}`).toBe(false);
+      }
+    }
   });
 });
 
