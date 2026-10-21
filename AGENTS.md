@@ -25,7 +25,7 @@
 
 - **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit）。**尚未合併到 `main`。**
 - **第一版（MVP）程式：** 14 個任務全部完成，每個任務都經過獨立審查；最終全 branch 審查找出的問題已修正並複審。
-- **測試：** `npm test` 34 個檔案、255 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 36 個檔案、269 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
 - **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
 
@@ -108,6 +108,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-21（Claude Code，Opus 5.5）**：使用者試玩新版面後的三項回饋（bounded，對話中確認設計後實作，無 spec）：(1) 嘗試紀錄改成依階級切換的元素×元素組合表（`SynthesisMatrix`），只顯示玩家自己試過的結果、未試過顯示「？」，點格子放進合成槽，跨階級組合列在表下；(2) 怪物移動一格一格的原因是引擎每 50ms 一步、畫面直接畫最新一步——改成依 `runtime.stepAlpha()` 在前後兩步之間補間（實測每幀有位移的比例 17% → 67%）；(3) 怪物到停止圈後左右徘徊 ±12°、向外擺動 4px（`src/render/motion.ts`，純畫面）。另外發現：每次合成後 `sync.ts` 會 `replaceState`，連帶把戰鬥重置（場上怪物消失），這是 MVP 既有行為，尚未處理。停在：等使用者試玩。
 
 - **2026-10-21（Claude Code，Opus 5.5）**：以 executing-plans 在同一個 session 執行試玩回饋修正計畫的 11 個任務，並做了整個 branch 的最終審查（修正 2 個重要問題：手機上戰鬥畫面被裁切、手機上殘卷線索跑到畫面外；7 個小問題記在帳本的 `minor (deferred)`）。【待決策】的裁定記在帳本 R1～R10；其中 R9 是魔法選擇器的排序偏好存在 localStorage（`ig.spellSort`），使用者已同意。Claude in Chrome 沒有連上，所以畫面驗收與量測改用 headless Edge（puppeteer-core，腳本不進專案）。停在：等使用者在真實瀏覽器試玩新版面。下一步：使用者試玩 → 部署 → 合併。所有 commit 都還沒 push。
 
