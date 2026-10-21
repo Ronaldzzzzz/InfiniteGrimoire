@@ -12,6 +12,7 @@
 - 設計規格：[docs/superpowers/specs/2026-10-21-infinite-grimoire-design.md](docs/superpowers/specs/2026-10-21-infinite-grimoire-design.md)
 - 實作計畫：[docs/superpowers/plans/2026-10-21-mvp-core-loop.md](docs/superpowers/plans/2026-10-21-mvp-core-loop.md)
 - 美術素材清單：[docs/art-assets.md](docs/art-assets.md)
+- 接手開發（人或 AI agent）：先讀 [AGENTS.md](AGENTS.md)
 
 ## 本機開發
 
