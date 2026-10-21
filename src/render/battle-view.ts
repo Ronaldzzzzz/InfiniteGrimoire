@@ -3,7 +3,7 @@ import type { BattleEvent, BattleState, MonsterInstance } from '../engine/battle
 import type { Snapshot } from '../game/runtime';
 import { createRng } from '../engine/rng';
 import type { GameData } from '../engine/types';
-import { boxRadius, clampToView, ENGINE_STOP_X, makeArena, monsterDistance, pickSpawnAngle, polarPoint, stopRadius, type Arena } from './arena';
+import { boxRadius, ENGINE_STOP_X, floatTextStart, makeArena, monsterDistance, pickSpawnAngle, polarPoint, stopRadius, type Arena } from './arena';
 import { floatingText, jaggedPath, type Pt } from './effects';
 import { interpolate, wander } from './motion';
 import { COLORS, spellColor } from './palette';
@@ -435,11 +435,12 @@ export class BattleView {
       ? new BitmapText({ text, style: { fontFamily: DMG_FONT, fontSize } })
       : new Text({ text, style: { fill: color, fontSize, fontWeight: 'bold', stroke: { color: '#000000', width: 3 } } });
     // targets can still be off-screen: keep the result readable inside the view
-    const at = clampToView({ x, y }, this.w, this.h, TEXT_MARGIN);
+    const rise = 28 * this.unit;
+    const at = floatTextStart({ x, y }, this.w, this.h, TEXT_MARGIN, fontSize, rise);
     t.anchor.set(0.5, 1);
     t.position.set(at.x, at.y);
     this.addEffect(t, TEXT_MS, (p) => {
-      t.y = at.y - 28 * this.unit * p;
+      t.y = at.y - rise * p;
       t.alpha = 1 - p;
     });
   }

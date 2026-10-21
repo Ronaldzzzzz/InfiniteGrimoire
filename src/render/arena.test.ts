@@ -3,7 +3,7 @@ import { createRng } from '../engine/rng';
 import {
   angleGap,
   boxRadius,
-  clampToView,
+  floatTextStart,
   ENGINE_STOP_X,
   makeArena,
   MIN_SEPARATION,
@@ -107,9 +107,18 @@ describe('angles', () => {
   });
 });
 
-describe('clampToView', () => {
-  it('pulls off-screen points inside the margin', () => {
-    expect(clampToView({ x: -50, y: 900 }, 400, 300, 24)).toEqual({ x: 24, y: 276 });
-    expect(clampToView({ x: 100, y: 100 }, 400, 300, 24)).toEqual({ x: 100, y: 100 });
+describe('floatTextStart', () => {
+  it('starts low enough that the text stays inside the view for its whole rise', () => {
+    const textH = 16;
+    const rise = 28;
+    const start = floatTextStart({ x: 100, y: -200 }, 400, 300, 24, textH, rise);
+    // bottom-anchored text: its top at the end of the rise is start.y - rise - textH
+    expect(start.y - rise - textH).toBeGreaterThanOrEqual(24);
+    expect(start.y).toBe(24 + textH + rise);
+  });
+
+  it('leaves on-screen targets alone and still clamps the bottom and sides', () => {
+    expect(floatTextStart({ x: 100, y: 150 }, 400, 300, 24, 16, 28)).toEqual({ x: 100, y: 150 });
+    expect(floatTextStart({ x: -9, y: 900 }, 400, 300, 24, 16, 28)).toEqual({ x: 24, y: 276 });
   });
 });

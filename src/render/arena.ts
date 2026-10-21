@@ -69,9 +69,13 @@ export function pickSpawnAngle(existing: number[], rng: Rng, tries = 12): number
   return best;
 }
 
-export function clampToView(p: Pt, w: number, h: number, margin: number): Pt {
+/**
+ * Start point for bottom-anchored floating text of height `textH` that rises by `rise`: kept inside the view
+ * (with `margin`) for the whole animation, so results on off-screen targets stay readable.
+ */
+export function floatTextStart(p: Pt, w: number, h: number, margin: number, textH: number, rise: number): Pt {
   return {
     x: Math.max(margin, Math.min(w - margin, p.x)),
-    y: Math.max(margin, Math.min(h - margin, p.y)),
+    y: Math.max(margin + textH + rise, Math.min(h - margin, p.y)),
   };
 }
