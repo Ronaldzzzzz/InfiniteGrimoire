@@ -16,18 +16,21 @@ function fakeRuntime() {
 }
 
 describe('GrimoirePanel', () => {
-  it('equips a learned spell on click', () => {
+  it('equips a learned spell on click and clears the hint', () => {
     const rt = fakeRuntime();
-    render(<GrimoirePanel runtime={rt as unknown as GameRuntime} />);
+    const onHint = vi.fn();
+    render(<GrimoirePanel runtime={rt as unknown as GameRuntime} onHint={onHint} />);
     fireEvent.click(screen.getByRole('button', { name: new RegExp(gameData.spells.mana_bolt.name) }));
     expect(rt.equip).toHaveBeenCalledWith('mana_bolt');
+    expect(onHint).toHaveBeenCalledWith(null);
   });
 
-  it('shows the hint for a locked spell without equipping', () => {
+  it('reports the locked spell for its hint without equipping', () => {
     const rt = fakeRuntime();
-    render(<GrimoirePanel runtime={rt as unknown as GameRuntime} />);
+    const onHint = vi.fn();
+    render(<GrimoirePanel runtime={rt as unknown as GameRuntime} onHint={onHint} />);
     fireEvent.click(screen.getByRole('button', { name: new RegExp(gameData.spells.fireball.name) }));
-    expect(screen.getByText(gameData.spells.fireball.hint)).toBeTruthy();
+    expect(onHint).toHaveBeenCalledWith('fireball');
     expect(rt.equip).not.toHaveBeenCalled();
   });
 });

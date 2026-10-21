@@ -4,61 +4,52 @@ import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import './App.css';
 import { BattleCanvas } from './BattleCanvas';
+import { ElementTable } from './ElementTable';
 import { GrimoirePanel } from './GrimoirePanel';
-import { Hud } from './Hud';
-import { InventoryBar } from './InventoryBar';
 import { OfflineOverlay } from './OfflineOverlay';
-import { SaveErrorBanner } from './SaveErrorBanner';
 import { emptySlots, SynthesisPanel, type Slots } from './SynthesisPanel';
-import { bossAlive, useConnStatus, useGameState, useRuntime } from './useGame';
-import { ZonePanel } from './ZonePanel';
-
-type Tab = 'synthesis' | 'grimoire' | 'map';
-const TABS: [Tab, string][] = [
-  ['synthesis', '合成'],
-  ['grimoire', '魔導書'],
-  ['map', '地圖'],
-];
+import { TopBar } from './TopBar';
+import { useConnStatus, useGameState, useRuntime } from './useGame';
 
 export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncController; data: GameData }) {
+  const status = useConnStatus(sync);
   const game = useGameState(runtime);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
-  const bossOnField = useRuntime(runtime, (s) => bossAlive(s, data));
-  const status = useConnStatus(sync);
-  const [tab, setTab] = useState<Tab>('synthesis');
   const [slots, setSlots] = useState<Slots>(emptySlots);
+  const [hintId, setHintId] = useState<string | null>(null);
 
   const pick = (id: ItemId): void => {
     const i = slots.indexOf(null);
     if (i >= 0) setSlots(slots.map((s, j) => (j === i ? id : s)));
   };
+  // The hint stays until another node is clicked or the spell is learned.
+  const hint = hintId && !game.learned.includes(hintId) ? (data.spells[hintId]?.hint ?? null) : null;
 
   return (
     <div className="app">
-      <Hud game={game} bossAlive={bossOnField} data={data} runtime={runtime} />
-      <SaveErrorBanner status={status} />
+      <TopBar runtime={runtime} data={data} status={status} />
       <main className="main">
         <div className="battle">
           <BattleCanvas runtime={runtime} />
         </div>
-        <aside className="side">
-          <nav className="tabs">
-            {TABS.map(([id, label]) => (
-              <button key={id} type="button" className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
-                {label}
-              </button>
-            ))}
-          </nav>
-          <div className="tab-body">
-            {tab === 'synthesis' && (
-              <SynthesisPanel game={game} synthPending={synthPending} sync={sync} data={data} slots={slots} onSlotsChange={setSlots} />
-            )}
-            {tab === 'grimoire' && <GrimoirePanel runtime={runtime} />}
-            {tab === 'map' && <ZonePanel game={game} data={data} runtime={runtime} />}
-          </div>
-        </aside>
+        <div className="side">
+          <section className="workbench" aria-label="元素與合成">
+            <ElementTable inventory={game.inventory} onPick={pick} onUpgrade={(el, g) => runtime.upgrade(el, g)} />
+            <SynthesisPanel
+              game={game}
+              synthPending={synthPending}
+              sync={sync}
+              data={data}
+              slots={slots}
+              onSlotsChange={setSlots}
+              hint={hint}
+            />
+          </section>
+          <section className="grimoire-col" aria-label="魔導書">
+            <GrimoirePanel runtime={runtime} onHint={setHintId} />
+          </section>
+        </div>
       </main>
-      <InventoryBar inventory={game.inventory} onPick={pick} onUpgrade={(el, g) => runtime.upgrade(el, g)} />
       <OfflineOverlay status={status} />
     </div>
   );

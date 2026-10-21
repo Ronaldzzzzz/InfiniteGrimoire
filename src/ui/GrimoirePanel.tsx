@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
+import { memo, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import { gameData } from '../engine/data';
 import type { GameRuntime } from '../game/runtime';
 import { COLORS, spellColor } from '../render/palette';
@@ -11,14 +11,19 @@ const MAX_ZOOM = 3;
 const NODE_R = 16;
 const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
-export function GrimoirePanel({ runtime }: { runtime: RuntimeStore & Pick<GameRuntime, 'equip'> }) {
+export const GrimoirePanel = memo(function GrimoirePanel({
+  runtime,
+  onHint,
+}: {
+  runtime: RuntimeStore & Pick<GameRuntime, 'equip'>;
+  onHint: (spellId: string | null) => void;
+}) {
   const learned = useRuntime(runtime, (s) => s.game.learned);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const layout = useMemo(() => layoutGrimoire(Object.values(gameData.spells)), []);
   const pos = useMemo(() => new Map(layout.nodes.map((n) => [n.spellId, n])), [layout]);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [hint, setHint] = useState<string | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const wasDrag = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -51,9 +56,9 @@ export function GrimoirePanel({ runtime }: { runtime: RuntimeStore & Pick<GameRu
 
   const activate = (id: string) => {
     if (learned.includes(id)) {
-      setHint(null);
+      onHint(null);
       runtime.equip(id);
-    } else setHint(gameData.spells[id].hint);
+    } else onHint(id);
   };
 
   return (
@@ -119,7 +124,6 @@ export function GrimoirePanel({ runtime }: { runtime: RuntimeStore & Pick<GameRu
           );
         })}
       </svg>
-      <div className="grimoire-hint" role="status">{hint}</div>
     </div>
   );
-}
+});

@@ -18,6 +18,7 @@ export function SynthesisPanel({
   data,
   slots,
   onSlotsChange,
+  hint = null,
 }: {
   game: GameState;
   synthPending: boolean;
@@ -25,6 +26,7 @@ export function SynthesisPanel({
   data: GameData;
   slots: Slots;
   onSlotsChange: (slots: Slots) => void;
+  hint?: string | null;
 }) {
   const [message, setMessage] = useState('');
 
@@ -72,6 +74,9 @@ export function SynthesisPanel({
         {synthPending ? '嬗變中…' : '合成'}
       </button>
       <p className="synth-message" role="status">{message}</p>
+      <div className="synth-hint" aria-label="殘卷線索" aria-live="polite">
+        {hint ?? <span className="muted">在魔導書點未學會的魔法，殘卷線索會顯示在這裡</span>}
+      </div>
 
       <h3>嘗試紀錄</h3>
       {logEntries.length === 0 && <p className="muted">還沒有嘗試過任何組合</p>}
