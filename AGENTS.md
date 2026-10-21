@@ -25,12 +25,12 @@
 
 - **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit）。**尚未合併到 `main`。**
 - **第一版（MVP）程式：** 14 個任務全部完成，每個任務都經過獨立審查；最終全 branch 審查找出的問題已修正並複審。
-- **測試：** `npm test` 25 個檔案、203 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 33 個檔案、253 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
 - **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
 
 **尚未完成（下一位接手者的待辦）：**
-0. **試玩回饋修正（優先）**：使用者第一次試玩後，設計已寫在 `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`（新版面、元素表分類、自製選擇器、正圓戰場、卡頓調查）。下一步：使用者審閱該文件 → 用 superpowers:writing-plans 寫實作計畫 → 執行。文件中標【待決策】的項目由實作者決定並記錄。做完後再進行下面第 1 項的畫面驗收。
-1. **畫面驗收從未做過**：用 `npm run dev` 在 1280px、360px 兩種寬度玩到第三個地點；在 DevTools 切 Offline，確認斷線遮罩出現、恢復後繼續；確認存檔失敗提示條、「無效」浮字、連鎖閃電等特效。
+1. **使用者試玩新版面**：自動化驗收（headless Edge）已確認 1280／768／360 寬無橫向捲動、選擇器清單留在畫面內、斷線遮罩出現並恢復、三欄版面與殘卷線索位置。**還沒在真實瀏覽器確認**：卡頓感是否消失、燃燒／麻痺／冰凍特效、`beam` 分支光束、連鎖閃電、換地點後怪物角度重新隨機、玩到第三個地點。
 2. **部署**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。**
 3. **合併**：畫面驗收通過後，由使用者決定合併 `main` 或開 PR。
 
@@ -56,8 +56,9 @@ src/data/     魔法、配方、魔物、地點 JSON（內容與數值都在這�
 worker/       Cloudflare Worker（Hono）：遊客帳號、存檔上傳、伺服器擲骰合成；store.ts / d1-store.ts
 migrations/   D1 schema（0001 初始、0002 錨點窗口）
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳/斷線/錯誤）、loop、boot
-src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）
-src/ui/       React 介面：HUD、背包、地點、合成、魔導書（SVG）、取名、斷線遮罩
+src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何
+src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable、SynthesisPanel、GrimoirePanel（SVG）、
+              Onboarding、OfflineOverlay；useGame.ts 的 useRuntime(selector)；開發用 PerfMeter
 tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）
 ```
 
@@ -107,6 +108,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-21（Claude Code，Opus 5.5）**：以 executing-plans 在同一個 session 執行試玩回饋修正計畫的 11 個任務，並做了整個 branch 的最終審查。【待決策】的裁定記在帳本 R1～R10；其中 R9 是魔法選擇器的排序偏好存在 localStorage（`ig.spellSort`），使用者已同意。Claude in Chrome 沒有連上，所以畫面驗收與量測改用 headless Edge（puppeteer-core，腳本不進專案）。停在：等使用者在真實瀏覽器試玩新版面。下一步：使用者試玩 → 部署 → 合併。所有 commit 都還沒 push。
 
 - **2026-10-21（Claude Code，Opus 5.5）**：使用者在本機試玩 MVP，回報戰鬥畫面太大、元素列表沒分類且離合成區遠、想要圓形戰場、有些微卡頓，另外原生下拉選單看不到魔法階級也不能排序。已寫成設計文件 `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`，草圖 `docs/design/mockups/layout-v1.html`（使用者選 B 案）。停在：等使用者審閱設計文件。下一步：寫實作計畫。
 

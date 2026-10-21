@@ -17,3 +17,24 @@ Ruling R9: 排序偏好存 localStorage（ig.spellSort），以新規格優先�
 Ruling R10: 目前地點在選擇器中標為已選且不可點 — 沿用 ZonePanel — 無。
 
 ## Progress
+Task 1: Ruling: plan's fps test spanned 1023ms (59×16.67+40) so the first frame fell out of the 1s window — changed test frame dt to 16ms (984ms total); implementation unchanged — cost if wrong: none (test arithmetic)
+Task 1: Ruling: Claude-in-Chrome extension not connected — measured/screenshot with local Edge 155 headless via puppeteer-core in scratchpad, plus CDP 4x CPU throttle — cost if wrong: numbers differ from a real windowed browser (relative before/after still valid)
+Task 1: complete (commits 74443d8..3b64c5f, tests: npm test →              at least ~947ms faster with isolate: false — reuses workers across files instead of one per file)
+Task 2: complete (commits 3b64c5f..5f7db7a, tests: npx vitest run --reporter=dot →              at least ~896ms faster with isolate: false — reuses workers across files instead of one per file)
+Task 1: tests 26 files / 207 passed (ledger line above shows vitest hint text)
+Task 2: tests 27 files / 209 passed
+Task 3: complete (commits 5f7db7a..68340e7, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  218 passed (218))
+Task 4: complete (commits 68340e7..b775c5e, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  224 passed (224))
+Task 5: complete (commits b775c5e..e57c85f, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  229 passed (229))
+Task 6: complete (commits e57c85f..c1e8875, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  240 passed (240))
+Task 7: browser check 1280 (headless Edge): 3 columns, no tabs, hint under slots, slots filled by cells, scrollWidth=innerWidth, React commits 3/s
+Task 7: complete (commits c1e8875..1da0b57, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  243 passed (243))
+Task 8: complete (commits 1da0b57..2dd4460, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  252 passed (252))
+Task 9: Ruling: plan used size/2 (inscribed radius) for stop distances; screenshot showed the 2× boss square + hp bar overlapping the hero diagonally/below — added arena.boxRadius (circumscribed radius) and BattleView.extent(size)=hypot(max(12,s/2), s/2+9); hero radius = hypot(11,19); test 'keeps the hero box and a monster box apart…' RED (missing fn; old radii give 17.7<22.4 overlap below hero) → GREEN — cost if wrong: monsters stop slightly farther out.
+Task 9: no TDD for Pixi code (jsdom can't run Pixi; plan-specified) — verified by arena tests, build, screenshots 1280/360 (t9b-*.png), scrollWidth==innerWidth both.
+Task 9: not verified in browser: zone travel re-randomising angles (no unlocked second zone in the probe save); covered by the uid cleanup loop in sync().
+Task 9: complete (commits 2dd4460..6338dd3, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  253 passed (253))
+Task 10: browser 800px: bitmap damage numbers render, boss hp bar shrinks, 768-1099 layout correct; status effects (burn/paralyze/freeze) NOT seen in browser — probe save only knows mana_bolt; code path unchanged when statuses exist
+Task 10: complete (commits 6338dd3..ccf5600, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  253 passed (253))
+Task 11: acceptance (headless Edge): scrollWidth==innerWidth at 1280/768/360; zone picker popup inside viewport at all three, spell picker inside at 360 (hidden ≥768 by design); offline overlay shown and cleared (simulated by failing /api fetch in-page — Edge CDP rejects Network.emulateNetworkConditions and Fetch.enable); perf after: React 20/s → 0/s in battle, no long tasks during battle/synth.
+Task 11: Ruling: offline simulated by wrapping window.fetch to reject /api/ with TypeError (same error class as a real network drop) — CDP offline unsupported in this Edge — cost if wrong: does not exercise browser 'offline' events.
