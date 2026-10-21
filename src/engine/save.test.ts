@@ -14,7 +14,7 @@ function sample(): GameState {
     learned: ['mana_bolt', other],
     equipped: other,
     unlockedZones: [zone0, gameData.zones[1].id],
-    defeatedBosses: [zone0],
+    defeatedBosses: [gameData.zones[0].bossId],
     zoneKills: { [zone0]: 12 },
     synthesisLog: { k: { attempts: 2, results: { none: 1, [other]: 1 }, noReaction: true } },
   };
@@ -57,8 +57,15 @@ describe('save', () => {
   it('rejects unknown zone ids', () => {
     expect(roundtrip((o) => (o.currentZone = 'nope'))).toBeNull();
     expect(roundtrip((o) => o.unlockedZones.push('nope'))).toBeNull();
-    expect(roundtrip((o) => o.defeatedBosses.push('nope'))).toBeNull();
     expect(roundtrip((o) => (o.zoneKills.nope = 1))).toBeNull();
+  });
+  it('defeatedBosses holds boss monster ids, not zone ids', () => {
+    expect(roundtrip((o) => o.defeatedBosses.push('nope'))).toBeNull();
+    expect(roundtrip((o) => o.defeatedBosses.push(zone0))).toBeNull();
+    // a regular (non-boss) monster is not a boss either
+    expect(roundtrip((o) => o.defeatedBosses.push(gameData.zones[0].monsters[0]))).toBeNull();
+    const all = gameData.zones.map((z) => z.bossId);
+    expect(roundtrip((o) => (o.defeatedBosses = all))?.defeatedBosses).toEqual(all);
   });
   it('rejects negative or non-integer inventory counts', () => {
     expect(roundtrip((o) => (o.inventory['el:fire:1'] = -1))).toBeNull();

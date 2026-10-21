@@ -3,7 +3,8 @@ import { ELEMENT_ORDER, MAX_ELEMENT_GRADE, type GameData } from './types';
 import type { GameState } from './state';
 
 const count = z.number().int().min(0);
-const ITEM_RE = new RegExp(`^(el:(${ELEMENT_ORDER.join('|')}):[1-${MAX_ELEMENT_GRADE}]|mat:[a-z_]+)$`);
+/** Format of every inventory / synthesis item id. */
+export const ITEM_ID_RE = new RegExp(`^(el:(${ELEMENT_ORDER.join('|')}):[1-${MAX_ELEMENT_GRADE}]|mat:[a-z_]+)$`);
 
 const synthLogEntry = z.strictObject({
   attempts: count,
@@ -36,14 +37,16 @@ export function parseState(input: unknown, data: GameData): GameState | null {
     const zoneIds = new Set(data.zones.map((z) => z.id));
     const isSpell = (id: string) => Object.hasOwn(data.spells, id);
     const isZone = (id: string) => zoneIds.has(id);
+    const bossIds = new Set(data.zones.map((z) => z.bossId));
+    const isBoss = (id: string) => bossIds.has(id);
     const ok =
       s.learned.every(isSpell) &&
       s.learned.includes(s.equipped) &&
       isZone(s.currentZone) &&
       s.unlockedZones.every(isZone) &&
-      s.defeatedBosses.every(isZone) &&
+      s.defeatedBosses.every(isBoss) &&
       Object.keys(s.zoneKills).every(isZone) &&
-      Object.keys(s.inventory).every((k) => ITEM_RE.test(k));
+      Object.keys(s.inventory).every((k) => ITEM_ID_RE.test(k));
     return ok ? (s as GameState) : null;
   } catch {
     return null;

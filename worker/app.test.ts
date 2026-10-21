@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engine/battle';
 import { gameData } from '../src/engine/data';
 import { createRng } from '../src/engine/rng';
 import { createInitialState, type GameState } from '../src/engine/state';
@@ -236,5 +237,62 @@ describe('elapsed cap', () => {
       json({ state: withInv({ 'el:fire:1': 500 }), baseRevision: 0 }, body.token, 'PUT'),
     );
     expect(res.status).toBe(422);
+  });
+});
+
+/**
+ * An honest client: runs the real battle engine with the advancing fake clock and PUTs
+ * `{ state, baseRevision }` every `uploadEveryMs`. Returns the HTTP status of every upload.
+ */
+async function playHonestly(
+  token: string,
+  start: { state: GameState; revision: number },
+  opts: { uploadEveryMs: number; until: (game: GameState, elapsedMs: number) => boolean },
+) {
+  const rng = createRng(7);
+  let game = start.state;
+  let revision = start.revision;
+  let battle: BattleState = createBattle(game.currentZone);
+  const statuses: number[] = [];
+  let sinceUpload = 0;
+  let elapsed = 0;
+  for (;;) {
+    const r = stepBattle(game, battle, gameData, rng);
+    game = r.game;
+    battle = r.battle;
+    clock += STEP_MS;
+    elapsed += STEP_MS;
+    sinceUpload += STEP_MS;
+    if (sinceUpload >= opts.uploadEveryMs) {
+      sinceUpload = 0;
+      const res = await app.request('/api/save', json({ state: game, baseRevision: revision }, token, 'PUT'));
+      statuses.push(res.status);
+      const out = (await res.json()) as { revision: number; state?: GameState };
+      revision = out.revision;
+      if (res.status !== 200 && out.state) {
+        game = out.state;
+        battle = createBattle(game.currentZone);
+      }
+      if (opts.until(game, elapsed)) return { statuses, game, revision };
+    }
+  }
+}
+
+describe('honest play through the real engine', () => {
+  it('uploads after the first boss falls are accepted (defeatedBosses holds boss ids)', async () => {
+    const { body } = await guest();
+    const firstBoss = gameData.zones[0].bossId;
+    const r = await playHonestly(body.token, body, {
+      uploadEveryMs: 30_000,
+      until: (g, ms) => g.defeatedBosses.includes(firstBoss) || ms > 3_600_000,
+    });
+    expect(r.game.defeatedBosses).toEqual([firstBoss]);
+    expect(r.statuses.every((s) => s === 200), r.statuses.join(',')).toBe(true);
+    // and one more upload on top of the boss save
+    clock += 30_000;
+    const res = await app.request('/api/save', json({ state: r.game, baseRevision: r.revision }, body.token, 'PUT'));
+    expect(res.status).toBe(200);
+    const load = await app.request('/api/save', { headers: { authorization: `Bearer ${body.token}` } });
+    expect(((await load.json()) as { state: GameState }).state.defeatedBosses).toEqual([firstBoss]);
   });
 });
