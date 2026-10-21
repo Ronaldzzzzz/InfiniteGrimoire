@@ -238,11 +238,12 @@ export class BattleView {
     return out;
   }
 
-  private fxSprite(key: string): Sprite | null {
+  private fxSprite(key: string, color: string): Sprite | null {
     const tex = this.textures.get(key);
     if (!tex) return null;
     const s = new Sprite(tex);
     s.anchor.set(0.5);
+    s.tint = tint(color);
     return s;
   }
 
@@ -257,7 +258,7 @@ export class BattleView {
       case 'bolt': {
         const to = pts[0];
         if (!to) return;
-        const node = this.fxSprite('fx_bolt') ?? new Graphics().circle(0, 0, 5 * u).fill(color);
+        const node = this.fxSprite('fx_bolt', color) ?? new Graphics().circle(0, 0, 5 * u).fill(color);
         node.position.set(from.x, from.y);
         this.addEffect(node, 160, (p) => {
           node.position.set(from.x + (to.x - from.x) * p, from.y + (to.y - from.y) * p);
@@ -269,7 +270,7 @@ export class BattleView {
           const len = Math.hypot(to.x - from.x, to.y - from.y);
           const ang = Math.atan2(to.y - from.y, to.x - from.x);
           let node: Container;
-          const spr = this.fxSprite('fx_beam');
+          const spr = this.fxSprite('fx_beam', color);
           if (spr) {
             spr.anchor.set(0, 0.5);
             spr.width = len;
@@ -307,7 +308,7 @@ export class BattleView {
           g.alpha = p > 0.7 ? 1 - (p - 0.7) / 0.3 : 1;
         });
         for (const to of pts) {
-          const spark = this.fxSprite('fx_chain');
+          const spark = this.fxSprite('fx_chain', color);
           if (spark) {
             spark.position.set(to.x, to.y);
             this.addEffect(spark, life, (p) => {
@@ -319,7 +320,7 @@ export class BattleView {
       }
       case 'nova': {
         const maxR = Math.max(60 * u, ...pts.map((p) => Math.hypot(p.x - from.x, p.y - from.y) + 20));
-        const spr = this.fxSprite('fx_nova');
+        const spr = this.fxSprite('fx_nova', color);
         const g = spr ? null : new Graphics();
         const node: Container = spr ?? g!;
         node.position.set(from.x, from.y);
