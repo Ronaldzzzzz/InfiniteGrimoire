@@ -157,14 +157,25 @@ export function validateUpload(prev: GameState, next: GameState, elapsedMs: numb
     }
   }
   let minMs = 0;
+  const seenZones = new Set<string>();
   for (const b of bossZones) {
     const z = data.zones.find((zz) => zz.id === b.zoneId)!;
     if (!available.has(b.zoneId)) reasons.push(`boss ${b.boss} defeated in locked zone ${b.zoneId}`);
     if (!hits(b.boss)) reasons.push(`boss ${b.boss} cannot be damaged by learned spells`);
-    minMs += z.killsForBoss * z.spawnIntervalMs;
+    // the first new boss in a zone may use kills carried over from earlier uploads
+    const carried = seenZones.has(z.id) ? 0 : Math.min(Math.max(prev.zoneKills[z.id] ?? 0, 0), z.killsForBoss);
+    seenZones.add(z.id);
+    minMs += (z.killsForBoss - carried) * z.spawnIntervalMs;
     if (b.unlocks && available.has(b.zoneId) && hits(b.boss)) expectedUnlocked.add(b.unlocks);
   }
   if (minMs > elapsed * GAIN_TOLERANCE) reasons.push(`boss ${newBosses.join(',')} defeated too fast: need ${minMs}ms, got ${elapsed}ms`);
+  // zoneKills is client-owned: bound its growth in zones where no boss fell
+  for (const z of data.zones) {
+    if (seenZones.has(z.id)) continue;
+    const jump = (next.zoneKills[z.id] ?? 0) - (prev.zoneKills[z.id] ?? 0);
+    const limit = (Math.floor(elapsed / z.spawnIntervalMs) + z.maxAlive) * GAIN_TOLERANCE + GAIN_SLACK;
+    if (jump > limit) reasons.push(`zoneKills for ${z.id} grew by ${jump}, exceeds limit ${limit}`);
+  }
   // inventory gains
   const bound = maxGain(prev, elapsed, data, [...available]);
   for (const e of ELEMENT_ORDER) {

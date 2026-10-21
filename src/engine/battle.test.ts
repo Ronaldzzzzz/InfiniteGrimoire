@@ -90,6 +90,20 @@ describe('battle', () => {
     expect(r.events).toContainEqual({ type: 'bossDefeated', zoneId: 'z1', unlockedZoneId: 'z2' });
   });
 
+  it('normals keep spawning while the boss is active, up to maxAlive, without the boss counting', () => {
+    const boss = { uid: 1, defId: 'boss1', hp: 1e9, maxHp: 1e9, x: 0.5, statuses: [] };
+    let r = { game: base('zb'), battle: { ...createBattle('zb'), bossActive: true, monsters: [boss], nextUid: 2 }, events: [] as BattleEvent[] };
+    const rng = createRng(5);
+    let normalSpawns = 0;
+    for (let t = 0; t < 2000; t += STEP_MS) {
+      r = stepBattle(r.game, r.battle, data, rng);
+      normalSpawns += r.events.filter((e) => e.type === 'spawn' && !e.boss).length;
+    }
+    expect(r.battle.monsters.filter((m) => m.defId === 'slime')).toHaveLength(6);
+    expect(normalSpawns).toBe(6);
+    expect(r.battle.monsters.some((m) => m.defId === 'boss1')).toBe(true);
+  });
+
   it('defeating last zone boss unlocks nothing', () => {
     const d2: GameData = { ...data, zones: [data.zones[1]!] };
     const rng = createRng(2);
@@ -186,7 +200,8 @@ describe('battle', () => {
       nextUid: 5,
     };
     let r = stepBattle(base('zb', 'novaS'), battle, data, createRng(1));
-    expect(r.events.filter((e) => e.type === 'kill')).toHaveLength(4);
+    // zb spawns a fresh normal every step (interval 50); only the four pre-placed ones are checked
+    expect(r.events.filter((e) => e.type === 'kill' && e.uid <= 4)).toHaveLength(4);
     expect(r.game.defeatedBosses).toEqual(['boss1']);
     expect(r.game.zoneKills.zb ?? 0).toBe(0);
     expect(r.battle.bossActive).toBe(false);
@@ -213,9 +228,10 @@ describe('battle', () => {
       nextUid: 5,
     };
     let r = stepBattle(base('zb', 'novaS'), battle, data, createRng(1));
-    expect(r.events.filter((e) => e.type === 'kill')).toHaveLength(4);
+    // zb spawns a fresh normal every step (interval 50); only the four pre-placed ones are checked
+    expect(r.events.filter((e) => e.type === 'kill' && e.uid <= 4)).toHaveLength(4);
     expect(r.events[r.events.findIndex((e) => e.type === 'kill')]).toMatchObject({ uid: 1 });
-    expect(r.events.some((e) => e.type === 'spawn')).toBe(false);
+    expect(r.events.some((e) => e.type === 'spawn' && e.boss)).toBe(false);
     expect(r.battle.bossActive).toBe(false);
     expect(r.game.zoneKills.zb ?? 0).toBe(0);
     const rng = createRng(2);

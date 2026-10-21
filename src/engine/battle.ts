@@ -104,8 +104,9 @@ export function stepBattle(
     events.push({ type: 'spawn', uid, boss });
   };
 
-  // 1. normal spawning (paused during boss)
-  if (!bossActive && monsters.length < zone.maxAlive) {
+  // 1. normal spawning (continues during a boss fight; the boss does not count toward maxAlive)
+  const normalsAlive = monsters.filter((m) => !data.monsters[m.defId]?.boss).length;
+  if (normalsAlive < zone.maxAlive) {
     if (spawnTimerMs >= zone.spawnIntervalMs) {
       spawnTimerMs -= zone.spawnIntervalMs;
       spawn(zone.monsters[rng.int(0, zone.monsters.length - 1)]!, false);

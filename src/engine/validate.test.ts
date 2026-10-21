@@ -137,6 +137,19 @@ describe('validateUpload', () => {
     expect(fail(validateUpload(base(), next, 1000, data)).join()).toContain('b1');
   });
 
+  it('carried zoneKills shorten the required boss time', () => {
+    // z1: killsForBoss 5 x 1000ms = 5 s; limit for a 3 s window is 3.75 s
+    const next = { ...base(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] };
+    const carried = { ...base(), zoneKills: { z1: 4 } };
+    expect(validateUpload(carried, { ...next, zoneKills: { z1: 0 } }, 3000, data)).toEqual({ ok: true });
+    expect(fail(validateUpload({ ...base(), zoneKills: { z1: 0 } }, next, 3000, data)).join()).toContain('b1');
+  });
+
+  it('zoneKills jump of 1000 in 30 s rejected', () => {
+    const next = { ...base(), zoneKills: { z1: 1000 } };
+    expect(fail(validateUpload(base(), next, 30_000, data)).join()).toContain('z1');
+  });
+
   it('boss in locked zone rejected', () => {
     const next = { ...base(), defeatedBosses: ['b2'], unlockedZones: ['z1', 'z3'] };
     expect(fail(validateUpload(base(), next, 600_000, data)).join()).toContain('b2');
