@@ -13,15 +13,20 @@ export interface SaveRow {
   savedAt: number;
   prevState: string | null;
   prevSavedAt: number | null;
+  /** anti-cheat baseline: uploads are validated against this state and the time since anchorAt */
+  anchorState: string;
+  anchorAt: number;
 }
 
 export interface Store {
   createPlayer(p: PlayerRow, initialState: string, now: number): Promise<void>;
   findPlayerByTokenHash(hash: string): Promise<PlayerRow | null>;
   getSave(playerId: string): Promise<SaveRow | null>;
-  /** revision 等於 baseRevision 時，把目前存檔移到 prev，寫入新存檔並讓 revision+1；不一致時回傳 false */
-  commitSave(playerId: string, baseRevision: number, state: string, now: number): Promise<boolean>;
-  touchSave(playerId: string, now: number): Promise<void>;
+  /**
+   * revision 等於 baseRevision 時，把目前存檔移到 prev，寫入新存檔並讓 revision+1；不一致時回傳 false。
+   * advanceAnchor 為 true 時，同一次寫入也把錨點移到新存檔（anchorState = state, anchorAt = now）。
+   */
+  commitSave(playerId: string, baseRevision: number, state: string, now: number, advanceAnchor: boolean): Promise<boolean>;
   recordRejection(playerId: string, now: number, reasons: string[]): Promise<number>;
   markSuspicious(playerId: string): Promise<void>;
   recordSynthesis(playerId: string, now: number, combo: string, result: string): Promise<void>;
@@ -45,6 +50,8 @@ export class MemoryStore implements Store {
       savedAt: now,
       prevState: null,
       prevSavedAt: null,
+      anchorState: initialState,
+      anchorAt: now,
     });
   }
 
@@ -58,7 +65,7 @@ export class MemoryStore implements Store {
     return s ? { ...s } : null;
   }
 
-  async commitSave(playerId: string, baseRevision: number, state: string, now: number): Promise<boolean> {
+  async commitSave(playerId: string, baseRevision: number, state: string, now: number, advanceAnchor: boolean): Promise<boolean> {
     const s = this.saves.get(playerId);
     if (!s || s.revision !== baseRevision) return false;
     this.saves.set(playerId, {
@@ -68,13 +75,10 @@ export class MemoryStore implements Store {
       savedAt: now,
       prevState: s.state,
       prevSavedAt: s.savedAt,
+      anchorState: advanceAnchor ? state : s.anchorState,
+      anchorAt: advanceAnchor ? now : s.anchorAt,
     });
     return true;
-  }
-
-  async touchSave(playerId: string, now: number): Promise<void> {
-    const s = this.saves.get(playerId);
-    if (s) s.savedAt = now;
   }
 
   async recordRejection(playerId: string, now: number, reasons: string[]): Promise<number> {

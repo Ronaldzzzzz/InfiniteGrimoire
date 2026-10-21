@@ -3,7 +3,10 @@ import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engi
 import { gameData } from '../src/engine/data';
 import { createRng } from '../src/engine/rng';
 import { createInitialState, type GameState } from '../src/engine/state';
-import { createApp, MAX_BODY_BYTES, SUSPICIOUS_REJECTIONS_24H } from './app';
+import { ELEMENT_ORDER } from '../src/engine/types';
+import { elementEquivalent } from '../src/engine/inventory';
+import { GAIN_SLACK, GAIN_TOLERANCE, maxGain } from '../src/engine/validate';
+import { ANCHOR_ADVANCE_MS, createApp, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
 import { MemoryStore, type SaveRow } from './store';
 
 let store: MemoryStore;
@@ -47,6 +50,8 @@ describe('POST /api/guest', () => {
     expect(store.players.get(body.playerId)?.displayName).toBe('Mage');
     expect(store.players.get(body.playerId)?.tokenHash).not.toBe(body.token);
     expect(store.saves.get(body.playerId)?.savedAt).toBe(clock);
+    expect(store.saves.get(body.playerId)?.anchorAt).toBe(clock);
+    expect(JSON.parse(store.saves.get(body.playerId)!.anchorState)).toEqual(body.state);
   });
 
   it('rejects empty or 17-char name', async () => {
@@ -73,13 +78,14 @@ describe('auth', () => {
 });
 
 describe('save', () => {
-  it('GET save touches savedAt', async () => {
+  it('GET save returns the state and leaves the anchor alone', async () => {
     const { body } = await guest();
+    const before = store.saves.get(body.playerId)!;
     clock += 5000;
     const res = await app.request('/api/save', { headers: { authorization: `Bearer ${body.token}` } });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ state: body.state, revision: 0 });
-    expect(store.saves.get(body.playerId)?.savedAt).toBe(clock);
+    expect(store.saves.get(body.playerId)).toEqual(before);
   });
 
   it('valid upload advances revision and keeps the old file', async () => {
@@ -219,17 +225,30 @@ describe('synthesize', () => {
 });
 
 describe('MemoryStore.commitSave', () => {
+  const player = { id: 'p', displayName: 'x', tokenHash: 'h', createdAt: 0, suspicious: false };
   it('stale baseRevision returns false and leaves the save unchanged', async () => {
     const s = new MemoryStore();
-    await s.createPlayer({ id: 'p', displayName: 'x', tokenHash: 'h', createdAt: 0, suspicious: false }, 'A', 0);
-    expect(await s.commitSave('p', 0, 'B', 10)).toBe(true);
-    expect(await s.commitSave('p', 0, 'C', 20)).toBe(false);
-    expect(await s.getSave('p')).toMatchObject({ state: 'B', revision: 1, savedAt: 10, prevState: 'A', prevSavedAt: 0 });
+    await s.createPlayer(player, 'A', 0);
+    expect(await s.commitSave('p', 0, 'B', 10, false)).toBe(true);
+    expect(await s.commitSave('p', 0, 'C', 20, true)).toBe(false);
+    expect(await s.getSave('p')).toMatchObject({
+      state: 'B', revision: 1, savedAt: 10, prevState: 'A', prevSavedAt: 0, anchorState: 'A', anchorAt: 0,
+    });
+  });
+  it('advances the anchor only when asked, in the same commit', async () => {
+    const s = new MemoryStore();
+    await s.createPlayer(player, 'A', 0);
+    expect(await s.getSave('p')).toMatchObject({ anchorState: 'A', anchorAt: 0 });
+    await s.commitSave('p', 0, 'B', 10, false);
+    expect(await s.getSave('p')).toMatchObject({ state: 'B', anchorState: 'A', anchorAt: 0 });
+    await s.commitSave('p', 1, 'C', 70, true);
+    expect(await s.getSave('p')).toMatchObject({ state: 'C', revision: 2, anchorState: 'C', anchorAt: 70 });
   });
 });
 
-describe('elapsed cap', () => {
-  it('caps credited time at MAX_ELAPSED_MS even after 8h without GET', async () => {
+describe('window cap', () => {
+  it('caps credited time at MAX_WINDOW_MS even after 8h', async () => {
+    expect(MAX_WINDOW_MS).toBe(180_000);
     const { body } = await guest();
     clock += 8 * 3_600_000;
     const res = await app.request(
@@ -237,6 +256,154 @@ describe('elapsed cap', () => {
       json({ state: withInv({ 'el:fire:1': 500 }), baseRevision: 0 }, body.token, 'PUT'),
     );
     expect(res.status).toBe(422);
+  });
+  it('synthesize is capped by the same window', async () => {
+    const { body } = await guest();
+    clock += 8 * 3_600_000;
+    const res = await app.request(
+      '/api/synthesize',
+      json({ state: withInv({ 'el:fire:1': 500, 'el:thunder:1': 2 }), baseRevision: 0, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token),
+    );
+    expect(res.status).toBe(422);
+    expect(store.synthEvents).toHaveLength(0);
+  });
+});
+
+describe('anchor window', () => {
+  /** The honest bound for `ms` of play from the initial state, per element. */
+  const honestLimit = (ms: number) => {
+    const b = maxGain(createInitialState(gameData), ms, gameData);
+    return Object.fromEntries(ELEMENT_ORDER.map((e) => [e, b.elements[e] * GAIN_TOLERANCE + GAIN_SLACK]));
+  };
+  /** Adds the full per-upload 100 ms allowance (tolerance + slack) on top of `prev`. */
+  const inflate = (prev: GameState): GameState => {
+    const b = maxGain(prev, 100, gameData);
+    const inventory = { ...prev.inventory };
+    for (const e of ELEMENT_ORDER) {
+      const extra = Math.floor(b.elements[e] * GAIN_TOLERANCE + GAIN_SLACK);
+      inventory[`el:${e}:1`] = (inventory[`el:${e}:1`] ?? 0) + extra;
+    }
+    return { ...prev, inventory };
+  };
+  const gainOf = (s: GameState, e: (typeof ELEMENT_ORDER)[number]) => elementEquivalent(s.inventory, e);
+
+  it('300 PUTs at 100 ms each claiming the 100 ms bound stay under 2x the honest 30 s bound', async () => {
+    const { body } = await guest();
+    let accepted = body.state;
+    let revision = 0;
+    let rejected = 0;
+    for (let i = 0; i < 300; i++) {
+      clock += 100;
+      const claim = inflate(accepted);
+      const res = await app.request('/api/save', json({ state: claim, baseRevision: revision }, body.token, 'PUT'));
+      const out = (await res.json()) as { revision: number; state?: GameState };
+      revision = out.revision;
+      if (res.status === 200) accepted = claim;
+      else {
+        expect(res.status).toBe(422);
+        rejected++;
+        accepted = out.state!;
+      }
+    }
+    expect(rejected).toBeGreaterThan(0);
+    const saved = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
+    const limit = honestLimit(30_000);
+    for (const e of ELEMENT_ORDER) expect(gainOf(saved, e), e).toBeLessThan(2 * limit[e]!);
+  });
+
+  it('high-frequency synthesize calls cannot accumulate per-call allowances either', async () => {
+    const { body } = await guest();
+    let accepted = body.state;
+    let revision = 0;
+    let rejected = 0;
+    for (let i = 0; i < 300; i++) {
+      clock += 100;
+      const claim = inflate(accepted);
+      // a one-slot synth is an engine rejection: 200, nothing consumed, but it commits the claim
+      const res = await app.request('/api/synthesize', json({ state: claim, baseRevision: revision, inputs: ['el:fire:1'] }, body.token));
+      const out = (await res.json()) as { revision: number; state: GameState };
+      revision = out.revision;
+      if (res.status === 200) accepted = out.state;
+      else {
+        rejected++;
+        accepted = out.state;
+      }
+    }
+    expect(rejected).toBeGreaterThan(0);
+    const saved = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
+    const limit = honestLimit(30_000);
+    for (const e of ELEMENT_ORDER) expect(gainOf(saved, e), e).toBeLessThan(2 * limit[e]!);
+  });
+
+  it('an honest client uploading every 30 s for 10 minutes is never rejected', async () => {
+    const { body } = await guest();
+    const r = await playHonestly(body.token, body, { uploadEveryMs: 30_000, until: (_g, ms) => ms >= 600_000 });
+    expect(r.statuses).toHaveLength(20);
+    expect(r.statuses.every((s) => s === 200), r.statuses.join(',')).toBe(true);
+    expect(store.rejections).toHaveLength(0);
+  });
+
+  it('advances the anchor to the accepted state once ANCHOR_ADVANCE_MS has passed', async () => {
+    expect(ANCHOR_ADVANCE_MS).toBe(60_000);
+    const { body } = await guest();
+    const t0 = clock;
+    clock += 30_000;
+    const s1 = { ...body.state, zoneKills: { [body.state.currentZone]: 3 } };
+    expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
+    expect(store.saves.get(body.playerId)).toMatchObject({ anchorAt: t0 });
+    expect(JSON.parse(store.saves.get(body.playerId)!.anchorState)).toEqual(body.state);
+    clock += 30_000;
+    const s2 = { ...body.state, zoneKills: { [body.state.currentZone]: 6 } };
+    expect((await app.request('/api/save', json({ state: s2, baseRevision: 1 }, body.token, 'PUT'))).status).toBe(200);
+    expect(store.saves.get(body.playerId)).toMatchObject({ anchorAt: clock });
+    expect(JSON.parse(store.saves.get(body.playerId)!.anchorState)).toEqual(s2);
+  });
+
+  it('synthesize 1 s after an accepted upload is accepted', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const s1 = withInv({ 'el:thunder:1': 2 });
+    expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
+    clock += 1000;
+    const res = await app.request(
+      '/api/synthesize',
+      json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token),
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { result: { kind: string } }).result.kind).toBe('learned');
+    // and the next regular upload keeps the server-learned spell
+    clock += 1000;
+    const learned = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
+    expect((await app.request('/api/save', json({ state: learned, baseRevision: 2 }, body.token, 'PUT'))).status).toBe(200);
+  });
+
+  it('server-owned fields are checked against the current save, not just the anchor', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const s1 = withInv({ 'el:thunder:1': 2 });
+    await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'));
+    await app.request('/api/synthesize', json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token));
+    clock += 1000;
+    // dropping the spell learned after the anchor
+    const res = await app.request('/api/save', json({ state: body.state, baseRevision: 2 }, body.token, 'PUT'));
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { reasons: string[] }).reasons).toContain('learned spells changed');
+  });
+
+  it('defeatedBosses may not shrink relative to the current save', async () => {
+    const { body } = await guest();
+    const boss = gameData.zones[0].bossId;
+    const row = store.saves.get(body.playerId)!;
+    const current: GameState = {
+      ...body.state,
+      defeatedBosses: [boss],
+      unlockedZones: [gameData.zones[0].id, gameData.zones[1].id],
+    };
+    store.saves.set(body.playerId, { ...row, state: JSON.stringify(current) });
+    clock += 30_000;
+    const res = await app.request('/api/save', json({ state: body.state, baseRevision: 0 }, body.token, 'PUT'));
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { reasons: string[] }).reasons).toContain(`defeatedBosses lost boss ${boss}`);
   });
 });
 

@@ -17,8 +17,14 @@ export interface AppDeps {
 
 export const SUSPICIOUS_REJECTIONS_24H = 5;
 export const MAX_BODY_BYTES = 64 * 1024;
-/** Upper bound on the time credited to one upload; no offline income in the MVP. */
-export const MAX_ELAPSED_MS = 120_000;
+/**
+ * Anti-cheat anchor window. Every upload is validated against the anchor state with the time
+ * since the anchor (capped: no offline income in the MVP), so the per-upload allowances
+ * (burst, boss drop, slack) are granted once per anchor rather than once per request.
+ */
+export const MAX_WINDOW_MS = 180_000;
+/** An accepted save becomes the new anchor once the anchor is at least this old. */
+export const ANCHOR_ADVANCE_MS = 60_000;
 
 type Env = { Variables: { player: PlayerRow } };
 type Ctx = Context<Env>;
@@ -89,12 +95,11 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const player = c.get('player');
     const save = await store.getSave(player.id);
     if (!save) return c.json({ error: 'not found' }, 404);
-    await store.touchSave(player.id, now());
     return c.json({ state: JSON.parse(save.state), revision: save.revision });
   });
 
   type Checked =
-    | { ok: true; state: GameState; revision: number; t: number; playerId: string }
+    | { ok: true; state: GameState; revision: number; t: number; playerId: string; advanceAnchor: boolean }
     | { ok: false; res: Response };
 
   /** Shared by PUT /api/save and POST /api/synthesize: 400 / 409 / 422 handling. */
@@ -111,16 +116,33 @@ export function createApp(deps: AppDeps): Hono<Env> {
       return { ok: false, res: c.json({ reason: 'conflict', state: current, revision: save.revision }, 409) };
     }
     const t = now();
-    const verdict = validateUpload(current, next, Math.min(Math.max(0, t - save.savedAt), MAX_ELAPSED_MS), data);
-    if (!verdict.ok) {
-      const count = await store.recordRejection(player.id, t, verdict.reasons);
+    const anchor = JSON.parse(save.anchorState) as GameState;
+    // server-owned fields come from the current save; everything client-owned is measured from the anchor
+    const baseline: GameState = { ...anchor, learned: current.learned, synthesisLog: current.synthesisLog };
+    const elapsed = Math.min(Math.max(0, t - save.anchorAt), MAX_WINDOW_MS);
+    const verdict = validateUpload(baseline, next, elapsed, data);
+    const reasons = verdict.ok ? [] : [...verdict.reasons];
+    // learned / synthesisLog equality vs current is covered by the overlay above
+    for (const b of current.defeatedBosses) {
+      const r = `defeatedBosses lost boss ${b}`;
+      if (!next.defeatedBosses.includes(b) && !reasons.includes(r)) reasons.push(r);
+    }
+    if (reasons.length) {
+      const count = await store.recordRejection(player.id, t, reasons);
       if (count >= SUSPICIOUS_REJECTIONS_24H) await store.markSuspicious(player.id);
       return {
         ok: false,
-        res: c.json({ reason: 'rejected', reasons: verdict.reasons, state: current, revision: save.revision }, 422),
+        res: c.json({ reason: 'rejected', reasons, state: current, revision: save.revision }, 422),
       };
     }
-    return { ok: true, state: next, revision: save.revision, t, playerId: player.id };
+    return {
+      ok: true,
+      state: next,
+      revision: save.revision,
+      t,
+      playerId: player.id,
+      advanceAnchor: t - save.anchorAt >= ANCHOR_ADVANCE_MS,
+    };
   }
 
   async function conflict(c: Ctx, playerId: string): Promise<Response> {
@@ -134,7 +156,13 @@ export function createApp(deps: AppDeps): Hono<Env> {
   app.put('/api/save', async (c) => {
     const checked = await checkUpload(c, await readJson(c));
     if (!checked.ok) return checked.res;
-    const done = await store.commitSave(checked.playerId, checked.revision, serialize(checked.state), checked.t);
+    const done = await store.commitSave(
+      checked.playerId,
+      checked.revision,
+      serialize(checked.state),
+      checked.t,
+      checked.advanceAnchor,
+    );
     if (!done) return conflict(c, checked.playerId);
     return c.json({ revision: checked.revision + 1 });
   });
@@ -148,7 +176,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
     const { state, result } = synthesize(checked.state, inputs as string[], data, deps.rng());
-    const done = await store.commitSave(checked.playerId, checked.revision, serialize(state), checked.t);
+    // the synthesis result is the new current state; the anchor still only advances by time
+    const done = await store.commitSave(checked.playerId, checked.revision, serialize(state), checked.t, checked.advanceAnchor);
     if (!done) return conflict(c, checked.playerId);
     const resultKey = 'spellId' in result ? `${result.kind}:${result.spellId}` : result.kind;
     await store.recordSynthesis(checked.playerId, checked.t, comboKey(inputs as string[]), resultKey);

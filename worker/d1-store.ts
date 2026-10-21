@@ -16,6 +16,8 @@ interface SaveDb {
   saved_at: number;
   prev_state: string | null;
   prev_saved_at: number | null;
+  anchor_state: string | null;
+  anchor_at: number | null;
 }
 
 export class D1Store implements Store {
@@ -27,8 +29,8 @@ export class D1Store implements Store {
         .prepare('INSERT INTO players (id, display_name, token_hash, created_at, suspicious) VALUES (?, ?, ?, ?, ?)')
         .bind(p.id, p.displayName, p.tokenHash, p.createdAt, p.suspicious ? 1 : 0),
       this.db
-        .prepare('INSERT INTO saves (player_id, state, revision, saved_at) VALUES (?, ?, 0, ?)')
-        .bind(p.id, initialState, now),
+        .prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 0, ?, ?, ?)')
+        .bind(p.id, initialState, now, initialState, now),
     ]);
   }
 
@@ -49,22 +51,28 @@ export class D1Store implements Store {
           savedAt: r.saved_at,
           prevState: r.prev_state,
           prevSavedAt: r.prev_saved_at,
+          // migration 0002 backfills these; fall back to the save itself for safety
+          anchorState: r.anchor_state ?? r.state,
+          anchorAt: r.anchor_at ?? r.saved_at,
         }
       : null;
   }
 
-  async commitSave(playerId: string, baseRevision: number, state: string, now: number): Promise<boolean> {
-    const r = await this.db
-      .prepare(
-        'UPDATE saves SET prev_state = state, prev_saved_at = saved_at, state = ?, revision = revision + 1, saved_at = ? WHERE player_id = ? AND revision = ?',
-      )
-      .bind(state, now, playerId, baseRevision)
-      .run();
+  async commitSave(playerId: string, baseRevision: number, state: string, now: number, advanceAnchor: boolean): Promise<boolean> {
+    // one statement, one CAS on revision: the anchor moves together with the save or not at all
+    const stmt = advanceAnchor
+      ? this.db
+          .prepare(
+            'UPDATE saves SET prev_state = state, prev_saved_at = saved_at, state = ?, revision = revision + 1, saved_at = ?, anchor_state = ?, anchor_at = ? WHERE player_id = ? AND revision = ?',
+          )
+          .bind(state, now, state, now, playerId, baseRevision)
+      : this.db
+          .prepare(
+            'UPDATE saves SET prev_state = state, prev_saved_at = saved_at, state = ?, revision = revision + 1, saved_at = ? WHERE player_id = ? AND revision = ?',
+          )
+          .bind(state, now, playerId, baseRevision);
+    const r = await stmt.run();
     return r.meta.changes === 1;
-  }
-
-  async touchSave(playerId: string, now: number): Promise<void> {
-    await this.db.prepare('UPDATE saves SET saved_at = ? WHERE player_id = ?').bind(now, playerId).run();
   }
 
   async recordRejection(playerId: string, now: number, reasons: string[]): Promise<number> {
