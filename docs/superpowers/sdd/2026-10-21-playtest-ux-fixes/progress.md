@@ -51,3 +51,13 @@ Final: minor (deferred): floating text clamped to the top edge drifts back off-s
 Final: minor (deferred): ElementTable name column width 2.5em never applies (table-layout fixed takes header row).
 Final: minor (deferred): BattleView matches views by uid only; safe today via per-frame cleanup, fragile if spawn timing changes.
 Final: minor (deferred): travel/equip/upgrade made during an in-flight synthesis are reverted by replaceState (pre-existing in sync.ts, easier to hit now).
+
+## Deferred minors — resolved (2026-10-21, bounded follow-up approved in chat)
+Final: fixed picker active option not scrolled into view — Picker.test 'scrolls the active option into view…' RED→GREEN.
+Final: fixed picker missing aria-activedescendant / option ids / aria-controls — Picker.test 'exposes the active option…' RED→GREEN.
+Final: fixed picker keys only on the <ul> and no close on focusout — Picker.test 'keeps keyboard control after the header button takes focus' and 'closes when focus leaves the picker' RED→GREEN. Ruling: Enter on a header button keeps its own action; arrows return focus to the list — cost if wrong: Enter from the sort button doesn't select.
+Final: fixed floating text drifting off the top — arena.floatTextStart (replaces clampToView) tests RED→GREEN.
+Final: fixed BattleView uid-only matching — view rebuilt when a uid is reused for another defId (Pixi; verified by build + browser smoke).
+Final: fixed ElementTable name column width — ElementTable.test 'sizes the name column from the header row' RED→GREEN.
+Final: fixed travel/equip/upgrade undone by an in-flight synthesis — locked while synthPending (TopBar / ElementTable / GrimoirePanel tests RED→GREEN). Ruling: lock instead of replaying the actions after the reply — simplest, the window is one round trip — cost if wrong: controls disabled for <1 s per synthesis.
+Suite: 36 files / 279 passed; build ok.
