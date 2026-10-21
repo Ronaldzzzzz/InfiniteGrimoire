@@ -278,3 +278,21 @@ describe('validateUpload (fixture data2)', () => {
     expect(r.ok ? '' : r.reasons.join()).toContain('bA');
   });
 });
+
+describe('boss drops in the other-zone burst', () => {
+  // zone A boss drops 20 water (> slack); zone B normals also drop water
+  const data3: GameData = {
+    ...data2,
+    monsters: { ...data2.monsters, bA: mon({ id: 'bA', boss: true, drops: [{ itemId: 'el:water:1', chance: 1, min: 1, max: 20 }] }) },
+    zones: data2.zones.map((z) => (z.id === 'A' ? { ...z, killsForBoss: 100 } : z)),
+  };
+  it('bound includes zone-B total plus one zone-A boss drop', () => {
+    // B: 80000/2000 + 2 = 42 kills * 4 water = 168 ; A boss burst +20
+    expect(maxGain(st(['A']), 80_000, data3, ['A', 'B']).elements.water).toBe(188);
+  });
+  it('early boss kill in A then farming B with the combined gain is ok', () => {
+    const prev = st(['A']);
+    const next = st(['A', 'B'], { currentZone: 'B', defeatedBosses: ['bA'], inventory: { 'el:water:1': 230 } });
+    expect(validateUpload(prev, next, 80_000, data3)).toEqual({ ok: true });
+  });
+});

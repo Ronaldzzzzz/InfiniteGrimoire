@@ -81,6 +81,10 @@ export function maxGain(prev: GameState, elapsedMs: number, data: GameData, zone
       const bossKills = Math.floor(maxKills / zone.killsForBoss) + 1;
       for (const [itemId, v] of dropMaxima(data.monsters[zone.bossId]!.drops)) add(total, itemId, v * bossKills);
     }
+    if (canHit(zone.bossId)) {
+      // the player may have killed this zone's boss before moving on
+      for (const [itemId, v] of dropMaxima(data.monsters[zone.bossId]!.drops)) add(burst, itemId, v);
+    }
     totals.push(total);
     bursts.push(burst);
   }
