@@ -17,6 +17,7 @@ const IMMUNE_FONT_PX = 16; // fixed, readable at any arena size (spec 4.3)
 const TEXT_MARGIN = 24;
 
 interface MonsterView {
+  defId: string;
   root: Container;
   body: Graphics | Sprite;
   hpBar: Graphics;
@@ -154,7 +155,7 @@ export class BattleView {
     root.addChild(body, fx, hpBar);
     this.world.addChild(root);
     const angle = pickSpawnAngle([...this.monsters.values()].map((v) => v.angle), this.rng);
-    return { root, body, hpBar, fx, size, born: this.time, pos: { x: 0, y: 0 }, angle, r: this.extent(size), lastFrac: -1, hadStatus: false, phase: this.rng.next() * Math.PI * 2, arrivedAt: null };
+    return { defId: m.defId, root, body, hpBar, fx, size, born: this.time, pos: { x: 0, y: 0 }, angle, r: this.extent(size), lastFrac: -1, hadStatus: false, phase: this.rng.next() * Math.PI * 2, arrivedAt: null };
   }
 
   /**
@@ -186,6 +187,12 @@ export class BattleView {
     for (const m of snapshot.battle.monsters) {
       alive.add(m.uid);
       let v = this.monsters.get(m.uid);
+      if (v && v.defId !== m.defId) {
+        // a reused uid for a different monster: never inherit the old body, size or angle
+        v.root.destroy({ children: true });
+        this.monsters.delete(m.uid);
+        v = undefined;
+      }
       if (!v) {
         v = this.makeMonster(m);
         this.monsters.set(m.uid, v);
