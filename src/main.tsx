@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Profiler, useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { gameData } from './engine/data';
 import { createRng } from './engine/rng';
@@ -11,6 +11,8 @@ import { readToken, TOKEN_KEY, writeToken } from './game/session';
 import { SyncController } from './game/sync';
 import { App } from './ui/App';
 import { Onboarding } from './ui/Onboarding';
+import { PerfMeter } from './ui/PerfMeter';
+import { perfStats } from './ui/perf-stats';
 
 type Loaded = { state: GameState; revision: number };
 type Phase =
@@ -97,8 +99,18 @@ function Boot() {
           }}
         />
       );
-    case 'ready':
-      return <App runtime={phase.runtime} sync={phase.sync} data={gameData} />;
+    case 'ready': {
+      const app = <App runtime={phase.runtime} sync={phase.sync} data={gameData} />;
+      if (!import.meta.env.DEV) return app;
+      return (
+        <>
+          <Profiler id="app" onRender={() => perfStats.commit(performance.now())}>
+            {app}
+          </Profiler>
+          <PerfMeter />
+        </>
+      );
+    }
   }
 }
 
