@@ -17,7 +17,7 @@ export function BattleCanvas({ runtime }: { runtime: GameRuntime }) {
       if (cancelled) return;
       const view = new BattleView(host, gameData, textures);
       const offEvents = runtime.onEvents((events) => view.handle(events));
-      const offFrame = view.onFrame(() => view.sync(runtime.getSnapshot()));
+      const offFrame = view.onFrame(() => view.sync(runtime.getSnapshot(), runtime.stepAlpha()));
       cleanup = () => {
         offEvents();
         offFrame();

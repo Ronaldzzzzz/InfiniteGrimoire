@@ -33,6 +33,12 @@ export class GameRuntime {
     return this.snapshot;
   }
 
+  /** 0..1: how far the clock is into the next fixed step; renderers interpolate between steps with it. */
+  stepAlpha(): number {
+    if (this.snapshot.paused) return 0;
+    return Math.min(1, this.leftoverMs / STEP_MS);
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => void this.listeners.delete(listener);

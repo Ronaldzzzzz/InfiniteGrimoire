@@ -1,10 +1,11 @@
 import { Application, BitmapFont, BitmapText, Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
-import type { BattleEvent, MonsterInstance } from '../engine/battle';
+import type { BattleEvent, BattleState, MonsterInstance } from '../engine/battle';
 import type { Snapshot } from '../game/runtime';
 import { createRng } from '../engine/rng';
 import type { GameData } from '../engine/types';
-import { boxRadius, clampToView, makeArena, monsterDistance, pickSpawnAngle, polarPoint, stopRadius, type Arena } from './arena';
+import { boxRadius, clampToView, ENGINE_STOP_X, makeArena, monsterDistance, pickSpawnAngle, polarPoint, stopRadius, type Arena } from './arena';
 import { floatingText, jaggedPath, type Pt } from './effects';
+import { interpolate, wander } from './motion';
 import { COLORS, spellColor } from './palette';
 
 const MONSTER_SIZE = 28;
@@ -28,6 +29,10 @@ interface MonsterView {
   r: number;
   lastFrac: number;
   hadStatus: boolean;
+  /** random per monster: phase of its idle wander */
+  phase: number;
+  /** view time when it reached the stop ring, or null while walking */
+  arrivedAt: number | null;
 }
 
 interface Effect {
@@ -69,6 +74,9 @@ export class BattleView {
   private arena: Arena = makeArena(1, 1, 0);
   private ring = new Graphics();
   private ringKey = '';
+  /** engine x of each monster at the previous fixed step, for interpolation */
+  private prevX = new Map<number, number>();
+  private lastBattle: BattleState | null = null;
 
   constructor(
     private readonly host: HTMLElement,
@@ -146,11 +154,25 @@ export class BattleView {
     root.addChild(body, fx, hpBar);
     this.world.addChild(root);
     const angle = pickSpawnAngle([...this.monsters.values()].map((v) => v.angle), this.rng);
-    return { root, body, hpBar, fx, size, born: this.time, pos: { x: 0, y: 0 }, angle, r: this.extent(size), lastFrac: -1, hadStatus: false };
+    return { root, body, hpBar, fx, size, born: this.time, pos: { x: 0, y: 0 }, angle, r: this.extent(size), lastFrac: -1, hadStatus: false, phase: this.rng.next() * Math.PI * 2, arrivedAt: null };
   }
 
-  sync(snapshot: Snapshot): void {
+  /**
+   * `alpha` (0..1) is how far the game clock is into the next fixed step; positions are interpolated between
+   * the previous and current step so movement is smooth at any frame rate (the engine steps at 20 Hz).
+   */
+  sync(snapshot: Snapshot, alpha = 1): void {
     if (!this.ready_ || this.destroyed) return;
+    const battle = snapshot.battle;
+    if (battle !== this.lastBattle) {
+      const last = this.lastBattle;
+      this.prevX.clear();
+      // a new battle (travel / reload) restarts uids: don't interpolate from the old one
+      if (last && last.zoneId === battle.zoneId && battle.nextUid >= last.nextUid) {
+        for (const m of last.monsters) this.prevX.set(m.uid, m.x);
+      }
+      this.lastBattle = battle;
+    }
     this.unit = Math.max(0.6, Math.min(1.6, Math.min(this.w, this.h) / 360));
     const u = this.unit;
     const heroR = boxRadius(HERO_W / 2, HERO_H / 2) * u;
@@ -169,8 +191,12 @@ export class BattleView {
         this.monsters.set(m.uid, v);
       }
       v.r = this.extent(v.size) * u;
-      const dist = monsterDistance(this.arena, stopRadius(this.arena, heroR, v.r), m.x);
-      v.pos = polarPoint(this.arena, v.angle, dist);
+      const x = interpolate(this.prevX.get(m.uid) ?? m.x, m.x, alpha);
+      if (m.x > ENGINE_STOP_X + 1e-9) v.arrivedAt = null;
+      else if (v.arrivedAt === null) v.arrivedAt = this.time;
+      const w = wander(this.time, v.phase, v.arrivedAt === null ? 0 : this.time - v.arrivedAt);
+      const dist = monsterDistance(this.arena, stopRadius(this.arena, heroR, v.r), x) + w.dRadius * u;
+      v.pos = polarPoint(this.arena, v.angle + w.dAngle, dist);
       const pop = Math.min(1, (this.time - v.born) / 200);
       v.root.position.set(v.pos.x, v.pos.y);
       v.root.scale.set(u * (0.4 + 0.6 * pop));

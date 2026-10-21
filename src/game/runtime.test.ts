@@ -28,6 +28,16 @@ describe('GameRuntime', () => {
     expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
+  it('stepAlpha reports how far the clock is into the next step', () => {
+    const rt = make();
+    expect(rt.stepAlpha()).toBe(0);
+    rt.advance(STEP_MS / 2);
+    expect(rt.stepAlpha()).toBeCloseTo(0.5);
+    rt.advance(STEP_MS * 0.75); // one step runs, 0.25 left over
+    expect(rt.stepAlpha()).toBeCloseTo(0.25);
+    rt.setPaused(true);
+    expect(rt.stepAlpha()).toBe(0);
+  });
   it('paused runtime does not advance', () => {
     const rt = make();
     const before = rt.getSnapshot();
