@@ -196,9 +196,9 @@ export function stepBattle(
       const next = data.zones.find((z) => z.order === zone.order + 1);
       if (next && !unlockedZones.includes(next.id)) unlockedZones = [...unlockedZones, next.id];
       events.push({ type: 'bossDefeated', zoneId: zone.id, unlockedZoneId: next?.id ?? null });
-    } else {
+    } else if (!bossActive) {
       const kills = (zoneKills[zone.id] ?? 0) + 1;
-      if (kills >= zone.killsForBoss && !bossActive) {
+      if (kills >= zone.killsForBoss) {
         zoneKills = { ...zoneKills, [zone.id]: 0 };
         bossActive = true;
         spawn(zone.bossId, true);

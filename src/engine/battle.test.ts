@@ -19,6 +19,7 @@ const data: GameData = {
     strong: spell({ id: 'strong', tier: 5, attack: 1000 }),
     chain: spell({ id: 'chain', pattern: 'chain', chainCount: 2, attack: 100, tier: 1 }),
     para: spell({ id: 'para', attack: 1, status: { kind: 'paralyze', chance: 1, durationMs: 5000 } }),
+    novaS: spell({ id: 'novaS', pattern: 'nova', tier: 5, attack: 1000 }),
     t10: spell({ id: 't10', tier: 10, attack: 1 }),
     t12: spell({ id: 't12', tier: 12, attack: 1 }),
   },
@@ -36,6 +37,7 @@ const data: GameData = {
     { id: 'z2', name: 'z2', nameEn: 'z2', order: 2, monsters: ['slime'], bossId: 'boss2', killsForBoss: 3, maxAlive: 3, spawnIntervalMs: 500 },
     { id: 'zt', name: 'zt', nameEn: 'zt', order: 3, monsters: ['tank'], bossId: 'boss2', killsForBoss: 99, maxAlive: 3, spawnIntervalMs: 500 },
     { id: 'zg', name: 'zg', nameEn: 'zg', order: 4, monsters: ['giant'], bossId: 'boss2', killsForBoss: 99, maxAlive: 3, spawnIntervalMs: 500 },
+    { id: 'zb', name: 'zb', nameEn: 'zb', order: 6, monsters: ['slime'], bossId: 'boss1', killsForBoss: 2, maxAlive: 6, spawnIntervalMs: 50 },
     { id: 'zo', name: 'zo', nameEn: 'zo', order: 5, monsters: ['m10'], bossId: 'boss2', killsForBoss: 99999, maxAlive: 1, spawnIntervalMs: 50 },
   ],
 };
@@ -153,5 +155,53 @@ describe('battle', () => {
     const ratio = avg('t12') / avg('t10');
     expect(ratio).toBeGreaterThan(0.7);
     expect(ratio).toBeLessThan(0.8);
+  });
+
+  it('never spawns more than one normal monster per spawnIntervalMs', () => {
+    const normalSpawns = (events: BattleEvent[]) => events.filter((e) => e.type === 'spawn' && !e.boss).length;
+    // full zone, no kills
+    const full = run(base('zt'), createBattle('zt'), 10000);
+    expect(normalSpawns(full.events)).toBeLessThanOrEqual(Math.floor(10000 / 500));
+    // continuous kills, fast interval, maxAlive 1
+    const d: GameData = { ...data, zones: [{ ...data.zones.find((z) => z.id === 'zo')!, maxAlive: 1, spawnIntervalMs: 200 }] };
+    const rng = createRng(3);
+    let game = base('zo', 'novaS');
+    let battle = createBattle('zo');
+    let spawns = 0, kills = 0;
+    for (let t = 0; t < 20000; t += STEP_MS) {
+      const r = stepBattle(game, battle, d, rng);
+      game = r.game; battle = r.battle;
+      spawns += r.events.filter((e) => e.type === 'spawn' && !e.boss).length;
+      kills += r.events.filter((e) => e.type === 'kill').length;
+    }
+    expect(kills).toBeGreaterThan(10);
+    expect(spawns).toBeLessThanOrEqual(Math.floor(20000 / 200));
+  });
+
+  it('normal kills during boss do not count toward the next boss', () => {
+    const mk = (uid: number, defId: string) => ({ uid, defId, hp: 5, maxHp: 5, x: 0.5 + uid * 0.01, statuses: [] });
+    const battle: BattleState = {
+      ...createBattle('zb'), bossActive: true, castTimerMs: 1000, spawnTimerMs: 0,
+      monsters: [mk(1, 'slime'), mk(2, 'slime'), mk(3, 'slime'), mk(4, 'boss1')],
+      nextUid: 5,
+    };
+    let r = stepBattle(base('zb', 'novaS'), battle, data, createRng(1));
+    expect(r.events.filter((e) => e.type === 'kill')).toHaveLength(4);
+    expect(r.game.defeatedBosses).toEqual(['boss1']);
+    expect(r.game.zoneKills.zb ?? 0).toBe(0);
+    expect(r.battle.bossActive).toBe(false);
+    // continue: count normal kills before the next boss spawns
+    const rng = createRng(2);
+    let normalKills = 0;
+    let bossSpawned = false;
+    for (let i = 0; i < 2000 && !bossSpawned; i++) {
+      r = stepBattle(r.game, r.battle, data, rng);
+      for (const e of r.events) {
+        if (e.type === 'spawn' && e.boss) bossSpawned = true;
+        if (e.type === 'kill') normalKills++;
+      }
+    }
+    expect(bossSpawned).toBe(true);
+    expect(normalKills).toBeGreaterThanOrEqual(2);
   });
 });
