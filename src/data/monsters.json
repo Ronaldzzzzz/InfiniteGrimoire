@@ -1,0 +1,476 @@
+[
+  {
+    "id": "mist_slime",
+    "name": "迷霧史萊姆",
+    "nameEn": "Mist Slime",
+    "element": "water",
+    "tier": 1,
+    "hp": 30,
+    "defense": 3,
+    "regenPerSec": 0.5,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:water:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "meadow_sprite",
+    "name": "草原精靈",
+    "nameEn": "Meadow Sprite",
+    "element": "wind",
+    "tier": 1,
+    "hp": 36,
+    "defense": 4,
+    "regenPerSec": 0.5,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 2
+      }
+    ]
+  },
+  {
+    "id": "ember_bunny",
+    "name": "餘燼兔",
+    "nameEn": "Ember Bunny",
+    "element": "fire",
+    "tier": 1,
+    "hp": 42,
+    "defense": 5,
+    "regenPerSec": 0.5,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.2,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "mist_stag",
+    "name": "迷霧雄鹿",
+    "nameEn": "Mist Stag",
+    "element": "wind",
+    "tier": 2,
+    "hp": 240,
+    "defense": 8,
+    "regenPerSec": 1,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:wind:1",
+        "chance": 1,
+        "min": 2,
+        "max": 4
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.6,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.6,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.6,
+        "min": 1,
+        "max": 2
+      }
+    ]
+  },
+  {
+    "id": "gorge_hawk",
+    "name": "峽谷隼",
+    "nameEn": "Gorge Hawk",
+    "element": "wind",
+    "tier": 3,
+    "hp": 120,
+    "defense": 20,
+    "regenPerSec": 1,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.5,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.12,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_lizard",
+    "name": "雷鳴蜥蜴",
+    "nameEn": "Thunder Lizard",
+    "element": "thunder",
+    "tier": 3,
+    "hp": 150,
+    "defense": 22,
+    "regenPerSec": 1.5,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.14,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "stone_golem",
+    "name": "碎岩魔像",
+    "nameEn": "Stone Golem",
+    "element": "earth",
+    "tier": 3,
+    "hp": 200,
+    "defense": 26,
+    "regenPerSec": 1,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.12,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "storm_roc",
+    "name": "暴風巨鵬",
+    "nameEn": "Storm Roc",
+    "element": "thunder",
+    "tier": 4,
+    "hp": 900,
+    "defense": 34,
+    "regenPerSec": 3,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:thunder:2",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.8,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.8,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.8,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "ash_wolf",
+    "name": "灰燼狼",
+    "nameEn": "Ash Wolf",
+    "element": "fire",
+    "tier": 5,
+    "hp": 600,
+    "defense": 45,
+    "regenPerSec": 2,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.6,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.2,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.3,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "magma_crab",
+    "name": "熔岩蟹",
+    "nameEn": "Magma Crab",
+    "element": "earth",
+    "tier": 5,
+    "hp": 800,
+    "defense": 60,
+    "regenPerSec": 2,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.6,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.2,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.3,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "cinder_wisp",
+    "name": "餘燼火靈",
+    "nameEn": "Cinder Wisp",
+    "element": "thunder",
+    "tier": 5,
+    "hp": 500,
+    "defense": 50,
+    "regenPerSec": 2,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.6,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.2,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.15,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.12,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.3,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "ash_dragon",
+    "name": "灰燼龍",
+    "nameEn": "Ash Dragon",
+    "element": "fire",
+    "tier": 6,
+    "hp": 4000,
+    "defense": 80,
+    "regenPerSec": 6,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:fire:2",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.8,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.8,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.15,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "mat:mana_crystal",
+        "chance": 1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  }
+]

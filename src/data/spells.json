@@ -1,0 +1,404 @@
+[
+  {
+    "elements": [],
+    "prerequisites": [],
+    "id": "mana_bolt",
+    "name": "魔力彈",
+    "nameEn": "Mana Bolt",
+    "tier": 1,
+    "attack": 10,
+    "cooldownMs": 900,
+    "pattern": "bolt",
+    "hint": "殘卷：純粹的魔力凝聚成彈，是所有魔法的起點。",
+    "grimoire": {
+      "ring": 0,
+      "offset": 0
+    }
+  },
+  {
+    "elements": [
+      "fire"
+    ],
+    "status": {
+      "kind": "burn",
+      "chance": 0.3,
+      "durationMs": 3000
+    },
+    "prerequisites": [],
+    "id": "fireball",
+    "name": "火球術",
+    "nameEn": "Fireball",
+    "tier": 2,
+    "attack": 22,
+    "cooldownMs": 900,
+    "pattern": "bolt",
+    "hint": "殘卷：兩份微弱的火種相遇，會燃起一團火球。",
+    "grimoire": {
+      "ring": 1,
+      "offset": 0
+    }
+  },
+  {
+    "elements": [
+      "fire"
+    ],
+    "status": {
+      "kind": "burn",
+      "chance": 0.4,
+      "durationMs": 3500
+    },
+    "prerequisites": [
+      "fireball"
+    ],
+    "id": "flame_burst",
+    "name": "烈焰術",
+    "nameEn": "Flame Burst",
+    "tier": 4,
+    "attack": 48,
+    "cooldownMs": 1500,
+    "pattern": "beam",
+    "hint": "殘卷：火種淬鍊後再度交融，火焰會拉成熾熱的光束。",
+    "grimoire": {
+      "ring": 2,
+      "offset": -1
+    }
+  },
+  {
+    "elements": [
+      "fire"
+    ],
+    "status": {
+      "kind": "burn",
+      "chance": 0.5,
+      "durationMs": 4000
+    },
+    "prerequisites": [
+      "flame_burst"
+    ],
+    "id": "explosion",
+    "name": "爆炎",
+    "nameEn": "Explosion",
+    "tier": 5,
+    "attack": 80,
+    "cooldownMs": 2600,
+    "pattern": "nova",
+    "hint": "殘卷：最高階的火元素與魔力結晶共鳴，將引發毀滅性的爆炸。",
+    "grimoire": {
+      "ring": 2,
+      "offset": 1
+    }
+  },
+  {
+    "elements": [
+      "wind"
+    ],
+    "prerequisites": [],
+    "id": "wind_blade",
+    "name": "風刃",
+    "nameEn": "Wind Blade",
+    "tier": 2,
+    "attack": 22,
+    "cooldownMs": 900,
+    "pattern": "bolt",
+    "hint": "殘卷：兩縷微風交纏，會削出銳利的風刃。",
+    "grimoire": {
+      "ring": 1,
+      "offset": 0
+    }
+  },
+  {
+    "elements": [
+      "wind"
+    ],
+    "prerequisites": [
+      "wind_blade"
+    ],
+    "id": "whirlwind",
+    "name": "旋風",
+    "nameEn": "Whirlwind",
+    "tier": 4,
+    "attack": 48,
+    "cooldownMs": 2600,
+    "pattern": "nova",
+    "hint": "殘卷：風元素淬鍊後捲成漩渦，向四周席捲。",
+    "grimoire": {
+      "ring": 2,
+      "offset": -1
+    }
+  },
+  {
+    "elements": [
+      "wind"
+    ],
+    "prerequisites": [
+      "whirlwind"
+    ],
+    "id": "vacuum_slash",
+    "name": "真空斬",
+    "nameEn": "Vacuum Slash",
+    "tier": 5,
+    "attack": 80,
+    "cooldownMs": 1500,
+    "pattern": "beam",
+    "hint": "殘卷：強化的風與魔力結晶相遇，風會被拉成一道真空的斬擊。",
+    "grimoire": {
+      "ring": 2,
+      "offset": 1
+    }
+  },
+  {
+    "elements": [
+      "thunder"
+    ],
+    "status": {
+      "kind": "paralyze",
+      "chance": 0.25,
+      "durationMs": 1500
+    },
+    "prerequisites": [],
+    "id": "thunder_bolt",
+    "name": "雷電術",
+    "nameEn": "Thunder Bolt",
+    "tier": 2,
+    "attack": 22,
+    "cooldownMs": 900,
+    "pattern": "bolt",
+    "hint": "殘卷：兩粒雷光碰撞，會迸出電擊。",
+    "grimoire": {
+      "ring": 1,
+      "offset": 0
+    }
+  },
+  {
+    "elements": [
+      "thunder"
+    ],
+    "chainCount": 3,
+    "status": {
+      "kind": "paralyze",
+      "chance": 0.3,
+      "durationMs": 1800
+    },
+    "prerequisites": [
+      "thunder_bolt"
+    ],
+    "id": "lightning",
+    "name": "閃電術",
+    "nameEn": "Lightning",
+    "tier": 4,
+    "attack": 48,
+    "cooldownMs": 1800,
+    "pattern": "chain",
+    "hint": "殘卷：淬鍊過的雷元素之間，電流會跳躍連鎖。",
+    "grimoire": {
+      "ring": 2,
+      "offset": -1
+    }
+  },
+  {
+    "elements": [
+      "thunder"
+    ],
+    "status": {
+      "kind": "paralyze",
+      "chance": 0.35,
+      "durationMs": 2000
+    },
+    "prerequisites": [
+      "lightning"
+    ],
+    "id": "thunderstorm",
+    "name": "雷暴",
+    "nameEn": "Thunderstorm",
+    "tier": 5,
+    "attack": 80,
+    "cooldownMs": 2600,
+    "pattern": "nova",
+    "hint": "殘卷：雷與魔力結晶共鳴，天空將降下雷暴。",
+    "grimoire": {
+      "ring": 2,
+      "offset": 1
+    }
+  },
+  {
+    "elements": [
+      "earth"
+    ],
+    "prerequisites": [],
+    "id": "pebble",
+    "name": "石礫",
+    "nameEn": "Pebble",
+    "tier": 2,
+    "attack": 22,
+    "cooldownMs": 900,
+    "pattern": "bolt",
+    "hint": "殘卷：兩顆細碎的土粒聚攏，會成為石礫。",
+    "grimoire": {
+      "ring": 1,
+      "offset": 0
+    }
+  },
+  {
+    "elements": [
+      "earth"
+    ],
+    "prerequisites": [
+      "pebble"
+    ],
+    "id": "rock_spear",
+    "name": "岩槍",
+    "nameEn": "Rock Spear",
+    "tier": 4,
+    "attack": 48,
+    "cooldownMs": 1500,
+    "pattern": "beam",
+    "hint": "殘卷：淬鍊後的土元素凝成尖銳的長槍。",
+    "grimoire": {
+      "ring": 2,
+      "offset": -1
+    }
+  },
+  {
+    "elements": [
+      "earth"
+    ],
+    "status": {
+      "kind": "paralyze",
+      "chance": 0.3,
+      "durationMs": 2000
+    },
+    "prerequisites": [
+      "rock_spear"
+    ],
+    "id": "earthquake",
+    "name": "地震",
+    "nameEn": "Earthquake",
+    "tier": 5,
+    "attack": 80,
+    "cooldownMs": 2600,
+    "pattern": "nova",
+    "hint": "殘卷：土與魔力結晶共鳴，大地將為之震動。",
+    "grimoire": {
+      "ring": 2,
+      "offset": 1
+    }
+  },
+  {
+    "elements": [
+      "water"
+    ],
+    "prerequisites": [],
+    "id": "water_shot",
+    "name": "水彈",
+    "nameEn": "Water Shot",
+    "tier": 2,
+    "attack": 22,
+    "cooldownMs": 900,
+    "pattern": "bolt",
+    "hint": "殘卷：兩滴水珠合一，會射出水彈。",
+    "grimoire": {
+      "ring": 1,
+      "offset": 0
+    }
+  },
+  {
+    "elements": [
+      "water"
+    ],
+    "status": {
+      "kind": "freeze",
+      "chance": 0.3,
+      "durationMs": 2500
+    },
+    "prerequisites": [
+      "water_shot"
+    ],
+    "id": "ice_spike",
+    "name": "冰錐",
+    "nameEn": "Ice Spike",
+    "tier": 4,
+    "attack": 48,
+    "cooldownMs": 1500,
+    "pattern": "beam",
+    "hint": "殘卷：淬鍊後的水元素遇寒凝結，化為冰錐。",
+    "grimoire": {
+      "ring": 2,
+      "offset": -1
+    }
+  },
+  {
+    "elements": [
+      "water"
+    ],
+    "status": {
+      "kind": "freeze",
+      "chance": 0.4,
+      "durationMs": 3000
+    },
+    "prerequisites": [
+      "ice_spike"
+    ],
+    "id": "tsunami",
+    "name": "海嘯",
+    "nameEn": "Tsunami",
+    "tier": 5,
+    "attack": 80,
+    "cooldownMs": 2600,
+    "pattern": "nova",
+    "hint": "殘卷：水與魔力結晶共鳴，巨浪將席捲而來。",
+    "grimoire": {
+      "ring": 2,
+      "offset": 1
+    }
+  },
+  {
+    "elements": [
+      "fire",
+      "wind"
+    ],
+    "status": {
+      "kind": "burn",
+      "chance": 0.5,
+      "durationMs": 4000
+    },
+    "prerequisites": [
+      "flame_burst",
+      "whirlwind"
+    ],
+    "id": "fire_whirl",
+    "name": "火焰旋風",
+    "nameEn": "Fire Whirl",
+    "tier": 6,
+    "attack": 130,
+    "cooldownMs": 2800,
+    "pattern": "nova",
+    "hint": "殘卷：烈焰與旋風交織，火焰會隨風捲起，吞沒四周。",
+    "grimoire": {
+      "ring": 3,
+      "offset": 0
+    }
+  },
+  {
+    "elements": [
+      "water",
+      "fire"
+    ],
+    "chainCount": 4,
+    "prerequisites": [
+      "ice_spike",
+      "flame_burst"
+    ],
+    "id": "steam_burst",
+    "name": "蒸氣爆發",
+    "nameEn": "Steam Burst",
+    "tier": 6,
+    "attack": 120,
+    "cooldownMs": 2000,
+    "pattern": "chain",
+    "hint": "殘卷：冰與火劇烈相遇，水氣瞬間膨脹，沿著敵人連環爆開。",
+    "grimoire": {
+      "ring": 3,
+      "offset": 1
+    }
+  }
+]

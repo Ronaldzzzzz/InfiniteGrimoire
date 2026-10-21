@@ -1,0 +1,47 @@
+[
+  {
+    "id": "mist_meadow",
+    "name": "迷霧草原",
+    "nameEn": "Mist Meadow",
+    "order": 1,
+    "monsters": [
+      "mist_slime",
+      "meadow_sprite",
+      "ember_bunny"
+    ],
+    "bossId": "mist_stag",
+    "killsForBoss": 15,
+    "maxAlive": 5,
+    "spawnIntervalMs": 1500
+  },
+  {
+    "id": "thunder_gorge",
+    "name": "雷鳴峽谷",
+    "nameEn": "Thunder Gorge",
+    "order": 2,
+    "monsters": [
+      "gorge_hawk",
+      "thunder_lizard",
+      "stone_golem"
+    ],
+    "bossId": "storm_roc",
+    "killsForBoss": 20,
+    "maxAlive": 5,
+    "spawnIntervalMs": 1800
+  },
+  {
+    "id": "ash_volcano",
+    "name": "灰燼火山",
+    "nameEn": "Ash Volcano",
+    "order": 3,
+    "monsters": [
+      "ash_wolf",
+      "magma_crab",
+      "cinder_wisp"
+    ],
+    "bossId": "ash_dragon",
+    "killsForBoss": 25,
+    "maxAlive": 6,
+    "spawnIntervalMs": 2000
+  }
+]
