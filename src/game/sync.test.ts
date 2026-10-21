@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { gameData } from '../engine/data';
 import { createRng } from '../engine/rng';
 import { createInitialState } from '../engine/state';
-import { AuthError, NetworkError, type ApiClient } from './api';
+import { ApiError, AuthError, NetworkError, type ApiClient } from './api';
 import { GameRuntime } from './runtime';
 import { RETRY_MS, SyncController, UPLOAD_INTERVAL_MS } from './sync';
 
@@ -124,5 +124,52 @@ describe('SyncController', () => {
     sync.onAuthError(fn);
     await sync.uploadNow();
     expect(fn).toHaveBeenCalledTimes(1);
+  });
+  it('ApiError during retry resumes the game', async () => {
+    const rt = mk();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const upload = vi.fn().mockRejectedValueOnce(new NetworkError('x')).mockRejectedValueOnce(new ApiError('bad', 400));
+    const sync = new SyncController(rt, fakeApi({ upload }));
+    await sync.uploadNow();
+    expect(rt.getSnapshot().paused).toBe(true);
+    await vi.advanceTimersByTimeAsync(RETRY_MS);
+    expect(sync.status).toBe('online');
+    expect(rt.getSnapshot().paused).toBe(false);
+    await vi.advanceTimersByTimeAsync(RETRY_MS * 3);
+    expect(upload).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+  it('AuthError during retry notifies onAuthError and stops retrying', async () => {
+    const rt = mk();
+    const upload = vi.fn().mockRejectedValueOnce(new NetworkError('x')).mockRejectedValueOnce(new AuthError('401'));
+    const sync = new SyncController(rt, fakeApi({ upload }));
+    const fn = vi.fn();
+    sync.onAuthError(fn);
+    await sync.uploadNow();
+    await vi.advanceTimersByTimeAsync(RETRY_MS * 4);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(upload).toHaveBeenCalledTimes(2);
+  });
+  it('synthesize waits for in-flight upload then uses new revision', async () => {
+    const rt = mk();
+    let resolveUp!: (v: { kind: 'ok'; revision: number }) => void;
+    const upload = vi.fn(() => new Promise<{ kind: 'ok'; revision: number }>((r) => (resolveUp = r)));
+    const result = { kind: 'dormant' as const };
+    const synthesize = vi.fn(async () => ({ kind: 'ok' as const, result, state: server, revision: 20 }));
+    const sync = new SyncController(rt, fakeApi({ upload, synthesize }));
+    const up = sync.uploadNow();
+    const syn = sync.synthesize(['el:fire:1', 'el:fire:1']);
+    await Promise.resolve();
+    expect(synthesize).not.toHaveBeenCalled();
+    resolveUp({ kind: 'ok', revision: 8 });
+    await up;
+    expect(await syn).toEqual(result);
+    expect(synthesize).toHaveBeenCalledTimes(1);
+    expect(synthesize).toHaveBeenCalledWith(expect.anything(), 8, ['el:fire:1', 'el:fire:1']);
+  });
+  it('setRevision ignores lower revisions', () => {
+    const rt = mk();
+    rt.setRevision(2);
+    expect(rt.getSnapshot().revision).toBe(7);
   });
 });

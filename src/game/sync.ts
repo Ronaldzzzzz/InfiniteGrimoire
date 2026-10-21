@@ -22,7 +22,7 @@ const defaultTimers: Timers = {
 
 export class SyncController {
   private _status: ConnStatus = 'online';
-  private inFlight = false;
+  private uploading: Promise<unknown> | null = null;
   private retrying = false;
   private statusListeners = new Set<(s: ConnStatus) => void>();
   private authListeners = new Set<() => void>();
@@ -71,43 +71,60 @@ export class SyncController {
   }
 
   private async retry(): Promise<void> {
-    if (this.inFlight) return void this.scheduleRetry();
+    if (this.uploading) {
+      await this.uploading;
+      if (!this.retrying) return;
+    }
     const result = await this.doUpload();
     if (result === 'network') return this.scheduleRetry();
     this.retrying = false;
-    if (result === 'auth') return;
+    if (result === 'auth') return; // stay paused; UI returns to onboarding
+    // done, or a non-network error (server is reachable): resume
     this.setStatus('online');
     this.runtime.setPaused(false);
   }
 
   /** Runs one upload. Never throws. */
-  private async doUpload(opts?: { keepalive?: boolean }): Promise<'done' | 'network' | 'auth'> {
-    this.inFlight = true;
-    try {
-      const { game, revision } = this.runtime.getSnapshot();
-      const out = await this.api.upload(game, revision, opts);
-      if (out.kind === 'ok') this.runtime.setRevision(out.revision);
-      else this.runtime.replaceState(out.state, out.revision);
-      return 'done';
-    } catch (e) {
-      if (e instanceof NetworkError) return 'network';
-      if (e instanceof AuthError) {
-        for (const l of [...this.authListeners]) l();
-        return 'auth';
+  private doUpload(opts?: { keepalive?: boolean }): Promise<'done' | 'network' | 'auth' | 'error'> {
+    const run = async (): Promise<'done' | 'network' | 'auth' | 'error'> => {
+      try {
+        const { game, revision } = this.runtime.getSnapshot();
+        const out = await this.api.upload(game, revision, opts);
+        if (out.kind === 'ok') this.runtime.setRevision(out.revision);
+        else this.runtime.replaceState(out.state, out.revision);
+        return 'done';
+      } catch (e) {
+        if (e instanceof NetworkError) return 'network';
+        if (e instanceof AuthError) {
+          this.notifyAuth();
+          return 'auth';
+        }
+        console.warn('upload failed:', e instanceof Error ? e.message : 'unknown error');
+        return 'error';
       }
-      throw e;
-    } finally {
-      this.inFlight = false;
-    }
+    };
+    const p = run().finally(() => {
+      this.uploading = null;
+    });
+    this.uploading = p;
+    return p;
+  }
+
+  private notifyAuth(): void {
+    for (const l of [...this.authListeners]) l();
   }
 
   async uploadNow(opts?: { keepalive?: boolean }): Promise<void> {
-    if (this.inFlight || this.retrying || this.runtime.getSnapshot().synthPending) return;
+    if (this.uploading || this.retrying || this.runtime.getSnapshot().synthPending) return;
     if ((await this.doUpload(opts)) === 'network') this.goOffline();
   }
 
   async synthesize(inputs: ItemId[]): Promise<SynthResult | null> {
-    if (this.inFlight || this.retrying || this.runtime.getSnapshot().synthPending) return null;
+    if (this.retrying || this.runtime.getSnapshot().synthPending) return null;
+    if (this.uploading) {
+      await this.uploading;
+      if (this.retrying || this.runtime.getSnapshot().synthPending) return null;
+    }
     this.runtime.setSynthPending(true);
     try {
       const { game, revision } = this.runtime.getSnapshot();
@@ -116,7 +133,7 @@ export class SyncController {
       return out.kind === 'ok' ? out.result : null;
     } catch (e) {
       if (e instanceof NetworkError) this.goOffline();
-      else if (e instanceof AuthError) for (const l of [...this.authListeners]) l();
+      else if (e instanceof AuthError) this.notifyAuth();
       else throw e;
       return null;
     } finally {

@@ -79,7 +79,7 @@ export class GameRuntime {
   }
 
   setRevision(revision: number): void {
-    if (this.snapshot.revision === revision) return;
+    if (revision <= this.snapshot.revision) return;
     this.set({ revision });
   }
 
