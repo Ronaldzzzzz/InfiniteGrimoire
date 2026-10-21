@@ -3,10 +3,12 @@ import { canDamage } from '../../src/engine/combat-rules';
 import { gameData } from '../../src/engine/data';
 import { upgradeElement } from '../../src/engine/inventory';
 import { createRng } from '../../src/engine/rng';
-import { createInitialState, equipSpell, travel, type GameState } from '../../src/engine/state';
-import { synthesize } from '../../src/engine/synthesis';
+import { parseState } from '../../src/engine/save';
+import { equipSpell, travel, type GameState } from '../../src/engine/state';
+import type { SynthResult } from '../../src/engine/synthesis';
 import { elementItem, type ElementId } from '../../src/engine/types';
-import { validateUpload } from '../../src/engine/validate';
+import { createApp } from '../../worker/app';
+import { MemoryStore } from '../../worker/store';
 
 export interface BotOptions {
   element: ElementId | null;
@@ -17,6 +19,9 @@ export interface BotResult {
   clearedZones: string[];
   learned: string[];
   simMs: number;
+  /** requests sent to PUT /api/save and POST /api/synthesize */
+  serverCalls: number;
+  /** non-200 responses from PUT /api/save and POST /api/synthesize */
   rejectedUploads: number;
   /** simulated ms spent from first entering the last zone until its boss fell (null if never entered / not cleared) */
   lastZoneMs: number | null;
@@ -26,18 +31,46 @@ export interface BotResult {
 const DECISION_MS = 1000;
 const UPLOAD_MS = 30_000;
 
-export function runBot(opts: BotOptions): BotResult {
+const CLOCK_START = 1_000_000_000;
+
+/**
+ * Plays like the real client against the real server: the worker app with an in-memory store
+ * and a fake clock that follows simulated time. Saves go through PUT /api/save every 30 s and
+ * synthesis through POST /api/synthesize, both as JSON; server replies are applied as the client
+ * would (rejected / conflict -> adopt the server state).
+ */
+export async function runBot(opts: BotOptions): Promise<BotResult> {
   const data = gameData;
   const battleRng = createRng(opts.seed);
-  const synthRng = createRng(opts.seed ^ 0x9e3779b9);
+  const serverRng = createRng(opts.seed ^ 0x9e3779b9);
   const lastZone = data.zones[data.zones.length - 1]!;
 
-  let game: GameState = createInitialState(data);
-  let battle: BattleState = createBattle(game.currentZone);
-  let lastAccepted = game;
-  let rejectedUploads = 0;
-  const rejectionReasons: string[] = [];
   let simMs = 0;
+  const app = createApp({ store: new MemoryStore(), now: () => CLOCK_START + simMs, rng: () => serverRng, data });
+  let token = '';
+  const call = async (method: string, path: string, body: unknown): Promise<{ status: number; body: Record<string, unknown> }> => {
+    const res = await app.request(path, {
+      method,
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+  };
+  const serverState = (raw: unknown): GameState => {
+    const s = parseState(raw, data);
+    if (!s) throw new Error(`server sent a state the client cannot parse: ${JSON.stringify(raw)}`);
+    return s;
+  };
+
+  const created = await call('POST', '/api/guest', { displayName: 'SimBot' });
+  if (created.status !== 201) throw new Error(`guest creation failed: ${created.status}`);
+  token = created.body.token as string;
+  let game: GameState = serverState(created.body.state);
+  let revision = created.body.revision as number;
+  let battle: BattleState = createBattle(game.currentZone);
+  let rejectedUploads = 0;
+  let serverCalls = 0;
+  const rejectionReasons: string[] = [];
   let lastZoneEnteredAt: number | null = null;
   let lastZoneClearedAt: number | null = null;
 
@@ -46,20 +79,34 @@ export function runBot(opts: BotOptions): BotResult {
     ? ['t2', 't4', 't5'].map((t) => data.recipes.find((r) => r.id === `${opts.element}_${t}`)!)
     : [];
 
-  let baselineAt = 0;
-  /** Validates `game` against the last accepted state with the real elapsed time; rolls back on rejection. */
-  const upload = (): boolean => {
-    const v = validateUpload(lastAccepted, game, simMs - baselineAt, data);
-    if (v.ok) {
-      lastAccepted = game;
-      baselineAt = simMs;
-      return true;
-    }
+  /** Non-200: count it and adopt the server's state, like the client does. */
+  const adoptServer = (what: string, r: { status: number; body: Record<string, unknown> }): void => {
     rejectedUploads++;
-    rejectionReasons.push(`@${simMs}: ${v.reasons.join('; ')}`);
-    game = lastAccepted;
-    battle = createBattle(game.currentZone);
-    return false;
+    const reasons = Array.isArray(r.body.reasons) ? r.body.reasons.join('; ') : JSON.stringify(r.body);
+    rejectionReasons.push(`@${simMs} ${what} ${r.status}: ${reasons}`);
+    if (r.body.state) {
+      game = serverState(r.body.state);
+      revision = r.body.revision as number;
+      battle = createBattle(game.currentZone);
+    }
+  };
+  const upload = async (): Promise<void> => {
+    serverCalls++;
+    const r = await call('PUT', '/api/save', { state: game, baseRevision: revision });
+    if (r.status === 200) revision = r.body.revision as number;
+    else adoptServer('PUT /api/save', r);
+  };
+  const synthesizeOnServer = async (inputs: string[]): Promise<SynthResult | null> => {
+    serverCalls++;
+    const r = await call('POST', '/api/synthesize', { state: game, baseRevision: revision, inputs });
+    if (r.status !== 200) {
+      adoptServer('POST /api/synthesize', r);
+      return null;
+    }
+    // the battle keeps running: the server state is ours plus the synthesis
+    game = serverState(r.body.state);
+    revision = r.body.revision as number;
+    return r.body.result as SynthResult;
   };
 
   const blocked = new Set<string>();
@@ -68,7 +115,7 @@ export function runBot(opts: BotOptions): BotResult {
   const bestSpell = () =>
     game.learned.map((id) => data.spells[id]!).reduce((a, b) => (b.tier > a.tier ? b : a));
 
-  const decide = (): void => {
+  const decide = async (): Promise<void> => {
     if (opts.element) {
       // upgrade grade-1 -> grade-2 only when the next recipe needs grade-2 and lacks it
       const target = chain.find((r) => !game.learned.includes(r.outcomes[r.outcomes.length - 1]!.spellId) &&
@@ -81,15 +128,14 @@ export function runBot(opts: BotOptions): BotResult {
           const up = upgradeElement(game.inventory, opts.element, 1);
           if (up) game = { ...game, inventory: up };
         }
-        const res = synthesize(game, target.inputs, data, synthRng);
-        if (res.result.kind === 'learned') {
-          // like the server: validate the pre-synthesis state first, then commit the post-synthesis one
-          if (upload()) {
-            game = res.state;
-            lastAccepted = game;
-            baselineAt = simMs;
-          }
-        }
+        // ask the server only when the attempt can succeed: inputs in stock and an outcome whose
+        // prerequisites are learned (no outcome is learned yet, so the roll always teaches a spell)
+        const have: Record<string, number> = {};
+        for (const i of target.inputs) have[i] = (have[i] ?? 0) + 1;
+        const affordable = Object.entries(have).every(([i, n]) => (game.inventory[i] ?? 0) >= n);
+        const eligible = target.outcomes.some((o) =>
+          (data.spells[o.spellId]?.prerequisites ?? []).every((p) => game.learned.includes(p)));
+        if (affordable && eligible) await synthesizeOnServer([...target.inputs].sort());
       }
     }
     const best = bestSpell();
@@ -133,11 +179,11 @@ export function runBot(opts: BotOptions): BotResult {
     }
     if (simMs >= nextDecision) {
       nextDecision += DECISION_MS;
-      decide();
+      await decide();
     }
     if (simMs >= nextUpload) {
       nextUpload += UPLOAD_MS;
-      upload();
+      await upload();
       // stop at the first upload after the last boss fell, so that final kill is validated too
       if (lastZoneClearedAt !== null) break;
     }
@@ -147,6 +193,7 @@ export function runBot(opts: BotOptions): BotResult {
     clearedZones: data.zones.filter((z) => game.defeatedBosses.includes(z.bossId)).map((z) => z.id),
     learned: game.learned,
     simMs,
+    serverCalls,
     rejectedUploads,
     lastZoneMs: lastZoneEnteredAt !== null && lastZoneClearedAt !== null ? lastZoneClearedAt - lastZoneEnteredAt : null,
     rejectionReasons,
