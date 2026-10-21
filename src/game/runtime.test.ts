@@ -49,9 +49,12 @@ describe('GameRuntime', () => {
     rt.advance(1000);
     expect(rt.getSnapshot().battle).not.toBe(before.battle);
   });
-  it('replaceState rebuilds battle and notifies', () => {
+  it('replaceState in the same zone keeps the battle going and notifies', () => {
     const rt = make();
     rt.advance(1000);
+    rt.advance(1000); // past the first spawn
+    const battle = rt.getSnapshot().battle;
+    expect(battle.monsters.length).toBeGreaterThan(0);
     const fn = vi.fn();
     rt.subscribe(fn);
     const s = { ...createInitialState(gameData), equipped: 'mana_bolt' };
@@ -59,8 +62,19 @@ describe('GameRuntime', () => {
     const snap = rt.getSnapshot();
     expect(snap.revision).toBe(9);
     expect(snap.game).toBe(s);
-    expect(snap.battle.monsters).toEqual([]);
+    expect(snap.battle).toBe(battle);
     expect(fn).toHaveBeenCalledTimes(1);
+  });
+  it('replaceState into another zone rebuilds the battle', () => {
+    const rt = make();
+    rt.advance(1000);
+    rt.advance(1000);
+    const other = gameData.zones[1]!.id;
+    const s = { ...createInitialState(gameData), currentZone: other, unlockedZones: [gameData.zones[0]!.id, other] };
+    rt.replaceState(s, 9);
+    const snap = rt.getSnapshot();
+    expect(snap.battle.zoneId).toBe(other);
+    expect(snap.battle.monsters).toEqual([]);
   });
   it('getSnapshot stable when nothing changed', () => {
     const rt = make();

@@ -79,9 +79,16 @@ export class GameRuntime {
     this.set({ paused });
   }
 
+  /**
+   * Adopts a server state (synthesis result or upload conflict). The battle is client-side only and never
+   * saved, so it keeps running unless the server's state is in another zone; kill progress lives in
+   * `state.zoneKills`, which comes from the server either way.
+   */
   replaceState(state: GameState, revision: number): void {
-    this.leftoverMs = 0;
-    this.set({ game: state, battle: createBattle(state.currentZone), revision });
+    const { battle } = this.snapshot;
+    const sameZone = battle.zoneId === state.currentZone;
+    if (!sameZone) this.leftoverMs = 0;
+    this.set({ game: state, battle: sameZone ? battle : createBattle(state.currentZone), revision });
   }
 
   setRevision(revision: number): void {
