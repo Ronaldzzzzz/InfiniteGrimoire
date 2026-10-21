@@ -3,7 +3,7 @@ import { gameData } from '../src/engine/data';
 import { createRng } from '../src/engine/rng';
 import { createInitialState, type GameState } from '../src/engine/state';
 import { createApp, MAX_BODY_BYTES, SUSPICIOUS_REJECTIONS_24H } from './app';
-import { MemoryStore } from './store';
+import { MemoryStore, type SaveRow } from './store';
 
 let store: MemoryStore;
 let clock: number;
@@ -166,6 +166,8 @@ describe('synthesize', () => {
     const claimed = { ...thunder2(), learned: [...createInitialState(gameData).learned, 'lightning'] };
     const res = await app.request('/api/synthesize', json({ state: claimed, baseRevision: 0, inputs }, body.token));
     expect(res.status).toBe(422);
+    const out = (await res.json()) as { reasons: string[] };
+    expect(out.reasons).toContain('learned spells changed');
     expect(store.synthEvents).toHaveLength(0);
   });
 
@@ -183,6 +185,22 @@ describe('synthesize', () => {
   });
 
   it('concurrent synthesize with same baseRevision', async () => {
+    // Both requests pass the revision precheck before either commits, so only the store's CAS can stop the second.
+    class GatedStore extends MemoryStore {
+      private waiting = 0;
+      private release!: () => void;
+      private readonly gate = new Promise<void>((r) => (this.release = r));
+      override async getSave(playerId: string): Promise<SaveRow | null> {
+        const row = await super.getSave(playerId);
+        if (++this.waiting <= 2) {
+          if (this.waiting === 2) this.release();
+          await this.gate;
+        }
+        return row;
+      }
+    }
+    store = new GatedStore();
+    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData });
     const { body } = await guest();
     clock += 3_600_000;
     const send = () => app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs }, body.token));
@@ -196,5 +214,27 @@ describe('synthesize', () => {
     expect(saved.inventory['el:thunder:1'] ?? 0).toBe(0);
     expect(store.saves.get(body.playerId)?.revision).toBe(1);
     expect(store.synthEvents).toHaveLength(1);
+  });
+});
+
+describe('MemoryStore.commitSave', () => {
+  it('stale baseRevision returns false and leaves the save unchanged', async () => {
+    const s = new MemoryStore();
+    await s.createPlayer({ id: 'p', displayName: 'x', tokenHash: 'h', createdAt: 0, suspicious: false }, 'A', 0);
+    expect(await s.commitSave('p', 0, 'B', 10)).toBe(true);
+    expect(await s.commitSave('p', 0, 'C', 20)).toBe(false);
+    expect(await s.getSave('p')).toMatchObject({ state: 'B', revision: 1, savedAt: 10, prevState: 'A', prevSavedAt: 0 });
+  });
+});
+
+describe('elapsed cap', () => {
+  it('caps credited time at MAX_ELAPSED_MS even after 8h without GET', async () => {
+    const { body } = await guest();
+    clock += 8 * 3_600_000;
+    const res = await app.request(
+      '/api/save',
+      json({ state: withInv({ 'el:fire:1': 500 }), baseRevision: 0 }, body.token, 'PUT'),
+    );
+    expect(res.status).toBe(422);
   });
 });

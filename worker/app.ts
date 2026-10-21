@@ -17,6 +17,8 @@ export interface AppDeps {
 
 export const SUSPICIOUS_REJECTIONS_24H = 5;
 export const MAX_BODY_BYTES = 64 * 1024;
+/** Upper bound on the time credited to one upload; no offline income in the MVP. */
+export const MAX_ELAPSED_MS = 120_000;
 
 type Env = { Variables: { player: PlayerRow } };
 type Ctx = Context<Env>;
@@ -109,7 +111,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       return { ok: false, res: c.json({ reason: 'conflict', state: current, revision: save.revision }, 409) };
     }
     const t = now();
-    const verdict = validateUpload(current, next, t - save.savedAt, data);
+    const verdict = validateUpload(current, next, Math.min(Math.max(0, t - save.savedAt), MAX_ELAPSED_MS), data);
     if (!verdict.ok) {
       const count = await store.recordRejection(player.id, t, verdict.reasons);
       if (count >= SUSPICIOUS_REJECTIONS_24H) await store.markSuspicious(player.id);
