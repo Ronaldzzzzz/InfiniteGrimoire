@@ -3,7 +3,7 @@ import { gameData } from '../engine/data';
 import type { GameRuntime } from '../game/runtime';
 import { COLORS, spellColor } from '../render/palette';
 import { layoutGrimoire } from './grimoire-layout';
-import { useGame } from './useGame';
+import { useRuntime, type RuntimeStore } from './useGame';
 
 const SIZE = 600;
 const MIN_ZOOM = 0.5;
@@ -11,8 +11,9 @@ const MAX_ZOOM = 3;
 const NODE_R = 16;
 const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
-export function GrimoirePanel({ runtime }: { runtime: GameRuntime }) {
-  const { game } = useGame(runtime);
+export function GrimoirePanel({ runtime }: { runtime: RuntimeStore & Pick<GameRuntime, 'equip'> }) {
+  const learned = useRuntime(runtime, (s) => s.game.learned);
+  const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const layout = useMemo(() => layoutGrimoire(Object.values(gameData.spells)), []);
   const pos = useMemo(() => new Map(layout.nodes.map((n) => [n.spellId, n])), [layout]);
   const [zoom, setZoom] = useState(1);
@@ -49,7 +50,7 @@ export function GrimoirePanel({ runtime }: { runtime: GameRuntime }) {
   };
 
   const activate = (id: string) => {
-    if (game.learned.includes(id)) {
+    if (learned.includes(id)) {
       setHint(null);
       runtime.equip(id);
     } else setHint(gameData.spells[id].hint);
@@ -76,22 +77,22 @@ export function GrimoirePanel({ runtime }: { runtime: GameRuntime }) {
           const a = pos.get(e.from);
           const b = pos.get(e.to);
           if (!a || !b) return null;
-          const lit = game.learned.includes(e.from) && game.learned.includes(e.to);
+          const lit = learned.includes(e.from) && learned.includes(e.to);
           return (
             <line key={`${e.from}-${e.to}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={lit ? COLORS.rune : '#2a3140'} strokeWidth={2} />
           );
         })}
         {layout.nodes.map((n) => {
           const spell = gameData.spells[n.spellId];
-          const learned = game.learned.includes(n.spellId);
-          const equipped = game.equipped === n.spellId;
+          const isLearned = learned.includes(n.spellId);
+          const isEquipped = equipped === n.spellId;
           const color = spellColor(spell);
           return (
             <g
               key={n.spellId}
               role="button"
               tabIndex={0}
-              aria-label={`${spell.name}${learned ? '' : '（未學會）'}`}
+              aria-label={`${spell.name}${isLearned ? '' : '（未學會）'}`}
               className="grimoire-node"
               onClick={() => {
                 if (!wasDrag.current) activate(n.spellId);
@@ -107,9 +108,9 @@ export function GrimoirePanel({ runtime }: { runtime: GameRuntime }) {
                 cx={n.x}
                 cy={n.y}
                 r={NODE_R}
-                fill={learned ? color : COLORS.bg}
-                stroke={equipped ? COLORS.amber : color}
-                strokeWidth={equipped ? 4 : 2}
+                fill={isLearned ? color : COLORS.bg}
+                stroke={isEquipped ? COLORS.amber : color}
+                strokeWidth={isEquipped ? 4 : 2}
               />
               <text x={n.x} y={n.y + NODE_R + 12} textAnchor="middle" fontSize={11} fill="#e6e9ef">
                 {spell.name}

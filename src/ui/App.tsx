@@ -10,7 +10,7 @@ import { InventoryBar } from './InventoryBar';
 import { OfflineOverlay } from './OfflineOverlay';
 import { SaveErrorBanner } from './SaveErrorBanner';
 import { emptySlots, SynthesisPanel, type Slots } from './SynthesisPanel';
-import { useConnStatus, useGame } from './useGame';
+import { bossAlive, useConnStatus, useGameState, useRuntime } from './useGame';
 import { ZonePanel } from './ZonePanel';
 
 type Tab = 'synthesis' | 'grimoire' | 'map';
@@ -21,7 +21,9 @@ const TABS: [Tab, string][] = [
 ];
 
 export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncController; data: GameData }) {
-  const snapshot = useGame(runtime);
+  const game = useGameState(runtime);
+  const synthPending = useRuntime(runtime, (s) => s.synthPending);
+  const bossOnField = useRuntime(runtime, (s) => bossAlive(s, data));
   const status = useConnStatus(sync);
   const [tab, setTab] = useState<Tab>('synthesis');
   const [slots, setSlots] = useState<Slots>(emptySlots);
@@ -33,7 +35,7 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
 
   return (
     <div className="app">
-      <Hud snapshot={snapshot} data={data} runtime={runtime} />
+      <Hud game={game} bossAlive={bossOnField} data={data} runtime={runtime} />
       <SaveErrorBanner status={status} />
       <main className="main">
         <div className="battle">
@@ -49,14 +51,14 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
           </nav>
           <div className="tab-body">
             {tab === 'synthesis' && (
-              <SynthesisPanel snapshot={snapshot} sync={sync} data={data} slots={slots} onSlotsChange={setSlots} />
+              <SynthesisPanel game={game} synthPending={synthPending} sync={sync} data={data} slots={slots} onSlotsChange={setSlots} />
             )}
             {tab === 'grimoire' && <GrimoirePanel runtime={runtime} />}
-            {tab === 'map' && <ZonePanel snapshot={snapshot} data={data} runtime={runtime} />}
+            {tab === 'map' && <ZonePanel game={game} data={data} runtime={runtime} />}
           </div>
         </aside>
       </main>
-      <InventoryBar inventory={snapshot.game.inventory} onPick={pick} onUpgrade={(el, g) => runtime.upgrade(el, g)} />
+      <InventoryBar inventory={game.inventory} onPick={pick} onUpgrade={(el, g) => runtime.upgrade(el, g)} />
       <OfflineOverlay status={status} />
     </div>
   );

@@ -1,8 +1,8 @@
+import type { GameState } from '../engine/state';
 import type { GameData } from '../engine/types';
-import type { GameRuntime, Snapshot } from '../game/runtime';
+import type { GameRuntime } from '../game/runtime';
 
-export function ZonePanel({ snapshot, data, runtime }: { snapshot: Snapshot; data: GameData; runtime: GameRuntime }) {
-  const { game } = snapshot;
+export function ZonePanel({ game, data, runtime }: { game: GameState; data: GameData; runtime: GameRuntime }) {
   return (
     <ul className="zones">
       {data.zones.map((z) => {

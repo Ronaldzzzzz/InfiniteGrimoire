@@ -1,10 +1,10 @@
 import { canDamage, overlevelEfficiency } from '../engine/combat-rules';
+import type { GameState } from '../engine/state';
 import type { GameData } from '../engine/types';
-import type { GameRuntime, Snapshot } from '../game/runtime';
+import type { GameRuntime } from '../game/runtime';
 import { BOSS_HINT } from './messages';
 
-export function Hud({ snapshot, data, runtime }: { snapshot: Snapshot; data: GameData; runtime: GameRuntime }) {
-  const { game, battle } = snapshot;
+export function Hud({ game, bossAlive, data, runtime }: { game: GameState; bossAlive: boolean; data: GameData; runtime: GameRuntime }) {
   const zone = data.zones.find((z) => z.id === game.currentZone);
   const spell = data.spells[game.equipped];
 
@@ -13,9 +13,7 @@ export function Hud({ snapshot, data, runtime }: { snapshot: Snapshot; data: Gam
   const efficiency = spell ? overlevelEfficiency(spell.tier, regularTier) : 1;
 
   const boss = zone ? data.monsters[zone.bossId] : undefined;
-  const bossAlive = Boolean(boss) && battle.bossActive && battle.monsters.some((m) => m.defId === boss!.id);
-  const stuck =
-    bossAlive && !game.learned.some((id) => data.spells[id] && canDamage(data.spells[id]!, boss!));
+  const stuck = bossAlive && Boolean(boss) && !game.learned.some((id) => data.spells[id] && canDamage(data.spells[id]!, boss!));
 
   return (
     <header className="hud">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { comboKey, SYNTH_SLOTS, type SynthResult } from '../engine/synthesis';
 import type { GameData, ItemId } from '../engine/types';
-import type { Snapshot } from '../game/runtime';
+import type { GameState } from '../engine/state';
 import { itemName, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 
 export type Slots = (ItemId | null)[];
@@ -12,20 +12,21 @@ function comboLabel(key: string): string {
 }
 
 export function SynthesisPanel({
-  snapshot,
+  game,
+  synthPending,
   sync,
   data,
   slots,
   onSlotsChange,
 }: {
-  snapshot: Snapshot;
+  game: GameState;
+  synthPending: boolean;
   sync: { synthesize(inputs: ItemId[]): Promise<SynthResult | null> };
   data: GameData;
   slots: Slots;
   onSlotsChange: (slots: Slots) => void;
 }) {
   const [message, setMessage] = useState('');
-  const { game, synthPending } = snapshot;
 
   const filled = slots.filter((s): s is ItemId => s !== null);
   const need = new Map<ItemId, number>();
