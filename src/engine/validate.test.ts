@@ -173,3 +173,108 @@ describe('validateUpload', () => {
     expect(validateUpload(prev, next, 0, data)).toEqual({ ok: true });
   });
 });
+
+const data2: GameData = {
+  spells: { mana_bolt: spell({ id: 'mana_bolt' }) },
+  recipes: [],
+  monsters: {
+    ma: mon({ id: 'ma', drops: [{ itemId: 'el:fire:1', chance: 1, min: 1, max: 2 }, { itemId: 'mat:a', chance: 1, min: 1, max: 1 }] }),
+    mb1: mon({
+      id: 'mb1',
+      drops: [
+        { itemId: 'el:water:1', chance: 1, min: 1, max: 3 },
+        { itemId: 'el:fire:1', chance: 1, min: 1, max: 1 },
+        { itemId: 'mat:b', chance: 1, min: 1, max: 2 },
+      ],
+    }),
+    mb2: mon({
+      id: 'mb2',
+      drops: [
+        { itemId: 'el:water:1', chance: 1, min: 1, max: 1 },
+        { itemId: 'el:water:2', chance: 1, min: 1, max: 1 },
+        { itemId: 'mat:b', chance: 1, min: 1, max: 1 },
+      ],
+    }),
+    bA: mon({ id: 'bA', boss: true, drops: [{ itemId: 'el:wind:1', chance: 1, min: 1, max: 4 }] }),
+    bB: mon({ id: 'bB', boss: true }),
+    bU: mon({ id: 'bU', boss: true, tier: 9, defense: 5000, drops: [{ itemId: 'el:earth:1', chance: 1, min: 1, max: 10 }] }),
+  },
+  zones: [
+    { ...zone('A', 1, ['ma'], 'bA'), maxAlive: 3, spawnIntervalMs: 1000, killsForBoss: 5 },
+    { ...zone('B', 2, ['mb1', 'mb2'], 'bB'), maxAlive: 2, spawnIntervalMs: 2000, killsForBoss: 5 },
+    { ...zone('U', 3, ['ma'], 'bU'), maxAlive: 3, spawnIntervalMs: 1000, killsForBoss: 5 },
+  ],
+};
+const st = (unlocked: string[], extra: Partial<GameState> = {}): GameState => ({
+  ...createInitialState(data2), currentZone: unlocked[0]!, unlockedZones: unlocked, ...extra,
+});
+
+describe('maxGain bounds (fixture data2)', () => {
+  it('per-monster maximum, not sum and not per-entry maximum', () => {
+    // zone B: maxKills = 10000/2000 + 2 = 7; water mb1=3, mb2=1+3=4 -> 7*4
+    const g = maxGain(st(['B']), 10_000, data2);
+    expect(g.elements.water).toBe(28);
+    expect(g.materials['mat:b']).toBe(7 * 2);
+    expect(g.elements.fire).toBe(7);
+  });
+
+  it('excludes drops of a boss no learned spell can damage', () => {
+    const g = maxGain(st(['U']), 10_000, data2);
+    expect(g.elements.earth).toBe(0);
+    expect(g.elements.fire).toBe(13 * 2);
+  });
+
+  it('includes drops of a hittable boss', () => {
+    // A: maxKills 13, boss kills floor(13/5)+1 = 3, wind 4 each
+    expect(maxGain(st(['A']), 10_000, data2).elements.wind).toBe(12);
+  });
+
+  it('takes the max across zones and adds a maxAlive burst for the other zones', () => {
+    const g = maxGain(st(['A', 'B']), 10_000, data2);
+    // fire: A full (13*2=26) + B burst (2*1) = 28 ; B full (7) + A burst (3*2=6) = 13
+    expect(g.elements.fire).toBe(28);
+    expect(g.elements.water).toBe(28); // only B yields water
+    expect(g.materials['mat:a']).toBe(13);
+    expect(g.materials['mat:b']).toBe(14);
+  });
+
+  it('zoneIds parameter overrides the unlocked zones', () => {
+    expect(maxGain(st(['A']), 10_000, data2, ['B']).elements.water).toBe(28);
+  });
+});
+
+describe('validateUpload (fixture data2)', () => {
+  it('boss killed early, then farming the newly unlocked zone, is ok', () => {
+    const prev = st(['A']);
+    const next = st(['A', 'B'], { currentZone: 'B', defeatedBosses: ['bA'], inventory: { 'el:water:1': 20, 'mat:b': 10 } });
+    expect(validateUpload(prev, next, 10_000, data2)).toEqual({ ok: true });
+  });
+
+  it('gain in a zone that is still locked is rejected', () => {
+    const prev = st(['A']);
+    const next = st(['A'], { inventory: { 'el:water:1': 20 } });
+    expect(validateUpload(prev, next, 10_000, data2).ok).toBe(false);
+  });
+
+  it('boss in a locked zone rejected even though a spell can hit it', () => {
+    const prev = st(['A']);
+    const next = st(['A', 'U'], { defeatedBosses: ['bB'] });
+    const r = validateUpload(prev, next, 600_000, data2);
+    expect(r.ok ? '' : r.reasons.join()).toContain('locked zone');
+  });
+
+  it('tolerance boundary: floor(bound * tolerance + slack) is ok, one above is rejected', () => {
+    // zone A, 0ms: maxKills 3 -> mat:a bound 3 -> limit 9.75 ; fire bound 6 -> limit 13.5
+    expect(validateUpload(st(['A']), st(['A'], { inventory: { 'mat:a': 9 } }), 0, data2)).toEqual({ ok: true });
+    expect(validateUpload(st(['A']), st(['A'], { inventory: { 'mat:a': 10 } }), 0, data2).ok).toBe(false);
+    expect(validateUpload(st(['A']), st(['A'], { inventory: { 'el:fire:1': 13 } }), 0, data2)).toEqual({ ok: true });
+    expect(validateUpload(st(['A']), st(['A'], { inventory: { 'el:fire:1': 14 } }), 0, data2).ok).toBe(false);
+  });
+
+  it('defeatedBosses shrinking is rejected', () => {
+    const prev = st(['A', 'B'], { defeatedBosses: ['bA'] });
+    const next = st(['A', 'B'], { defeatedBosses: [] });
+    const r = validateUpload(prev, next, 0, data2);
+    expect(r.ok ? '' : r.reasons.join()).toContain('bA');
+  });
+});
