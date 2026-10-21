@@ -150,6 +150,26 @@ describe('validateUpload', () => {
     expect(fail(validateUpload(base(), next, 30_000, data)).join()).toContain('z1');
   });
 
+  it('simultaneous multi-zone zoneKills inflation rejected', () => {
+    const next = { ...base(), unlockedZones: ['z1', 'z2', 'z3'], zoneKills: { z1: 8, z2: 8, z3: 8 } };
+    const prev = { ...base(), unlockedZones: ['z1', 'z2', 'z3'] };
+    expect(fail(validateUpload(prev, next, 1000, data)).join()).toContain('across zones');
+  });
+
+  it('zoneKills growth in a locked zone rejected', () => {
+    const next = { ...base(), zoneKills: { z2: 1 } };
+    expect(fail(validateUpload(base(), next, 30_000, data)).join()).toContain('z2');
+  });
+
+  it('pre-inflate zoneKills then defeat bosses next upload is rejected', () => {
+    const prev = { ...base(), learned: ['mana_bolt', 'strong'] };
+    const inflated = { ...prev, zoneKills: { z1: 5, z2: 5, z3: 5 } };
+    expect(validateUpload(prev, inflated, 30_000, data).ok).toBe(false);
+    const bosses = { ...inflated, defeatedBosses: ['b1', 'b2', 'b3'], unlockedZones: ['z1', 'z2', 'z3'], zoneKills: {} };
+    // even accepted state could not be reached: the inflated baseline is only used if the first upload passed
+    expect(validateUpload(prev, bosses, 1000, data).ok).toBe(false);
+  });
+
   it('boss in locked zone rejected', () => {
     const next = { ...base(), defeatedBosses: ['b2'], unlockedZones: ['z1', 'z3'] };
     expect(fail(validateUpload(base(), next, 600_000, data)).join()).toContain('b2');

@@ -46,6 +46,22 @@ export function runBot(opts: BotOptions): BotResult {
     ? ['t2', 't4', 't5'].map((t) => data.recipes.find((r) => r.id === `${opts.element}_${t}`)!)
     : [];
 
+  let baselineAt = 0;
+  /** Validates `game` against the last accepted state with the real elapsed time; rolls back on rejection. */
+  const upload = (): boolean => {
+    const v = validateUpload(lastAccepted, game, simMs - baselineAt, data);
+    if (v.ok) {
+      lastAccepted = game;
+      baselineAt = simMs;
+      return true;
+    }
+    rejectedUploads++;
+    rejectionReasons.push(`@${simMs}: ${v.reasons.join('; ')}`);
+    game = lastAccepted;
+    battle = createBattle(game.currentZone);
+    return false;
+  };
+
   const blocked = new Set<string>();
   let blockedAtLearned = 0;
 
@@ -67,8 +83,12 @@ export function runBot(opts: BotOptions): BotResult {
         }
         const res = synthesize(game, target.inputs, data, synthRng);
         if (res.result.kind === 'learned') {
-          game = res.state;
-          lastAccepted = game; // server commits the post-synthesis state
+          // like the server: validate the pre-synthesis state first, then commit the post-synthesis one
+          if (upload()) {
+            game = res.state;
+            lastAccepted = game;
+            baselineAt = simMs;
+          }
         }
       }
     }
@@ -117,14 +137,7 @@ export function runBot(opts: BotOptions): BotResult {
     }
     if (simMs >= nextUpload) {
       nextUpload += UPLOAD_MS;
-      const v = validateUpload(lastAccepted, game, UPLOAD_MS, data);
-      if (v.ok) lastAccepted = game;
-      else {
-        rejectedUploads++;
-        rejectionReasons.push(`@${simMs}: ${v.reasons.join('; ')}`);
-        game = lastAccepted;
-        battle = createBattle(game.currentZone);
-      }
+      upload();
       // stop at the first upload after the last boss fell, so that final kill is validated too
       if (lastZoneClearedAt !== null) break;
     }
