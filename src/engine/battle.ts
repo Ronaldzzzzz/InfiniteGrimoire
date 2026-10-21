@@ -177,6 +177,7 @@ export function stepBattle(
   // 4. kills
   const efficiencyOf = (def: MonsterDef): number => (spell ? overlevelEfficiency(spell.tier, def.tier) : 1);
   dead.sort((a, b) => a.m.uid - b.m.uid);
+  const bossWasActive = bossActive;
   for (const { m, def } of dead) {
     const drops: ItemId[] = [];
     const eff = efficiencyOf(def);
@@ -196,7 +197,7 @@ export function stepBattle(
       const next = data.zones.find((z) => z.order === zone.order + 1);
       if (next && !unlockedZones.includes(next.id)) unlockedZones = [...unlockedZones, next.id];
       events.push({ type: 'bossDefeated', zoneId: zone.id, unlockedZoneId: next?.id ?? null });
-    } else if (!bossActive) {
+    } else if (!bossWasActive && !bossActive) {
       const kills = (zoneKills[zone.id] ?? 0) + 1;
       if (kills >= zone.killsForBoss) {
         zoneKills = { ...zoneKills, [zone.id]: 0 };

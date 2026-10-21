@@ -37,8 +37,8 @@ const data: GameData = {
     { id: 'z2', name: 'z2', nameEn: 'z2', order: 2, monsters: ['slime'], bossId: 'boss2', killsForBoss: 3, maxAlive: 3, spawnIntervalMs: 500 },
     { id: 'zt', name: 'zt', nameEn: 'zt', order: 3, monsters: ['tank'], bossId: 'boss2', killsForBoss: 99, maxAlive: 3, spawnIntervalMs: 500 },
     { id: 'zg', name: 'zg', nameEn: 'zg', order: 4, monsters: ['giant'], bossId: 'boss2', killsForBoss: 99, maxAlive: 3, spawnIntervalMs: 500 },
-    { id: 'zb', name: 'zb', nameEn: 'zb', order: 6, monsters: ['slime'], bossId: 'boss1', killsForBoss: 2, maxAlive: 6, spawnIntervalMs: 50 },
     { id: 'zo', name: 'zo', nameEn: 'zo', order: 5, monsters: ['m10'], bossId: 'boss2', killsForBoss: 99999, maxAlive: 1, spawnIntervalMs: 50 },
+    { id: 'zb', name: 'zb', nameEn: 'zb', order: 6, monsters: ['slime'], bossId: 'boss1', killsForBoss: 2, maxAlive: 6, spawnIntervalMs: 50 },
   ],
 };
 
@@ -191,6 +191,33 @@ describe('battle', () => {
     expect(r.game.zoneKills.zb ?? 0).toBe(0);
     expect(r.battle.bossActive).toBe(false);
     // continue: count normal kills before the next boss spawns
+    const rng = createRng(2);
+    let normalKills = 0;
+    let bossSpawned = false;
+    for (let i = 0; i < 2000 && !bossSpawned; i++) {
+      r = stepBattle(r.game, r.battle, data, rng);
+      for (const e of r.events) {
+        if (e.type === 'spawn' && e.boss) bossSpawned = true;
+        if (e.type === 'kill') normalKills++;
+      }
+    }
+    expect(bossSpawned).toBe(true);
+    expect(normalKills).toBeGreaterThanOrEqual(2);
+  });
+
+  it('boss resolved before leftover normals in the same step does not let them count', () => {
+    const mk = (uid: number, defId: string) => ({ uid, defId, hp: 5, maxHp: 5, x: 0.5 + uid * 0.01, statuses: [] });
+    const battle: BattleState = {
+      ...createBattle('zb'), bossActive: true, castTimerMs: 1000,
+      monsters: [mk(1, 'boss1'), mk(2, 'slime'), mk(3, 'slime'), mk(4, 'slime')],
+      nextUid: 5,
+    };
+    let r = stepBattle(base('zb', 'novaS'), battle, data, createRng(1));
+    expect(r.events.filter((e) => e.type === 'kill')).toHaveLength(4);
+    expect(r.events[r.events.findIndex((e) => e.type === 'kill')]).toMatchObject({ uid: 1 });
+    expect(r.events.some((e) => e.type === 'spawn')).toBe(false);
+    expect(r.battle.bossActive).toBe(false);
+    expect(r.game.zoneKills.zb ?? 0).toBe(0);
     const rng = createRng(2);
     let normalKills = 0;
     let bossSpawned = false;
