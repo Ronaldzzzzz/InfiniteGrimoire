@@ -35,7 +35,6 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .slot { flex: 1; min-height: 56px; border-style: dashed; }
 .slot.filled { border-style: solid; border-color: var(--gold); }
 .synth-message { min-height: 1.5em; color: var(--gold); }
-.synth-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
 .tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--muted); border-radius: 4px; color: var(--muted); font-size: 12px; }
 .synthesis h3 { margin: 16px 0 8px; }
 
@@ -119,3 +118,24 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
   .grimoire-col { order: 1; border-right: 0; border-top: 1px solid var(--line); }
 }
 .grimoire-hint { margin-top: 8px; color: var(--gold); font-size: 14px; }
+.synth-matrix { display: flex; flex-direction: column; gap: 6px; }
+.matrix-grades { display: flex; gap: 4px; }
+.matrix-grades button { flex: 1; min-height: 32px; padding: 4px; font-size: 13px; }
+.matrix-grades button.active { border-color: var(--rune); color: var(--rune); }
+.matrix { width: 100%; border-collapse: separate; border-spacing: 3px; table-layout: fixed; }
+.matrix th { font-size: 13px; font-weight: 600; color: var(--muted); }
+.matrix th.el-fire { color: var(--fire); }
+.matrix th.el-wind { color: var(--wind); }
+.matrix th.el-thunder { color: var(--thunder); }
+.matrix th.el-earth { color: var(--earth); }
+.matrix th.el-water { color: var(--water); }
+.matrix-cell { width: 100%; min-height: 40px; padding: 2px; font-size: 12px; line-height: 1.2; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+.matrix-cell.unknown { color: var(--muted); border-style: dashed; }
+.matrix-cell.none { color: var(--muted); }
+.matrix-cell.found { color: var(--gold); border-color: #5a4a22; }
+.matrix-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.matrix-more { font-size: 10px; color: var(--muted); }
+.matrix-detail { min-height: 1.4em; margin: 0; font-size: 13px; color: var(--gold); }
+.synth-matrix h4 { margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
+.matrix-cross { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.matrix-cross button { width: 100%; text-align: left; min-height: 32px; padding: 4px 8px; font-size: 13px; }

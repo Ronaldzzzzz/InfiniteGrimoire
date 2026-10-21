@@ -1,15 +1,12 @@
 import { useState } from 'react';
-import { comboKey, SYNTH_SLOTS, type SynthResult } from '../engine/synthesis';
+import { SYNTH_SLOTS, type SynthResult } from '../engine/synthesis';
 import type { GameData, ItemId } from '../engine/types';
 import type { GameState } from '../engine/state';
+import { SynthesisMatrix } from './SynthesisMatrix';
 import { itemName, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 
 export type Slots = (ItemId | null)[];
 export const emptySlots = (): Slots => Array<ItemId | null>(SYNTH_SLOTS).fill(null);
-
-function comboLabel(key: string): string {
-  return key.split('+').map(itemName).join(' + ');
-}
 
 export function SynthesisPanel({
   game,
@@ -53,8 +50,6 @@ export function SynthesisPanel({
     }
   };
 
-  const logEntries = Object.entries(game.synthesisLog);
-
   return (
     <section className="synthesis">
       <div className="slots">
@@ -79,22 +74,7 @@ export function SynthesisPanel({
       </div>
 
       <h3>嘗試紀錄</h3>
-      {logEntries.length === 0 && <p className="muted">還沒有嘗試過任何組合</p>}
-      <ul className="synth-log">
-        {logEntries.map(([key, entry]) => (
-          <li key={key}>
-            <div>
-              {comboLabel(comboKey(key.split('+')))}　{entry.attempts} 次
-              {entry.noReaction && <span className="tag">無反應</span>}
-            </div>
-            <div className="muted">
-              {Object.entries(entry.results)
-                .map(([r, n]) => `${r === 'none' ? '無反應' : (data.spells[r]?.name ?? r)} ${Math.round((n / entry.attempts) * 100)}%`)
-                .join('、')}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <SynthesisMatrix log={game.synthesisLog} data={data} onPickPair={(a, b) => onSlotsChange([a, b])} />
     </section>
   );
 }

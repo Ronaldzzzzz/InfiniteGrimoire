@@ -63,19 +63,21 @@ describe('SynthesisPanel', () => {
   it('removes an item when its slot is clicked', () => {
     const onSlotsChange = vi.fn();
     render(<SynthesisPanel {...snap({ 'el:fire:1': 1 })} sync={{ synthesize: vi.fn() }} data={gameData} slots={['el:fire:1', null]} onSlotsChange={onSlotsChange} />);
-    fireEvent.click(screen.getByRole('button', { name: /初階火/ }));
+    fireEvent.click(screen.getByRole('button', { name: '初階火' }));
     expect(onSlotsChange).toHaveBeenCalledWith([null, null]);
   });
 
-  it('lists the attempt log with percentages and the no-reaction mark', () => {
+  it('shows the attempts as an element table and fills the slots from a cell', () => {
     const s = snap({});
     s.game.synthesisLog = {
       'el:fire:1+el:wind:1': { attempts: 4, results: { none: 4 }, noReaction: true },
       'el:fire:1+el:thunder:1': { attempts: 4, results: { mana_bolt: 1, none: 3 }, noReaction: false },
     };
-    render(<SynthesisPanel {...s} sync={{ synthesize: vi.fn() }} data={gameData} slots={[null, null]} onSlotsChange={() => {}} />);
-    expect(screen.getByText(/初階火 \+ 初階風/)).toBeTruthy();
-    expect(screen.getByText('無反應')).toBeTruthy();
-    expect(screen.getAllByText(/25%/).length).toBeGreaterThan(0);
+    const onSlotsChange = vi.fn();
+    render(<SynthesisPanel {...s} sync={{ synthesize: vi.fn() }} data={gameData} slots={[null, null]} onSlotsChange={onSlotsChange} />);
+    expect(screen.getByRole('button', { name: /^初階火 \+ 初階風：無反應 100%/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^初階雷 \+ 初階火：無反應 75%、魔力彈 25%/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^初階風 \+ 初階火/ }));
+    expect(onSlotsChange).toHaveBeenCalledWith(['el:wind:1', 'el:fire:1']);
   });
 });
