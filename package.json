@@ -1,0 +1,49 @@
+{
+  "name": "infinite-grimoire",
+  "version": "0.1.0",
+  "description": "* **遊戲名稱**：   * **英文**：*Infinite Grimoire*   * **中文**：*《無限魔導書》* * **副標題（可選）**：*Echoes of Alchemy / 殘卷與嬗變之秘* * **遊戲類型**：極簡像素放置合成 × 機率煉金探索 (Minimalist Pixel Idle-Merge Alchemy) * **目標平台**：Web / 行動端與桌面端自適應網頁（支援一鍵存檔至 LocalStorage，便於社群鏈接直接遊玩） * **核心基調**：極簡像素美學、神秘晦澀的魔法書卷感、強烈的不確定性與「稀有出貨」成就感。",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "build": "tsc -b && vite build",
+    "deploy": "npm run build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ronaldzzzzz/InfiniteGrimoire.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Ronaldzzzzz/InfiniteGrimoire/issues"
+  },
+  "homepage": "https://github.com/Ronaldzzzzz/InfiniteGrimoire#readme",
+  "dependencies": {
+    "hono": "^4.13.13",
+    "pixi.js": "^8.22.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.64.0",
+    "@cloudflare/workers-types": "^5.20261021.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^29.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.151.3"
+  },
+  "private": true
+}
