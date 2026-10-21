@@ -25,6 +25,11 @@ describe('ElementTable', () => {
     expect(screen.getAllByRole('row')).toHaveLength(7); // header + 5 elements + materials
   });
 
+  it('sizes the name column from the header row (table-layout: fixed reads the first row)', () => {
+    const { container } = render(<ElementTable inventory={{}} onPick={() => {}} onUpgrade={() => {}} />);
+    expect(container.querySelector('thead th')!.classList.contains('el-name')).toBe(true);
+  });
+
   it('picks the item when a cell is clicked', () => {
     const onPick = vi.fn();
     render(<ElementTable inventory={{ 'el:thunder:2': 3 }} onPick={onPick} onUpgrade={() => {}} />);

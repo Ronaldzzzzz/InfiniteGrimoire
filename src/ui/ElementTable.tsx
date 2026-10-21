@@ -29,7 +29,7 @@ export function ElementTable({
     <table className="element-table">
       <thead>
         <tr>
-          <th scope="col"><span className="sr-only">屬性</span></th>
+          <th scope="col" className="el-name"><span className="sr-only">屬性</span></th>
           {GRADES.map((g) => (
             <th key={g} scope="col">{GRADE_LABEL[g - 1]}</th>
           ))}
