@@ -1,0 +1,75 @@
+:root {
+  --bg: #0d0f14;
+  --panel: #161a22;
+  --line: #2a3140;
+  --text: #e6e9ef;
+  --muted: #8b93a5;
+  --rune: #8fd16a;
+  --gold: #e8b84a;
+  --fire: #e2643b;
+  --wind: #7fd0c0;
+  --thunder: #f3e36b;
+  --earth: #c79a5a;
+  --water: #5aa0e8;
+  --neutral: #b8c7ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, 'Noto Sans TC', sans-serif; overflow-x: hidden; }
+button, input, select { font: inherit; color: inherit; }
+button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer; min-height: 40px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary { background: var(--rune); color: #0d1208; border-color: var(--rune); font-weight: 600; }
+button.primary:disabled { background: var(--panel); color: var(--muted); border-color: var(--line); }
+input, select { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.muted { color: var(--muted); }
+.error { color: var(--fire); }
+
+.screen-center { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; text-align: center; }
+.screen-center h1 { color: var(--gold); margin: 0; }
+.onboarding input { width: min(320px, 100%); }
+
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+.hud { padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.hud-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.hud-zone { color: var(--gold); font-weight: 600; }
+.hud-spell { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.hud-note { margin-top: 4px; color: var(--gold); font-size: 14px; }
+.hud-note.warn { color: var(--fire); }
+
+.main { display: flex; flex: 1; min-height: 0; }
+.battle { flex: 1 1 60%; min-width: 0; min-height: 360px; position: relative; }
+.side { flex: 0 0 380px; max-width: 40%; border-left: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; }
+.tabs { display: flex; }
+.tabs button { flex: 1; border-radius: 0; border-width: 0 0 2px 0; }
+.tabs button.active { border-bottom-color: var(--rune); color: var(--rune); }
+.tab-body { padding: 12px; overflow-y: auto; }
+
+.slots { display: flex; gap: 8px; margin-bottom: 8px; }
+.slot { flex: 1; min-height: 56px; border-style: dashed; }
+.slot.filled { border-style: solid; border-color: var(--gold); }
+.synth-message { min-height: 1.5em; color: var(--gold); }
+.synth-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--muted); border-radius: 4px; color: var(--muted); font-size: 12px; }
+.synthesis h3 { margin: 16px 0 8px; }
+
+.zones { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.zones button { width: 100%; text-align: left; }
+.zones button.current { border-color: var(--rune); }
+
+.inventory { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--panel); }
+.item { display: inline-flex; gap: 2px; }
+.item > button:first-child { border-left: 4px solid var(--neutral); }
+.item.el-fire > button:first-child { border-left-color: var(--fire); }
+.item.el-wind > button:first-child { border-left-color: var(--wind); }
+.item.el-thunder > button:first-child { border-left-color: var(--thunder); }
+.item.el-earth > button:first-child { border-left-color: var(--earth); }
+.item.el-water > button:first-child { border-left-color: var(--water); }
+.item .upgrade { color: var(--gold); border-color: var(--gold); }
+
+.offline-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(13, 15, 20, 0.88); display: flex; align-items: center; justify-content: center; color: var(--gold); font-size: 20px; text-align: center; padding: 16px; }
+
+@media (max-width: 767px) {
+  .main { flex-direction: column; }
+  .battle { flex: 0 0 45vh; min-height: 0; height: 45vh; }
+  .side { flex: 1 1 auto; max-width: none; border-left: 0; border-top: 1px solid var(--line); }
+}
