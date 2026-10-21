@@ -20,10 +20,13 @@ export function ElementTable({
   inventory,
   onPick,
   onUpgrade,
+  upgradeLocked = false,
 }: {
   inventory: Inventory;
   onPick: (id: ItemId) => void;
   onUpgrade: (element: ElementId, grade: number) => void;
+  /** e.g. while a synthesis is in flight, whose reply would undo the upgrade */
+  upgradeLocked?: boolean;
 }) {
   return (
     <table className="element-table">
@@ -57,7 +60,7 @@ export function ElementTable({
                 <button
                   type="button"
                   className="upgrade"
-                  disabled={up === null}
+                  disabled={up === null || upgradeLocked}
                   aria-label={`升階${ELEMENT_LABEL[el]}`}
                   onClick={() => {
                     if (up !== null) onUpgrade(el, up);

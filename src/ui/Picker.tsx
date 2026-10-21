@@ -19,6 +19,7 @@ export function Picker({
   header,
   align = 'left',
   className = '',
+  disabled = false,
 }: {
   buttonLabel: string;
   buttonContent: ReactNode;
@@ -27,6 +28,7 @@ export function Picker({
   header?: ReactNode;
   align?: 'left' | 'right';
   className?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -110,6 +112,7 @@ export function Picker({
         ref={buttonRef}
         type="button"
         className="picker-button"
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
@@ -118,7 +121,7 @@ export function Picker({
       >
         {buttonContent} <span aria-hidden="true">▾</span>
       </button>
-      {open && (
+      {open && !disabled && (
         <div className={`picker-pop picker-pop-${align}`} onKeyDown={onKeyDown} onBlur={onBlur}>
           {header && <div className="picker-header">{header}</div>}
           <ul

@@ -46,6 +46,14 @@ describe('ElementTable', () => {
     expect(onUpgrade).toHaveBeenCalledWith('fire', 1);
   });
 
+  it('can lock 升階 while cells stay pickable', () => {
+    const onPick = vi.fn();
+    render(<ElementTable inventory={{ 'el:fire:1': 5 }} onPick={onPick} onUpgrade={() => {}} upgradeLocked />);
+    expect(btn('升階火').disabled).toBe(true);
+    fireEvent.click(btn('初階火 ×5'));
+    expect(onPick).toHaveBeenCalledWith('el:fire:1');
+  });
+
   it('always shows the mana crystal in the materials row', () => {
     const onPick = vi.fn();
     const { rerender } = render(<ElementTable inventory={{}} onPick={onPick} onUpgrade={() => {}} />);

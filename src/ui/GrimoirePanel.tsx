@@ -20,6 +20,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
 }) {
   const learned = useRuntime(runtime, (s) => s.game.learned);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
+  const synthPending = useRuntime(runtime, (s) => s.synthPending);
   const layout = useMemo(() => layoutGrimoire(Object.values(gameData.spells)), []);
   const pos = useMemo(() => new Map(layout.nodes.map((n) => [n.spellId, n])), [layout]);
   const [zoom, setZoom] = useState(1);
@@ -57,7 +58,8 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const activate = (id: string) => {
     if (learned.includes(id)) {
       onHint(null);
-      runtime.equip(id);
+      // the synthesis reply replaces the game state and would undo the equip
+      if (!synthPending) runtime.equip(id);
     } else onHint(id);
   };
 

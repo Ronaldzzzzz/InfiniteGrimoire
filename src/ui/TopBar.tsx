@@ -20,6 +20,8 @@ export function TopBar({
 }) {
   const game = useGameState(runtime);
   const bossOnField = useRuntime(runtime, (s) => bossAlive(s, data));
+  // the synthesis reply replaces the game state, which would undo a travel / equip made meanwhile
+  const locked = useRuntime(runtime, (s) => s.synthPending);
   const [sort, setSort] = useState<SpellSort>(readSpellSort);
 
   const zone = data.zones.find((z) => z.id === game.currentZone);
@@ -36,12 +38,12 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="topbar-row">
-        <ZonePicker game={game} data={data} onTravel={(id) => runtime.travel(id)} />
+        <ZonePicker game={game} data={data} onTravel={(id) => runtime.travel(id)} disabled={locked} />
         <span className="topbar-equipped only-wide">
           裝備：<b>{spell?.name ?? game.equipped}</b> <span className="muted">Lv.{spell?.tier ?? '-'}</span>
         </span>
         <div className="only-narrow topbar-spell">
-          <SpellPicker game={game} data={data} sort={sort} onSortChange={changeSort} onEquip={(id) => runtime.equip(id)} />
+          <SpellPicker game={game} data={data} sort={sort} onSortChange={changeSort} onEquip={(id) => runtime.equip(id)} disabled={locked} />
         </div>
         {efficiency < 1 && <span className="hud-note">越級：掉落效益 {Math.round(efficiency * 100)}%</span>}
         {stuck && <span className="hud-note warn">{BOSS_HINT}</span>}

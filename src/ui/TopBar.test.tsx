@@ -10,8 +10,8 @@ import { TopBar } from './TopBar';
 
 afterEach(cleanup);
 
-function runtime(game: GameState, battlePatch: Partial<Snapshot['battle']> = {}) {
-  const snapshot: Snapshot = { game, battle: { ...createBattle(game.currentZone), ...battlePatch }, revision: 1, paused: false, synthPending: false };
+function runtime(game: GameState, battlePatch: Partial<Snapshot['battle']> = {}, synthPending = false) {
+  const snapshot: Snapshot = { game, battle: { ...createBattle(game.currentZone), ...battlePatch }, revision: 1, paused: false, synthPending };
   return { getSnapshot: () => snapshot, subscribe: () => () => {}, equip: vi.fn(), travel: vi.fn() } as unknown as GameRuntime;
 }
 
@@ -32,6 +32,12 @@ describe('TopBar', () => {
     const over = { ...createInitialState(gameData), learned: ['mana_bolt', 'explosion'], equipped: 'explosion' };
     render(<TopBar runtime={runtime(over)} data={gameData} status="online" />);
     expect(screen.getByText(/越級：掉落效益 56%/)).toBeTruthy();
+  });
+
+  it('locks zone and spell changes while a synthesis is in flight (its result would undo them)', () => {
+    render(<TopBar runtime={runtime(createInitialState(gameData), {}, true)} data={gameData} status="online" />);
+    expect((screen.getByRole('button', { name: '選擇地點' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: '裝備魔法' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('shows the save error banner when the status is error', () => {

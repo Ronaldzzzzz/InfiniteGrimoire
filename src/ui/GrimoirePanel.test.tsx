@@ -9,9 +9,9 @@ import { GrimoirePanel } from './GrimoirePanel';
 
 afterEach(cleanup);
 
-function fakeRuntime() {
+function fakeRuntime(synthPending = false) {
   const game = createInitialState(gameData);
-  const snapshot: Snapshot = { game, battle: createBattle(game.currentZone), revision: 1, paused: false, synthPending: false };
+  const snapshot: Snapshot = { game, battle: createBattle(game.currentZone), revision: 1, paused: false, synthPending };
   return { getSnapshot: () => snapshot, subscribe: () => () => {}, equip: vi.fn() };
 }
 
@@ -31,6 +31,13 @@ describe('GrimoirePanel', () => {
     render(<GrimoirePanel runtime={rt as unknown as GameRuntime} onHint={onHint} />);
     fireEvent.click(screen.getByRole('button', { name: new RegExp(gameData.spells.fireball.name) }));
     expect(onHint).toHaveBeenCalledWith('fireball');
+    expect(rt.equip).not.toHaveBeenCalled();
+  });
+
+  it('does not equip while a synthesis is in flight', () => {
+    const rt = fakeRuntime(true);
+    render(<GrimoirePanel runtime={rt as unknown as GameRuntime} onHint={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(gameData.spells.mana_bolt.name) }));
     expect(rt.equip).not.toHaveBeenCalled();
   });
 });

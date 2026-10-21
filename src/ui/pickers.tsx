@@ -47,12 +47,14 @@ export function SpellPicker({
   sort,
   onSortChange,
   onEquip,
+  disabled = false,
 }: {
   game: GameState;
   data: GameData;
   sort: SpellSort;
   onSortChange: (s: SpellSort) => void;
   onEquip: (id: string) => void;
+  disabled?: boolean;
 }) {
   const groups = spellPickerGroups(game, data, sort);
   const equipped = data.spells[game.equipped];
@@ -78,6 +80,7 @@ export function SpellPicker({
   return (
     <Picker
       buttonLabel="裝備魔法"
+      disabled={disabled}
       align="right"
       buttonContent={
         <>
@@ -95,7 +98,17 @@ export function SpellPicker({
   );
 }
 
-export function ZonePicker({ game, data, onTravel }: { game: GameState; data: GameData; onTravel: (id: string) => void }) {
+export function ZonePicker({
+  game,
+  data,
+  onTravel,
+  disabled = false,
+}: {
+  game: GameState;
+  data: GameData;
+  onTravel: (id: string) => void;
+  disabled?: boolean;
+}) {
   const rows = zonePickerRows(game, data);
   const current = rows.find((r) => r.status === 'current');
   const items: PickerItem[] = rows.map((r) => ({
@@ -117,6 +130,7 @@ export function ZonePicker({ game, data, onTravel }: { game: GameState; data: Ga
   return (
     <Picker
       buttonLabel="選擇地點"
+      disabled={disabled}
       buttonContent={
         <>
           📍 {current?.name ?? game.currentZone} {current && <span className="muted">{tierRangeLabel(current)}</span>}

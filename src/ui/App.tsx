@@ -34,7 +34,12 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
         </div>
         <div className="side">
           <section className="workbench" aria-label="元素與合成">
-            <ElementTable inventory={game.inventory} onPick={pick} onUpgrade={(el, g) => runtime.upgrade(el, g)} />
+            <ElementTable
+              inventory={game.inventory}
+              onPick={pick}
+              onUpgrade={(el, g) => runtime.upgrade(el, g)}
+              upgradeLocked={synthPending}
+            />
             <SynthesisPanel
               game={game}
               synthPending={synthPending}
