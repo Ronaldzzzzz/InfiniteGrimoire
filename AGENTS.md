@@ -15,6 +15,10 @@
 | `docs/superpowers/sdd/2026-10-21-mvp-core-loop/progress.md` | **實作帳本**：每個任務的完成狀態、審查結果、所有 Ruling（實作時的決策）、延後處理的小問題 |
 | `docs/superpowers/sdd/2026-10-21-mvp-core-loop/task-N-brief.md`、`task-N-report.md` | 每個任務的需求原文與實作報告（含 TDD 證據） |
 | `docs/superpowers/sdd/2026-10-21-mvp-core-loop/final-fix-report.md` | 最終審查後的修正報告（防作弊錨點窗口等） |
+| `docs/superpowers/specs/2026-10-21-v2-roadmap.md` | **第二版路線**：拆成 A 帳號 → B 發現紀錄 → C+D 排行與至尊稱號；C+D 開始前必須先決定的兩個問題 |
+| `docs/superpowers/specs/2026-10-21-v2a-accounts-design.md` | 第二版 A（帳號綁定）設計規格 |
+| `docs/superpowers/plans/2026-10-21-v2a-accounts.md` | 第二版 A 的 11 個任務實作計畫（**下一步就是執行它**） |
+| `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`、`docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`、`docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/` | 試玩回饋修正的規格、計畫、帳本與卡頓量測報告 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
 | `README.md` | 啟動、測試、部署步驟 |
@@ -29,7 +33,10 @@
 - **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
 - **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
 
+- **第二版 A（帳號綁定）：** spec 與計畫已完成並經使用者確認，**程式尚未開始**。
+
 **尚未完成（下一位接手者的待辦）：**
+0. **執行第二版 A 的計畫**：`docs/superpowers/plans/2026-10-21-v2a-accounts.md`。用 superpowers:subagent-driven-development 或 superpowers:executing-plans（使用者上一次選的是 Native／executing-plans）。帳本放 `docs/superpowers/sdd/2026-10-21-v2a-accounts/progress.md`。計畫的 Global Constraints 已列出所有必須遵守的規則（不部署、不 push、401 只代表 token 無效等）。
 1. **使用者試玩新版面**：自動化驗收（headless Edge）已確認 1280／768／360 寬無橫向捲動、選擇器清單留在畫面內、斷線遮罩出現並恢復、三欄版面與殘卷線索位置。**還沒在真實瀏覽器確認**：卡頓感是否消失、燃燒／麻痺／冰凍特效、`beam` 分支光束、連鎖閃電、換地點後怪物角度重新隨機、玩到第三個地點。
 2. **部署（暫緩，2026-10-21 使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。**
 3. **合併**：畫面驗收通過後，由使用者決定合併 `main` 或開 PR。
@@ -92,14 +99,14 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - 各屬性通關時間差距大：風約 27 分鐘，雷、土約 50 分鐘。原因是魔王只有一隻，能同時打兩個目標的魔法佔便宜。
 - 魔王打不動時，玩家要自己退回前一個地點；HUD 有提示，但沒有自動處理。
 - 同一個 token 開多個分頁時，會互相以 409 覆蓋（不算作弊，資料一致）。
-- `/api/guest` 沒有速率限制（第二版處理）。
+- `/api/guest` 沒有速率限制（第二版 A 的計畫 Task 5 處理）。
 - 沒有 WebGL 時，Pixi 初始化失敗沒有提示。
 - 魔導書：滾輪縮放可能捲動頁面、不支援雙指縮放。
 
 ## 9. 下一步路線（規格第 6 節）
 
 1. **第一版收尾**：畫面驗收 → 部署 → 合併。
-2. **第二版**：帳號密碼與 Google 綁定（不存 email）、稀有魔法發現紀錄（首位發現者）、排行榜、每日 UTC+8 午夜結算的至尊稱號（Cron Triggers）。
+2. **第二版**：拆成子專案依序做，詳見 `docs/superpowers/specs/2026-10-21-v2-roadmap.md`：A 帳號密碼（計畫已寫好）→ A2 Google 登入（之後）→ B 稀有魔法發現紀錄 → C+D 排行榜與每日 UTC+8 午夜結算的至尊稱號（開始前先決定「大魔導士稱號」與「內容太少會同分」兩個問題）。
 3. **第三版**：煉金與熟練度、商店、金幣、玩家市集。
 4. **之後**：稱號、轉生（退還 85%）、光暗魔導書、五芒星不相鄰混合、離線收益、禁忌配方卡、天賦、多魔法欄位。
 
@@ -108,6 +115,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-21（Claude Code，Opus 5.5）**：第二版設計開始。與使用者確認把第二版拆成 A 帳號 → B 發現紀錄 → C+D 排行與至尊稱號（`docs/superpowers/specs/2026-10-21-v2-roadmap.md`）。完成 A 的設計討論與 spec（`2026-10-21-v2a-accounts-design.md`）：多裝置各自 session、遊客切換帳號先提醒再捨棄、這次不做 Google、免費方案所以 PBKDF2-SHA256 50,000 次（本機實測 50k≈5ms、100k≈10ms，免費方案 CPU 上限 10ms）、`/api/guest` 每 IP 每小時 10 個。寫計畫時發現並修正 spec：帳密錯誤改回 403（401 會讓用戶端清掉 token）。實作計畫 `docs/superpowers/plans/2026-10-21-v2a-accounts.md`（11 個任務，已確認 vitest 可用 `node:sqlite` 測真正的 SQL 與 migration）。停在：計畫寫好、尚未執行。下一步：執行計畫（見第 3 節待辦 0）。
 
 - **2026-10-21（Claude Code，Opus 5.5）**：處理最終審查延後的 7 個小問題（帳本末段「Deferred minors — resolved」）：選擇器的鍵盤與無障礙（捲動到選中項、aria-activedescendant、焦點離開關閉）、浮字不再飄出畫面上緣、怪物畫面在 uid 重用時重建、元素表名稱欄寬、合成等待回應期間鎖住換地點／換裝備／升階。停在：全部 commit，尚未 push。部署仍暫緩。下一步：由使用者決定（第二版設計或其他試玩調整）。
 

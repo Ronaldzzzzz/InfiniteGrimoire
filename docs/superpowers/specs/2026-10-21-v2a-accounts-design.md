@@ -96,12 +96,14 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 
 所有新 API 都是 JSON，錯誤回應格式沿用現有的 `{ error: string }`。
 
+**401 只代表「token 無效」**：用戶端收到 401 會清掉 token（AGENTS.md 第 6 節的規則），所以「帳號或密碼錯誤」一律回 **403** `invalid_credentials`。否則在帳號對話框改密碼時輸錯舊密碼，玩家會被直接登出。
+
 | 路徑 | 需登入 | 請求 | 成功回應 | 錯誤 |
 |---|---|---|---|---|
 | `POST /api/account/bind` | ✔ | `{ username, password }` | `200 { username }` | 400 格式不符、409 `taken`（帳號名稱已被使用）、409 `already_bound`（這個帳號已經綁定過） |
-| `POST /api/login` | | `{ username, password }` | `200 { token, playerId, state, revision }`（和 `/api/guest` 相同格式） | 400 格式不符、401 `invalid_credentials`、429 `{ error: 'rate_limited', retryAfterSec }` |
+| `POST /api/login` | | `{ username, password }` | `200 { token, playerId, state, revision }`（和 `/api/guest` 相同格式） | 400 格式不符、403 `invalid_credentials`、429 `{ error: 'rate_limited', retryAfterSec }` |
 | `GET /api/account` | ✔ | — | `200 { displayName, username: string \| null, sessions: number }` | 401 |
-| `POST /api/account/password` | ✔ | `{ current, next }` | `200 {}`；刪除這個玩家**其他所有** session | 400、401 `invalid_credentials`（舊密碼錯誤，也算一次登入失敗）、409 `not_bound`、429 |
+| `POST /api/account/password` | ✔ | `{ current, next }` | `200 {}`；刪除這個玩家**其他所有** session | 400、403 `invalid_credentials`（舊密碼錯誤，也算一次登入失敗）、409 `not_bound`、429 |
 | `POST /api/account/logout-others` | ✔ | — | `200 { sessions: 1 }` | 401 |
 | `POST /api/logout` | ✔ | — | `200 {}`；刪除這台裝置的 session | 409 `not_bound`（遊客不能登出） |
 | `POST /api/guest`（既有） | | 不變 | 不變；改成寫入 `sessions` | 新增 429 `rate_limited`（同一個 IP 一小時內已建立 10 個） |
@@ -118,7 +120,7 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 - 登入成功不會清除失敗紀錄（避免攻擊者夾雜正確密碼來重置計數）。
 
 **不透露帳號是否存在**
-- 帳號不存在時，仍然用一組固定的假雜湊跑一次 PBKDF2 再回 401，讓回應時間和密碼錯誤時一樣。
+- 帳號不存在時，仍然用一組固定的假雜湊跑一次 PBKDF2 再回 403，讓回應時間和密碼錯誤時一樣。
 - 錯誤代碼都是 `invalid_credentials`。
 
 **密碼雜湊**
@@ -164,7 +166,7 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 | 情況 | 訊息 |
 |---|---|
 | 409 `taken` | 這個帳號名稱已被使用 |
-| 401 `invalid_credentials` | 帳號或密碼錯誤 |
+| 403 `invalid_credentials` | 帳號或密碼錯誤 |
 | 429 `rate_limited` | 嘗試次數過多，請 N 分鐘後再試（N 由 `retryAfterSec` 無條件進位） |
 | 格式不符 | 在欄位旁即時提示：帳號名稱的長度或字元、密碼長度、兩次密碼不一致 |
 | 網路錯誤 | 連線異常，請稍後再試（對話框內顯示，不觸發斷線遮罩） |
@@ -177,7 +179,7 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 - 綁定：成功；帳號名稱已被使用（大小寫不同、全形半形不同都算同一個）；已綁定再綁；格式不符。
 - 登入：成功時建立新的 session，舊裝置的 token 仍然有效；密碼錯誤和帳號不存在回傳相同的錯誤代碼。
 - 嘗試次數限制：同帳號第 6 次、同 IP 第 21 次失敗後回 429；超過 15 分鐘後恢復；登入成功不清除失敗紀錄；達到上限時不驗證密碼。
-- 改密碼：其他 session 回 401，目前這台仍可用；舊密碼錯誤算一次失敗。
+- 改密碼：其他 session 回 401，目前這台仍可用；舊密碼錯誤回 403 並算一次失敗。
 - 登出：遊客回 409；已綁定的玩家登出後，這個 token 回 401；「登出其他裝置」只留下目前這台。
 - `/api/guest`：同一個 IP 一小時內第 11 次回 429。
 - 雜湊：格式正確、驗證正確、迭代次數較低時登入後會升級。
