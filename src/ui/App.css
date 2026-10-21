@@ -93,3 +93,17 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .picker-option.active { background: #1f2531; }
 .picker-option.selected { border-color: var(--gold); }
 .picker-option[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.element-table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+.element-table th { font-weight: 600; font-size: 13px; color: var(--muted); }
+.element-table th.el-name { width: 2.5em; font-size: 16px; }
+.element-table .el-fire { color: var(--fire); }
+.element-table .el-wind { color: var(--wind); }
+.element-table .el-thunder { color: var(--thunder); }
+.element-table .el-earth { color: var(--earth); }
+.element-table .el-water { color: var(--water); }
+.element-table .cell { width: 100%; min-height: 40px; padding: 4px; font-variant-numeric: tabular-nums; }
+.element-table .cell.mat { width: auto; margin-right: 4px; }
+.element-table .upgrade { width: 100%; padding: 4px; color: var(--gold); border-color: var(--gold); font-size: 13px; }
+.element-table .upgrade:disabled { color: var(--muted); border-color: var(--line); }
+.element-table .mat-row td { text-align: left; }
