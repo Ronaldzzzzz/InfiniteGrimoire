@@ -61,4 +61,14 @@ describe('App layout', () => {
     fireEvent.click(screen.getByRole('button', { name: gameData.spells.mana_bolt.name }));
     expect(screen.queryByText(hint)).toBeNull();
   });
+
+  it('also shows the hint right under the grimoire (narrow screens stack the grimoire below the slots)', () => {
+    setup();
+    const hint = gameData.spells.fireball.hint;
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${gameData.spells.fireball.name}（未學會）`) }));
+    const grimoire = screen.getByRole('region', { name: '魔導書' });
+    const below = grimoire.querySelector('.grimoire-hint');
+    expect(below?.classList.contains('only-narrow')).toBe(true);
+    expect(below?.textContent).toContain(hint);
+  });
 });

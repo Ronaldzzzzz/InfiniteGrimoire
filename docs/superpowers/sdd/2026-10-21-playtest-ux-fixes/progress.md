@@ -38,3 +38,16 @@ Task 10: browser 800px: bitmap damage numbers render, boss hp bar shrinks, 768-1
 Task 10: complete (commits 6338dd3..ccf5600, tests: .superpowers/sdd/2026-10-21-playtest-ux-fixes/suite.sh →       Tests  253 passed (253))
 Task 11: acceptance (headless Edge): scrollWidth==innerWidth at 1280/768/360; zone picker popup inside viewport at all three, spell picker inside at 360 (hidden ≥768 by design); offline overlay shown and cleared (simulated by failing /api fetch in-page — Edge CDP rejects Network.emulateNetworkConditions and Fetch.enable); perf after: React 20/s → 0/s in battle, no long tasks during battle/synth.
 Task 11: Ruling: offline simulated by wrapping window.fetch to reject /api/ with TypeError (same error class as a real network drop) — CDP offline unsupported in this Edge — cost if wrong: does not exercise browser 'offline' events.
+
+## Final review（fresh reviewer, Opus；range 74443d8..6ff4571）
+Final: fixed battle canvas clipped on short screens (host minHeight 200 > 25vh/40vh box) — BattleCanvas.test 'lets the .battle box decide the height' RED→GREEN, suite 34 files / 255 passed; browser 360×560 box/canvas 140/139, 844×390 156/155.
+Final: fixed hint off-screen on phones (grimoire stacked below slots) — App.test 'also shows the hint right under the grimoire' RED→GREEN, suite 34 files / 255 passed.
+Final: Ruling: on very short battle boxes (≤ ~160px) the stop ring's lower bound can exceed the box, so part of a stopped boss/ring is clipped — 'never overlap the hero' wins per Task 8 — cost if wrong: boss partly hidden on phone landscape.
+Final: Ruling (declined-to-judge): Pixi BitmapText / beam sprite branch / shared BitmapFont after Application re-create not verifiable without running Pixi — build + headless screenshots show damage numbers rendering; re-create path (after 401) untested — cost if wrong: damage numbers missing after re-login.
+Final: minor (deferred): Picker arrow keys don't scrollIntoView the active option in long lists.
+Final: minor (deferred): Picker lacks aria-activedescendant / option ids / aria-controls.
+Final: minor (deferred): Picker keys only work while the <ul> has focus; no close on focusout.
+Final: minor (deferred): floating text clamped to the top edge drifts back off-screen as it rises.
+Final: minor (deferred): ElementTable name column width 2.5em never applies (table-layout fixed takes header row).
+Final: minor (deferred): BattleView matches views by uid only; safe today via per-frame cleanup, fragile if spawn timing changes.
+Final: minor (deferred): travel/equip/upgrade made during an in-flight synthesis are reverted by replaceState (pre-existing in sync.ts, easier to hit now).

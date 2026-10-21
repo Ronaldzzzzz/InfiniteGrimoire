@@ -47,6 +47,12 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
           </section>
           <section className="grimoire-col" aria-label="魔導書">
             <GrimoirePanel runtime={runtime} onHint={setHintId} />
+            {/* <768px the slots are scrolled out of view above the grimoire, so repeat the hint here */}
+            {hint && (
+              <div className="grimoire-hint only-narrow" aria-live="polite">
+                {hint}
+              </div>
+            )}
           </section>
         </div>
       </main>
