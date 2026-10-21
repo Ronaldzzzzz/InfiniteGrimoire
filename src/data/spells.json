@@ -80,7 +80,7 @@
     "nameEn": "Explosion",
     "tier": 5,
     "attack": 80,
-    "cooldownMs": 2600,
+    "cooldownMs": 2000,
     "pattern": "nova",
     "hint": "殘卷：最高階的火元素與魔力結晶共鳴，將引發毀滅性的爆炸。",
     "grimoire": {
@@ -212,7 +212,7 @@
     "nameEn": "Thunderstorm",
     "tier": 5,
     "attack": 80,
-    "cooldownMs": 2600,
+    "cooldownMs": 2000,
     "pattern": "nova",
     "hint": "殘卷：雷與魔力結晶共鳴，天空將降下雷暴。",
     "grimoire": {
@@ -275,7 +275,7 @@
     "nameEn": "Earthquake",
     "tier": 5,
     "attack": 80,
-    "cooldownMs": 2600,
+    "cooldownMs": 2000,
     "pattern": "nova",
     "hint": "殘卷：土與魔力結晶共鳴，大地將為之震動。",
     "grimoire": {
@@ -343,7 +343,7 @@
     "nameEn": "Tsunami",
     "tier": 5,
     "attack": 80,
-    "cooldownMs": 2600,
+    "cooldownMs": 2000,
     "pattern": "nova",
     "hint": "殘卷：水與魔力結晶共鳴，巨浪將席捲而來。",
     "grimoire": {

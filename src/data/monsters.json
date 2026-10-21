@@ -190,6 +190,12 @@
         "max": 1
       },
       {
+        "itemId": "el:fire:2",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
         "itemId": "mat:mana_crystal",
         "chance": 0.05,
         "min": 1,
@@ -223,6 +229,12 @@
       {
         "itemId": "el:water:1",
         "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.1,
         "min": 1,
         "max": 1
       },
@@ -379,7 +391,7 @@
     "id": "cinder_wisp",
     "name": "餘燼火靈",
     "nameEn": "Cinder Wisp",
-    "element": "thunder",
+    "element": "fire",
     "tier": 5,
     "hp": 500,
     "defense": 50,
@@ -387,7 +399,7 @@
     "boss": false,
     "drops": [
       {
-        "itemId": "el:thunder:1",
+        "itemId": "el:fire:1",
         "chance": 0.6,
         "min": 1,
         "max": 1
@@ -395,12 +407,6 @@
       {
         "itemId": "el:thunder:2",
         "chance": 0.2,
-        "min": 1,
-        "max": 1
-      },
-      {
-        "itemId": "el:fire:2",
-        "chance": 0.15,
         "min": 1,
         "max": 1
       },
@@ -430,9 +436,9 @@
     "nameEn": "Ash Dragon",
     "element": "fire",
     "tier": 6,
-    "hp": 4000,
+    "hp": 28000,
     "defense": 80,
-    "regenPerSec": 6,
+    "regenPerSec": 2,
     "boss": true,
     "drops": [
       {
