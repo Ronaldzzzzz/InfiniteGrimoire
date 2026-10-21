@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { gameData } from './engine/data';
 import { createRng } from './engine/rng';
 import type { GameState } from './engine/state';
-import { createApiClient, NetworkError, type ApiClient } from './game/api';
+import { createApiClient, type ApiClient } from './game/api';
+import { classifyBootError } from './game/boot';
 import { startLoop } from './game/loop';
 import { GameRuntime } from './game/runtime';
 import { readToken, TOKEN_KEY, writeToken } from './game/session';
@@ -48,11 +49,10 @@ function Boot() {
     try {
       start(await api.loadSave());
     } catch (e) {
-      if (e instanceof NetworkError) setPhase({ kind: 'offline' });
-      else {
+      if (classifyBootError(e) === 'auth') {
         clearToken();
         setPhase({ kind: 'onboarding' });
-      }
+      } else setPhase({ kind: 'offline' });
     }
   }, [start]);
 

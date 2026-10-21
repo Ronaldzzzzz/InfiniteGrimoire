@@ -48,7 +48,7 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
             {tab === 'synthesis' && (
               <SynthesisPanel snapshot={snapshot} sync={sync} data={data} slots={slots} onSlotsChange={setSlots} />
             )}
-            {tab === 'grimoire' && <div className="grimoire-placeholder" />}
+            {tab === 'grimoire' && <div className="grimoire-placeholder">魔導書（敬請期待）</div>}
             {tab === 'map' && <ZonePanel snapshot={snapshot} data={data} runtime={runtime} />}
           </div>
         </aside>
