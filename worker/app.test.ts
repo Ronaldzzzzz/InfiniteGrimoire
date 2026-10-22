@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engine/battle';
-import { gameData } from '../src/engine/data';
-import { createRng } from '../src/engine/rng';
-import { createInitialState, type GameState } from '../src/engine/state';
-import { ELEMENT_ORDER } from '../src/engine/types';
+import { GAIN_SLACK, GAIN_TOLERANCE, maxGain } from '../src/engine/audit';
+import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engine/combat';
+import { content } from '../src/engine/content';
 import { elementEquivalent } from '../src/engine/inventory';
-import { GAIN_SLACK, GAIN_TOLERANCE, maxGain } from '../src/engine/validate';
+import type { Content, GameState } from '../src/engine/model';
+import { createInitialState } from '../src/engine/persist';
+import { createRng } from '../src/engine/rng';
+import { craftedId } from '../src/engine/spells';
+import { ELEMENT_ORDER } from '../src/engine/types';
 import { ANCHOR_ADVANCE_MS, createApp, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
 import { hashToken, toBase64Url } from './auth';
 import { MemoryStore, type SaveRow } from './store';
@@ -17,10 +19,13 @@ let store: MemoryStore;
 let clock: number;
 let app: ReturnType<typeof createApp>;
 
+const makeApp = (c: Content = content, pepper = 'test-pepper') =>
+  createApp({ store, now: () => clock, rng: () => createRng(1), content: c, pepper });
+
 beforeEach(() => {
   store = new MemoryStore();
   clock = 1_000_000;
-  app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData, pepper: 'test-pepper' });
+  app = makeApp();
 });
 
 const json = (body: unknown, token?: string, method = 'POST'): RequestInit => ({
@@ -34,7 +39,15 @@ async function guest(name = 'Mage') {
   return { res, body: (await res.json()) as { token: string; playerId: string; state: GameState; revision: number } };
 }
 
-const withInv = (inventory: Record<string, number>): GameState => ({ ...createInitialState(gameData), inventory });
+const initial = () => createInitialState(content);
+const withInv = (inventory: Record<string, number>): GameState => ({ ...initial(), inventory });
+const saved = (playerId: string) => JSON.parse(store.saves.get(playerId)!.state) as GameState;
+
+type ActionOut = { result: { kind: string; reason?: string; spellId?: string }; state: GameState; revision: number; reason?: string; reasons?: string[] };
+async function action(path: string, body: Record<string, unknown>, token: string) {
+  const res = await app.request(path, json(body, token));
+  return { status: res.status, out: (await res.json()) as ActionOut };
+}
 
 describe('createApp', () => {
   it('GET /api/health returns { ok: true }', async () => {
@@ -63,7 +76,7 @@ describe('POST /api/guest', () => {
     const { res, body } = await guest('  Mage  ');
     expect(res.status).toBe(201);
     expect(body.revision).toBe(0);
-    expect(body.state).toEqual(createInitialState(gameData));
+    expect(body.state).toEqual(initial());
     expect(body.token.length).toBeGreaterThanOrEqual(43);
     expect(store.players.get(body.playerId)?.displayName).toBe('Mage');
     expect(store.sessions.get(await hashToken(body.token))?.playerId).toBe(body.playerId);
@@ -92,7 +105,9 @@ describe('auth', () => {
     expect((await app.request('/api/save')).status).toBe(401);
     expect((await app.request('/api/save', { headers: { authorization: 'Bearer nope' } })).status).toBe(401);
     expect((await app.request('/api/save', json({}, undefined, 'PUT'))).status).toBe(401);
-    expect((await app.request('/api/synthesize', json({}))).status).toBe(401);
+    for (const path of ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive']) {
+      expect((await app.request(path, json({}))).status, path).toBe(401);
+    }
   });
 
   it('touches last_seen_at at most once an hour', async () => {
@@ -146,6 +161,9 @@ describe('save', () => {
     expect(a.status).toBe(400);
     const b = await app.request('/api/save', json({ state: body.state }, body.token, 'PUT'));
     expect(b.status).toBe(400);
+    // an unparseable server field (equipped spell not learned) is malformed, not a 422
+    const c = await app.request('/api/save', json({ state: { ...body.state, equipped: 'fireball' }, baseRevision: 0 }, body.token, 'PUT'));
+    expect(c.status).toBe(400);
   });
 
   it('tampered upload returns 422 and keeps old save', async () => {
@@ -160,7 +178,32 @@ describe('save', () => {
     expect(out.state).toEqual(body.state);
     expect(out.revision).toBe(0);
     expect(store.saves.get(body.playerId)?.revision).toBe(0);
-    expect(JSON.parse(store.saves.get(body.playerId)!.state)).toEqual(body.state);
+    expect(saved(body.playerId)).toEqual(body.state);
+  });
+
+  it('rejects forged crafted spells, levels, reveals and passives', async () => {
+    const { body } = await guest();
+    clock += 60_000;
+    const forged = craftedId('fireball', 'mat:ember_core');
+    const cases: [Partial<GameState>, string][] = [
+      [{ learned: ['mana_bolt', forged], equipped: forged }, 'learned spells changed'],
+      [{ learned: ['mana_bolt', 'fireball'] }, 'learned spells changed'],
+      [{ levels: { mana_bolt: 9 } }, 'levels changed'],
+      [{ revealed: ['outer'] }, 'revealed changed'],
+      [{ passives: ['ember_affinity'] }, 'passives changed'],
+      [{ synthesisLog: { 'el:fire:1+el:fire:1': { attempts: 1, results: { fireball: 1 }, noReaction: false } } }, 'synthesisLog changed'],
+    ];
+    for (const [change, reason] of cases) {
+      const res = await app.request('/api/save', json({ state: { ...body.state, ...change }, baseRevision: 0 }, body.token, 'PUT'));
+      expect(res.status, reason).toBe(422);
+      const out = (await res.json()) as { reason: string; reasons: string[] };
+      expect(out.reason).toBe('rejected');
+      expect(out.reasons).toContain(reason);
+    }
+    // key items are bounded by what bosses can drop: no slack
+    const keys = await app.request('/api/save', json({ state: withInv({ 'key:storm_heart': 100 }), baseRevision: 0 }, body.token, 'PUT'));
+    expect(keys.status).toBe(422);
+    expect(saved(body.playerId)).toEqual(body.state);
   });
 
   it('five rejections in 24h marks suspicious', async () => {
@@ -185,65 +228,98 @@ describe('synthesize', () => {
   it('learns spell server-side', async () => {
     const { body } = await guest();
     clock += 3_600_000;
-    const res = await app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs }, body.token));
-    expect(res.status).toBe(200);
-    const out = (await res.json()) as { result: { kind: string }; state: GameState; revision: number };
+    const { status, out } = await action('/api/synthesize', { state: thunder2(), baseRevision: 0, inputs }, body.token);
+    expect(status).toBe(200);
     expect(out.result.kind).toBe('learned');
-    expect(out.state.learned).toContain('thunder_bolt');
+    expect(out.state.learned).toContain('lightning');
     expect(out.revision).toBe(1);
     expect(store.synthEvents).toEqual([
-      { playerId: body.playerId, at: clock, combo: 'el:thunder:1+el:thunder:1', result: 'learned:thunder_bolt' },
+      { playerId: body.playerId, at: clock, combo: 'el:thunder:1+el:thunder:1', result: 'learned:lightning' },
     ]);
-    expect(JSON.parse(store.saves.get(body.playerId)!.state).learned).toContain('thunder_bolt');
+    expect(saved(body.playerId).learned).toContain('lightning');
+  });
+
+  it('synthesize crafts a spell and the next upload keeps it', async () => {
+    const { body } = await guest();
+    clock += 3_600_000;
+    const start = withInv({ 'el:fire:1': 3, 'mat:ember_core': 1 });
+    const first = await action('/api/synthesize', { state: start, baseRevision: 0, inputs: ['el:fire:1', 'el:fire:1'] }, body.token);
+    expect(first.out.result.kind).toBe('learned');
+    clock += 1000;
+    const second = await action('/api/synthesize', { state: first.out.state, baseRevision: 1, inputs: ['fireball', 'mat:ember_core'] }, body.token);
+    expect(second.status).toBe(200);
+    const id = craftedId('fireball', 'mat:ember_core');
+    expect(second.out.result).toEqual({ kind: 'learned', spellId: id, crafted: true });
+    expect(second.out.state.learned).toEqual(['mana_bolt', 'fireball', id]);
+    // the fusion cost (one grade-1 fire for a depth-1 spell) and the material are spent
+    expect(second.out.state.inventory).toEqual({});
+    clock += 1000;
+    const next = { ...second.out.state, equipped: id };
+    expect((await app.request('/api/save', json({ state: next, baseRevision: 2 }, body.token, 'PUT'))).status).toBe(200);
+    expect(saved(body.playerId).equipped).toBe(id);
   });
 
   it('ignores client-claimed learned spells', async () => {
     const { body } = await guest();
     clock += 3_600_000;
-    const claimed = { ...thunder2(), learned: [...createInitialState(gameData).learned, 'lightning'] };
-    const res = await app.request('/api/synthesize', json({ state: claimed, baseRevision: 0, inputs }, body.token));
-    expect(res.status).toBe(422);
-    const out = (await res.json()) as { reasons: string[] };
+    const claimed = { ...thunder2(), learned: ['mana_bolt', 'fireball'] };
+    const { status, out } = await action('/api/synthesize', { state: claimed, baseRevision: 0, inputs }, body.token);
+    expect(status).toBe(422);
     expect(out.reasons).toContain('learned spells changed');
     expect(store.synthEvents).toHaveLength(0);
   });
 
-  it('engine rejection is 200 and consumes nothing', async () => {
+  it('a rejected action returns 422 with the result and does not write', async () => {
     const { body } = await guest();
     clock += 3_600_000;
-    const res = await app.request(
-      '/api/synthesize',
-      json({ state: thunder2(), baseRevision: 0, inputs: ['el:thunder:1'] }, body.token),
-    );
-    expect(res.status).toBe(200);
-    const out = (await res.json()) as { result: unknown; state: GameState };
-    expect(out.result).toEqual({ kind: 'rejected', reason: 'slots' });
-    expect(out.state.inventory).toEqual({ 'el:thunder:1': 2 });
+    for (const bad of [['el:thunder:1'], ['constructor', 'el:thunder:1'], ['el:dark:1', 'el:thunder:1'], ['__proto__', 'lightning']]) {
+      const { status, out } = await action('/api/synthesize', { state: thunder2(), baseRevision: 0, inputs: bad }, body.token);
+      expect(status, bad.join('+')).toBe(422);
+      expect(out.reason).toBe('rejected');
+      expect(out.result.kind).toBe('rejected');
+      expect(out.state).toEqual(body.state);
+      expect(out.revision).toBe(0);
+    }
+    const one = await action('/api/synthesize', { state: thunder2(), baseRevision: 0, inputs: ['el:thunder:1'] }, body.token);
+    expect(one.out.result).toEqual({ kind: 'rejected', reason: 'slots' });
+    expect(store.saves.get(body.playerId)?.revision).toBe(0);
+    expect(store.synthEvents).toHaveLength(0);
+    // an engine rejection is not a cheating attempt
+    expect(store.rejections).toHaveLength(0);
   });
 
-  it('inputs that are not item ids return 400 and commit nothing', async () => {
+  it('an over-long input is 400', async () => {
     const { body } = await guest();
     clock += 30_000;
-    for (const bad of [['constructor', 'constructor'], ['el:thunder:1', '__proto__'], ['el:dark:1', 'el:thunder:1']]) {
+    const long = `c(${'x'.repeat(600)}|fireball)`;
+    for (const bad of [[long, 'el:thunder:1'], ['el:thunder:1', 'el:thunder:1', 'el:thunder:1'], ['el:thunder:1', 7], 'el:thunder:1']) {
       const res = await app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs: bad }, body.token));
-      expect(res.status, bad.join('+')).toBe(400);
+      expect(res.status, JSON.stringify(bad).slice(0, 40)).toBe(400);
+    }
+    for (const [path, field] of [['/api/empower', 'spellId'], ['/api/reveal', 'keyItem'], ['/api/passive', 'passiveId']] as const) {
+      for (const bad of [long, '', 3, undefined]) {
+        const res = await app.request(path, json({ state: thunder2(), baseRevision: 0, [field]: bad }, body.token));
+        expect(res.status, `${path} ${String(bad).slice(0, 10)}`).toBe(400);
+      }
     }
     expect(store.saves.get(body.playerId)?.revision).toBe(0);
     expect(store.synthEvents).toHaveLength(0);
   });
 
   it('a synthesis result that fails parseState is a 500 and is not committed', async () => {
-    // a recipe whose outcome is not a known spell cannot come from real data; it stands in for any engine bug
-    const broken = {
-      ...gameData,
-      recipes: [...gameData.recipes, { id: 'ghost', inputs: ['mat:slime_gel', 'mat:slime_gel'], outcomes: [{ spellId: 'ghost', weight: 1 }] }],
+    // a named spell whose id is too long to resolve cannot come from real data; it stands in for any engine bug
+    const ghost = 'g'.repeat(600);
+    const broken: Content = {
+      ...content,
+      spells: { ...content.spells, [ghost]: { ...content.spells.fireball!, id: ghost, prerequisites: [] } },
+      recipes: [...content.recipes, { id: 'ghost', inputs: ['mat:ember_core', 'mat:ember_core'], outcomes: [{ spellId: ghost, weight: 1 }] }],
     };
-    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: broken, pepper: 'test-pepper' });
+    app = makeApp(broken);
     const { body } = await guest();
     clock += 30_000;
     const res = await app.request(
       '/api/synthesize',
-      json({ state: withInv({ 'mat:slime_gel': 2 }), baseRevision: 0, inputs: ['mat:slime_gel', 'mat:slime_gel'] }, body.token),
+      json({ state: withInv({ 'mat:ember_core': 2, 'el:fire:1': 1 }), baseRevision: 0, inputs: ['mat:ember_core', 'mat:ember_core'] }, body.token),
     );
     expect(res.status).toBe(500);
     expect(store.saves.get(body.playerId)?.revision).toBe(0);
@@ -266,7 +342,7 @@ describe('synthesize', () => {
       }
     }
     store = new GatedStore();
-    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData, pepper: 'test-pepper' });
+    app = makeApp();
     const { body } = await guest();
     clock += 3_600_000;
     const send = () => app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs }, body.token));
@@ -276,10 +352,70 @@ describe('synthesize', () => {
     const lost = (await loser.json()) as { reason: string; state: GameState; revision: number };
     expect(lost.reason).toBe('conflict');
     expect(lost.revision).toBe(1);
-    const saved = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
-    expect(saved.inventory['el:thunder:1'] ?? 0).toBe(0);
+    expect(saved(body.playerId).inventory['el:thunder:1'] ?? 0).toBe(0);
     expect(store.saves.get(body.playerId)?.revision).toBe(1);
     expect(store.synthEvents).toHaveLength(1);
+  });
+});
+
+describe('empower, reveal and passive', () => {
+  /** A guest who learned fireball through the API (revision 1), with `extra` items on top. */
+  async function withFireball(extra: Record<string, number>) {
+    const { body } = await guest();
+    clock += 3_600_000;
+    const start = withInv({ ...extra, 'el:fire:1': 2 + (extra['el:fire:1'] ?? 0) });
+    const r = await action('/api/synthesize', { state: start, baseRevision: 0, inputs: ['el:fire:1', 'el:fire:1'] }, body.token);
+    expect(r.out.state.learned).toContain('fireball');
+    clock += 1000;
+    return { token: body.token, playerId: body.playerId, state: r.out.state, revision: r.out.revision };
+  }
+
+  it('empower spends elements and raises the level', async () => {
+    const g = await withFireball({ 'el:fire:1': 5 });
+    const { status, out } = await action('/api/empower', { state: g.state, baseRevision: 1, spellId: 'fireball' }, g.token);
+    expect(status, JSON.stringify(out)).toBe(200);
+    expect(out.result).toEqual({ kind: 'empowered', level: 2 });
+    expect(out.state.levels).toEqual({ fireball: 2 });
+    expect(out.state.inventory).toEqual({ 'el:fire:1': 1 });
+    expect(saved(g.playerId).levels).toEqual({ fireball: 2 });
+    // the spent elements are charged to the anchor (the synthesis result, 5 fire): restoring them is a gain to explain
+    expect(JSON.parse(store.saves.get(g.playerId)!.anchorState).inventory['el:fire:1']).toBe(1);
+    // mana_bolt has no element to empower with
+    const none = await action('/api/empower', { state: out.state, baseRevision: 2, spellId: 'mana_bolt' }, g.token);
+    expect(none.status).toBe(422);
+    expect(none.out.result).toEqual({ kind: 'rejected', reason: 'noElements' });
+    // and the level is server-owned: the next upload must keep it
+    clock += 1000;
+    const dropped = await app.request('/api/save', json({ state: { ...out.state, levels: {} }, baseRevision: 2 }, g.token, 'PUT'));
+    expect(dropped.status).toBe(422);
+  });
+
+  it('reveal consumes the key item', async () => {
+    const g = await withFireball({ 'key:storm_heart': 1 });
+    const { status, out } = await action('/api/reveal', { state: g.state, baseRevision: 1, keyItem: 'key:storm_heart' }, g.token);
+    expect(status).toBe(200);
+    expect(out.result).toEqual({ kind: 'revealed', region: 'outer' });
+    expect(out.state.revealed).toEqual(['outer']);
+    expect(out.state.inventory['key:storm_heart']).toBeUndefined();
+    const again = await action('/api/reveal', { state: out.state, baseRevision: 2, keyItem: 'key:storm_heart' }, g.token);
+    expect(again.status).toBe(422);
+    expect(again.out.result.kind).toBe('rejected');
+    expect(saved(g.playerId).revealed).toEqual(['outer']);
+  });
+
+  it('passive unlock respects the fog', async () => {
+    const g = await withFireball({ 'mat:ember_core': 5, 'key:storm_heart': 1 });
+    const hidden = await action('/api/passive', { state: g.state, baseRevision: 1, passiveId: 'ember_affinity' }, g.token);
+    expect(hidden.status).toBe(422);
+    expect(hidden.out.result).toEqual({ kind: 'rejected', reason: 'hidden' });
+    const shown = await action('/api/reveal', { state: g.state, baseRevision: 1, keyItem: 'key:storm_heart' }, g.token);
+    const { status, out } = await action('/api/passive', { state: shown.out.state, baseRevision: 2, passiveId: 'ember_affinity' }, g.token);
+    expect(status).toBe(200);
+    expect(out.result).toEqual({ kind: 'unlocked' });
+    expect(out.state.passives).toEqual(['ember_affinity']);
+    expect(out.state.inventory['mat:ember_core']).toBeUndefined();
+    const unknown = await action('/api/passive', { state: out.state, baseRevision: 3, passiveId: 'constructor' }, g.token);
+    expect(unknown.out.result).toEqual({ kind: 'rejected', reason: 'unknown' });
   });
 });
 
@@ -312,10 +448,7 @@ describe('window cap', () => {
     expect(MAX_WINDOW_MS).toBe(180_000);
     const { body } = await guest();
     clock += 8 * 3_600_000;
-    const res = await app.request(
-      '/api/save',
-      json({ state: withInv({ 'el:fire:1': 500 }), baseRevision: 0 }, body.token, 'PUT'),
-    );
+    const res = await app.request('/api/save', json({ state: withInv({ 'el:fire:1': 5000 }), baseRevision: 0 }, body.token, 'PUT'));
     expect(res.status).toBe(422);
   });
   it('synthesize is capped by the same window', async () => {
@@ -323,7 +456,7 @@ describe('window cap', () => {
     clock += 8 * 3_600_000;
     const res = await app.request(
       '/api/synthesize',
-      json({ state: withInv({ 'el:fire:1': 500, 'el:thunder:1': 2 }), baseRevision: 0, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token),
+      json({ state: withInv({ 'el:fire:1': 5000, 'el:thunder:1': 2 }), baseRevision: 0, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token),
     );
     expect(res.status).toBe(422);
     expect(store.synthEvents).toHaveLength(0);
@@ -333,12 +466,12 @@ describe('window cap', () => {
 describe('anchor window', () => {
   /** The honest bound for `ms` of play from the initial state, per element. */
   const honestLimit = (ms: number) => {
-    const b = maxGain(createInitialState(gameData), ms, gameData);
+    const b = maxGain(initial(), ms, content);
     return Object.fromEntries(ELEMENT_ORDER.map((e) => [e, b.elements[e] * GAIN_TOLERANCE + GAIN_SLACK]));
   };
   /** Adds the full per-upload 100 ms allowance (tolerance + slack) on top of `prev`. */
   const inflate = (prev: GameState): GameState => {
-    const b = maxGain(prev, 100, gameData);
+    const b = maxGain(prev, 100, content);
     const inventory = { ...prev.inventory };
     for (const e of ELEMENT_ORDER) {
       const extra = Math.floor(b.elements[e] * GAIN_TOLERANCE + GAIN_SLACK);
@@ -367,9 +500,8 @@ describe('anchor window', () => {
       }
     }
     expect(rejected).toBeGreaterThan(0);
-    const saved = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
     const limit = honestLimit(30_000);
-    for (const e of ELEMENT_ORDER) expect(gainOf(saved, e), e).toBeLessThan(2 * limit[e]!);
+    for (const e of ELEMENT_ORDER) expect(gainOf(saved(body.playerId), e), e).toBeLessThan(2 * limit[e]!);
   });
 
   it('high-frequency synthesize calls cannot accumulate per-call allowances either', async () => {
@@ -380,20 +512,16 @@ describe('anchor window', () => {
     for (let i = 0; i < 300; i++) {
       clock += 100;
       const claim = inflate(accepted);
-      // a one-slot synth is an engine rejection: 200, nothing consumed, but it commits the claim
-      const res = await app.request('/api/synthesize', json({ state: claim, baseRevision: revision, inputs: ['el:fire:1'] }, body.token));
-      const out = (await res.json()) as { revision: number; state: GameState };
+      // no recipe for fire + water: a logged no-reaction that consumes nothing but commits the claim
+      const { status, out } = await action('/api/synthesize', { state: claim, baseRevision: revision, inputs: ['el:fire:1', 'el:water:1'] }, body.token);
       revision = out.revision;
-      if (res.status === 200) accepted = out.state;
-      else {
-        rejected++;
-        accepted = out.state;
-      }
+      if (status !== 200) rejected++;
+      else expect(out.result.kind).toBe('noReaction');
+      accepted = out.state;
     }
     expect(rejected).toBeGreaterThan(0);
-    const saved = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
     const limit = honestLimit(30_000);
-    for (const e of ELEMENT_ORDER) expect(gainOf(saved, e), e).toBeLessThan(2 * limit[e]!);
+    for (const e of ELEMENT_ORDER) expect(gainOf(saved(body.playerId), e), e).toBeLessThan(2 * limit[e]!);
   });
 
   it('an honest client uploading every 30 s for 10 minutes is never rejected', async () => {
@@ -426,22 +554,18 @@ describe('anchor window', () => {
     const s1 = withInv({ 'el:thunder:1': 2 });
     expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
     clock += 1000;
-    const res = await app.request(
-      '/api/synthesize',
-      json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token),
-    );
-    expect(res.status).toBe(200);
-    expect(((await res.json()) as { result: { kind: string } }).result.kind).toBe('learned');
+    const { status, out } = await action('/api/synthesize', { state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token);
+    expect(status).toBe(200);
+    expect(out.result.kind).toBe('learned');
     // and the next regular upload keeps the server-learned spell
     clock += 1000;
-    const learned = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
-    expect((await app.request('/api/save', json({ state: learned, baseRevision: 2 }, body.token, 'PUT'))).status).toBe(200);
+    expect((await app.request('/api/save', json({ state: saved(body.playerId), baseRevision: 2 }, body.token, 'PUT'))).status).toBe(200);
   });
 
   it('restoring synthesis inputs inside one window is rejected: no free re-rolls', async () => {
-    // The reviewer's probe: restore the two inputs, synthesize again, repeat. Every restore now counts
-    // as gain against the anchor, so re-rolls are paid for by the window's farming allowance and the
-    // restores are rejected once they exceed it (here: 100 cycles at 100 ms within ~20 s).
+    // Restore the two inputs, synthesize again, repeat. Every restore counts as gain against the anchor,
+    // so re-rolls are paid for by the window's farming allowance and the restores are rejected once
+    // they exceed it (here: 200 cycles at 10 ms within ~4 s).
     const { body } = await guest();
     const inputs = ['el:thunder:1', 'el:thunder:1'];
     const two = { 'el:thunder:1': 2 };
@@ -449,24 +573,22 @@ describe('anchor window', () => {
     const statuses: string[] = [];
     let paid = 0;
     const t0 = clock;
-    for (let i = 0; i < 100; i++) {
-      clock += 100;
-      const current = JSON.parse(store.saves.get(body.playerId)!.state) as GameState;
-      const restored = { ...current, inventory: two };
+    for (let i = 0; i < 200; i++) {
+      clock += 10;
+      const restored = { ...saved(body.playerId), inventory: two };
       const put = await app.request('/api/save', json({ state: restored, baseRevision: revision }, body.token, 'PUT'));
       revision = ((await put.json()) as { revision: number }).revision;
       statuses.push(`put${put.status}`);
       if (put.status !== 200) continue;
-      clock += 100;
-      const syn = await app.request('/api/synthesize', json({ state: restored, baseRevision: revision, inputs }, body.token));
-      const out = (await syn.json()) as { revision: number; state: GameState; result?: { kind: string } };
-      revision = out.revision;
-      statuses.push(`syn${syn.status}:${out.result?.kind ?? ''}`);
-      if (syn.status === 200) paid += 2 - (out.state.inventory['el:thunder:1'] ?? 0);
+      clock += 10;
+      const syn = await action('/api/synthesize', { state: restored, baseRevision: revision, inputs }, body.token);
+      revision = syn.out.revision;
+      statuses.push(`syn${syn.status}:${syn.out.result?.kind ?? ''}`);
+      if (syn.status === 200) paid += 2 - (syn.out.state.inventory['el:thunder:1'] ?? 0);
     }
     expect(statuses).toContain('put422');
     // every element spent by synthesis fits what the window could have produced
-    const limit = maxGain(createInitialState(gameData), clock - t0, gameData).elements.thunder * GAIN_TOLERANCE + GAIN_SLACK;
+    const limit = maxGain(initial(), clock - t0, content).elements.thunder * GAIN_TOLERANCE + GAIN_SLACK;
     expect(paid, statuses.join(' ')).toBeLessThanOrEqual(limit);
     // and the synth events are exactly the paid ones: 2 for the learn, 1 net per duplicate
     expect(paid).toBe(2 + (store.synthEvents.length - 1));
@@ -489,11 +611,10 @@ describe('anchor window', () => {
     const s1 = withInv({ 'el:thunder:1': 2 });
     expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
     clock += 1000;
-    const syn = await app.request('/api/synthesize', json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token));
+    const syn = await action('/api/synthesize', { state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token);
     expect(syn.status).toBe(200);
-    const after = (await syn.json()) as { state: GameState; revision: number };
     expect(store.saves.get(body.playerId)!.anchorAt).toBe(clock - 31_000);
-    const r = await playHonestly(body.token, after, { uploadEveryMs: 20_000, until: (_g, ms) => ms >= 60_000 });
+    const r = await playHonestly(body.token, syn.out, { uploadEveryMs: 20_000, until: (_g, ms) => ms >= 60_000 });
     expect(r.statuses.every((st) => st === 200), r.statuses.join(',')).toBe(true);
     expect(r.statuses.length).toBe(3);
   });
@@ -513,12 +634,12 @@ describe('anchor window', () => {
 
   it('defeatedBosses may not shrink relative to the current save', async () => {
     const { body } = await guest();
-    const boss = gameData.zones[0].bossId;
+    const boss = content.zones[0]!.bossId;
     const row = store.saves.get(body.playerId)!;
     const current: GameState = {
       ...body.state,
       defeatedBosses: [boss],
-      unlockedZones: [gameData.zones[0].id, gameData.zones[1].id],
+      unlockedZones: [content.zones[0]!.id, content.zones[1]!.id],
     };
     store.saves.set(body.playerId, { ...row, state: JSON.stringify(current) });
     clock += 30_000;
@@ -545,7 +666,7 @@ async function playHonestly(
   let sinceUpload = 0;
   let elapsed = 0;
   for (;;) {
-    const r = stepBattle(game, battle, gameData, rng);
+    const r = stepBattle(game, battle, content, rng);
     game = r.game;
     battle = r.battle;
     clock += STEP_MS;
@@ -569,8 +690,14 @@ async function playHonestly(
 describe('honest play through the real engine', () => {
   it('uploads after the first boss falls are accepted (defeatedBosses holds boss ids)', async () => {
     const { body } = await guest();
-    const firstBoss = gameData.zones[0].bossId;
-    const r = await playHonestly(body.token, body, {
+    const firstBoss = content.zones[0]!.bossId;
+    // a server-made state with a strong spell (as if learned and empowered earlier), so the boss falls quickly
+    const strong: GameState = {
+      ...body.state, learned: ['mana_bolt', 'lightning', 'thunder_hammer'], equipped: 'thunder_hammer', levels: { thunder_hammer: 10 },
+    };
+    const row = store.saves.get(body.playerId)!;
+    store.saves.set(body.playerId, { ...row, state: JSON.stringify(strong), anchorState: JSON.stringify(strong) });
+    const r = await playHonestly(body.token, { state: strong, revision: 0 }, {
       uploadEveryMs: 30_000,
       until: (g, ms) => g.defeatedBosses.includes(firstBoss) || ms > 3_600_000,
     });
@@ -582,6 +709,19 @@ describe('honest play through the real engine', () => {
     expect(res.status).toBe(200);
     const load = await app.request('/api/save', { headers: { authorization: `Bearer ${body.token}` } });
     expect(((await load.json()) as { state: GameState }).state.defeatedBosses).toEqual([firstBoss]);
+  });
+});
+
+describe('v2 states', () => {
+  it('guest and login return a v2 state', async () => {
+    const { body: g } = await guest('Aria');
+    expect(g.state.version).toBe(2);
+    expect(g.state).toEqual(initial());
+    await app.request('/api/account/bind', json({ username: 'aria_v2', password: await ph('password1') }, g.token));
+    const lr = await app.request('/api/login', json({ username: 'aria_v2', password: await ph('password1') }));
+    const lb = (await lr.json()) as { state: GameState };
+    expect(lb.state.version).toBe(2);
+    expect(lb.state).toEqual(initial());
   });
 });
 describe('accounts: bind and login', () => {
@@ -612,7 +752,7 @@ describe('accounts: bind and login', () => {
     expect(lb.playerId).toBe(g.playerId);
     expect(lb.token).not.toBe(g.token);
     expect(lb.revision).toBe(0);
-    expect(lb.state).toEqual(createInitialState(gameData));
+    expect(lb.state).toEqual(initial());
     expect((await app.request('/api/save', authed(g.token))).status).toBe(200);
     expect((await app.request('/api/save', authed(lb.token))).status).toBe(200);
   });
@@ -686,7 +826,7 @@ describe('accounts: bind and login', () => {
   });
 
   it('refuses to store a hash without a pepper (500)', async () => {
-    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData, pepper: '' });
+    app = makeApp(content, '');
     const { body: g } = await guest();
     expect((await bind(g.token, 'mage_1', 'password1')).status).toBe(500);
     expect(store.credentials.size).toBe(0);

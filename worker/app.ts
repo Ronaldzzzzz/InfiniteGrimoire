@@ -1,10 +1,12 @@
 import { Hono, type Context } from 'hono';
-import { createInitialState, type GameState } from '../src/engine/state';
-import { parseState, serialize } from '../src/engine/save';
-import { comboKey, synthesize } from '../src/engine/synthesis';
-import { validateUpload } from '../src/engine/validate';
+import { validateUpload } from '../src/engine/audit';
+import { comboKey, synthesize, SYNTH_SLOTS } from '../src/engine/crafting';
+import { empower } from '../src/engine/empower';
+import type { Content, GameState } from '../src/engine/model';
+import { createInitialState, parseState, serialize } from '../src/engine/persist';
 import type { Rng } from '../src/engine/rng';
-import { ITEM_ID_RE, type GameData } from '../src/engine/types';
+import { CRAFTED_MAX_LEN } from '../src/engine/spells';
+import { depthCap, revealRegion, unlockPassive } from '../src/engine/tree';
 import { hashToken, newToken } from './auth';
 import type { PlayerRow, Store } from './store';
 import { normalizeUsername, usernameKey, usernameProblem } from '../src/engine/account-rules';
@@ -14,7 +16,7 @@ export interface AppDeps {
   store: Store;
   now: () => number;
   rng: () => Rng;
-  data: GameData;
+  content: Content;
   /** Secret HMAC key for password hashes (Cloudflare secret PASSWORD_PEPPER). Empty means accounts return 500. */
   pepper: string;
 }
@@ -38,6 +40,7 @@ export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const USER_FAIL_LIMIT = 5;
 export const IP_FAIL_LIMIT = 20;
 const HOUR_MS = 60 * 60 * 1000;
+const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive'] as const;
 
 /** Client IP for rate limits: Cloudflare's header, or 'local' in tests and `wrangler dev` without it. */
 function clientIp(c: Ctx): string {
@@ -49,9 +52,10 @@ function rateLimited(c: Ctx, retryAfterSec: number): Response {
 }
 
 /**
- * Applies the inventory change of a synthesis (before -> after, exactly as the engine applied it:
- * inputs out, refunds back in) to the anchor. Counts may go negative: a negative count is the debt
- * for inputs gained after the anchor, so re-acquiring them still has to fit the window's gain bound.
+ * Applies the inventory change of a server action (before -> after, exactly as the engine applied it:
+ * inputs out, refunds back in, empower costs, spent key items) to the anchor. Counts may go negative:
+ * a negative count is the debt for inputs gained after the anchor, so re-acquiring them still has to
+ * fit the window's gain bound.
  * The anchor is never parsed by parseState; validateUpload only does arithmetic on its inventory.
  */
 export function chargeAnchor(anchor: GameState, before: GameState, after: GameState): GameState {
@@ -94,7 +98,7 @@ async function readJson(c: Ctx): Promise<Record<string, unknown>> {
 }
 
 export function createApp(deps: AppDeps): Hono<Env> {
-  const { store, now, data, pepper } = deps;
+  const { store, now, content, pepper } = deps;
   const app = new Hono<Env>();
 
   app.onError((err, c) => {
@@ -119,7 +123,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const token = newToken();
     const t = now();
     const player: PlayerRow = { id: crypto.randomUUID(), displayName: name, createdAt: t, suspicious: false };
-    const state = createInitialState(data);
+    const state = createInitialState(content);
     await store.createPlayer(player, await hashToken(token), serialize(state), t);
     await store.recordGuestCreation(ip, t);
     return c.json({ token, playerId: player.id, state, revision: 0 }, 201);
@@ -237,7 +241,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
   });
 
   app.use('/api/save', auth);
-  app.use('/api/synthesize', auth);
+  for (const path of ACTION_PATHS) app.use(path, auth);
 
   app.get('/api/save', async (c) => {
     const player = c.get('player');
@@ -250,6 +254,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     | {
         ok: true;
         state: GameState;
+        current: GameState;
         revision: number;
         t: number;
         playerId: string;
@@ -259,12 +264,12 @@ export function createApp(deps: AppDeps): Hono<Env> {
       }
     | { ok: false; res: Response };
 
-  /** Shared by PUT /api/save and POST /api/synthesize: 400 / 409 / 422 handling. */
+  /** Shared by PUT /api/save and the server actions: 400 / 409 / 422 handling. */
   async function checkUpload(c: Ctx, body: Record<string, unknown>): Promise<Checked> {
     const player = c.get('player');
     const base = body.baseRevision;
     if (typeof base !== 'number' || !Number.isInteger(base) || base < 0) throw new HttpError(400, 'invalid baseRevision');
-    const next = parseState(body.state, data);
+    const next = parseState(body.state, content);
     if (!next) throw new HttpError(400, 'invalid state');
     const save = await store.getSave(player.id);
     if (!save) return { ok: false, res: c.json({ error: 'not found' }, 404) };
@@ -275,11 +280,18 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const t = now();
     const anchor = JSON.parse(save.anchorState) as GameState;
     // server-owned fields come from the current save; everything client-owned is measured from the anchor
-    const baseline: GameState = { ...anchor, learned: current.learned, synthesisLog: current.synthesisLog };
+    const baseline: GameState = {
+      ...anchor,
+      learned: current.learned,
+      levels: current.levels,
+      revealed: current.revealed,
+      passives: current.passives,
+      synthesisLog: current.synthesisLog,
+    };
     const elapsed = Math.min(Math.max(0, t - save.anchorAt), MAX_WINDOW_MS);
-    const verdict = validateUpload(baseline, next, elapsed, data);
+    const verdict = validateUpload(baseline, next, elapsed, content);
     const reasons = verdict.ok ? [] : [...verdict.reasons];
-    // learned / synthesisLog equality vs current is covered by the overlay above
+    // server-owned field equality vs current is covered by the overlay above
     for (const b of current.defeatedBosses) {
       const r = `defeatedBosses lost boss ${b}`;
       if (!next.defeatedBosses.includes(b) && !reasons.includes(r)) reasons.push(r);
@@ -295,6 +307,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return {
       ok: true,
       state: next,
+      current,
       revision: save.revision,
       t,
       playerId: player.id,
@@ -322,29 +335,83 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ revision: checked.revision + 1 });
   });
 
-  app.post('/api/synthesize', async (c) => {
-    const body = await readJson(c);
-    const inputs = body.inputs;
-    if (!Array.isArray(inputs) || inputs.length > 8 || !inputs.every((i) => typeof i === 'string' && ITEM_ID_RE.test(i))) {
-      throw new HttpError(400, 'invalid inputs');
-    }
+  /**
+   * A server-side change to the uploaded state (synthesis, empower, reveal, passive). The upload is
+   * audited first; an action the engine rejects is a 422 with its result and writes nothing (it is
+   * not counted as a cheating attempt). onCommit runs after a successful commit.
+   */
+  async function serverAction<R extends { kind: string }>(
+    c: Ctx,
+    body: Record<string, unknown>,
+    apply: (state: GameState) => { state: GameState; result: R },
+    onCommit?: (playerId: string, t: number, result: R) => Promise<void>,
+  ): Promise<Response> {
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
-    const { state, result } = synthesize(checked.state, inputs as string[], data, deps.rng());
+    const { state, result } = apply(checked.state);
+    if (result.kind === 'rejected') {
+      return c.json({ reason: 'rejected', result, state: checked.current, revision: checked.revision }, 422);
+    }
     // never persist a state the next request could not parse
-    if (!parseState(JSON.parse(serialize(state)), data)) return c.json({ error: 'internal error' }, 500);
-    // The synthesis result is the new current state. The anchor advances only by time; otherwise
-    // what the synthesis spent is also taken out of the anchor (same CAS), so a later upload
-    // cannot "restore" the inputs for free and re-roll.
+    if (!parseState(JSON.parse(serialize(state)), content)) return c.json({ error: 'internal error' }, 500);
+    // The action result is the new current state. The anchor advances only by time; otherwise
+    // what the action spent is also taken out of the anchor (same CAS), so a later upload
+    // cannot "restore" the inputs for free and repeat the action.
     const committed = serialize(state);
     const anchor = checked.advanceAnchor
       ? { state: committed, at: checked.t }
       : { state: serialize(chargeAnchor(checked.anchor, checked.state, state)), at: checked.anchorAt };
     const done = await store.commitSave(checked.playerId, checked.revision, committed, checked.t, anchor);
     if (!done) return conflict(c, checked.playerId);
-    const resultKey = 'spellId' in result ? `${result.kind}:${result.spellId}` : result.kind;
-    await store.recordSynthesis(checked.playerId, checked.t, comboKey(inputs as string[]), resultKey);
+    if (onCommit) await onCommit(checked.playerId, checked.t, result);
     return c.json({ result, state, revision: checked.revision + 1 });
+  }
+
+  /** A string id field of an action body (spell ids may be crafted, so up to CRAFTED_MAX_LEN). */
+  const idField = (body: Record<string, unknown>, field: string): string => {
+    const v = body[field];
+    if (typeof v !== 'string' || v.length === 0 || v.length > CRAFTED_MAX_LEN) throw new HttpError(400, `invalid ${field}`);
+    return v;
+  };
+
+  app.post('/api/synthesize', async (c) => {
+    const body = await readJson(c);
+    const inputs = body.inputs;
+    if (
+      !Array.isArray(inputs) ||
+      inputs.length > SYNTH_SLOTS ||
+      !inputs.every((i) => typeof i === 'string' && i.length <= CRAFTED_MAX_LEN)
+    ) {
+      throw new HttpError(400, 'invalid inputs');
+    }
+    const list = inputs as string[];
+    return serverAction(
+      c,
+      body,
+      (state) => synthesize(state, list, content, deps.rng(), { depthCap: depthCap(state, content) }),
+      async (playerId, t, result) => {
+        const resultKey = 'spellId' in result ? `${result.kind}:${result.spellId}` : result.kind;
+        await store.recordSynthesis(playerId, t, comboKey(list), resultKey);
+      },
+    );
+  });
+
+  app.post('/api/empower', async (c) => {
+    const body = await readJson(c);
+    const spellId = idField(body, 'spellId');
+    return serverAction(c, body, (state) => empower(state, spellId, content));
+  });
+
+  app.post('/api/reveal', async (c) => {
+    const body = await readJson(c);
+    const keyItem = idField(body, 'keyItem');
+    return serverAction(c, body, (state) => revealRegion(state, keyItem, content));
+  });
+
+  app.post('/api/passive', async (c) => {
+    const body = await readJson(c);
+    const passiveId = idField(body, 'passiveId');
+    return serverAction(c, body, (state) => unlockPassive(state, passiveId, content));
   });
 
   return app;

@@ -1,12 +1,14 @@
-import { createBattle, stepBattle, STEP_MS, type BattleState } from '../../src/engine/battle';
+import { createBattle, stepBattle, STEP_MS, type BattleState } from '../../src/engine/combat';
 import { canDamage } from '../../src/engine/combat-rules';
-import { gameData } from '../../src/engine/data';
+import { content } from '../../src/engine/content';
+import { empowerCost } from '../../src/engine/empower';
 import { upgradeElement } from '../../src/engine/inventory';
+import type { Effect, GameState, Spell, Zone } from '../../src/engine/model';
+import { parseState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
-import { parseState } from '../../src/engine/save';
-import { equipSpell, travel, type GameState } from '../../src/engine/state';
-import type { SynthResult } from '../../src/engine/synthesis';
-import { elementItem, type ElementId } from '../../src/engine/types';
+import { resolveSpell, spellAtLevel } from '../../src/engine/spells';
+import { visibleRegions } from '../../src/engine/tree';
+import { elementItem, GRADE_UPGRADE_COST, type ElementId } from '../../src/engine/types';
 import { createApp } from '../../worker/app';
 import { MemoryStore } from '../../worker/store';
 
@@ -18,35 +20,59 @@ export interface BotOptions {
 export interface BotResult {
   clearedZones: string[];
   learned: string[];
+  levels: Record<string, number>;
+  revealed: string[];
   simMs: number;
-  /** requests sent to PUT /api/save and POST /api/synthesize */
+  /** simulated ms at which each zone's boss first fell */
+  clearedAt: Record<string, number>;
+  /** requests sent to PUT /api/save and the action endpoints */
   serverCalls: number;
-  /** non-200 responses from PUT /api/save and POST /api/synthesize */
+  /** non-200 responses from PUT /api/save and the action endpoints */
   rejectedUploads: number;
-  /** simulated ms spent from first entering the last zone until its boss fell (null if never entered / not cleared) */
-  lastZoneMs: number | null;
   rejectionReasons: string[];
+  /** a short trace for assertion messages */
+  summary: Record<string, unknown>;
 }
 
 const DECISION_MS = 1000;
 const UPLOAD_MS = 30_000;
+const EMPOWER_EVERY_MS = 5 * 60_000;
 
 const CLOCK_START = 1_000_000_000;
 
+/** Rough single-target damage per second of a spell, to pick what to equip and empower. */
+function dps(spell: Spell): number {
+  const hits = (e: Effect): number => {
+    switch (e.kind) {
+      case 'bolt': case 'blades': case 'meteor': return e.mult * e.count;
+      case 'chain': return e.mult;
+      case 'zone': return e.mult * (e.ms / e.tickMs) + (e.strikes > 0 ? 2 * e.mult * e.strikes : 0);
+      case 'storm': return e.mult * (e.ms / e.tickMs);
+      case 'ring': case 'field': return e.mult;
+      default: return 0;
+    }
+  };
+  return (spell.attack * spell.effects.reduce((n, e) => n + hits(e), 0)) / spell.cooldownMs;
+}
+
 /**
  * Plays like the real client against the real server: the worker app with an in-memory store
- * and a fake clock that follows simulated time. Saves go through PUT /api/save every 30 s and
- * synthesis through POST /api/synthesize, both as JSON; server replies are applied as the client
- * would (rejected / conflict -> adopt the server state).
+ * and a fake clock that follows simulated time. Saves go through PUT /api/save every 30 s;
+ * synthesis, empower and reveal through their POST endpoints, all as JSON. Server replies are
+ * applied as the client would (success -> adopt the returned state; rejected / conflict -> adopt
+ * the server state).
+ *
+ * Pure-element route: el:X:1 + el:X:1 teaches the base spell, a grade-2 X element (upgraded from
+ * grade 1) turns it into the same-element strengthening, and every 5 simulated minutes the spare
+ * X elements empower the strongest spell. Key items are used as soon as they drop.
  */
 export async function runBot(opts: BotOptions): Promise<BotResult> {
-  const data = gameData;
   const battleRng = createRng(opts.seed);
   const serverRng = createRng(opts.seed ^ 0x9e3779b9);
-  const lastZone = data.zones[data.zones.length - 1]!;
+  const lastZone = content.zones[content.zones.length - 1]!;
 
   let simMs = 0;
-  const app = createApp({ store: new MemoryStore(), now: () => CLOCK_START + simMs, rng: () => serverRng, data, pepper: 'sim-pepper' });
+  const app = createApp({ store: new MemoryStore(), now: () => CLOCK_START + simMs, rng: () => serverRng, content, pepper: 'sim-pepper' });
   let token = '';
   const call = async (method: string, path: string, body: unknown): Promise<{ status: number; body: Record<string, unknown> }> => {
     const res = await app.request(path, {
@@ -57,7 +83,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     return { status: res.status, body: (await res.json()) as Record<string, unknown> };
   };
   const serverState = (raw: unknown): GameState => {
-    const s = parseState(raw, data);
+    const s = parseState(raw, content);
     if (!s) throw new Error(`server sent a state the client cannot parse: ${JSON.stringify(raw)}`);
     return s;
   };
@@ -71,18 +97,12 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   let rejectedUploads = 0;
   let serverCalls = 0;
   const rejectionReasons: string[] = [];
-  let lastZoneEnteredAt: number | null = null;
-  let lastZoneClearedAt: number | null = null;
-
-  // recipe chain for the chosen element: T2, T4, T5
-  const chain = opts.element
-    ? ['t2', 't4', 't5'].map((t) => data.recipes.find((r) => r.id === `${opts.element}_${t}`)!)
-    : [];
+  const clearedAt: Record<string, number> = {};
 
   /** Non-200: count it and adopt the server's state, like the client does. */
   const adoptServer = (what: string, r: { status: number; body: Record<string, unknown> }): void => {
     rejectedUploads++;
-    const reasons = Array.isArray(r.body.reasons) ? r.body.reasons.join('; ') : JSON.stringify(r.body);
+    const reasons = Array.isArray(r.body.reasons) ? r.body.reasons.join('; ') : JSON.stringify(r.body.result ?? r.body);
     rejectionReasons.push(`@${simMs} ${what} ${r.status}: ${reasons}`);
     if (r.body.state) {
       game = serverState(r.body.state);
@@ -96,106 +116,135 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     if (r.status === 200) revision = r.body.revision as number;
     else adoptServer('PUT /api/save', r);
   };
-  const synthesizeOnServer = async (inputs: string[]): Promise<SynthResult | null> => {
+  /** A server action; on success the battle keeps running on the returned state (ours plus the action). */
+  const act = async (path: string, payload: Record<string, unknown>): Promise<boolean> => {
     serverCalls++;
-    const r = await call('POST', '/api/synthesize', { state: game, baseRevision: revision, inputs });
+    const r = await call('POST', path, { state: game, baseRevision: revision, ...payload });
     if (r.status !== 200) {
-      adoptServer('POST /api/synthesize', r);
-      return null;
+      adoptServer(`POST ${path} ${JSON.stringify(payload)}`, r);
+      return false;
     }
-    // the battle keeps running: the server state is ours plus the synthesis
     game = serverState(r.body.state);
     revision = r.body.revision as number;
-    return r.body.result as SynthResult;
+    return true;
   };
 
-  const blocked = new Set<string>();
-  let blockedAtLearned = 0;
+  const el = opts.element;
+  const baseId = el ? content.baseSpells[el] : null;
+  const strongId = baseId ? content.recipes.find((r) => r.inputs.includes(baseId) && r.inputs.includes(elementItem(el!, 2)))?.outcomes[0]?.spellId ?? null : null;
+  const count = (id: string) => (Object.hasOwn(game.inventory, id) ? game.inventory[id]! : 0);
+  const levelOf = (id: string) => (Object.hasOwn(game.levels, id) ? game.levels[id]! : 1);
+  const fightAs = (id: string) => spellAtLevel(resolveSpell(id, content)!, levelOf(id));
+  const zoneOf = (id: string) => content.zones.find((z) => z.id === id)!;
+  const hitsAll = (s: Spell, z: Zone) => z.monsters.every((m) => canDamage(s, content.monsters[m]!));
+  const bestSpell = (): string =>
+    game.learned.reduce((a, b) => (dps(fightAs(b)) > dps(fightAs(a)) ? b : a));
 
-  const bestSpell = () =>
-    game.learned.map((id) => data.spells[id]!).reduce((a, b) => (b.tier > a.tier ? b : a));
-
-  const decide = async (): Promise<void> => {
-    if (opts.element) {
-      // upgrade grade-1 -> grade-2 only when the next recipe needs grade-2 and lacks it
-      const target = chain.find((r) => !game.learned.includes(r.outcomes[r.outcomes.length - 1]!.spellId) &&
-        !r.outcomes.some((o) => game.learned.includes(o.spellId)));
-      if (target) {
-        const need: Record<string, number> = {};
-        for (const i of target.inputs) need[i] = (need[i] ?? 0) + 1;
-        const g2 = elementItem(opts.element, 2);
-        if ((need[g2] ?? 0) > (game.inventory[g2] ?? 0)) {
-          const up = upgradeElement(game.inventory, opts.element, 1);
-          if (up) game = { ...game, inventory: up };
-        }
-        // ask the server only when the attempt can succeed: inputs in stock and an outcome whose
-        // prerequisites are learned (no outcome is learned yet, so the roll always teaches a spell)
-        const have: Record<string, number> = {};
-        for (const i of target.inputs) have[i] = (have[i] ?? 0) + 1;
-        const affordable = Object.entries(have).every(([i, n]) => (game.inventory[i] ?? 0) >= n);
-        const eligible = target.outcomes.some((o) =>
-          (data.spells[o.spellId]?.prerequisites ?? []).every((p) => game.learned.includes(p)));
-        if (affordable && eligible) await synthesizeOnServer([...target.inputs].sort());
-      }
+  /** Upgrades grade-1 elements of `el` until `need` grade-`grade` items are in stock (client-side, like the element table). */
+  const stock = (grade: number, need: number): boolean => {
+    while (count(elementItem(el!, grade)) < need) {
+      if (grade === 1) return false;
+      if (!stock(grade - 1, GRADE_UPGRADE_COST[grade - 2]!)) return false;
+      const up = upgradeElement(game.inventory, el!, grade - 1);
+      if (!up) return false;
+      game = { ...game, inventory: up };
     }
+    return true;
+  };
+
+  const synthesizeStep = async (): Promise<void> => {
+    if (!el || !baseId) return;
+    if (!game.learned.includes(baseId)) {
+      if (count(elementItem(el, 1)) >= 2) await act('/api/synthesize', { inputs: [elementItem(el, 1), elementItem(el, 1)] });
+      return;
+    }
+    if (strongId && !game.learned.includes(strongId) && stock(2, 1)) {
+      await act('/api/synthesize', { inputs: [baseId, elementItem(el, 2)] });
+    }
+  };
+
+  const empowerStep = async (): Promise<void> => {
+    if (!el || !baseId) return;
+    // keep the grade-2 element for the strengthening recipe until it is learned
+    if (strongId && !game.learned.includes(strongId)) return;
+    const target = bestSpell();
+    for (let guard = 0; guard < 50; guard++) {
+      const spell = resolveSpell(target, content)!;
+      if (spell.elements.length === 0) return;
+      const cost = empowerCost(spell, levelOf(target));
+      const grade = Number(cost[0]!.split(':')[2]);
+      if (!stock(grade, cost.length)) return;
+      if (!(await act('/api/empower', { spellId: target }))) return;
+    }
+  };
+
+  const revealStep = async (): Promise<void> => {
+    const visible = visibleRegions(game, content);
+    for (const key of Object.values(content.keyItems)) {
+      if (count(key.id) > 0 && !visible.has(key.reveals)) await act('/api/reveal', { keyItem: key.id });
+    }
+  };
+
+  const blocked = new Map<string, string>();
+  const decide = async (doEmpower: boolean): Promise<void> => {
+    await synthesizeStep();
+    await revealStep();
+    if (doEmpower) await empowerStep();
     const best = bestSpell();
-    if (game.equipped !== best.id) game = equipSpell(game, best.id);
+    if (game.equipped !== best) game = { ...game, equipped: best };
 
-    // a boss the learned spells cannot hurt never dies and its fight does not count toward kills:
-    // retreat and farm below until something new is learned (a human would travel the same way)
-    const spells = game.learned.map((id) => data.spells[id]!);
-    if (blockedAtLearned !== game.learned.length) blocked.clear();
-    const bossDef = data.monsters[data.zones.find((z) => z.id === game.currentZone)!.bossId]!;
-    if (battle.bossActive && !spells.some((s) => canDamage(s, bossDef))) {
-      blocked.add(game.currentZone);
-      blockedAtLearned = game.learned.length;
-    }
-    // go to the highest unlocked zone where the best spell can damage every normal monster
+    // a boss the equipped spell cannot hurt never dies: retreat and farm below until the spell changes
+    const spell = fightAs(game.equipped);
+    const sig = `${game.equipped}@${levelOf(game.equipped)}`;
+    for (const [z, s] of blocked) if (s !== sig) blocked.delete(z);
+    const here = zoneOf(game.currentZone);
+    if (battle.bossActive && !canDamage(spell, content.monsters[here.bossId]!)) blocked.set(here.id, sig);
+    // go to the highest unlocked zone where the spell can damage every normal monster
     let dest = game.currentZone;
-    for (const z of data.zones) {
-      if (!game.unlockedZones.includes(z.id) || blocked.has(z.id)) continue;
-      const ok = z.monsters.every((m) => spells.some((s) => canDamage(s, data.monsters[m]!)));
-      if (ok) dest = z.id;
+    for (const z of content.zones) {
+      if (game.unlockedZones.includes(z.id) && !blocked.has(z.id) && hitsAll(spell, z)) dest = z.id;
     }
     if (dest !== game.currentZone) {
-      const t = travel(game, dest);
-      if (t) {
-        game = t;
-        battle = createBattle(dest);
-      }
+      game = { ...game, currentZone: dest };
+      battle = createBattle(dest);
     }
   };
 
   let nextDecision = DECISION_MS;
   let nextUpload = UPLOAD_MS;
+  let nextEmpower = EMPOWER_EVERY_MS;
+  let lastClearedAt: number | null = null;
   while (simMs < opts.maxSimMs) {
-    const r = stepBattle(game, battle, data, battleRng);
+    const r = stepBattle(game, battle, content, battleRng);
     game = r.game;
     battle = r.battle;
     simMs += STEP_MS;
-    if (game.currentZone === lastZone.id && lastZoneEnteredAt === null) lastZoneEnteredAt = simMs - STEP_MS;
-    if (lastZoneClearedAt === null && game.defeatedBosses.includes(lastZone.bossId)) {
-      lastZoneClearedAt = simMs;
-    }
+    for (const z of content.zones) if (!(z.id in clearedAt) && game.defeatedBosses.includes(z.bossId)) clearedAt[z.id] = simMs;
+    if (lastClearedAt === null && game.defeatedBosses.includes(lastZone.bossId)) lastClearedAt = simMs;
     if (simMs >= nextDecision) {
       nextDecision += DECISION_MS;
-      await decide();
+      const doEmpower = simMs >= nextEmpower;
+      if (doEmpower) nextEmpower += EMPOWER_EVERY_MS;
+      await decide(doEmpower);
     }
     if (simMs >= nextUpload) {
       nextUpload += UPLOAD_MS;
       await upload();
       // stop at the first upload after the last boss fell, so that final kill is validated too
-      if (lastZoneClearedAt !== null) break;
+      if (lastClearedAt !== null) break;
     }
   }
 
   return {
-    clearedZones: data.zones.filter((z) => game.defeatedBosses.includes(z.bossId)).map((z) => z.id),
+    clearedZones: content.zones.filter((z) => game.defeatedBosses.includes(z.bossId)).map((z) => z.id),
     learned: game.learned,
+    levels: game.levels,
+    revealed: game.revealed,
     simMs,
+    clearedAt,
     serverCalls,
     rejectedUploads,
-    lastZoneMs: lastZoneEnteredAt !== null && lastZoneClearedAt !== null ? lastZoneClearedAt - lastZoneEnteredAt : null,
     rejectionReasons,
+    summary: { simMs, clearedAt, learned: game.learned, levels: game.levels, zone: game.currentZone, inventory: game.inventory },
   };
 }

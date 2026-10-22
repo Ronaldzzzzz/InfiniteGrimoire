@@ -1,4 +1,4 @@
-import { gameData } from '../src/engine/data';
+import { content } from '../src/engine/content';
 import { createApp } from './app';
 import { createCryptoRng } from './crypto-rng';
 import { D1Store } from './d1-store';
@@ -17,7 +17,7 @@ export default {
         store: new D1Store(env.DB),
         now: Date.now,
         rng: createCryptoRng,
-        data: gameData,
+        content,
         pepper: env.PASSWORD_PEPPER ?? '',
       });
       return app.fetch(request);

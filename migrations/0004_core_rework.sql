@@ -1,0 +1,3 @@
+-- Core rework: v1 saves cannot be converted (and no real players exist yet), so every save restarts
+-- from the v2 initial state, serialize(createInitialState(content)). Players, accounts and sessions are kept.
+UPDATE saves SET state = '{"version":2,"inventory":{},"learned":["mana_bolt"],"equipped":"mana_bolt","levels":{},"revealed":[],"passives":[],"currentZone":"mist_meadow","unlockedZones":["mist_meadow"],"defeatedBosses":[],"zoneKills":{},"synthesisLog":{}}', anchor_state = '{"version":2,"inventory":{},"learned":["mana_bolt"],"equipped":"mana_bolt","levels":{},"revealed":[],"passives":[],"currentZone":"mist_meadow","unlockedZones":["mist_meadow"],"defeatedBosses":[],"zoneKills":{},"synthesisLog":{}}', revision = revision + 1, anchor_at = saved_at;
