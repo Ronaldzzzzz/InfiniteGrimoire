@@ -1,37 +1,30 @@
 import { fromBase64Url, toBase64Url } from './auth';
 
 /**
- * PBKDF2-SHA256 via WebCrypto. 50k iterations ≈ 5 ms of CPU, which fits the Workers free plan's
- * 10 ms limit (100k ≈ 10 ms would not reliably). Hashes carry their iteration count so they can be
- * upgraded on the next successful login.
+ * The browser runs the slow PBKDF2 (src/game/password-hash.ts) and sends only its 32-byte result.
+ * The server HMACs that with a secret pepper, which costs well under 1 ms of the free plan's 10 ms CPU,
+ * so a leaked database alone cannot be used to log in or to test password guesses.
  */
-export const PBKDF2_ITERATIONS = 50_000;
-const SALT_BYTES = 16;
+export const CLIENT_HASH_RE = /^[A-Za-z0-9_-]{43}$/;
+const PREFIX = 'hmac-sha256$v1$';
 const HASH_BYTES = 32;
-const PREFIX = 'pbkdf2-sha256';
 
-async function derive(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, HASH_BYTES * 8);
-  return new Uint8Array(bits);
+async function hmac(clientHash: string, pepper: string): Promise<Uint8Array> {
+  if (!pepper) throw new Error('PASSWORD_PEPPER is not set');
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(pepper), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(clientHash)));
 }
 
-export async function hashPassword(password: string, iterations = PBKDF2_ITERATIONS): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const hash = await derive(password, salt, iterations);
-  return `${PREFIX}$${iterations}$${toBase64Url(salt)}$${toBase64Url(hash)}`;
+export async function hashPassword(clientHash: string, pepper: string): Promise<string> {
+  return PREFIX + toBase64Url(await hmac(clientHash, pepper));
 }
 
-function parse(stored: string): { iterations: number; salt: Uint8Array; hash: Uint8Array } | null {
-  const parts = stored.split('$');
-  if (parts.length !== 4 || parts[0] !== PREFIX) return null;
-  const iterations = Number(parts[1]);
-  if (!Number.isInteger(iterations) || iterations < 1) return null;
+function parse(stored: string): Uint8Array | null {
+  if (!stored.startsWith(PREFIX)) return null;
   try {
-    const salt = fromBase64Url(parts[2]!);
-    const hash = fromBase64Url(parts[3]!);
-    if (salt.length !== SALT_BYTES || hash.length !== HASH_BYTES) return null;
-    return { iterations, salt, hash };
+    const hash = fromBase64Url(stored.slice(PREFIX.length));
+    return hash.length === HASH_BYTES ? hash : null;
   } catch {
     return null;
   }
@@ -44,16 +37,8 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const parsed = parse(stored);
-  if (!parsed) return false;
-  return constantTimeEqual(await derive(password, parsed.salt, parsed.iterations), parsed.hash);
+export async function verifyPassword(clientHash: string, stored: string, pepper: string): Promise<boolean> {
+  const actual = await hmac(clientHash, pepper);
+  const expected = parse(stored);
+  return expected !== null && constantTimeEqual(actual, expected);
 }
-
-export function needsRehash(stored: string): boolean {
-  const parsed = parse(stored);
-  return !parsed || parsed.iterations < PBKDF2_ITERATIONS;
-}
-
-/** Verified against when the username does not exist, so the response time matches a wrong password. */
-export const DUMMY_HASH = `${PREFIX}$${PBKDF2_ITERATIONS}$${'A'.repeat(22)}$${'A'.repeat(43)}`;

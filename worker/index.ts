@@ -6,6 +6,8 @@ import { D1Store } from './d1-store';
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  /** `wrangler secret put PASSWORD_PEPPER`; `.dev.vars` locally. Never change it after launch. */
+  PASSWORD_PEPPER?: string;
 }
 
 export default {
@@ -16,6 +18,7 @@ export default {
         now: Date.now,
         rng: createCryptoRng,
         data: gameData,
+        pepper: env.PASSWORD_PEPPER ?? '',
       });
       return app.fetch(request);
     }

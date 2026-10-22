@@ -46,7 +46,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   const lastZone = data.zones[data.zones.length - 1]!;
 
   let simMs = 0;
-  const app = createApp({ store: new MemoryStore(), now: () => CLOCK_START + simMs, rng: () => serverRng, data });
+  const app = createApp({ store: new MemoryStore(), now: () => CLOCK_START + simMs, rng: () => serverRng, data, pepper: 'sim-pepper' });
   let token = '';
   const call = async (method: string, path: string, body: unknown): Promise<{ status: number; body: Record<string, unknown> }> => {
     const res = await app.request(path, {

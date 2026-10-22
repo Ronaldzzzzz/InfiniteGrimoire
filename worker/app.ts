@@ -7,14 +7,16 @@ import type { Rng } from '../src/engine/rng';
 import type { GameData } from '../src/engine/types';
 import { hashToken, newToken } from './auth';
 import type { PlayerRow, Store } from './store';
-import { normalizeUsername, passwordProblem, usernameKey, usernameProblem } from '../src/engine/account-rules';
-import { DUMMY_HASH, hashPassword, needsRehash, verifyPassword } from './password';
+import { normalizeUsername, usernameKey, usernameProblem } from '../src/engine/account-rules';
+import { CLIENT_HASH_RE, hashPassword, verifyPassword } from './password';
 
 export interface AppDeps {
   store: Store;
   now: () => number;
   rng: () => Rng;
   data: GameData;
+  /** Secret HMAC key for password hashes (Cloudflare secret PASSWORD_PEPPER). Empty means accounts return 500. */
+  pepper: string;
 }
 
 export const SUSPICIOUS_REJECTIONS_24H = 5;
@@ -92,7 +94,7 @@ async function readJson(c: Ctx): Promise<Record<string, unknown>> {
 }
 
 export function createApp(deps: AppDeps): Hono<Env> {
-  const { store, now, data } = deps;
+  const { store, now, data, pepper } = deps;
   const app = new Hono<Env>();
 
   app.onError((err, c) => {
@@ -142,7 +144,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const username = typeof body.username === 'string' ? body.username : '';
     const password = typeof body.password === 'string' ? body.password : '';
     if (usernameProblem(username)) throw new HttpError(400, 'invalid_username');
-    if (passwordProblem(password)) throw new HttpError(400, 'invalid_password');
+    // the browser sends its PBKDF2 hash, never the password; length rules are checked there
+    if (!CLIENT_HASH_RE.test(password)) throw new HttpError(400, 'invalid_password');
     return { username, password };
   }
 
@@ -164,7 +167,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       playerId: player.id,
       username: normalizeUsername(username),
       usernameKey: usernameKey(username),
-      passwordHash: await hashPassword(password),
+      passwordHash: await hashPassword(password, pepper),
       createdAt: t,
       updatedAt: t,
     });
@@ -180,16 +183,13 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const retry = await loginBlocked([[`u:${key}`, USER_FAIL_LIMIT], [`ip:${ip}`, IP_FAIL_LIMIT]], t);
     if (retry !== null) return rateLimited(c, retry);
     const cred = await store.findCredentialsByKey(key);
-    // always run one PBKDF2 so an unknown name takes as long as a wrong password
-    const matches = await verifyPassword(password, cred?.passwordHash ?? DUMMY_HASH);
-    if (!cred || !matches) {
+    if (!cred || !(await verifyPassword(password, cred.passwordHash, pepper))) {
       await store.recordLoginFailure([`u:${key}`, `ip:${ip}`], t);
       return c.json({ error: 'invalid_credentials' }, 403);
     }
     const player = await store.getPlayer(cred.playerId);
     const save = await store.getSave(cred.playerId);
     if (!player || !save) return c.json({ error: 'internal error' }, 500);
-    if (needsRehash(cred.passwordHash)) await store.updatePasswordHash(player.id, await hashPassword(password), t);
     const token = newToken();
     await store.createSession(await hashToken(token), player.id, t);
     return c.json({ token, playerId: player.id, state: JSON.parse(save.state), revision: save.revision });
@@ -205,7 +205,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const body = await readJson(c);
     const current = typeof body.current === 'string' ? body.current : '';
     const next = typeof body.next === 'string' ? body.next : '';
-    if (passwordProblem(next)) throw new HttpError(400, 'invalid_password');
+    if (!CLIENT_HASH_RE.test(next)) throw new HttpError(400, 'invalid_password');
     const player = c.get('player');
     const cred = await store.findCredentialsByPlayer(player.id);
     if (!cred) return c.json({ error: 'not_bound' }, 409);
@@ -213,11 +213,11 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const t = now();
     const retry = await loginBlocked([[`u:${cred.usernameKey}`, USER_FAIL_LIMIT], [`ip:${ip}`, IP_FAIL_LIMIT]], t);
     if (retry !== null) return rateLimited(c, retry);
-    if (!(await verifyPassword(current, cred.passwordHash))) {
+    if (!(await verifyPassword(current, cred.passwordHash, pepper))) {
       await store.recordLoginFailure([`u:${cred.usernameKey}`, `ip:${ip}`], t);
       return c.json({ error: 'invalid_credentials' }, 403);
     }
-    await store.updatePasswordHash(player.id, await hashPassword(next), t);
+    await store.updatePasswordHash(player.id, await hashPassword(next, pepper), t);
     await store.deleteOtherSessions(player.id, c.get('sessionHash'));
     return c.json({});
   });

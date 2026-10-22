@@ -7,8 +7,11 @@ import { ELEMENT_ORDER } from '../src/engine/types';
 import { elementEquivalent } from '../src/engine/inventory';
 import { GAIN_SLACK, GAIN_TOLERANCE, maxGain } from '../src/engine/validate';
 import { ANCHOR_ADVANCE_MS, createApp, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
-import { hashToken } from './auth';
+import { hashToken, toBase64Url } from './auth';
 import { MemoryStore, type SaveRow } from './store';
+
+/** Stand-in for the browser's PBKDF2 hash: any 43-char base64url value is a valid client hash. */
+const ph = async (pw: string) => toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw))));
 
 let store: MemoryStore;
 let clock: number;
@@ -17,7 +20,7 @@ let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   store = new MemoryStore();
   clock = 1_000_000;
-  app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData });
+  app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData, pepper: 'test-pepper' });
 });
 
 const json = (body: unknown, token?: string, method = 'POST'): RequestInit => ({
@@ -235,7 +238,7 @@ describe('synthesize', () => {
       ...gameData,
       recipes: [...gameData.recipes, { id: 'ghost', inputs: ['mat:slime_gel', 'mat:slime_gel'], outcomes: [{ spellId: 'ghost', weight: 1 }] }],
     };
-    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: broken });
+    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: broken, pepper: 'test-pepper' });
     const { body } = await guest();
     clock += 30_000;
     const res = await app.request(
@@ -263,7 +266,7 @@ describe('synthesize', () => {
       }
     }
     store = new GatedStore();
-    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData });
+    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData, pepper: 'test-pepper' });
     const { body } = await guest();
     clock += 3_600_000;
     const send = () => app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs }, body.token));
@@ -583,14 +586,16 @@ describe('honest play through the real engine', () => {
 });
 describe('accounts: bind and login', () => {
   const authed = (token: string): RequestInit => ({ headers: { authorization: `Bearer ${token}` } });
-  const bind = (token: string, username: string, password: string) =>
+  const bindRaw = (token: string, username: string, password: string) =>
     app.request('/api/account/bind', json({ username, password }, token));
-  const login = (username: string, password: string, ip = '1.1.1.1') =>
+  const loginRaw = (username: string, password: string, ip = '1.1.1.1') =>
     app.request('/api/login', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip },
       body: JSON.stringify({ username, password }),
     });
+  const bind = async (token: string, username: string, password: string) => bindRaw(token, username, await ph(password));
+  const login = async (username: string, password: string, ip = '1.1.1.1') => loginRaw(username, await ph(password), ip);
 
   it('binds a guest and logs in from another device, keeping both sessions', async () => {
     const { body: g } = await guest('Aria');
@@ -624,7 +629,9 @@ describe('accounts: bind and login', () => {
     expect(await again.json()).toEqual({ error: 'already_bound' });
     expect((await bind(b.token, 'ab', 'password1')).status).toBe(400);
     expect((await bind(b.token, 'a-b-c', 'password1')).status).toBe(400);
-    expect((await bind(b.token, 'mage_2', 'short')).status).toBe(400);
+    const plain = await bindRaw(b.token, 'mage_2', 'password1');
+    expect(plain.status).toBe(400);
+    expect(await plain.json()).toEqual({ error: 'invalid_password' });
     expect((await app.request('/api/account/bind', json({ username: 'x_y_z', password: 'password1' }))).status).toBe(401);
   });
 
@@ -669,13 +676,20 @@ describe('accounts: bind and login', () => {
     expect((await login('name_x', 'nope-nope', '6.6.6.6')).status).toBe(403);
   });
 
-  it('upgrades a weaker stored hash on login', async () => {
+  it('accepts only a client hash as the password, never the password itself', async () => {
     const { body: g } = await guest();
     await bind(g.token, 'mage_1', 'password1');
-    const { hashPassword } = await import('./password');
-    store.credentials.get(g.playerId)!.passwordHash = await hashPassword('password1', 1000);
-    expect((await login('mage_1', 'password1')).status).toBe(200);
-    expect(store.credentials.get(g.playerId)!.passwordHash).toMatch(/^pbkdf2-sha256\$50000\$/);
+    const plain = await loginRaw('mage_1', 'password1');
+    expect(plain.status).toBe(400);
+    expect(await plain.json()).toEqual({ error: 'invalid_password' });
+    expect(store.credentials.get(g.playerId)!.passwordHash).toMatch(/^hmac-sha256\$v1\$/);
+  });
+
+  it('refuses to store a hash without a pepper (500)', async () => {
+    app = createApp({ store, now: () => clock, rng: () => createRng(1), data: gameData, pepper: '' });
+    const { body: g } = await guest();
+    expect((await bind(g.token, 'mage_1', 'password1')).status).toBe(500);
+    expect(store.credentials.size).toBe(0);
   });
 });
 describe('accounts: info, password and logout', () => {
@@ -683,8 +697,8 @@ describe('accounts: info, password and logout', () => {
   const post = (path: string, token: string, body: unknown = {}) => app.request(path, json(body, token));
   async function boundGuest() {
     const { body: g } = await guest('Aria');
-    await post('/api/account/bind', g.token, { username: 'aria_1', password: 'password1' });
-    const lr = await app.request('/api/login', json({ username: 'aria_1', password: 'password1' }));
+    await post('/api/account/bind', g.token, { username: 'aria_1', password: await ph('password1') });
+    const lr = await app.request('/api/login', json({ username: 'aria_1', password: await ph('password1') }));
     const second = ((await lr.json()) as { token: string }).token;
     return { g, second };
   }
@@ -699,26 +713,28 @@ describe('accounts: info, password and logout', () => {
 
   it('changes the password and logs out the other devices only', async () => {
     const { g, second } = await boundGuest();
-    const res = await post('/api/account/password', second, { current: 'password1', next: 'password2' });
+    const res = await post('/api/account/password', second, { current: await ph('password1'), next: await ph('password2') });
     expect(res.status).toBe(200);
     expect((await get('/api/save', g.token)).status).toBe(401);
     expect((await get('/api/save', second)).status).toBe(200);
-    expect((await app.request('/api/login', json({ username: 'aria_1', password: 'password2' }))).status).toBe(200);
-    expect((await app.request('/api/login', json({ username: 'aria_1', password: 'password1' }))).status).toBe(403);
+    expect((await app.request('/api/login', json({ username: 'aria_1', password: await ph('password2') }))).status).toBe(200);
+    const plain = await post('/api/account/password', second, { current: await ph('password2'), next: 'password3' });
+    expect(plain.status).toBe(400);
+    expect((await app.request('/api/login', json({ username: 'aria_1', password: await ph('password1') }))).status).toBe(403);
   });
 
   it('a wrong current password is 403 (not 401) and counts as a failure', async () => {
     const { second } = await boundGuest();
     for (let i = 0; i < 5; i++) {
-      expect((await post('/api/account/password', second, { current: 'nope-nope', next: 'password2' })).status).toBe(403);
+      expect((await post('/api/account/password', second, { current: await ph('nope-nope'), next: await ph('password2') })).status).toBe(403);
     }
-    expect((await post('/api/account/password', second, { current: 'password1', next: 'password2' })).status).toBe(429);
+    expect((await post('/api/account/password', second, { current: await ph('password1'), next: await ph('password2') })).status).toBe(429);
     expect((await get('/api/save', second)).status).toBe(200);
   });
 
   it('refuses password change and logout for guests', async () => {
     const { body: g } = await guest();
-    const pw = await post('/api/account/password', g.token, { current: 'password1', next: 'password2' });
+    const pw = await post('/api/account/password', g.token, { current: await ph('password1'), next: await ph('password2') });
     expect(pw.status).toBe(409);
     expect(await pw.json()).toEqual({ error: 'not_bound' });
     const out = await post('/api/logout', g.token);
