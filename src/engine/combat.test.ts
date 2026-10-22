@@ -303,6 +303,21 @@ describe('stepBattle: progress and limits', () => {
     expect(Object.keys(r.game.inventory).length).toBeGreaterThan(0);
   });
 
+  it('a boss always drops its key item, even to an overleveled spell', () => {
+    // tier 9 vs the tier-2 mist_stag: element drops shrink to 0.5 + 0.5 * 0.5^6, the key item does not
+    const nuke = testSpell('t_nuke', [{ kind: 'field', mult: 100, delayMs: 0 }], { cooldownMs: 300, attack: 1000, tier: 9 });
+    const c = withTest([nuke]);
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const rng = createRng(seed);
+      let game = mkGame({ equipped: 't_nuke' });
+      let battle = createBattle('mist_meadow');
+      for (let i = 0; i < 4000 && !game.defeatedBosses.includes('mist_stag'); i++) ({ game, battle } = stepBattle(game, battle, c, rng));
+      expect(game.defeatedBosses, String(seed)).toContain('mist_stag');
+      // checked on the step of the first kill
+      expect(game.inventory['key:storm_heart'], String(seed)).toBe(1);
+    }
+  });
+
   it('active effects never exceed MAX_ACTIVE_FX', () => {
     const spam = testSpell('t_spam', [
       { kind: 'zone', mult: 0.01, radius: 0.3, ms: 1e7, tickMs: 250, target: 'random', pull: 0, follow: false, strikes: 0 },

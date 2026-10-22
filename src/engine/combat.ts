@@ -594,7 +594,8 @@ export function stepBattle(
     if (def) {
       const eff = efficiencyOf(def);
       for (const d of def.drops) {
-        if (rng.next() < d.chance * eff) {
+        // overleveling thins out loot, but a key item is what lifts the fog: it always drops at its own chance
+        if (rng.next() < d.chance * (d.itemId.startsWith('key:') ? 1 : eff)) {
           const qty = rng.int(d.min, d.max);
           for (let i = 0; i < qty; i++) drops.push(d.itemId);
         }
