@@ -6,14 +6,14 @@ export interface StatusDef { kind: StatusKind; ms: number; power?: number }
 export type Target = 'nearest' | 'densest' | 'strongest' | 'center' | 'random';
 /** Arena units: the arena radius is 1, monsters stop at STOP_R = 0.15. mult scales the spell's attack. */
 export type Effect =
-  | { kind: 'bolt'; mult: number; count: number; radius: number; target: Target; status?: StatusDef }
-  | { kind: 'ring'; mult: number; radius: number; push: number; status?: StatusDef }
+  | { kind: 'bolt'; mult: number; count: number; radius: number; target: Target; status?: StatusDef[] }
+  | { kind: 'ring'; mult: number; radius: number; push: number; status?: StatusDef[] }
   | { kind: 'blades'; mult: number; count: number; push: number }
-  | { kind: 'chain'; mult: number; hops: number; range: number; explode: number; status?: StatusDef }
-  | { kind: 'zone'; mult: number; radius: number; ms: number; tickMs: number; target: Target; pull: number; follow: boolean; strikes: number; status?: StatusDef }
-  | { kind: 'storm'; mult: number; ms: number; tickMs: number; status?: StatusDef }
+  | { kind: 'chain'; mult: number; hops: number; range: number; explode: number; status?: StatusDef[] }
+  | { kind: 'zone'; mult: number; radius: number; ms: number; tickMs: number; target: Target; pull: number; follow: boolean; strikes: number; status?: StatusDef[] }
+  | { kind: 'storm'; mult: number; ms: number; tickMs: number; status?: StatusDef[] }
   | { kind: 'meteor'; mult: number; count: number; radius: number; delayMs: number; lavaMs: number; target: Target }
-  | { kind: 'field'; mult: number; delayMs: number; status?: StatusDef }
+  | { kind: 'field'; mult: number; delayMs: number; status?: StatusDef[] }
   | { kind: 'haste'; factor: number; ms: number }
   | { kind: 'backfire'; chance: number; stunMs: number };
 

@@ -33,14 +33,14 @@ const status = z.object({
   power: frac.optional(),
 });
 const effect = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('bolt'), mult: frac, count: z.number().int().positive(), radius: frac, target, status: status.optional() }),
-  z.object({ kind: z.literal('ring'), mult: frac, radius: frac, push: frac, status: status.optional() }),
+  z.object({ kind: z.literal('bolt'), mult: frac, count: z.number().int().positive(), radius: frac, target, status: z.array(status).optional() }),
+  z.object({ kind: z.literal('ring'), mult: frac, radius: frac, push: frac, status: z.array(status).optional() }),
   z.object({ kind: z.literal('blades'), mult: frac, count: z.number().int().positive(), push: frac }),
-  z.object({ kind: z.literal('chain'), mult: frac, hops: z.number().int().positive(), range: frac, explode: frac, status: status.optional() }),
-  z.object({ kind: z.literal('zone'), mult: frac, radius: frac, ms, tickMs: ms, target, pull: frac, follow: z.boolean(), strikes: z.number().int().min(0), status: status.optional() }),
-  z.object({ kind: z.literal('storm'), mult: frac, ms, tickMs: ms, status: status.optional() }),
+  z.object({ kind: z.literal('chain'), mult: frac, hops: z.number().int().positive(), range: frac, explode: frac, status: z.array(status).optional() }),
+  z.object({ kind: z.literal('zone'), mult: frac, radius: frac, ms, tickMs: ms, target, pull: frac, follow: z.boolean(), strikes: z.number().int().min(0), status: z.array(status).optional() }),
+  z.object({ kind: z.literal('storm'), mult: frac, ms, tickMs: ms, status: z.array(status).optional() }),
   z.object({ kind: z.literal('meteor'), mult: frac, count: z.number().int().positive(), radius: frac, delayMs: frac, lavaMs: frac, target }),
-  z.object({ kind: z.literal('field'), mult: frac, delayMs: frac, status: status.optional() }),
+  z.object({ kind: z.literal('field'), mult: frac, delayMs: frac, status: z.array(status).optional() }),
   z.object({ kind: z.literal('haste'), factor: z.number().positive(), ms }),
   z.object({ kind: z.literal('backfire'), chance: z.number().min(0).max(1), stunMs: frac }),
 ]);

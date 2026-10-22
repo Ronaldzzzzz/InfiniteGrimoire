@@ -123,3 +123,19 @@ describe('content', () => {
     expect(issuesOf(raw)).toContain('Fire-ball');
   });
 });
+
+describe('effect status', () => {
+  it('lets water_wave apply both slow and wet', () => {
+    const fx = content.spells.water_wave!.effects[0]!;
+    expect(fx.kind).toBe('ring');
+    const kinds = ((fx as { status?: { kind: string }[] }).status ?? []).map((s) => s.kind);
+    expect(kinds).toContain('slow');
+    expect(kinds).toContain('wet');
+  });
+
+  it('rejects a non-array status', () => {
+    const raw = base();
+    raw.spells.find((s: any) => s.id === 'fireball').effects[0].status = { kind: 'burn', ms: 1000 };
+    expect(issuesOf(raw)).toContain('fireball');
+  });
+});
