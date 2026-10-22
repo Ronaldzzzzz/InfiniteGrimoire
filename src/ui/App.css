@@ -139,3 +139,5 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .synth-matrix h4 { margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
 .matrix-cross { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .matrix-cross button { width: 100%; text-align: left; min-height: 32px; padding: 4px 8px; font-size: 13px; }
+.link-button { background: none; border: none; color: var(--rune); text-decoration: underline; min-height: 32px; padding: 4px; }
+.onboarding label { align-self: center; }
