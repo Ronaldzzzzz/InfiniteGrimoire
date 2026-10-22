@@ -13,8 +13,8 @@ const polar = (id: string) => {
 };
 
 describe('layoutGrimoire', () => {
-  it('places every spell with a node once, and none without one', () => {
-    expect(nodes).toHaveLength(spells.filter((s) => s.node).length);
+  it('places every visible spell with a node once, and none without one', () => {
+    expect(nodes).toHaveLength(spells.filter((s) => s.node && visible.has(s.node.region)).length);
     expect(nodes.find((n) => n.spellId === 'mana_overload')).toBeUndefined();
   });
   it('puts mana_bolt at the centre', () => {

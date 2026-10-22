@@ -13,14 +13,38 @@
     "boss": false,
     "drops": [
       {
-        "itemId": "el:water:1",
-        "chance": 0.7,
+        "itemId": "el:fire:1",
+        "chance": 0.025,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.4,
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mist_dew",
+        "chance": 0.02,
         "min": 1,
         "max": 1
       }
@@ -41,25 +65,88 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.7,
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.025,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.4,
+        "chance": 0.025,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.2,
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.025,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "mat:ember_core",
-        "chance": 0.05,
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "dew_frog",
+    "name": "露水蛙",
+    "nameEn": "Dew Frog",
+    "element": "water",
+    "tier": 2,
+    "hp": 55,
+    "defense": 6,
+    "regenPerSec": 0.5,
+    "speed": 0.05,
+    "radius": 0.03,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:mist_dew",
+        "chance": 0.02,
         "min": 1,
         "max": 1
       }
@@ -79,20 +166,32 @@
     "boss": false,
     "drops": [
       {
+        "itemId": "el:fire:1",
+        "chance": 0.025,
+        "min": 1,
+        "max": 1
+      },
+      {
         "itemId": "el:wind:1",
-        "chance": 0.7,
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.025,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.4,
+        "chance": 0.025,
         "min": 1,
-        "max": 2
+        "max": 1
       },
       {
-        "itemId": "el:fire:2",
-        "chance": 0.05,
+        "itemId": "el:water:1",
+        "chance": 0.025,
         "min": 1,
         "max": 1
       }
@@ -104,13 +203,37 @@
     "nameEn": "Mist Stag",
     "element": "water",
     "tier": 2,
-    "hp": 600,
+    "hp": 1500,
     "defense": 10,
     "regenPerSec": 1,
     "speed": 0.03,
     "radius": 0.06,
     "boss": true,
     "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 1,
+        "min": 3,
+        "max": 5
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 1,
+        "min": 3,
+        "max": 5
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 1,
+        "min": 3,
+        "max": 5
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 1,
+        "min": 3,
+        "max": 5
+      },
       {
         "itemId": "el:water:1",
         "chance": 1,
@@ -139,20 +262,101 @@
     "boss": false,
     "drops": [
       {
+        "itemId": "el:fire:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
         "itemId": "el:wind:1",
-        "chance": 0.7,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.5,
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.035,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.1,
+        "chance": 0.01,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:roc_feather",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "spark_beetle",
+    "name": "電光甲蟲",
+    "nameEn": "Spark Beetle",
+    "element": "thunder",
+    "tier": 3,
+    "hp": 180,
+    "defense": 25,
+    "regenPerSec": 0.5,
+    "speed": 0.05,
+    "radius": 0.03,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.01,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:fulgurite",
+        "chance": 0.02,
         "min": 1,
         "max": 1
       }
@@ -164,7 +368,7 @@
     "nameEn": "Thunder Lizard",
     "element": "thunder",
     "tier": 4,
-    "hp": 260,
+    "hp": 255,
     "defense": 30,
     "regenPerSec": 0.5,
     "speed": 0.06,
@@ -172,26 +376,50 @@
     "boss": false,
     "drops": [
       {
+        "itemId": "el:fire:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
         "itemId": "el:thunder:1",
-        "chance": 0.7,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.4,
+        "chance": 0.035,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.035,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.1,
+        "chance": 0.01,
         "min": 1,
         "max": 1
       },
       {
-        "itemId": "mat:ember_core",
-        "chance": 0.05,
+        "itemId": "mat:fulgurite",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:roc_feather",
+        "chance": 0.01,
         "min": 1,
         "max": 1
       }
@@ -203,7 +431,7 @@
     "nameEn": "Storm Roc",
     "element": "thunder",
     "tier": 4,
-    "hp": 2500,
+    "hp": 8000,
     "defense": 35,
     "regenPerSec": 1,
     "speed": 0.03,
@@ -211,10 +439,658 @@
     "boss": true,
     "drops": [
       {
+        "itemId": "el:fire:2",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
         "itemId": "el:thunder:2",
         "chance": 1,
         "min": 2,
         "max": 3
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "key:thunder_eye",
+        "chance": 1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "cinder_hound",
+    "name": "燼火獵犬",
+    "nameEn": "Cinder Hound",
+    "element": "fire",
+    "tier": 5,
+    "hp": 600,
+    "defense": 50,
+    "regenPerSec": 0.5,
+    "speed": 0.09,
+    "radius": 0.035,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.09,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:sun_shard",
+        "chance": 0.01,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "salamander",
+    "name": "火蜥蜴",
+    "nameEn": "Salamander",
+    "element": "fire",
+    "tier": 6,
+    "hp": 840,
+    "defense": 60,
+    "regenPerSec": 0.5,
+    "speed": 0.06,
+    "radius": 0.04,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.09,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:sun_shard",
+        "chance": 0.01,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:lava_stone",
+        "chance": 0.01,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "magma_golem",
+    "name": "熔岩魔像",
+    "nameEn": "Magma Golem",
+    "element": "earth",
+    "tier": 6,
+    "hp": 1080,
+    "defense": 70,
+    "regenPerSec": 0.5,
+    "speed": 0.04,
+    "radius": 0.045,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.09,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.07,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:lava_stone",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "volcano_drake",
+    "name": "火山飛龍",
+    "nameEn": "Volcano Drake",
+    "element": "fire",
+    "tier": 6,
+    "hp": 25000,
+    "defense": 80,
+    "regenPerSec": 1,
+    "speed": 0.03,
+    "radius": 0.08,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:fire:3",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "key:magma_seal",
+        "chance": 1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "temple_guardian",
+    "name": "神殿石衛",
+    "nameEn": "Temple Guardian",
+    "element": "earth",
+    "tier": 7,
+    "hp": 2000,
+    "defense": 150,
+    "regenPerSec": 0.5,
+    "speed": 0.05,
+    "radius": 0.04,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.11,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.002,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:tide_scale",
+        "chance": 0.01,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "abyss_eel",
+    "name": "深淵鰻",
+    "nameEn": "Abyss Eel",
+    "element": "water",
+    "tier": 7,
+    "hp": 1600,
+    "defense": 120,
+    "regenPerSec": 0.5,
+    "speed": 0.09,
+    "radius": 0.035,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.11,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.002,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:tide_scale",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:abyss_pearl",
+        "chance": 0.005,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "coral_colossus",
+    "name": "珊瑚巨像",
+    "nameEn": "Coral Colossus",
+    "element": "earth",
+    "tier": 8,
+    "hp": 3200,
+    "defense": 180,
+    "regenPerSec": 0.5,
+    "speed": 0.04,
+    "radius": 0.05,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.11,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:1",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.002,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:abyss_pearl",
+        "chance": 0.01,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "sunken_titan",
+    "name": "沉沒巨神",
+    "nameEn": "Sunken Titan",
+    "element": "earth",
+    "tier": 8,
+    "hp": 90000,
+    "defense": 195,
+    "regenPerSec": 1,
+    "speed": 0.025,
+    "radius": 0.09,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:fire:3",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "key:titan_crown",
+        "chance": 1,
+        "min": 1,
+        "max": 1
       }
     ]
   }

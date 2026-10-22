@@ -7,10 +7,11 @@
     "monsters": [
       "mist_slime",
       "ember_bunny",
+      "dew_frog",
       "meadow_sprite"
     ],
     "bossId": "mist_stag",
-    "killsForBoss": 30,
+    "killsForBoss": 40,
     "maxAlive": 80,
     "spawnIntervalMs": 1000,
     "pack": {
@@ -25,10 +26,49 @@
     "order": 2,
     "monsters": [
       "gorge_hawk",
+      "spark_beetle",
       "thunder_lizard"
     ],
     "bossId": "storm_roc",
-    "killsForBoss": 40,
+    "killsForBoss": 80,
+    "maxAlive": 80,
+    "spawnIntervalMs": 1000,
+    "pack": {
+      "everyMs": 6000,
+      "size": 10
+    }
+  },
+  {
+    "id": "ember_wastes",
+    "name": "熔火荒原",
+    "nameEn": "Ember Wastes",
+    "order": 3,
+    "monsters": [
+      "cinder_hound",
+      "salamander",
+      "magma_golem"
+    ],
+    "bossId": "volcano_drake",
+    "killsForBoss": 120,
+    "maxAlive": 80,
+    "spawnIntervalMs": 1000,
+    "pack": {
+      "everyMs": 6000,
+      "size": 10
+    }
+  },
+  {
+    "id": "sunken_temple",
+    "name": "沉沒神殿",
+    "nameEn": "Sunken Temple",
+    "order": 4,
+    "monsters": [
+      "temple_guardian",
+      "abyss_eel",
+      "coral_colossus"
+    ],
+    "bossId": "sunken_titan",
+    "killsForBoss": 150,
     "maxAlive": 80,
     "spawnIntervalMs": 1000,
     "pack": {

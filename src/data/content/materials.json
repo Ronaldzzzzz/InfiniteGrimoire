@@ -20,5 +20,194 @@
       "radius": 0.1,
       "target": "nearest"
     }
+  },
+  {
+    "id": "mat:mist_dew",
+    "name": "霧露",
+    "nameEn": "Mist Dew",
+    "desc": "清晨凝在草尖上的霧氣，摻進魔法裡會讓周圍的怪濕透。",
+    "elements": [
+      "water"
+    ],
+    "words": {
+      "pre": "霧露",
+      "noun": "水霧",
+      "preEn": "Misty",
+      "nounEn": "Haze"
+    },
+    "effect": {
+      "kind": "ring",
+      "mult": 0.2,
+      "radius": 0.4,
+      "push": 0,
+      "status": [
+        {
+          "kind": "wet",
+          "ms": 3000
+        }
+      ]
+    }
+  },
+  {
+    "id": "mat:roc_feather",
+    "name": "雷鳥羽毛",
+    "nameEn": "Roc Feather",
+    "desc": "帶著靜電的羽毛，摻進魔法裡會多一段連鎖閃電。",
+    "elements": [
+      "thunder",
+      "wind"
+    ],
+    "words": {
+      "pre": "雷羽",
+      "noun": "電弧",
+      "preEn": "Feathered",
+      "nounEn": "Arc"
+    },
+    "effect": {
+      "kind": "chain",
+      "mult": 0.4,
+      "hops": 3,
+      "range": 0.25,
+      "explode": 0
+    }
+  },
+  {
+    "id": "mat:fulgurite",
+    "name": "雷擊石",
+    "nameEn": "Fulgurite",
+    "desc": "被雷劈過的沙凝成的石頭，摻進魔法裡會多一記讓怪暈眩的落石。",
+    "elements": [
+      "earth",
+      "thunder"
+    ],
+    "words": {
+      "pre": "雷擊",
+      "noun": "碎石",
+      "preEn": "Fulgurite",
+      "nounEn": "Shards"
+    },
+    "effect": {
+      "kind": "bolt",
+      "mult": 0.5,
+      "count": 1,
+      "radius": 0.1,
+      "target": "densest",
+      "status": [
+        {
+          "kind": "stun",
+          "ms": 600
+        }
+      ]
+    }
+  },
+  {
+    "id": "mat:sun_shard",
+    "name": "日輝碎片",
+    "nameEn": "Sun Shard",
+    "desc": "像是從太陽上剝下來的碎片，摻進魔法裡會多一道灼燒最強敵人的光。",
+    "elements": [
+      "fire",
+      "thunder"
+    ],
+    "words": {
+      "pre": "日輝",
+      "noun": "光矛",
+      "preEn": "Radiant",
+      "nounEn": "Lance"
+    },
+    "effect": {
+      "kind": "bolt",
+      "mult": 1.2,
+      "count": 1,
+      "radius": 0.05,
+      "target": "strongest",
+      "status": [
+        {
+          "kind": "burn",
+          "ms": 3000,
+          "power": 0.3
+        }
+      ]
+    }
+  },
+  {
+    "id": "mat:lava_stone",
+    "name": "熔岩石",
+    "nameEn": "Lava Stone",
+    "desc": "裡面還流著岩漿的石頭，摻進魔法裡會多砸下一顆小隕石。",
+    "elements": [
+      "earth",
+      "fire"
+    ],
+    "words": {
+      "pre": "熔石",
+      "noun": "火山",
+      "preEn": "Volcanic",
+      "nounEn": "Eruption"
+    },
+    "effect": {
+      "kind": "meteor",
+      "mult": 0.6,
+      "count": 1,
+      "radius": 0.15,
+      "delayMs": 600,
+      "lavaMs": 1500,
+      "target": "densest"
+    }
+  },
+  {
+    "id": "mat:tide_scale",
+    "name": "潮汐鱗片",
+    "nameEn": "Tide Scale",
+    "desc": "摸起來永遠是濕的鱗片，摻進魔法裡會多一道把怪推開的浪。",
+    "elements": [
+      "water",
+      "wind"
+    ],
+    "words": {
+      "pre": "潮汐",
+      "noun": "湧浪",
+      "preEn": "Tidal",
+      "nounEn": "Swell"
+    },
+    "effect": {
+      "kind": "ring",
+      "mult": 0.3,
+      "radius": 0.6,
+      "push": 1,
+      "status": [
+        {
+          "kind": "wet",
+          "ms": 3000
+        }
+      ]
+    }
+  },
+  {
+    "id": "mat:abyss_pearl",
+    "name": "深淵珍珠",
+    "nameEn": "Abyss Pearl",
+    "desc": "黑得看不見底的珍珠，摻進魔法裡會開出一個吸怪的小漩渦。",
+    "elements": [
+      "water",
+      "earth"
+    ],
+    "words": {
+      "pre": "幽淵",
+      "noun": "暗渦",
+      "preEn": "Abyssal",
+      "nounEn": "Whorl"
+    },
+    "effect": {
+      "kind": "zone",
+      "mult": 0.1,
+      "radius": 0.2,
+      "ms": 2000,
+      "tickMs": 250,
+      "target": "densest",
+      "pull": 0.5,
+      "follow": false,
+      "strikes": 0
+    }
   }
 ]

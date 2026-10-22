@@ -6,8 +6,8 @@
     "desc": "火系魔法傷害 +10%。",
     "node": {
       "region": "outer",
-      "ring": 1,
-      "angle": 0
+      "ring": 4,
+      "angle": 18
     },
     "bonus": {
       "kind": "damage",
@@ -19,6 +19,194 @@
       "items": {
         "mat:ember_core": 5
       }
+    }
+  },
+  {
+    "id": "mist_affinity",
+    "name": "霧露親和",
+    "nameEn": "Mist Affinity",
+    "desc": "水系魔法傷害 +10%。",
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 306
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": "water",
+      "pct": 10
+    },
+    "unlock": {
+      "kind": "items",
+      "items": {
+        "mat:mist_dew": 5
+      }
+    }
+  },
+  {
+    "id": "eager_student",
+    "name": "好學",
+    "nameEn": "Eager Student",
+    "desc": "學會 10 個魔法後解鎖：所有魔法傷害 +5%。",
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 180
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": null,
+      "pct": 5
+    },
+    "unlock": {
+      "kind": "learned",
+      "count": 10,
+      "element": null
+    }
+  },
+  {
+    "id": "feather_affinity",
+    "name": "雷羽親和",
+    "nameEn": "Feather Affinity",
+    "desc": "雷系魔法傷害 +10%。",
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 126
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": "thunder",
+      "pct": 10
+    },
+    "unlock": {
+      "kind": "items",
+      "items": {
+        "mat:roc_feather": 5
+      }
+    }
+  },
+  {
+    "id": "stone_affinity",
+    "name": "磐石親和",
+    "nameEn": "Stone Affinity",
+    "desc": "土系魔法傷害 +10%。",
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 234
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": "earth",
+      "pct": 10
+    },
+    "unlock": {
+      "kind": "items",
+      "items": {
+        "mat:fulgurite": 5
+      }
+    }
+  },
+  {
+    "id": "gale_affinity",
+    "name": "疾風親和",
+    "nameEn": "Gale Affinity",
+    "desc": "學會 4 個帶風的魔法後解鎖：風系魔法傷害 +10%。",
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 90
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": "wind",
+      "pct": 10
+    },
+    "unlock": {
+      "kind": "learned",
+      "count": 4,
+      "element": "wind"
+    }
+  },
+  {
+    "id": "deep_insight",
+    "name": "深層洞察",
+    "nameEn": "Deep Insight",
+    "desc": "擊敗風暴大鵬後解鎖：自創魔法可以多疊一層。",
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 162
+    },
+    "bonus": {
+      "kind": "depth",
+      "add": 1
+    },
+    "unlock": {
+      "kind": "boss",
+      "bossId": "storm_roc"
+    }
+  },
+  {
+    "id": "swift_chant",
+    "name": "疾速詠唱",
+    "nameEn": "Swift Chant",
+    "desc": "所有魔法的冷卻時間 -10%。",
+    "node": {
+      "region": "abyss",
+      "ring": 6,
+      "angle": 36
+    },
+    "bonus": {
+      "kind": "cooldown",
+      "pct": 10
+    },
+    "unlock": {
+      "kind": "items",
+      "items": {
+        "mat:sun_shard": 3,
+        "mat:lava_stone": 3
+      }
+    }
+  },
+  {
+    "id": "abyss_insight",
+    "name": "深淵洞察",
+    "nameEn": "Abyssal Insight",
+    "desc": "擊敗火山飛龍後解鎖：自創魔法可以再多疊一層。",
+    "node": {
+      "region": "abyss",
+      "ring": 6,
+      "angle": 180
+    },
+    "bonus": {
+      "kind": "depth",
+      "add": 1
+    },
+    "unlock": {
+      "kind": "boss",
+      "bossId": "volcano_drake"
+    }
+  },
+  {
+    "id": "elemental_sovereign",
+    "name": "元素君主",
+    "nameEn": "Elemental Sovereign",
+    "desc": "擊敗沉沒巨神後解鎖：所有魔法傷害 +10%。",
+    "node": {
+      "region": "zenith",
+      "ring": 7,
+      "angle": 0
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": null,
+      "pct": 10
+    },
+    "unlock": {
+      "kind": "boss",
+      "bossId": "sunken_titan"
     }
   }
 ]

@@ -8,6 +8,8 @@ import materials from '../data/content/materials.json';
 import keyItems from '../data/content/key-items.json';
 import passives from '../data/content/passives.json';
 import regions from '../data/content/regions.json';
+import { craftedId, inputToken, resolveSpell } from './spells';
+import { ELEMENT_ORDER } from './types';
 
 const base = () => structuredClone({ spells, recipes, monsters, zones, materials, keyItems, passives, regions }) as Record<string, any>;
 
@@ -137,5 +139,142 @@ describe('effect status', () => {
     const raw = base();
     raw.spells.find((s: any) => s.id === 'fireball').effects[0].status = { kind: 'burn', ms: 1000 };
     expect(issuesOf(raw)).toContain('fireball');
+  });
+});
+
+describe('shipped content set', () => {
+  const spellsOf = Object.values(content.spells);
+  const hidden = new Set(content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id));
+  const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  const recipesFor = (inputs: [string, string]) =>
+    content.recipes.filter((r) => sameSet([...r.inputs].sort(), [...inputs].sort()));
+  const zoneMonsters = (z: (typeof content.zones)[number]) => [...z.monsters, z.bossId];
+  const topTier = Math.max(...Object.values(content.monsters).map((m) => m.tier));
+
+  it('every element pair has a named spell', () => {
+    for (const [i, x] of ELEMENT_ORDER.entries()) {
+      for (const y of ELEMENT_ORDER.slice(i)) {
+        const candidates = [
+          ...recipesFor([`el:${x}:1`, `el:${y}:1`]),
+          ...(x === y ? [] : recipesFor([content.baseSpells[x], content.baseSpells[y]])),
+        ];
+        const named = candidates.flatMap((r) => r.outcomes.map((o) => o.spellId)).filter((s): s is string => !!s);
+        const want = x === y ? [x] : [x, y];
+        expect(named.some((id) => sameSet(content.spells[id]!.elements, want)), `${x}+${y}`).toBe(true);
+      }
+    }
+  });
+
+  it('each element has a pure line to the top tier', () => {
+    for (const e of ELEMENT_ORDER) {
+      const line = [content.baseSpells[e]];
+      for (;;) {
+        const cur = line[line.length - 1]!;
+        const next = content.recipes.find((r) =>
+          r.inputs.includes(cur) && r.inputs.some((i) => i.startsWith(`el:${e}:`)) && r.outcomes.length === 1 &&
+          r.outcomes[0]!.spellId !== null && sameSet(content.spells[r.outcomes[0]!.spellId]!.elements, [e]));
+        if (!next) break;
+        line.push(next.outcomes[0]!.spellId!);
+      }
+      expect(line.length, `${e}: ${line.join(' > ')}`).toBeGreaterThanOrEqual(4);
+      const spells = line.map((id) => content.spells[id]!);
+      spells.forEach((s, d) => expect(s.depth, s.id).toBe(d));
+      for (const s of spells.slice(2)) {
+        expect(s.tier, s.id).toBeGreaterThanOrEqual(5);
+        expect(s.tier, s.id).toBeLessThanOrEqual(8);
+      }
+      // the end of the line can hurt every monster by tier alone
+      expect(spells[spells.length - 1]!.tier, e).toBeGreaterThanOrEqual(topTier - 1);
+    }
+  });
+
+  it('at least two named spells sit in hidden regions', () => {
+    // ... and can be made from core spells or items, so random experiments can stumble on them before the fog lifts
+    const core = (id: string) => /^(el|mat):/.test(id) || (!!content.spells[id]?.node && !hidden.has(content.spells[id]!.node!.region));
+    const stumble = spellsOf.filter((s) => s.node && hidden.has(s.node.region) &&
+      content.recipes.some((r) => r.outcomes.some((o) => o.spellId === s.id) && r.inputs.every(core)));
+    expect(stumble.length, stumble.map((s) => s.id).join(',')).toBeGreaterThanOrEqual(2);
+  });
+
+  it('each boss drops a key item that reveals a different region', () => {
+    const revealed = content.zones.map((z) => {
+      const boss = content.monsters[z.bossId]!;
+      const key = boss.drops.find((d) => d.itemId.startsWith('key:') && d.chance === 1 && d.min >= 1);
+      expect(key, z.bossId).toBeDefined();
+      return content.keyItems[key!.itemId]!.reveals;
+    });
+    expect(new Set(revealed).size).toBe(content.zones.length);
+    for (const r of revealed) expect(hidden.has(r), r).toBe(true);
+  });
+
+  it('random recipes succeed at most 10% and fall through to crafted', () => {
+    const random = content.recipes.filter((r) => r.outcomes.length > 1);
+    expect(random.length).toBeGreaterThanOrEqual(2);
+    for (const r of random) {
+      const total = r.outcomes.reduce((n, o) => n + o.weight, 0);
+      const named = r.outcomes.filter((o) => o.spellId !== null).reduce((n, o) => n + o.weight, 0);
+      expect(r.outcomes.some((o) => o.spellId === null), r.id).toBe(true);
+      expect(named / total, r.id).toBeLessThanOrEqual(0.1);
+      const [a, b] = r.inputs.map((i) => inputToken(i, content));
+      expect(resolveSpell(craftedId(a!, b!), content), r.id).not.toBeNull();
+    }
+  });
+
+  it('materials and key items are all dropped somewhere', () => {
+    const inZones = new Set(content.zones.flatMap(zoneMonsters));
+    const dropped = new Set(Object.values(content.monsters).filter((m) => inZones.has(m.id)).flatMap((m) => m.drops.map((d) => d.itemId)));
+    for (const id of [...Object.keys(content.materials), ...Object.keys(content.keyItems)]) expect(dropped.has(id), id).toBe(true);
+    for (const z of content.zones) {
+      const mats = new Set(z.monsters.flatMap((m) => content.monsters[m]!.drops.map((d) => d.itemId)).filter((i) => i.startsWith('mat:')));
+      expect(mats.size, z.id).toBeGreaterThanOrEqual(2);
+    }
+    for (const m of Object.values(content.materials)) expect(m.elements.length, m.id).toBeGreaterThan(0);
+  });
+
+  it('counts meet the minimums', () => {
+    const by = (f: (s: (typeof spellsOf)[number]) => boolean) => spellsOf.filter(f).length;
+    expect(by((s) => s.affinity === 'base' && s.elements.length === 1)).toBe(5);
+    expect(by((s) => s.affinity === 'self' && s.depth === 1)).toBe(5);
+    expect(by((s) => s.elements.length === 2 && s.depth === 1)).toBe(10);
+    expect(by((s) => s.elements.length >= 2 && s.depth >= 2 && !content.recipes.some((r) => r.outcomes.length > 1 && r.outcomes.some((o) => o.spellId === s.id)))).toBeGreaterThanOrEqual(6);
+    expect(Object.keys(content.materials).length).toBeGreaterThanOrEqual(8);
+    expect(Object.keys(content.keyItems).length).toBeGreaterThanOrEqual(3);
+    const passives = Object.values(content.passives);
+    expect(passives.length).toBeGreaterThanOrEqual(6);
+    expect(passives.filter((p) => p.bonus.kind === 'depth' && p.bonus.add === 1).length).toBeGreaterThanOrEqual(2);
+    expect(passives.some((p) => p.unlock.kind === 'boss')).toBe(true);
+    expect(passives.some((p) => p.unlock.kind === 'learned')).toBe(true);
+    expect(content.regions.length).toBeGreaterThanOrEqual(4);
+    expect(content.regions.filter((r) => r.initiallyVisible).map((r) => r.id)).toEqual(['core']);
+    expect(content.zones.length).toBeGreaterThanOrEqual(4);
+    const bands = content.zones.map((z) => z.monsters.map((m) => content.monsters[m]!.tier));
+    [[1, 2], [3, 4], [5, 6], [7, 8]].forEach(([lo, hi], i) => {
+      expect(Math.min(...bands[i]!), content.zones[i]!.id).toBe(lo);
+      expect(Math.max(...bands[i]!), content.zones[i]!.id).toBe(hi);
+    });
+    // each zone leans to its own element: the most common monster element differs per zone
+    const lean = content.zones.map((z) => {
+      const n: Record<string, number> = {};
+      for (const m of z.monsters) n[content.monsters[m]!.element] = (n[content.monsters[m]!.element] ?? 0) + 1;
+      return Object.entries(n).sort((a, b) => b[1] - a[1])[0]![0];
+    });
+    expect(new Set(lean).size, lean.join(',')).toBe(content.zones.length);
+  });
+
+  it('every named spell is readable and placed', () => {
+    const at = new Set<string>();
+    for (const s of spellsOf) {
+      for (const w of [s.words.pre, s.words.noun, s.hint, s.name]) expect(w.trim().length, s.id).toBeGreaterThan(0);
+      if (s.id === 'mana_overload') { expect(s.node).toBeNull(); continue; }
+      expect(s.node, s.id).not.toBeNull();
+      const key = `${s.node!.region}:${s.node!.ring}:${((s.node!.angle % 360) + 360) % 360}`;
+      expect(at.has(key), `${s.id} shares ${key}`).toBe(false);
+      at.add(key);
+    }
+    for (const p of Object.values(content.passives)) {
+      const key = `${p.node.region}:${p.node.ring}:${((p.node.angle % 360) + 360) % 360}`;
+      expect(at.has(key), `${p.id} shares ${key}`).toBe(false);
+      at.add(key);
+    }
   });
 });

@@ -119,13 +119,13 @@ describe('validateUpload', () => {
     let game = prev;
     let battle = createBattle(prev.currentZone);
     const rng = createRng(7);
-    for (let t = 0; t < 30_000; t += STEP_MS) {
+    for (let t = 0; t < 60_000; t += STEP_MS) {
       const r = stepBattle(game, battle, realContent, rng);
       game = r.game;
       battle = r.battle;
     }
     expect(Object.keys(game.inventory).length).toBeGreaterThan(0);
-    expect(validateUpload(prev, game, 30_000, realContent)).toEqual({ ok: true });
+    expect(validateUpload(prev, game, 60_000, realContent)).toEqual({ ok: true });
   });
 
   it('inventory explosion rejected', () => {

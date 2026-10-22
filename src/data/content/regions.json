@@ -12,5 +12,26 @@
     "nameEn": "Outer Reaches",
     "order": 2,
     "initiallyVisible": false
+  },
+  {
+    "id": "rift",
+    "name": "裂隙",
+    "nameEn": "The Rift",
+    "order": 3,
+    "initiallyVisible": false
+  },
+  {
+    "id": "abyss",
+    "name": "深淵",
+    "nameEn": "The Abyss",
+    "order": 4,
+    "initiallyVisible": false
+  },
+  {
+    "id": "zenith",
+    "name": "天穹",
+    "nameEn": "Zenith",
+    "order": 5,
+    "initiallyVisible": false
   }
 ]

@@ -1,17 +1,10 @@
 [
   {
-    "named": true,
-    "prerequisites": [],
-    "node": {
-      "region": "core",
-      "ring": 0,
-      "angle": 0
-    },
     "id": "mana_bolt",
     "name": "魔力彈",
     "nameEn": "Mana Bolt",
     "desc": "最基本的魔力彈，打向最近的怪。",
-    "hint": "一開始就會的魔法。",
+    "hint": "殘卷：純粹的魔力凝聚成彈，是所有魔法的起點。",
     "elements": [],
     "tier": 1,
     "attack": 8,
@@ -32,17 +25,21 @@
       "nounEn": "Bolt"
     },
     "affinity": "base",
-    "depth": 0
-  },
-  {
+    "depth": 0,
     "named": true,
     "prerequisites": [],
-    "node": null,
+    "node": {
+      "region": "core",
+      "ring": 0,
+      "angle": 0
+    }
+  },
+  {
     "id": "mana_overload",
     "name": "魔力過載",
     "nameEn": "Mana Overload",
     "desc": "疊太多層了。魔力在手上炸開，小人暈了兩秒。",
-    "hint": "把魔法疊得太深就會出現。",
+    "hint": "殘卷：把魔法疊得比自己能承受的還深，魔力就會在手中炸開。",
     "elements": [],
     "tier": 1,
     "attack": 1,
@@ -61,23 +58,17 @@
       "nounEn": "Turbulence"
     },
     "affinity": "bad",
-    "depth": 0
+    "depth": 0,
+    "named": true,
+    "prerequisites": [],
+    "node": null
   },
   {
-    "named": true,
-    "prerequisites": [
-      "mana_bolt"
-    ],
-    "node": {
-      "region": "core",
-      "ring": 1,
-      "angle": 0
-    },
     "id": "fireball",
     "name": "火球",
     "nameEn": "Fireball",
     "desc": "打中會爆開並點燃，燃燒的怪死掉會把火傳給旁邊的怪。",
-    "hint": "兩個初階火元素。",
+    "hint": "殘卷：兩份微弱的火種相遇，會燃起一團火球。",
     "elements": [
       "fire"
     ],
@@ -108,9 +99,6 @@
     },
     "affinity": "base",
     "depth": 0,
-    "baseOf": "fire"
-  },
-  {
     "named": true,
     "prerequisites": [
       "mana_bolt"
@@ -118,13 +106,16 @@
     "node": {
       "region": "core",
       "ring": 1,
-      "angle": 72
+      "angle": 0
     },
+    "baseOf": "fire"
+  },
+  {
     "id": "wind_blade",
     "name": "疾風刃",
     "nameEn": "Wind Blade",
     "desc": "向外甩出風刃，把怪擊退。",
-    "hint": "兩個初階風元素。",
+    "hint": "殘卷：兩縷微風交纏，會削出銳利的風刃。",
     "elements": [
       "wind"
     ],
@@ -147,9 +138,6 @@
     },
     "affinity": "base",
     "depth": 0,
-    "baseOf": "wind"
-  },
-  {
     "named": true,
     "prerequisites": [
       "mana_bolt"
@@ -157,13 +145,16 @@
     "node": {
       "region": "core",
       "ring": 1,
-      "angle": 144
+      "angle": 72
     },
+    "baseOf": "wind"
+  },
+  {
     "id": "lightning",
     "name": "落雷",
     "nameEn": "Lightning",
     "desc": "閃電在怪之間跳躍。打到濕的怪傷害加倍。",
-    "hint": "兩個初階雷元素。",
+    "hint": "殘卷：兩粒雷光碰撞，電流會在敵人之間跳躍。",
     "elements": [
       "thunder"
     ],
@@ -187,9 +178,6 @@
     },
     "affinity": "base",
     "depth": 0,
-    "baseOf": "thunder"
-  },
-  {
     "named": true,
     "prerequisites": [
       "mana_bolt"
@@ -197,13 +185,16 @@
     "node": {
       "region": "core",
       "ring": 1,
-      "angle": 216
+      "angle": 144
     },
+    "baseOf": "thunder"
+  },
+  {
     "id": "rock_spear",
     "name": "岩槍",
     "nameEn": "Rock Spear",
     "desc": "在怪最多的地方突出岩槍，暈眩一下。",
-    "hint": "兩個初階土元素。",
+    "hint": "殘卷：兩顆細碎的土粒聚攏，會從地底刺出岩槍。",
     "elements": [
       "earth"
     ],
@@ -233,9 +224,6 @@
     },
     "affinity": "base",
     "depth": 0,
-    "baseOf": "earth"
-  },
-  {
     "named": true,
     "prerequisites": [
       "mana_bolt"
@@ -243,13 +231,16 @@
     "node": {
       "region": "core",
       "ring": 1,
-      "angle": 288
+      "angle": 216
     },
+    "baseOf": "earth"
+  },
+  {
     "id": "water_wave",
     "name": "水波",
     "nameEn": "Water Wave",
     "desc": "水波擴散，讓怪變慢、變濕。",
-    "hint": "兩個初階水元素。",
+    "hint": "殘卷：兩滴水珠合一，漣漪會一圈圈擴散出去。",
     "elements": [
       "water"
     ],
@@ -283,23 +274,23 @@
     },
     "affinity": "base",
     "depth": 0,
-    "baseOf": "water"
-  },
-  {
     "named": true,
     "prerequisites": [
-      "fireball"
+      "mana_bolt"
     ],
     "node": {
       "region": "core",
-      "ring": 2,
-      "angle": 0
+      "ring": 1,
+      "angle": 288
     },
+    "baseOf": "water"
+  },
+  {
     "id": "flame_burst",
     "name": "烈焰爆發",
     "nameEn": "Flame Burst",
-    "desc": "更大的火球。",
-    "hint": "火球加一個中階火元素。",
+    "desc": "更大的火球，砸向怪最多的地方。",
+    "hint": "殘卷：火球裡再灌進淬鍊過的火，爆炎會大上一圈。",
     "elements": [
       "fire"
     ],
@@ -329,23 +320,23 @@
       "nounEn": "Blast"
     },
     "affinity": "self",
-    "depth": 1
-  },
-  {
+    "depth": 1,
     "named": true,
     "prerequisites": [
-      "wind_blade"
+      "fireball"
     ],
     "node": {
       "region": "core",
       "ring": 2,
-      "angle": 72
-    },
+      "angle": 0
+    }
+  },
+  {
     "id": "tailwind",
     "name": "順風",
     "nameEn": "Tailwind",
     "desc": "自己的施法速度變成 2 倍，持續 8 秒。",
-    "hint": "疾風刃加一個中階風元素。",
+    "hint": "殘卷：風刃裡再灌進淬鍊過的風，風會轉而推著施法者前進。",
     "elements": [
       "wind"
     ],
@@ -366,23 +357,23 @@
       "nounEn": "Gust"
     },
     "affinity": "self",
-    "depth": 1
-  },
-  {
+    "depth": 1,
     "named": true,
     "prerequisites": [
-      "lightning"
+      "wind_blade"
     ],
     "node": {
       "region": "core",
       "ring": 2,
-      "angle": 144
-    },
+      "angle": 72
+    }
+  },
+  {
     "id": "thunder_hammer",
     "name": "雷神之槌",
     "nameEn": "Thunder Hammer",
     "desc": "打最硬的那一隻，再往外跳。",
-    "hint": "落雷加一個中階雷元素。",
+    "hint": "殘卷：落雷裡再灌進淬鍊過的雷，雷光會凝成一柄重槌。",
     "elements": [
       "thunder"
     ],
@@ -412,23 +403,23 @@
       "nounEn": "Hammer"
     },
     "affinity": "self",
-    "depth": 1
-  },
-  {
+    "depth": 1,
     "named": true,
     "prerequisites": [
-      "rock_spear"
+      "lightning"
     ],
     "node": {
       "region": "core",
       "ring": 2,
-      "angle": 216
-    },
+      "angle": 144
+    }
+  },
+  {
     "id": "earthquake",
     "name": "地震",
     "nameEn": "Earthquake",
     "desc": "全場暈眩 1.5 秒。",
-    "hint": "岩槍加一個中階土元素。",
+    "hint": "殘卷：岩槍裡再灌進淬鍊過的土，整片大地都會跟著搖晃。",
     "elements": [
       "earth"
     ],
@@ -456,23 +447,23 @@
       "nounEn": "Quake"
     },
     "affinity": "self",
-    "depth": 1
-  },
-  {
+    "depth": 1,
     "named": true,
     "prerequisites": [
-      "water_wave"
+      "rock_spear"
     ],
     "node": {
       "region": "core",
       "ring": 2,
-      "angle": 288
-    },
+      "angle": 216
+    }
+  },
+  {
     "id": "tsunami",
     "name": "大海嘯",
     "nameEn": "Tsunami",
     "desc": "整個戰場的怪都被沖回邊緣。",
-    "hint": "水波加一個中階水元素。",
+    "hint": "殘卷：水波裡再灌進淬鍊過的水，漣漪會漲成吞沒一切的巨浪。",
     "elements": [
       "water"
     ],
@@ -500,24 +491,23 @@
       "nounEn": "Tsunami"
     },
     "affinity": "self",
-    "depth": 1
-  },
-  {
+    "depth": 1,
     "named": true,
     "prerequisites": [
-      "fireball",
-      "wind_blade"
+      "water_wave"
     ],
     "node": {
       "region": "core",
-      "ring": 3,
-      "angle": 36
-    },
+      "ring": 2,
+      "angle": 288
+    }
+  },
+  {
     "id": "fire_tornado",
     "name": "火焰龍捲",
     "nameEn": "Fire Tornado",
     "desc": "風把怪吸到中心，火在中心燒。怪越多，傷害越高。",
-    "hint": "火球與疾風刃的組合。",
+    "hint": "殘卷：烈焰與旋風交織，火焰會隨風捲起，吞沒四周。",
     "elements": [
       "fire",
       "wind"
@@ -552,6 +542,1512 @@
       "nounEn": "Cyclone"
     },
     "affinity": "good",
-    "depth": 1
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "fireball",
+      "wind_blade"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 36
+    }
+  },
+  {
+    "id": "shock_sea",
+    "name": "感電之海",
+    "nameEn": "Shocking Sea",
+    "desc": "先把整個戰場淹濕，再讓雷劈向每一隻濕掉的怪。",
+    "hint": "殘卷：先讓水漫過大地，再讓雷落下——濕透的敵人逃不過。",
+    "elements": [
+      "thunder",
+      "water"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "field",
+        "mult": 0.2,
+        "delayMs": 0,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 5000
+          },
+          {
+            "kind": "slow",
+            "ms": 1500,
+            "power": 0.5
+          }
+        ]
+      },
+      {
+        "kind": "storm",
+        "mult": 0.6,
+        "ms": 1500,
+        "tickMs": 60
+      }
+    ],
+    "words": {
+      "pre": "感電",
+      "noun": "雷海",
+      "preEn": "Electric",
+      "nounEn": "Sea"
+    },
+    "affinity": "good",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "lightning",
+      "water_wave"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 216
+    }
+  },
+  {
+    "id": "thunder_cloud",
+    "name": "雷暴雲",
+    "nameEn": "Thunderhead",
+    "desc": "一朵雷雲在戰場上空飄，不停往下劈。",
+    "hint": "殘卷：風把雷光托上天空，雲裡便藏著數不清的落雷。",
+    "elements": [
+      "wind",
+      "thunder"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "storm",
+        "mult": 1.6,
+        "ms": 5000,
+        "tickMs": 140
+      }
+    ],
+    "words": {
+      "pre": "暴風",
+      "noun": "雷雲",
+      "preEn": "Tempest",
+      "nounEn": "Thunderhead"
+    },
+    "affinity": "good",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "wind_blade",
+      "lightning"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 108
+    }
+  },
+  {
+    "id": "meteor",
+    "name": "隕石",
+    "nameEn": "Meteor",
+    "desc": "隕石砸向怪最多的地方，留下一灘熔岩。",
+    "hint": "殘卷：點燃一塊岩石，再讓它從天而降。",
+    "elements": [
+      "fire",
+      "earth"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "meteor",
+        "mult": 3.5,
+        "count": 1,
+        "radius": 0.31,
+        "delayMs": 800,
+        "lavaMs": 3000,
+        "target": "densest"
+      }
+    ],
+    "words": {
+      "pre": "熔岩",
+      "noun": "隕石",
+      "preEn": "Molten",
+      "nounEn": "Meteor"
+    },
+    "affinity": "good",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "rock_spear",
+      "fireball"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 288
+    }
+  },
+  {
+    "id": "ice_storm",
+    "name": "冰風暴",
+    "nameEn": "Ice Storm",
+    "desc": "把周圍的怪全部凍住；凍住的怪受到的傷害變成 1.5 倍。",
+    "hint": "殘卷：寒風吹過水面，水會在敵人身上結成冰。",
+    "elements": [
+      "wind",
+      "water"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 0.4,
+        "radius": 0.85,
+        "push": 0,
+        "status": [
+          {
+            "kind": "freeze",
+            "ms": 2500
+          }
+        ]
+      },
+      {
+        "kind": "blades",
+        "mult": 0.6,
+        "count": 6,
+        "push": 0.3
+      }
+    ],
+    "words": {
+      "pre": "冰霜",
+      "noun": "冰暴",
+      "preEn": "Frost",
+      "nounEn": "Blizzard"
+    },
+    "affinity": "good",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "water_wave",
+      "wind_blade"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 0
+    }
+  },
+  {
+    "id": "flame_chain",
+    "name": "雷炎鎖鏈",
+    "nameEn": "Blazing Chain",
+    "desc": "跳躍的閃電在每一跳都炸開，點燃周圍的怪。",
+    "hint": "殘卷：讓雷光帶著火種跳躍，每一跳都會炸出火花。",
+    "elements": [
+      "fire",
+      "thunder"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 2600,
+    "effects": [
+      {
+        "kind": "chain",
+        "mult": 0.75,
+        "hops": 9,
+        "range": 0.36,
+        "explode": 0.11,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 2000,
+            "power": 0.3
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "雷炎",
+      "noun": "鎖鏈",
+      "preEn": "Searing",
+      "nounEn": "Chain"
+    },
+    "affinity": "good",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "fireball",
+      "lightning"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 72
+    }
+  },
+  {
+    "id": "mire",
+    "name": "泥沼",
+    "nameEn": "Mire",
+    "desc": "幾乎沒有傷害，但整片怪都卡在泥巴裡動不了。",
+    "hint": "殘卷：土與水攪在一起，什麼都會陷進去。",
+    "elements": [
+      "earth",
+      "water"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.05,
+        "radius": 0.56,
+        "ms": 6000,
+        "tickMs": 500,
+        "target": "center",
+        "pull": 0,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.9
+          },
+          {
+            "kind": "wet",
+            "ms": 2000
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "泥濘",
+      "noun": "泥沼",
+      "preEn": "Muddy",
+      "nounEn": "Mire"
+    },
+    "affinity": "odd",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "rock_spear",
+      "water_wave"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 252
+    }
+  },
+  {
+    "id": "sandstorm",
+    "name": "沙塵暴",
+    "nameEn": "Sandstorm",
+    "desc": "怪全都看不見，開始到處亂走。",
+    "hint": "殘卷：讓風捲起沙土，敵人就再也看不清方向。",
+    "elements": [
+      "wind",
+      "earth"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "field",
+        "mult": 0.15,
+        "delayMs": 0,
+        "status": [
+          {
+            "kind": "blind",
+            "ms": 4000
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "沙塵",
+      "noun": "沙暴",
+      "preEn": "Dusty",
+      "nounEn": "Sandstorm"
+    },
+    "affinity": "odd",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "rock_spear",
+      "wind_blade"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 144
+    }
+  },
+  {
+    "id": "steam",
+    "name": "蒸氣",
+    "nameEn": "Steam",
+    "desc": "噗嘶……火被水澆熄了。蒸氣遮住視線、拖慢施法，還讓裡面的怪回血。",
+    "hint": "殘卷：水火不容。硬要放在一起，只會冒出一陣白煙。",
+    "elements": [
+      "fire",
+      "water"
+    ],
+    "tier": 4,
+    "attack": 20,
+    "cooldownMs": 3000,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 0.1,
+        "radius": 0.52,
+        "push": 0,
+        "status": [
+          {
+            "kind": "regen",
+            "ms": 2000,
+            "power": 0.1
+          }
+        ]
+      },
+      {
+        "kind": "haste",
+        "factor": 0.6,
+        "ms": 3000
+      }
+    ],
+    "words": {
+      "pre": "潮濕",
+      "noun": "蒸氣",
+      "preEn": "Damp",
+      "nounEn": "Steam"
+    },
+    "affinity": "bad",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "fireball",
+      "water_wave"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 324
+    }
+  },
+  {
+    "id": "grounding",
+    "name": "接地",
+    "nameEn": "Grounding",
+    "desc": "雷電多半被大地吸收了。……但偶爾岩石會被磁化炸開。",
+    "hint": "殘卷：雷落進土裡便無聲無息——十次裡總有三次例外。",
+    "elements": [
+      "thunder",
+      "earth"
+    ],
+    "tier": 4,
+    "attack": 20,
+    "cooldownMs": 2500,
+    "effects": [
+      {
+        "kind": "backfire",
+        "chance": 0.7,
+        "stunMs": 400
+      },
+      {
+        "kind": "bolt",
+        "mult": 1,
+        "count": 14,
+        "radius": 0.1,
+        "target": "random",
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 800
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "接地",
+      "noun": "磁岩",
+      "preEn": "Grounded",
+      "nounEn": "Lodestone"
+    },
+    "affinity": "bad",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "rock_spear",
+      "lightning"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 180
+    }
+  },
+  {
+    "id": "inferno",
+    "name": "煉獄",
+    "nameEn": "Inferno",
+    "desc": "三團烈焰同時砸進怪群，燒得比什麼都久。",
+    "hint": "殘卷：烈焰爆發再吞下高階的火，就再也分不清哪裡是火、哪裡是地面。",
+    "elements": [
+      "fire"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 2600,
+    "effects": [
+      {
+        "kind": "bolt",
+        "mult": 0.7,
+        "count": 3,
+        "radius": 0.3,
+        "target": "densest",
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 4000,
+            "power": 0.5
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "煉獄",
+      "noun": "業火",
+      "preEn": "Infernal",
+      "nounEn": "Hellfire"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "flame_burst"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 0
+    }
+  },
+  {
+    "id": "sunfall",
+    "name": "墜日",
+    "nameEn": "Sunfall",
+    "desc": "一顆小太陽墜落在怪群中央，熱浪讓全場跟著燃燒。",
+    "hint": "殘卷：據說把極階的火灌進煉獄，天上會掉下第二個太陽。",
+    "elements": [
+      "fire"
+    ],
+    "tier": 7,
+    "attack": 70,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "bolt",
+        "mult": 3.5,
+        "count": 1,
+        "radius": 0.55,
+        "target": "densest",
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 5000,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "ring",
+        "mult": 0.35,
+        "radius": 1.2,
+        "push": 0.3,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 3000,
+            "power": 0.3
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "烈日",
+      "noun": "墜日",
+      "preEn": "Solar",
+      "nounEn": "Sunfall"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "inferno"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 0
+    }
+  },
+  {
+    "id": "vacuum_blades",
+    "name": "真空刃",
+    "nameEn": "Vacuum Blades",
+    "desc": "八道真空刃同時甩出，施法也跟著變快。",
+    "hint": "殘卷：順風之中再灌進高階的風，空氣會被削成看不見的刀。",
+    "elements": [
+      "wind"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 1600,
+    "effects": [
+      {
+        "kind": "blades",
+        "mult": 2,
+        "count": 8,
+        "push": 0.6
+      },
+      {
+        "kind": "haste",
+        "factor": 1.5,
+        "ms": 3000
+      }
+    ],
+    "words": {
+      "pre": "真空",
+      "noun": "風刃",
+      "preEn": "Vacuum",
+      "nounEn": "Blades"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "tailwind"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 72
+    }
+  },
+  {
+    "id": "sky_tempest",
+    "name": "天穹颶風",
+    "nameEn": "Sky Tempest",
+    "desc": "整片天空捲成颶風，把怪吸到中間再用風刃切碎。",
+    "hint": "殘卷：真空刃再吞下極階的風，整片天空都會跟著旋轉。",
+    "elements": [
+      "wind"
+    ],
+    "tier": 7,
+    "attack": 70,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.35,
+        "radius": 0.6,
+        "ms": 5000,
+        "tickMs": 250,
+        "target": "center",
+        "pull": 0.8,
+        "follow": false,
+        "strikes": 0
+      },
+      {
+        "kind": "blades",
+        "mult": 0.8,
+        "count": 10,
+        "push": 0.4
+      }
+    ],
+    "words": {
+      "pre": "天穹",
+      "noun": "颶風",
+      "preEn": "Heavenly",
+      "nounEn": "Tempest"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "vacuum_blades"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 72
+    }
+  },
+  {
+    "id": "myriad_thunder",
+    "name": "萬雷",
+    "nameEn": "Myriad Thunder",
+    "desc": "重雷先劈最硬的一隻，接著閃電跳過十二隻怪。",
+    "hint": "殘卷：雷神之槌再吞下高階的雷，雷光會分成千萬道。",
+    "elements": [
+      "thunder"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 2400,
+    "effects": [
+      {
+        "kind": "bolt",
+        "mult": 2.4,
+        "count": 1,
+        "radius": 0.03,
+        "target": "strongest"
+      },
+      {
+        "kind": "chain",
+        "mult": 0.9,
+        "hops": 12,
+        "range": 0.35,
+        "explode": 0.1
+      }
+    ],
+    "words": {
+      "pre": "萬雷",
+      "noun": "雷網",
+      "preEn": "Myriad",
+      "nounEn": "Web"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "thunder_hammer"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 144
+    }
+  },
+  {
+    "id": "thunder_god",
+    "name": "雷神降臨",
+    "nameEn": "Thundergod Descends",
+    "desc": "雷神親自下凡，四秒內落雷如雨，最後重重一槌。",
+    "hint": "殘卷：萬雷之中再灌進極階的雷——傳說雷神會親自回應。",
+    "elements": [
+      "thunder"
+    ],
+    "tier": 7,
+    "attack": 70,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "storm",
+        "mult": 1.95,
+        "ms": 4000,
+        "tickMs": 50
+      },
+      {
+        "kind": "chain",
+        "mult": 1.95,
+        "hops": 15,
+        "range": 0.35,
+        "explode": 0.12
+      },
+      {
+        "kind": "bolt",
+        "mult": 7.8,
+        "count": 1,
+        "radius": 0.03,
+        "target": "strongest"
+      }
+    ],
+    "words": {
+      "pre": "雷神",
+      "noun": "天罰",
+      "preEn": "Thundergod",
+      "nounEn": "Judgement"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "myriad_thunder"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 144
+    }
+  },
+  {
+    "id": "landslide",
+    "name": "山崩",
+    "nameEn": "Landslide",
+    "desc": "五塊巨石從天而降砸進怪群，最大的一塊專挑最硬的敵人。",
+    "hint": "殘卷：地震再吞下高階的土，山也會站不住。",
+    "elements": [
+      "earth"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 3000,
+    "effects": [
+      {
+        "kind": "meteor",
+        "mult": 1.92,
+        "count": 5,
+        "radius": 0.2,
+        "delayMs": 500,
+        "lavaMs": 0,
+        "target": "random"
+      },
+      {
+        "kind": "bolt",
+        "mult": 3.6,
+        "count": 1,
+        "radius": 0.08,
+        "target": "strongest",
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 800
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "崩山",
+      "noun": "巨岩",
+      "preEn": "Crumbling",
+      "nounEn": "Boulder"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "earthquake"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 216
+    }
+  },
+  {
+    "id": "wrath_of_earth",
+    "name": "大地之怒",
+    "nameEn": "Wrath of the Earth",
+    "desc": "大地翻騰，全場暈眩，三根巨大的岩柱刺穿最密的怪群。",
+    "hint": "殘卷：山崩再灌進極階的土，沉睡的大地會醒來。",
+    "elements": [
+      "earth"
+    ],
+    "tier": 7,
+    "attack": 70,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 3,
+        "radius": 1.2,
+        "push": 0,
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 2000
+          }
+        ]
+      },
+      {
+        "kind": "meteor",
+        "mult": 6,
+        "count": 3,
+        "radius": 0.3,
+        "delayMs": 800,
+        "lavaMs": 0,
+        "target": "densest"
+      }
+    ],
+    "words": {
+      "pre": "震怒",
+      "noun": "岩柱",
+      "preEn": "Wrathful",
+      "nounEn": "Pillar"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "landslide"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 216
+    }
+  },
+  {
+    "id": "maelstrom",
+    "name": "大漩渦",
+    "nameEn": "Maelstrom",
+    "desc": "漩渦把怪群捲進中心，又濕又慢，越轉越痛。",
+    "hint": "殘卷：大海嘯再吞下高階的水，浪會開始打轉。",
+    "elements": [
+      "water"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.18,
+        "radius": 0.35,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0.6,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 3000
+          },
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.5
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "漩渦",
+      "noun": "渦流",
+      "preEn": "Swirling",
+      "nounEn": "Vortex"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "tsunami"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 288
+    }
+  },
+  {
+    "id": "deluge",
+    "name": "大洪水",
+    "nameEn": "Deluge",
+    "desc": "洪水淹沒整個戰場，把怪全沖到邊緣，留下的漩渦繼續捲人。",
+    "hint": "殘卷：大漩渦再灌進極階的水，整個世界都會沉進水底。",
+    "elements": [
+      "water"
+    ],
+    "tier": 7,
+    "attack": 70,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 3,
+        "radius": 1.2,
+        "push": 1.5,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 6000
+          },
+          {
+            "kind": "slow",
+            "ms": 3000,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "zone",
+        "mult": 0.75,
+        "radius": 0.4,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0.6,
+        "follow": true,
+        "strikes": 0
+      }
+    ],
+    "words": {
+      "pre": "洪流",
+      "noun": "洪水",
+      "preEn": "Flooding",
+      "nounEn": "Deluge"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "maelstrom"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 288
+    }
+  },
+  {
+    "id": "thunder_fire_hurricane",
+    "name": "雷火颶風",
+    "nameEn": "Thunderfire Hurricane",
+    "desc": "火焰龍捲裡多了閃電，被吸進去的怪會被連續劈中。",
+    "hint": "殘卷：龍捲之中若有雷光，被捲進去的敵人便無處可逃。",
+    "elements": [
+      "fire",
+      "wind",
+      "thunder"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.14,
+        "radius": 0.39,
+        "ms": 5000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0.6,
+        "follow": true,
+        "strikes": 2,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 2000,
+            "power": 0.3
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "雷火",
+      "noun": "颶風",
+      "preEn": "Thunderfire",
+      "nounEn": "Hurricane"
+    },
+    "affinity": "good",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "fire_tornado"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 36
+    }
+  },
+  {
+    "id": "thunder_tsunami",
+    "name": "雷鳴海嘯",
+    "nameEn": "Thunder Tsunami",
+    "desc": "帶著雷的海嘯，把全場淹濕、沖走、再劈一輪。",
+    "hint": "殘卷：讓風推著帶電的海往前衝，就是一場會打雷的海嘯。",
+    "elements": [
+      "wind",
+      "thunder",
+      "water"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 1.32,
+        "radius": 1.1,
+        "push": 1.2,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 6000
+          }
+        ]
+      },
+      {
+        "kind": "storm",
+        "mult": 1.76,
+        "ms": 1500,
+        "tickMs": 50
+      }
+    ],
+    "words": {
+      "pre": "雷鳴",
+      "noun": "怒潮",
+      "preEn": "Roaring",
+      "nounEn": "Surge"
+    },
+    "affinity": "good",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "shock_sea"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 108
+    }
+  },
+  {
+    "id": "meteor_shower",
+    "name": "流星雨",
+    "nameEn": "Meteor Shower",
+    "desc": "不只一顆。",
+    "hint": "殘卷：一顆隕石還不夠？那就再添一把火。",
+    "elements": [
+      "fire",
+      "earth"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "meteor",
+        "mult": 1.53,
+        "count": 9,
+        "radius": 0.23,
+        "delayMs": 600,
+        "lavaMs": 1500,
+        "target": "random"
+      }
+    ],
+    "words": {
+      "pre": "流星",
+      "noun": "星雨",
+      "preEn": "Falling",
+      "nounEn": "Starfall"
+    },
+    "affinity": "good",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "meteor"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 324
+    }
+  },
+  {
+    "id": "frozen_earth",
+    "name": "冰封大地",
+    "nameEn": "Frozen Earth",
+    "desc": "凍住全場，然後地面裂開，把冰塊連同怪一起震碎。",
+    "hint": "殘卷：冰風暴凍住的東西，最怕大地一震。",
+    "elements": [
+      "wind",
+      "earth",
+      "water"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "field",
+        "mult": 0,
+        "delayMs": 0,
+        "status": [
+          {
+            "kind": "freeze",
+            "ms": 2000
+          }
+        ]
+      },
+      {
+        "kind": "field",
+        "mult": 2,
+        "delayMs": 700,
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 800
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "冰封",
+      "noun": "凍土",
+      "preEn": "Frozen",
+      "nounEn": "Permafrost"
+    },
+    "affinity": "good",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "ice_storm",
+      "rock_spear"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 4,
+      "angle": 252
+    }
+  },
+  {
+    "id": "rain_cloud",
+    "name": "雷雨雲",
+    "nameEn": "Storm Cloud",
+    "desc": "沒用的蒸氣加上雷，竟然變成會下雨又打雷的雲。失敗作也值得留著。",
+    "hint": "殘卷：別急著把失敗的蒸氣扔掉，往裡面丟一點雷試試。",
+    "elements": [
+      "fire",
+      "thunder",
+      "water"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "field",
+        "mult": 0,
+        "delayMs": 0,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 6000
+          }
+        ]
+      },
+      {
+        "kind": "storm",
+        "mult": 1.5,
+        "ms": 6000,
+        "tickMs": 100
+      }
+    ],
+    "words": {
+      "pre": "驟雨",
+      "noun": "雷雨",
+      "preEn": "Pouring",
+      "nounEn": "Thunderstorm"
+    },
+    "affinity": "good",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "steam"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 324
+    }
+  },
+  {
+    "id": "magnet_storm",
+    "name": "磁暴",
+    "nameEn": "Magnetic Storm",
+    "desc": "被磁化的岩石被風捲起，把怪全吸過來，再一塊塊炸開。",
+    "hint": "殘卷：接地吞掉的雷並沒有消失，只是在等一陣風。",
+    "elements": [
+      "wind",
+      "thunder",
+      "earth"
+    ],
+    "tier": 5,
+    "attack": 50,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.3,
+        "radius": 0.35,
+        "ms": 4000,
+        "tickMs": 300,
+        "target": "densest",
+        "pull": 0.9,
+        "follow": true,
+        "strikes": 3,
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 300
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "磁暴",
+      "noun": "磁渦",
+      "preEn": "Magnetic",
+      "nounEn": "Vortex"
+    },
+    "affinity": "good",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "grounding"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 180
+    }
+  },
+  {
+    "id": "skyburner",
+    "name": "焚天",
+    "nameEn": "Skyburner",
+    "desc": "雷火颶風燒到天上去了：巨大的火焰龍捲裡雷光亂竄，閃電帶著火跳向四周。",
+    "hint": "殘卷：雷火颶風若吞下極階的火，連天空都會燒起來。",
+    "elements": [
+      "fire",
+      "wind",
+      "thunder"
+    ],
+    "tier": 7,
+    "attack": 70,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.21,
+        "radius": 0.5,
+        "ms": 6000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0.7,
+        "follow": true,
+        "strikes": 3,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 3000,
+            "power": 0.4
+          }
+        ]
+      },
+      {
+        "kind": "chain",
+        "mult": 0.36,
+        "hops": 8,
+        "range": 0.36,
+        "explode": 0.1,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 2000,
+            "power": 0.3
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "焚天",
+      "noun": "天火",
+      "preEn": "Skyburning",
+      "nounEn": "Wildfire"
+    },
+    "affinity": "good",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "thunder_fire_hurricane"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 5,
+      "angle": 36
+    }
+  },
+  {
+    "id": "quicksand",
+    "name": "流沙",
+    "nameEn": "Quicksand",
+    "desc": "戰場中央變成流沙，看不見的怪一隻隻被吸進去慢慢磨碎。",
+    "hint": "殘卷：泥沼遇上沙塵，地面就再也站不穩。",
+    "elements": [
+      "wind",
+      "earth",
+      "water"
+    ],
+    "tier": 6,
+    "attack": 55,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.1,
+        "radius": 0.6,
+        "ms": 6000,
+        "tickMs": 250,
+        "target": "center",
+        "pull": 0.5,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.8
+          },
+          {
+            "kind": "blind",
+            "ms": 2000
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "流沙",
+      "noun": "沙渦",
+      "preEn": "Sinking",
+      "nounEn": "Quicksand"
+    },
+    "affinity": "odd",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "mire",
+      "sandstorm"
+    ],
+    "node": {
+      "region": "abyss",
+      "ring": 6,
+      "angle": 252
+    }
+  },
+  {
+    "id": "holy_judgment",
+    "name": "聖光審判",
+    "nameEn": "Holy Judgment",
+    "desc": "天降聖光灼燒全場、讓怪目盲，接著審判之雷不停落下，最後一道劈向最強的敵人。",
+    "hint": "殘卷：據說日輝碎片與雷神之槌共鳴的瞬間，十次裡會有一次聽見天上的聲音。",
+    "elements": [
+      "fire",
+      "thunder"
+    ],
+    "tier": 9,
+    "attack": 95,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "field",
+        "mult": 7.5,
+        "delayMs": 600,
+        "status": [
+          {
+            "kind": "blind",
+            "ms": 2000
+          }
+        ]
+      },
+      {
+        "kind": "storm",
+        "mult": 3.75,
+        "ms": 3000,
+        "tickMs": 50
+      },
+      {
+        "kind": "bolt",
+        "mult": 20,
+        "count": 1,
+        "radius": 0.05,
+        "target": "strongest"
+      }
+    ],
+    "words": {
+      "pre": "聖光",
+      "noun": "審判",
+      "preEn": "Holy",
+      "nounEn": "Judgment"
+    },
+    "affinity": "good",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "thunder_hammer"
+    ],
+    "node": {
+      "region": "zenith",
+      "ring": 7,
+      "angle": 108
+    }
+  },
+  {
+    "id": "abyss_devour",
+    "name": "深淵吞噬",
+    "nameEn": "Abyssal Devour",
+    "desc": "地面裂開一道深淵，把整片怪群拖進去吞掉。",
+    "hint": "殘卷：深淵珍珠沉進海嘯裡，偶爾會打開一道回不來的門。",
+    "elements": [
+      "earth",
+      "water"
+    ],
+    "tier": 9,
+    "attack": 95,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.5,
+        "radius": 0.45,
+        "ms": 5000,
+        "tickMs": 200,
+        "target": "densest",
+        "pull": 1.2,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.6
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "深淵",
+      "noun": "吞噬",
+      "preEn": "Abyssal",
+      "nounEn": "Maw"
+    },
+    "affinity": "odd",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "tsunami"
+    ],
+    "node": {
+      "region": "abyss",
+      "ring": 6,
+      "angle": 288
+    }
   }
 ]

@@ -3,7 +3,28 @@
     "id": "key:storm_heart",
     "name": "風暴之心",
     "nameEn": "Storm Heart",
-    "desc": "魔王掉下的奇異結晶，魔導書外圍浮現新的線索。",
+    "desc": "迷霧雄鹿留下的奇異結晶，裡面像有風在轉。魔導書的外圍會浮現新的線索。",
     "reveals": "outer"
+  },
+  {
+    "id": "key:thunder_eye",
+    "name": "大鵬之眼",
+    "nameEn": "Roc Eye",
+    "desc": "風暴大鵬的眼睛，仍閃著電光。用它照向魔導書，裂隙裡的頁面會顯現。",
+    "reveals": "rift"
+  },
+  {
+    "id": "key:magma_seal",
+    "name": "熔火封印",
+    "nameEn": "Magma Seal",
+    "desc": "火山飛龍守著的封印，燙得拿不住。解開它，魔導書深處的頁面會露出來。",
+    "reveals": "abyss"
+  },
+  {
+    "id": "key:titan_crown",
+    "name": "巨神之冠",
+    "nameEn": "Titan Crown",
+    "desc": "沉沒巨神的王冠。戴上它的瞬間，魔導書最外層的天穹被照亮了。",
+    "reveals": "zenith"
   }
 ]

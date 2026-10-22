@@ -147,6 +147,106 @@ pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-alias
 pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 64x64 sprite, single static frame, idle pose, imposing boss monster "Ash Dragon", fire element themed, dominant color #e2643b, front-facing, menacing but cute silhouette, larger and more detailed than regular monsters
 ```
 
+### monster_dew_frog
+
+- 檔名：`public/assets/monster_dew_frog.png`
+- 用途：露水蛙（Dew Frog），水屬性，T2。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Dew Frog", water element themed, dominant color #5aa0e8, front-facing, menacing but cute silhouette
+```
+
+### monster_spark_beetle
+
+- 檔名：`public/assets/monster_spark_beetle.png`
+- 用途：電光甲蟲（Spark Beetle），雷屬性，T3。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Spark Beetle", thunder element themed, dominant color #f3e36b, front-facing, menacing but cute silhouette
+```
+
+### monster_cinder_hound
+
+- 檔名：`public/assets/monster_cinder_hound.png`
+- 用途：燼火獵犬（Cinder Hound），火屬性，T5。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Cinder Hound", fire element themed, dominant color #e2643b, front-facing, menacing but cute silhouette
+```
+
+### monster_salamander
+
+- 檔名：`public/assets/monster_salamander.png`
+- 用途：火蜥蜴（Salamander），火屬性，T6。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Salamander", fire element themed, dominant color #e2643b, front-facing, menacing but cute silhouette
+```
+
+### monster_magma_golem
+
+- 檔名：`public/assets/monster_magma_golem.png`
+- 用途：熔岩魔像（Magma Golem），土屬性，T6。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Magma Golem", earth element themed, dominant color #c79a5a, front-facing, menacing but cute silhouette
+```
+
+### monster_volcano_drake
+
+- 檔名：`public/assets/monster_volcano_drake.png`
+- 用途：火山飛龍（Volcano Drake），火屬性，T6，魔王。
+- 尺寸：現階段 64×64 單張；之後建議 4 格待機動畫，總尺寸 256×64。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 64x64 sprite, single static frame, idle pose, imposing boss monster "Volcano Drake", fire element themed, dominant color #e2643b, front-facing, menacing but cute silhouette, larger and more detailed than regular monsters
+```
+
+### monster_temple_guardian
+
+- 檔名：`public/assets/monster_temple_guardian.png`
+- 用途：神殿石衛（Temple Guardian），土屬性，T7。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Temple Guardian", earth element themed, dominant color #c79a5a, front-facing, menacing but cute silhouette
+```
+
+### monster_abyss_eel
+
+- 檔名：`public/assets/monster_abyss_eel.png`
+- 用途：深淵鰻（Abyss Eel），水屬性，T7。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Abyss Eel", water element themed, dominant color #5aa0e8, front-facing, menacing but cute silhouette
+```
+
+### monster_coral_colossus
+
+- 檔名：`public/assets/monster_coral_colossus.png`
+- 用途：珊瑚巨像（Coral Colossus），土屬性，T8。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Coral Colossus", earth element themed, dominant color #c79a5a, front-facing, menacing but cute silhouette
+```
+
+### monster_sunken_titan
+
+- 檔名：`public/assets/monster_sunken_titan.png`
+- 用途：沉沒巨神（Sunken Titan），土屬性，T8，魔王。
+- 尺寸：現階段 64×64 單張；之後建議 4 格待機動畫，總尺寸 256×64。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 64x64 sprite, single static frame, idle pose, imposing boss monster "Sunken Titan", earth element themed, dominant color #c79a5a, front-facing, menacing but cute silhouette, larger and more detailed than regular monsters
+```
+
 ## 特效
 
 特效目前請提供單張 32×32 圖。程式會依法術屬性對特效貼圖上色（tint），因此建議以白色／淺色繪製。光束（fx_beam）會被沿長度方向拉伸至光束長度。之後（切格播放實作後）可改為 4–6 格的橫向 sprite sheet（128×32 至 192×32）。

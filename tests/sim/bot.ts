@@ -1,19 +1,22 @@
 import { createBattle, stepBattle, STEP_MS, type BattleState } from '../../src/engine/combat';
 import { canDamage } from '../../src/engine/combat-rules';
 import { content } from '../../src/engine/content';
+import { requiredGrade } from '../../src/engine/crafting';
 import { empowerCost } from '../../src/engine/empower';
-import { upgradeElement } from '../../src/engine/inventory';
+import { elementEquivalent, upgradeElement } from '../../src/engine/inventory';
 import type { Effect, GameState, Spell, Zone } from '../../src/engine/model';
 import { parseState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
 import { resolveSpell, spellAtLevel } from '../../src/engine/spells';
 import { visibleRegions } from '../../src/engine/tree';
-import { elementItem, GRADE_UPGRADE_COST, type ElementId } from '../../src/engine/types';
+import { ELEMENT_ORDER, elementItem, GRADE_UPGRADE_COST, gradeValue, type ElementId, type ItemId } from '../../src/engine/types';
 import { createApp } from '../../worker/app';
 import { MemoryStore } from '../../worker/store';
 
+/** A pure element route, the fire + wind combination route, or mana_bolt only (null). */
+export type Route = ElementId | 'mixed' | null;
 export interface BotOptions {
-  element: ElementId | null;
+  route: Route;
   seed: number;
   maxSimMs: number;
 }
@@ -25,6 +28,8 @@ export interface BotResult {
   simMs: number;
   /** simulated ms at which each zone's boss first fell */
   clearedAt: Record<string, number>;
+  /** simulated ms at which each spell was learned */
+  learnedAt: Record<string, number>;
   /** requests sent to PUT /api/save and the action endpoints */
   serverCalls: number;
   /** non-200 responses from PUT /api/save and the action endpoints */
@@ -62,10 +67,17 @@ function dps(spell: Spell): number {
  * applied as the client would (success -> adopt the returned state; rejected / conflict -> adopt
  * the server state).
  *
- * Pure-element route: el:X:1 + el:X:1 teaches the base spell, a grade-2 X element (upgraded from
- * grade 1) turns it into the same-element strengthening, and every 5 simulated minutes the spare
- * X elements empower the strongest spell. Key items are used as soon as they drop.
+ * The route is a list of recipes learned in order: pure X = base, strengthening and the two upper
+ * layers of the X line (X_base, X_empower, X_pure_2, X_pure_3); mixed = fireball, wind_blade, fire
+ * tornado, thunderfire hurricane and skyburner. Element inputs and fusion costs are upgraded from
+ * lower grades on the client, like the element table. Every 5 simulated minutes the elements beyond
+ * what the next recipe needs empower the strongest spell. Key items are used as soon as they drop.
  */
+export const ROUTE_RECIPES: Record<Exclude<Route, null>, string[]> = {
+  ...(Object.fromEntries(ELEMENT_ORDER.map((e) => [e, [`${e}_base`, `${e}_empower`, `${e}_pure_2`, `${e}_pure_3`]])) as Record<ElementId, string[]>),
+  mixed: ['fire_base', 'wind_base', 'fire_wind', 'thunder_fire_hurricane', 'skyburner'],
+};
+
 export async function runBot(opts: BotOptions): Promise<BotResult> {
   const battleRng = createRng(opts.seed);
   const serverRng = createRng(opts.seed ^ 0x9e3779b9);
@@ -98,6 +110,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   let serverCalls = 0;
   const rejectionReasons: string[] = [];
   const clearedAt: Record<string, number> = {};
+  const learnedAt: Record<string, number> = {};
 
   /** Non-200: count it and adopt the server's state, like the client does. */
   const adoptServer = (what: string, r: { status: number; body: Record<string, unknown> }): void => {
@@ -126,54 +139,95 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     }
     game = serverState(r.body.state);
     revision = r.body.revision as number;
+    for (const id of game.learned) if (!(id in learnedAt)) learnedAt[id] = simMs;
     return true;
   };
 
-  const el = opts.element;
-  const baseId = el ? content.baseSpells[el] : null;
-  const strongId = baseId ? content.recipes.find((r) => r.inputs.includes(baseId) && r.inputs.includes(elementItem(el!, 2)))?.outcomes[0]?.spellId ?? null : null;
+  const plan = (opts.route ? ROUTE_RECIPES[opts.route] : []).map((id) => {
+    const r = content.recipes.find((x) => x.id === id);
+    if (!r) throw new Error(`unknown route recipe ${id}`);
+    return r;
+  });
   const count = (id: string) => (Object.hasOwn(game.inventory, id) ? game.inventory[id]! : 0);
   const levelOf = (id: string) => (Object.hasOwn(game.levels, id) ? game.levels[id]! : 1);
   const fightAs = (id: string) => spellAtLevel(resolveSpell(id, content)!, levelOf(id));
   const zoneOf = (id: string) => content.zones.find((z) => z.id === id)!;
   const hitsAll = (s: Spell, z: Zone) => z.monsters.every((m) => canDamage(s, content.monsters[m]!));
+  /** How far a spell gets: the highest unlocked zone whose normal monsters it can all damage (-1: none). */
+  const reach = (id: string): number => {
+    const s = fightAs(id);
+    let best = -1;
+    content.zones.forEach((z, i) => { if (game.unlockedZones.includes(z.id) && hitsAll(s, z)) best = i; });
+    return best;
+  };
+  /** The spell that reaches the furthest zone, then the one with the most damage per second. */
   const bestSpell = (): string =>
-    game.learned.reduce((a, b) => (dps(fightAs(b)) > dps(fightAs(a)) ? b : a));
+    game.learned.reduce((a, b) => {
+      const ra = reach(a), rb = reach(b);
+      return rb > ra || (rb === ra && dps(fightAs(b)) > dps(fightAs(a))) ? b : a;
+    });
 
-  /** Upgrades grade-1 elements of `el` until `need` grade-`grade` items are in stock (client-side, like the element table). */
-  const stock = (grade: number, need: number): boolean => {
-    while (count(elementItem(el!, grade)) < need) {
+  /** Upgrades lower grades of `e` until `need` grade-`grade` items are in stock (client-side, like the element table). */
+  const stock = (e: ElementId, grade: number, need: number): boolean => {
+    while (count(elementItem(e, grade)) < need) {
       if (grade === 1) return false;
-      if (!stock(grade - 1, GRADE_UPGRADE_COST[grade - 2]!)) return false;
-      const up = upgradeElement(game.inventory, el!, grade - 1);
+      if (!stock(e, grade - 1, GRADE_UPGRADE_COST[grade - 2]!)) return false;
+      const up = upgradeElement(game.inventory, e, grade - 1);
       if (!up) return false;
       game = { ...game, inventory: up };
     }
     return true;
   };
+  /** Element items a route recipe consumes: its element inputs, plus the fusion cost when both inputs are spells. */
+  const recipeElements = (r: (typeof plan)[number]): ItemId[] => {
+    const items = r.inputs.filter((i) => i.startsWith('el:'));
+    if (items.length > 0) return items;
+    const out = content.spells[r.outcomes[0]!.spellId!]!;
+    return out.elements.map((e) => elementItem(e, requiredGrade(out.depth)));
+  };
+  const nextStep = () => plan.find((r) => !game.learned.includes(r.outcomes[0]!.spellId!));
+  /** Grade-1 equivalents per element held back for the next route recipe. */
+  const reserve = (): Record<string, number> => {
+    const out: Record<string, number> = {};
+    const r = nextStep();
+    if (!r) return out;
+    for (const it of recipeElements(r)) {
+      const [, e, g] = it.split(':');
+      out[e!] = (out[e!] ?? 0) + gradeValue(Number(g));
+    }
+    return out;
+  };
 
   const synthesizeStep = async (): Promise<void> => {
-    if (!el || !baseId) return;
-    if (!game.learned.includes(baseId)) {
-      if (count(elementItem(el, 1)) >= 2) await act('/api/synthesize', { inputs: [elementItem(el, 1), elementItem(el, 1)] });
-      return;
+    const r = nextStep();
+    if (!r) return;
+    const out = content.spells[r.outcomes[0]!.spellId!]!;
+    if (!out.prerequisites.every((p) => game.learned.includes(p))) return;
+    const need = new Map<ItemId, number>();
+    for (const it of recipeElements(r)) need.set(it, (need.get(it) ?? 0) + 1);
+    // check the whole cost in grade-1 equivalents first, so a half-made upgrade never eats another input
+    const eq: Record<string, number> = {};
+    for (const [it, n] of need) { const [, e, g] = it.split(':'); eq[e!] = (eq[e!] ?? 0) + n * gradeValue(Number(g)); }
+    if (Object.entries(eq).some(([e, v]) => elementEquivalent(game.inventory, e as ElementId) < v)) return;
+    for (const [it, n] of need) {
+      const [, e, g] = it.split(':');
+      if (!stock(e as ElementId, Number(g), n)) return;
     }
-    if (strongId && !game.learned.includes(strongId) && stock(2, 1)) {
-      await act('/api/synthesize', { inputs: [baseId, elementItem(el, 2)] });
-    }
+    await act('/api/synthesize', { inputs: r.inputs });
   };
 
   const empowerStep = async (): Promise<void> => {
-    if (!el || !baseId) return;
-    // keep the grade-2 element for the strengthening recipe until it is learned
-    if (strongId && !game.learned.includes(strongId)) return;
+    if (!opts.route) return;
     const target = bestSpell();
+    const keep = reserve();
     for (let guard = 0; guard < 50; guard++) {
       const spell = resolveSpell(target, content)!;
       if (spell.elements.length === 0) return;
       const cost = empowerCost(spell, levelOf(target));
       const grade = Number(cost[0]!.split(':')[2]);
-      if (!stock(grade, cost.length)) return;
+      const per = cost.length / spell.elements.length;
+      if (spell.elements.some((e) => elementEquivalent(game.inventory, e) - per * gradeValue(grade) < (keep[e] ?? 0))) return;
+      if (!spell.elements.every((e) => stock(e, grade, per))) return;
       if (!(await act('/api/empower', { spellId: target }))) return;
     }
   };
@@ -242,6 +296,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     revealed: game.revealed,
     simMs,
     clearedAt,
+    learnedAt,
     serverCalls,
     rejectedUploads,
     rejectionReasons,

@@ -46,17 +46,17 @@ describe('crafting', () => {
   });
 
   it('crafts a spell when no recipe matches', () => {
-    const s = mkState({ 'el:thunder:2': 2 }, ['mana_bolt', 'fireball']);
-    const { state, result } = run(s, ['fireball', 'el:thunder:2']);
-    expect(result).toEqual({ kind: 'learned', spellId: craftedId('fireball', 'lightning'), crafted: true });
-    expect(state.learned).toContain(craftedId('fireball', 'lightning'));
-    expect(state.inventory).toEqual({ 'el:thunder:2': 1 });
+    const s = mkState({ 'el:water:2': 2 }, ['mana_bolt', 'fireball']);
+    const { state, result } = run(s, ['fireball', 'el:water:2']);
+    expect(result).toEqual({ kind: 'learned', spellId: craftedId('fireball', 'water_wave'), crafted: true });
+    expect(state.learned).toContain(craftedId('fireball', 'water_wave'));
+    expect(state.inventory).toEqual({ 'el:water:2': 1 });
   });
 
   it('synthesize is order independent', () => {
-    const s = mkState({ 'el:thunder:2': 1 }, ['mana_bolt', 'fireball']);
-    const a = run(s, ['fireball', 'el:thunder:2']).state;
-    const b = run(s, ['el:thunder:2', 'fireball']).state;
+    const s = mkState({ 'el:water:2': 1 }, ['mana_bolt', 'fireball']);
+    const a = run(s, ['fireball', 'el:water:2']).state;
+    const b = run(s, ['el:water:2', 'fireball']).state;
     expect(b.learned).toEqual(a.learned);
     expect(comboKey(['b', 'a'])).toBe('a+b');
   });
@@ -96,11 +96,11 @@ describe('crafting', () => {
   });
 
   it('a crafted duplicate refunds everything', () => {
-    const id = craftedId('fireball', 'lightning');
-    const s = mkState({ 'el:thunder:2': 1 }, ['mana_bolt', 'fireball', id]);
-    const { state, result } = run(s, ['fireball', 'el:thunder:2']);
-    expect(result).toEqual({ kind: 'duplicate', spellId: id, refunded: ['el:thunder:2'] });
-    expect(state.inventory).toEqual({ 'el:thunder:2': 1 });
+    const id = craftedId('fireball', 'water_wave');
+    const s = mkState({ 'el:water:2': 1 }, ['mana_bolt', 'fireball', id]);
+    const { state, result } = run(s, ['fireball', 'el:water:2']);
+    expect(result).toEqual({ kind: 'duplicate', spellId: id, refunded: ['el:water:2'] });
+    expect(state.inventory).toEqual({ 'el:water:2': 1 });
     expect(state.learned).toEqual(s.learned);
   });
 

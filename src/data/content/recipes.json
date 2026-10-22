@@ -13,19 +13,6 @@
     ]
   },
   {
-    "id": "fire_empower",
-    "inputs": [
-      "fireball",
-      "el:fire:2"
-    ],
-    "outcomes": [
-      {
-        "spellId": "flame_burst",
-        "weight": 1
-      }
-    ]
-  },
-  {
     "id": "wind_base",
     "inputs": [
       "el:wind:1",
@@ -34,19 +21,6 @@
     "outcomes": [
       {
         "spellId": "wind_blade",
-        "weight": 1
-      }
-    ]
-  },
-  {
-    "id": "wind_empower",
-    "inputs": [
-      "wind_blade",
-      "el:wind:2"
-    ],
-    "outcomes": [
-      {
-        "spellId": "tailwind",
         "weight": 1
       }
     ]
@@ -65,19 +39,6 @@
     ]
   },
   {
-    "id": "thunder_empower",
-    "inputs": [
-      "lightning",
-      "el:thunder:2"
-    ],
-    "outcomes": [
-      {
-        "spellId": "thunder_hammer",
-        "weight": 1
-      }
-    ]
-  },
-  {
     "id": "earth_base",
     "inputs": [
       "el:earth:1",
@@ -91,19 +52,6 @@
     ]
   },
   {
-    "id": "earth_empower",
-    "inputs": [
-      "rock_spear",
-      "el:earth:2"
-    ],
-    "outcomes": [
-      {
-        "spellId": "earthquake",
-        "weight": 1
-      }
-    ]
-  },
-  {
     "id": "water_base",
     "inputs": [
       "el:water:1",
@@ -112,6 +60,58 @@
     "outcomes": [
       {
         "spellId": "water_wave",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_empower",
+    "inputs": [
+      "fireball",
+      "el:fire:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "flame_burst",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_empower",
+    "inputs": [
+      "wind_blade",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "tailwind",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_empower",
+    "inputs": [
+      "lightning",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_hammer",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_empower",
+    "inputs": [
+      "rock_spear",
+      "el:earth:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "earthquake",
         "weight": 1
       }
     ]
@@ -139,6 +139,547 @@
       {
         "spellId": "fire_tornado",
         "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_wind_infuse",
+    "inputs": [
+      "fireball",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "fire_tornado",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_fire_infuse",
+    "inputs": [
+      "wind_blade",
+      "el:fire:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "fire_tornado",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_water",
+    "inputs": [
+      "lightning",
+      "water_wave"
+    ],
+    "outcomes": [
+      {
+        "spellId": "shock_sea",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_water_infuse",
+    "inputs": [
+      "lightning",
+      "el:water:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "shock_sea",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_thunder_infuse",
+    "inputs": [
+      "water_wave",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "shock_sea",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_thunder",
+    "inputs": [
+      "wind_blade",
+      "lightning"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_cloud",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_thunder_infuse",
+    "inputs": [
+      "wind_blade",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_cloud",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_wind_infuse",
+    "inputs": [
+      "lightning",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_cloud",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_fire",
+    "inputs": [
+      "rock_spear",
+      "fireball"
+    ],
+    "outcomes": [
+      {
+        "spellId": "meteor",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_fire_infuse",
+    "inputs": [
+      "rock_spear",
+      "el:fire:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "meteor",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_earth_infuse",
+    "inputs": [
+      "fireball",
+      "el:earth:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "meteor",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_wind",
+    "inputs": [
+      "water_wave",
+      "wind_blade"
+    ],
+    "outcomes": [
+      {
+        "spellId": "ice_storm",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_wind_infuse",
+    "inputs": [
+      "water_wave",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "ice_storm",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_water_infuse",
+    "inputs": [
+      "wind_blade",
+      "el:water:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "ice_storm",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_thunder",
+    "inputs": [
+      "fireball",
+      "lightning"
+    ],
+    "outcomes": [
+      {
+        "spellId": "flame_chain",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_thunder_infuse",
+    "inputs": [
+      "fireball",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "flame_chain",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_fire_infuse",
+    "inputs": [
+      "lightning",
+      "el:fire:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "flame_chain",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_water",
+    "inputs": [
+      "rock_spear",
+      "water_wave"
+    ],
+    "outcomes": [
+      {
+        "spellId": "mire",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_wind",
+    "inputs": [
+      "rock_spear",
+      "wind_blade"
+    ],
+    "outcomes": [
+      {
+        "spellId": "sandstorm",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_water",
+    "inputs": [
+      "fireball",
+      "water_wave"
+    ],
+    "outcomes": [
+      {
+        "spellId": "steam",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_thunder",
+    "inputs": [
+      "rock_spear",
+      "lightning"
+    ],
+    "outcomes": [
+      {
+        "spellId": "grounding",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_pure_2",
+    "inputs": [
+      "flame_burst",
+      "el:fire:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "inferno",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_pure_3",
+    "inputs": [
+      "inferno",
+      "el:fire:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "sunfall",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_pure_2",
+    "inputs": [
+      "tailwind",
+      "el:wind:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "vacuum_blades",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_pure_3",
+    "inputs": [
+      "vacuum_blades",
+      "el:wind:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "sky_tempest",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_pure_2",
+    "inputs": [
+      "thunder_hammer",
+      "el:thunder:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "myriad_thunder",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_pure_3",
+    "inputs": [
+      "myriad_thunder",
+      "el:thunder:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_god",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_pure_2",
+    "inputs": [
+      "earthquake",
+      "el:earth:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "landslide",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_pure_3",
+    "inputs": [
+      "landslide",
+      "el:earth:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "wrath_of_earth",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_pure_2",
+    "inputs": [
+      "tsunami",
+      "el:water:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "maelstrom",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_pure_3",
+    "inputs": [
+      "maelstrom",
+      "el:water:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "deluge",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_fire_hurricane",
+    "inputs": [
+      "fire_tornado",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_fire_hurricane",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_tsunami",
+    "inputs": [
+      "shock_sea",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_tsunami",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "meteor_shower",
+    "inputs": [
+      "meteor",
+      "el:fire:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "meteor_shower",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "frozen_earth",
+    "inputs": [
+      "ice_storm",
+      "rock_spear"
+    ],
+    "outcomes": [
+      {
+        "spellId": "frozen_earth",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "rain_cloud",
+    "inputs": [
+      "steam",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "rain_cloud",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "magnet_storm",
+    "inputs": [
+      "grounding",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "magnet_storm",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "skyburner",
+    "inputs": [
+      "thunder_fire_hurricane",
+      "el:fire:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "skyburner",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "quicksand",
+    "inputs": [
+      "mire",
+      "sandstorm"
+    ],
+    "outcomes": [
+      {
+        "spellId": "quicksand",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "holy_judgment",
+    "inputs": [
+      "thunder_hammer",
+      "mat:sun_shard"
+    ],
+    "outcomes": [
+      {
+        "spellId": "holy_judgment",
+        "weight": 1
+      },
+      {
+        "spellId": null,
+        "weight": 9
+      }
+    ]
+  },
+  {
+    "id": "abyss_devour",
+    "inputs": [
+      "tsunami",
+      "mat:abyss_pearl"
+    ],
+    "outcomes": [
+      {
+        "spellId": "abyss_devour",
+        "weight": 1
+      },
+      {
+        "spellId": null,
+        "weight": 9
       }
     ]
   }

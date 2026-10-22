@@ -67,7 +67,7 @@ describe('spellPickerGroups', () => {
 describe('zonePickerRows', () => {
   it('lists zones in order with tier range, boss, status and unlock text', () => {
     const rows = zonePickerRows(game({ currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'] }), content);
-    expect(rows.map((r) => r.id)).toEqual(['mist_meadow', 'thunder_gorge']);
+    expect(rows.map((r) => r.id)).toEqual(['mist_meadow', 'thunder_gorge', 'ember_wastes', 'sunken_temple']);
     expect(rows[0]).toMatchObject({ minTier: 1, maxTier: 2, bossName: '迷霧雄鹿', bossTier: 2, status: 'current', lockText: null });
     expect(rows[1]).toMatchObject({ status: 'locked', lockText: '擊敗迷霧雄鹿後解鎖', bossName: '風暴大鵬', bossTier: 4 });
   });
