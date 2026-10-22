@@ -42,6 +42,18 @@ describe('SynthesisPanel', () => {
     expect(onSlotsChange).toHaveBeenCalledWith([null, null]);
   });
 
+  it('reports the result only after the reply arrives', async () => {
+    let reply: (r: { kind: 'learned'; spellId: string; crafted: boolean }) => void = () => {};
+    const sync = { synthesize: vi.fn(() => new Promise<{ kind: 'learned'; spellId: string; crafted: boolean }>((r) => (reply = r))) };
+    const onResult = vi.fn();
+    render(<SynthesisPanel {...snap({ 'el:fire:1': 2 })} sync={sync} content={content} slots={['el:fire:1', 'el:fire:1']} onSlotsChange={() => {}} onResult={onResult} />);
+    fireEvent.click(button());
+    expect(onResult).not.toHaveBeenCalled();
+    reply({ kind: 'learned', spellId: 'fireball', crafted: false });
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith({ kind: 'learned', spellId: 'fireball', crafted: false }));
+    expect(screen.getByText('習得新魔法：火球')).toBeTruthy();
+  });
+
   it('shows an error and keeps the slots when synthesize throws', async () => {
     const sync = { synthesize: vi.fn(async () => { throw new Error('x'); }) };
     const onSlotsChange = vi.fn();

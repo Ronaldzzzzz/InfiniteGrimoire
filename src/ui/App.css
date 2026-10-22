@@ -118,7 +118,6 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
   .workbench { order: 0; }
   .grimoire-col { order: 1; border-right: 0; border-top: 1px solid var(--line); }
 }
-.grimoire-hint { margin-top: 8px; color: var(--gold); font-size: 14px; }
 .synth-matrix { display: flex; flex-direction: column; gap: 6px; }
 .matrix-grades { display: flex; gap: 4px; }
 .matrix-grades button { flex: 1; min-height: 32px; padding: 4px; font-size: 13px; }
@@ -153,3 +152,60 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .warn-text { color: var(--gold); font-size: 14px; }
 .tag { font-size: 12px; padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; }
 .tag.warn { color: var(--gold); }
+
+/* Task 11: discovery banner, grimoire tabs, fogged tree, node details, notebook, empower */
+.discovery-banner { position: absolute; left: 50%; top: 50%; z-index: 5; transform: translate(-50%, -50%); min-width: min(260px, 86%); max-width: 86%; padding: 14px 18px; text-align: center; background: rgba(13, 15, 20, 0.92); border: 1px solid var(--gold); border-radius: 12px; pointer-events: none; animation: banner-in 0.25s ease-out; }
+@keyframes banner-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.discovery-kicker { color: var(--gold); font-size: 13px; letter-spacing: 0.2em; }
+.discovery-banner.aff-bad .discovery-kicker { color: var(--fire); }
+.discovery-banner.aff-odd .discovery-kicker { color: #b48ae8; }
+.discovery-name { font-size: 24px; font-weight: 700; margin: 6px 0; overflow-wrap: anywhere; }
+.discovery-desc { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.discovery-desc .tag { margin-left: 0; }
+.dots { display: inline-flex; gap: 2px; vertical-align: middle; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+.discovery-name .dots i { width: 12px; height: 12px; }
+.tag.aff-base { color: var(--muted); }
+.tag.aff-self { color: var(--gold); }
+.tag.aff-good { color: var(--rune); }
+.tag.aff-odd { color: #b48ae8; }
+.tag.aff-bad { color: var(--fire); }
+.empower-tag { margin-left: 6px; color: var(--gold); font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+.grimoire-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.grimoire-tabs button { flex: 1; min-height: 36px; padding: 4px 8px; }
+.grimoire-tabs button[aria-selected='true'] { border-color: var(--rune); color: var(--rune); }
+.key-items { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.key-use { border-color: var(--gold); color: var(--gold); animation: key-glow 1.6s ease-in-out infinite alternate; }
+@keyframes key-glow { from { box-shadow: 0 0 0 rgba(232, 184, 74, 0); } to { box-shadow: 0 0 10px rgba(232, 184, 74, 0.55); } }
+.fog-band { fill: rgba(139, 147, 165, 0.22); stroke: #3a4254; stroke-width: 1.5; stroke-dasharray: 6 6; }
+.fog-mark { fill: var(--muted); font-size: 18px; opacity: 0.6; }
+.fog.lifting { animation: fog-lift 1.2s ease-out forwards; transform-origin: 0 0; pointer-events: none; }
+@keyframes fog-lift { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.12); } }
+.grimoire-node.node-appear { animation: node-appear 1.2s ease-out; }
+@keyframes node-appear { from { opacity: 0; } 40% { opacity: 0; } to { opacity: 1; } }
+.node-detail { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+.node-detail h4 { margin: 0 0 6px; font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.node-detail p { margin: 4px 0; }
+.node-hint { color: var(--gold); }
+.node-done { color: var(--rune); }
+.node-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.empower { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.empower h4 { margin: 0 0 4px; font-size: 14px; color: var(--muted); }
+.empower-cost { list-style: none; margin: 4px 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.empower-cost li.short { color: var(--fire); }
+.notebook { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.notebook-row { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.notebook-row.equipped { border-color: var(--rune); }
+.notebook-main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.notebook-pick { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; background: none; border: none; padding: 4px 0; text-align: left; }
+.notebook-name { font-weight: 600; overflow-wrap: anywhere; }
+.notebook-main .tag { margin-left: 0; }
+.notebook-actions { margin-left: auto; display: inline-flex; gap: 4px; }
+.notebook-actions button { min-height: 32px; padding: 3px 8px; font-size: 13px; }
+.notebook-desc { margin: 2px 0 0; font-size: 13px; }
+.notebook-empty { font-size: 14px; line-height: 1.6; }
+/* <768px the battle is scrolled away while the slots are in use: keep the banner in the viewport */
+@media (max-width: 767px) {
+  .discovery-banner { position: fixed; z-index: 60; }
+}

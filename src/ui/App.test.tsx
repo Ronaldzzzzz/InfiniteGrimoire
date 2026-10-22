@@ -1,19 +1,20 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBattle } from '../engine/combat';
 import { content } from '../engine/content';
 import { createInitialState } from '../engine/persist';
 import type { GameRuntime, Snapshot } from '../game/runtime';
-import type { ApiClient } from '../game/api';
+import type { ActionResult, ApiClient } from '../game/api';
+import { craftedId, resolveSpell } from '../engine/spells';
 import type { SyncController } from '../game/sync';
 import { App } from './App';
 
 vi.mock('./BattleCanvas', () => ({ BattleCanvas: () => null }));
 afterEach(cleanup);
 
-function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1': 1 }) {
-  const game = { ...createInitialState(content), inventory };
+function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1': 1 }, learned = ['mana_bolt']) {
+  const game = { ...createInitialState(content), inventory, learned };
   const snapshot: Snapshot = { game, battle: createBattle(game.currentZone), revision: 1, paused: false, synthPending: false };
   const runtime = {
     getSnapshot: () => snapshot,
@@ -22,7 +23,14 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
     travel: vi.fn(),
     upgrade: vi.fn(() => true),
   } as unknown as GameRuntime;
-  const sync = { status: 'online', onStatus: () => () => {}, synthesize: vi.fn(), uploadNow: vi.fn(async () => {}) } as unknown as SyncController;
+  let reply: (r: ActionResult | null) => void = () => {};
+  const sync = {
+    status: 'online',
+    onStatus: () => () => {},
+    synthesize: vi.fn(() => new Promise<ActionResult | null>((r) => (reply = r))),
+    action: vi.fn(async () => null),
+    uploadNow: vi.fn(async () => {}),
+  } as unknown as SyncController;
   const api = {
     getAccount: vi.fn(async () => ({ displayName: 'Aria', username: null, sessions: 1 })),
     bind: vi.fn(),
@@ -32,7 +40,7 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
     login: vi.fn(),
   } as unknown as ApiClient;
   render(<App runtime={runtime} sync={sync} content={content} api={api} onSwitched={vi.fn()} onLoggedOut={vi.fn()} />);
-  return { runtime };
+  return { runtime, sync, reply: (r: ActionResult | null) => reply(r) };
 }
 
 const slotTexts = () =>
@@ -49,6 +57,10 @@ describe('App layout', () => {
     setup();
     expect(screen.queryByRole('button', { name: '魔導書' })).toBeNull();
     expect(screen.queryByRole('button', { name: '地圖' })).toBeNull();
+    // the grimoire column switches between the tree and the notebook
+    expect(screen.getByRole('tab', { name: '技能樹' }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
+    expect(screen.getByText(/還沒有自創魔法/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '合成' })).toBeTruthy(); // the synth action button, not a tab
   });
 
@@ -77,13 +89,35 @@ describe('App layout', () => {
     expect(screen.queryByText(hint)).toBeNull();
   });
 
-  it('also shows the hint right under the grimoire (narrow screens stack the grimoire below the slots)', () => {
+  it('also shows the hint in the grimoire node details (narrow screens stack the grimoire below the slots)', () => {
     setup();
     const hint = content.spells.fireball!.hint;
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`${content.spells.fireball!.name}（未學會）`) }));
     const grimoire = screen.getByRole('region', { name: '魔導書' });
-    const below = grimoire.querySelector('.grimoire-hint');
-    expect(below?.classList.contains('only-narrow')).toBe(true);
-    expect(below?.textContent).toContain(hint);
+    expect(grimoire.querySelector('.node-detail')?.textContent).toContain(hint);
+  });
+
+  it('a new synthesis result is equipped after the reply', async () => {
+    const id = craftedId('fireball', 'wind_blade');
+    const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball', 'wind_blade']);
+    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
+    fireEvent.change(screen.getByRole('combobox', { name: '放入魔法' }), { target: { value: 'wind_blade' } });
+    fireEvent.click(screen.getByRole('button', { name: '合成' }));
+    expect(runtime.equip).not.toHaveBeenCalled();
+    reply({ kind: 'learned', spellId: id, crafted: true });
+    await waitFor(() => expect(runtime.equip).toHaveBeenCalledWith(id));
+    const banner = screen.getByRole('status', { name: '新發現' });
+    expect(banner.textContent).toContain('新發現！');
+    expect(banner.textContent).toContain(resolveSpell(id, content)!.name);
+  });
+
+  it('a known result shows 已經會了 and does not re-equip', async () => {
+    const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball']);
+    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
+    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
+    fireEvent.click(screen.getByRole('button', { name: '合成' }));
+    reply({ kind: 'duplicate', spellId: 'fireball', refunded: ['el:fire:1'] });
+    await waitFor(() => expect(screen.getByRole('status', { name: '新發現' }).textContent).toContain('已經會了'));
+    expect(runtime.equip).not.toHaveBeenCalled();
   });
 });

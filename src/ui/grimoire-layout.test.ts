@@ -5,8 +5,9 @@ import { layoutGrimoire } from './grimoire-layout';
 
 const spells = Object.values(content.spells);
 const visible = new Set(['core']);
+const passives = Object.values(content.passives);
 const { nodes, edges } = layoutGrimoire(spells, visible);
-const at = (id: string) => nodes.find((n) => n.spellId === id)!;
+const at = (id: string) => nodes.find((n) => n.id === id)!;
 const polar = (id: string) => {
   const { x, y } = at(id);
   return { r: Math.hypot(x, y), deg: ((Math.atan2(x, -y) * 180) / Math.PI + 360) % 360 };
@@ -15,7 +16,8 @@ const polar = (id: string) => {
 describe('layoutGrimoire', () => {
   it('places every visible spell with a node once, and none without one', () => {
     expect(nodes).toHaveLength(spells.filter((s) => s.node && visible.has(s.node.region)).length);
-    expect(nodes.find((n) => n.spellId === 'mana_overload')).toBeUndefined();
+    expect(nodes.every((n) => n.kind === 'spell')).toBe(true);
+    expect(nodes.find((n) => n.id === 'mana_overload')).toBeUndefined();
   });
   it('puts mana_bolt at the centre', () => {
     expect(at('mana_bolt').x).toBeCloseTo(0);
@@ -34,15 +36,32 @@ describe('layoutGrimoire', () => {
   it('fogged nodes are not drawn', () => {
     const hidden: NamedSpellDef = { ...content.spells.fire_tornado!, id: 'hidden_spell', node: { region: 'outer', ring: 4, angle: 10 }, prerequisites: ['fireball'] };
     const fogged = layoutGrimoire([...spells, hidden], visible);
-    expect(fogged.nodes.find((n) => n.spellId === 'hidden_spell')).toBeUndefined();
+    expect(fogged.nodes.find((n) => n.id === 'hidden_spell')).toBeUndefined();
     expect(fogged.edges.find((e) => e.to === 'hidden_spell')).toBeUndefined();
     const revealed = layoutGrimoire([...spells, hidden], new Set(['core', 'outer']));
-    const n = revealed.nodes.find((x) => x.spellId === 'hidden_spell')!;
+    const n = revealed.nodes.find((x) => x.id === 'hidden_spell')!;
     expect(Math.hypot(n.x, n.y)).toBeCloseTo(315);
     expect(revealed.edges).toContainEqual({ from: 'fireball', to: 'hidden_spell' });
   });
   it('draws prerequisite edges', () => {
     expect(edges).toContainEqual({ from: 'fireball', to: 'fire_tornado' });
     expect(edges).toContainEqual({ from: 'wind_blade', to: 'fire_tornado' });
+  });
+  it('places visible passives as passive nodes', () => {
+    const l = layoutGrimoire(spells, new Set(['core', 'outer']), passives);
+    const p = l.nodes.find((n) => n.id === 'ember_affinity')!;
+    expect(p.kind).toBe('passive');
+    expect(Math.hypot(p.x, p.y)).toBeCloseTo(315);
+    expect(l.nodes.find((n) => n.id === 'deep_insight')).toBeUndefined();
+  });
+  it('gives every fogged region a band around its rings and none to visible ones', () => {
+    const l = layoutGrimoire(spells, visible, passives, content.regions);
+    expect(l.fog.map((f) => f.region)).toEqual(['outer', 'rift', 'abyss', 'zenith']);
+    const outer = l.fog[0]!;
+    expect(outer.inner).toBeLessThan(315);
+    expect(outer.outer).toBeGreaterThan(315);
+    expect(outer.inner).toBeGreaterThan(250);
+    const rift = l.fog[1]!;
+    expect(rift.inner).toBeCloseTo(outer.outer);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../engine/content';
 import { craftedId } from '../engine/spells';
-import { itemName, slotLabel, spellLabel, synthMessage } from './messages';
+import { AFFINITY_LABEL, empowerLabel, itemCounts, itemName, passiveRequirementLabel, slotLabel, spellLabel, synthMessage } from './messages';
 
 const crafted = craftedId('fireball', 'mat:ember_core');
 
@@ -9,7 +9,8 @@ describe('synthMessage', () => {
   it('formats every synthesis result kind', () => {
     expect(synthMessage({ kind: 'learned', spellId: 'fireball', crafted: false }, content)).toBe('習得新魔法：火球');
     expect(synthMessage({ kind: 'learned', spellId: crafted, crafted: true }, content)).toBe(`自創魔法：${spellLabel(crafted, content)}`);
-    expect(synthMessage({ kind: 'duplicate', spellId: 'fireball', refunded: ['el:fire:1'] }, content)).toBe('已習得 火球，退還部分元素');
+    expect(synthMessage({ kind: 'duplicate', spellId: 'fireball', refunded: ['el:fire:1'] }, content)).toBe('已經會了 火球，退還 初階火');
+    expect(synthMessage({ kind: 'duplicate', spellId: 'fireball', refunded: [] }, content)).toBe('已經會了 火球，沒有退還');
     expect(synthMessage({ kind: 'noReaction' }, content)).toBe('沒有反應……材料損耗了一部分');
     expect(synthMessage({ kind: 'dormant' }, content)).toBe('似乎還缺少什麼……');
     expect(synthMessage({ kind: 'overload', spellId: 'mana_overload' }, content)).toBe('魔力過載！');
@@ -24,7 +25,7 @@ describe('synthMessage', () => {
   });
 
   it('formats the other server actions', () => {
-    expect(synthMessage({ kind: 'empowered', level: 3 }, content)).toBe('強化成功：Lv.3');
+    expect(synthMessage({ kind: 'empowered', level: 3 }, content)).toBe('強化成功：強化 +2');
     expect(synthMessage({ kind: 'revealed', region: 'outer' }, content)).toBe('迷霧散開了');
     expect(synthMessage({ kind: 'unlocked' }, content)).toBe('被動已解鎖');
     expect(synthMessage({ kind: 'rejected', reason: 'maxLevel' }, content)).toBe('已經強化到最高等級');
@@ -51,5 +52,25 @@ describe('spellLabel / slotLabel', () => {
     expect(spellLabel('nope', content)).toBe('nope');
     expect(slotLabel('el:fire:2', content)).toBe('中階火');
     expect(slotLabel('fireball', content)).toBe('火球');
+  });
+});
+
+describe('empower / affinity / passive labels', () => {
+  it('shows the empower level as 強化 +N, hidden at level 1', () => {
+    expect(empowerLabel(1)).toBe('');
+    expect(empowerLabel(2)).toBe('強化 +1');
+    expect(empowerLabel(11)).toBe('強化 +10');
+  });
+  it('names every affinity', () => {
+    expect(AFFINITY_LABEL).toEqual({ base: '基礎', self: '同元素強化', good: '相性極佳', odd: '奇妙', bad: '相性差' });
+  });
+  it('counts repeated items', () => {
+    expect(itemCounts(['el:fire:2', 'el:fire:2', 'el:wind:2'], content)).toBe('中階火 ×2、中階風');
+  });
+  it('describes each kind of passive requirement', () => {
+    expect(passiveRequirementLabel(content.passives.ember_affinity!, content)).toBe('需要 餘燼核心 ×5');
+    expect(passiveRequirementLabel(content.passives.deep_insight!, content)).toBe(`擊敗${content.monsters.storm_roc!.name}`);
+    expect(passiveRequirementLabel(content.passives.eager_student!, content)).toBe('學會 10 個魔法');
+    expect(passiveRequirementLabel(content.passives.gale_affinity!, content)).toBe('學會 4 個帶風的魔法');
   });
 });

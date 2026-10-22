@@ -1,6 +1,6 @@
 import { content as defaultContent } from '../engine/content';
 import { requiredGrade } from '../engine/crafting';
-import type { Content } from '../engine/model';
+import type { Affinity, Content, Passive } from '../engine/model';
 import { craftedId, inputToken, resolveSpell } from '../engine/spells';
 import { GRADE_NAMES, type ItemId } from '../engine/types';
 import { USERNAME_MAX, USERNAME_MIN, PASSWORD_MAX, PASSWORD_MIN, type UsernameProblem } from '../engine/account-rules';
@@ -16,6 +16,29 @@ export function itemName(itemId: ItemId, content: Content = defaultContent): str
   if (kind === 'mat' && a) return Object.hasOwn(content.materials, itemId) ? content.materials[itemId]!.name : a;
   if (kind === 'key' && a) return Object.hasOwn(content.keyItems, itemId) ? content.keyItems[itemId]!.name : a;
   return itemId;
+}
+
+/** Items with repeats folded into counts: 「中階火 ×2、中階風」. */
+export function itemCounts(items: readonly ItemId[], content: Content = defaultContent): string {
+  const counts = new Map<ItemId, number>();
+  for (const id of items) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return [...counts].map(([id, n]) => (n > 1 ? `${itemName(id, content)} ×${n}` : itemName(id, content))).join('、');
+}
+
+export const AFFINITY_LABEL: Record<Affinity, string> = { base: '基礎', self: '同元素強化', good: '相性極佳', odd: '奇妙', bad: '相性差' };
+
+/** R17: "Lv." is the tier; the empower level shows as 「強化 +N」 (N = level - 1), nothing at level 1. */
+export function empowerLabel(level: number): string {
+  return level > 1 ? `強化 +${level - 1}` : '';
+}
+
+export function passiveRequirementLabel(p: Passive, content: Content = defaultContent): string {
+  const u = p.unlock;
+  if (u.kind === 'items') {
+    return `需要 ${Object.entries(u.items).map(([id, n]) => `${itemName(id, content)} ×${n}`).join('、')}`;
+  }
+  if (u.kind === 'boss') return `擊敗${Object.hasOwn(content.monsters, u.bossId) ? content.monsters[u.bossId]!.name : u.bossId}`;
+  return `學會 ${u.count} 個${u.element ? `帶${ELEMENT_NAMES[u.element]}的` : ''}魔法`;
 }
 
 /** A named or crafted spell's name, or the id itself when it is not a spell. */
@@ -60,7 +83,10 @@ export function synthMessage(result: ActionResult, content: Content, inputs?: st
         ? `自創魔法：${spellLabel(result.spellId, content)}`
         : `習得新魔法：${spellLabel(result.spellId, content)}`;
     case 'duplicate':
-      return `已習得 ${spellLabel(result.spellId, content)}，退還部分元素`;
+      // only what the server says came back: a random recipe's retry refunds a single item
+      return result.refunded.length > 0
+        ? `已經會了 ${spellLabel(result.spellId, content)}，退還 ${itemCounts(result.refunded, content)}`
+        : `已經會了 ${spellLabel(result.spellId, content)}，沒有退還`;
     case 'noReaction':
       return '沒有反應……材料損耗了一部分';
     case 'dormant':
@@ -68,7 +94,7 @@ export function synthMessage(result: ActionResult, content: Content, inputs?: st
     case 'overload':
       return '魔力過載！';
     case 'empowered':
-      return `強化成功：Lv.${result.level}`;
+      return `強化成功：${empowerLabel(result.level)}`;
     case 'revealed':
       return '迷霧散開了';
     case 'unlocked':

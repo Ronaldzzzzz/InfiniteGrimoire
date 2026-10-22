@@ -24,6 +24,7 @@ export function SynthesisPanel({
   slots,
   onSlotsChange,
   hint = null,
+  onResult,
 }: {
   game: GameState;
   synthPending: boolean;
@@ -32,6 +33,8 @@ export function SynthesisPanel({
   slots: Slots;
   onSlotsChange: (slots: Slots) => void;
   hint?: string | null;
+  /** called with every applied or refused result, after the reply has replaced the state */
+  onResult?: (result: ActionResult) => void;
 }) {
   const [message, setMessage] = useState('');
 
@@ -51,6 +54,7 @@ export function SynthesisPanel({
         setMessage(synthMessage(result, content, inputs));
         // a refusal (e.g. the element grade is too low) spent nothing: keep the slots to adjust them
         if (result.kind !== 'rejected') onSlotsChange(emptySlots());
+        onResult?.(result);
       } else {
         // busy, offline, or the server sent its own state back (conflict / audit rejection)
         setMessage(SYNTH_RETRY_MESSAGE);
