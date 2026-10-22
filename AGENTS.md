@@ -32,6 +32,8 @@
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。2026-10-22 之前規則放錯在 `~/syncthing/.stignore`，沒有生效，所以 Windows 版 `node_modules` 被同步到 macOS 而無法執行測試。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
   - `.gitattributes` 強制 LF 換行，避免 Windows 編輯後整個檔案都顯示為修改。
+  - **開對話時自動檢查**：`.claude/settings.json` 的 SessionStart hook 會執行 `scripts/session-context.mjs`（Claude Code 開始、接續、壓縮對話時都會跑），把這台電腦的 git 狀態、`node_modules` 是否為本平台安裝、Syncthing 衝突檔（`*.sync-conflict-*`）和本節內容交給 agent。其他 agent 可以自己執行 `node scripts/session-context.mjs` 看同樣的資訊。
+  - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
 - **第一版（MVP）程式：** 14 個任務全部完成，每個任務都經過獨立審查；最終全 branch 審查找出的問題已修正並複審。
 - **測試：** `npm test` 36 個檔案、279 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。

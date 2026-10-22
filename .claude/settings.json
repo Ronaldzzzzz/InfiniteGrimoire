@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["scripts/session-context.mjs"],
+            "timeout": 20,
+            "statusMessage": "Checking project state on this machine"
+          }
+        ]
+      }
+    ]
+  }
+}
