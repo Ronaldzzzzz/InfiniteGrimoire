@@ -93,9 +93,12 @@ function derive(id: string, content: Content): Spell | null {
   const inner = id.slice(2, -1);
   const bar = splitTop(inner);
   if (bar <= 0 || bar >= inner.length - 1) return null;
-  const a = part(inner.slice(0, bar), content);
-  const b = part(inner.slice(bar + 1), content);
+  const ta = inner.slice(0, bar), tb = inner.slice(bar + 1);
+  if (ta > tb) return null; // one input pair, one id: parts must be in craftedId order
+  const a = part(ta, content);
+  const b = part(tb, content);
   if (!a || !b) return null;
+  if (a.material && b.material) return null; // no reaction without a recipe
   const A = a.spell, B = b.spell;
 
   const depth = Math.max(A.depth, B.depth) + 1;

@@ -61,6 +61,16 @@ describe('crafted spells', () => {
     expect(resolveSpell(nest(HARD_MAX_DEPTH), content)).not.toBeNull();
   });
 
+  it('rejects material-only and non-canonical ids', () => {
+    expect(resolveSpell('c(mat:ember_core|mat:ember_core)', content)).toBeNull();
+    expect(resolveSpell('c(fireball|water_wave)', content)).not.toBeNull();
+    expect(resolveSpell('c(water_wave|fireball)', content)).toBeNull();
+    expect(resolveSpell('c(mat:ember_core|fireball)', content)).toBeNull();
+    expect(resolveSpell('c(lightning|c(fireball|water_wave))', content)).toBeNull();
+    expect(resolveSpell('c(c(water_wave|fireball)|lightning)', content)).toBeNull();
+    expect(resolveSpell('c(c(fireball|water_wave)|lightning)', content)).not.toBeNull();
+  });
+
   it('deep good chains stay under the attack ceiling', () => {
     let id = 'fire_tornado';
     let beatNamed = false;
