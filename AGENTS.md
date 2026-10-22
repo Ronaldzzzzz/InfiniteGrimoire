@@ -28,7 +28,7 @@
 
 ## 3. 目前狀態（2026-10-22）
 
-- **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit），第二版 A 在 `feat/v2a-accounts`（從 `feat/mvp-core-loop` 分出）。兩者都**尚未合併到 `main`**。`feat/v2a-accounts` 尚未 push（使用者自己 push）。
+- **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit），第二版 A 在 `feat/v2a-accounts`（從 `feat/mvp-core-loop` 分出）。2026-10-22 經使用者指示，兩者都已 fast-forward 合併到 `main`（本機；push 由使用者自己做）。之後的新功能從 `main` 開新 branch。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。2026-10-22 之前規則放錯在 `~/syncthing/.stignore`，沒有生效，所以 Windows 版 `node_modules` 被同步到 macOS 而無法執行測試。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -40,14 +40,14 @@
 - **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
 - **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
 
-- **第二版 A（帳號綁定）：** 已完成，在 branch `feat/v2a-accounts`（從 `feat/mvp-core-loop` 分出，尚未 push、尚未合併）。帳號＋密碼綁定、多裝置 session、改密碼、登出其他裝置／這台裝置、登入嘗試限制、`/api/guest` 每 IP 每小時 10 個。migration `0003_accounts.sql`（本機已套用；遠端未套用）。本機 headless Chrome 驗收 7 項通過（帳本）。
+- **第二版 A（帳號綁定）：** 已完成，已合併到 `main`。帳號＋密碼綁定、多裝置 session、改密碼、登出其他裝置／這台裝置、登入嘗試限制、`/api/guest` 每 IP 每小時 10 個。migration `0003_accounts.sql`（本機已套用；遠端未套用）。本機 headless Chrome 驗收 7 項通過（帳本）。
   - **2026-10-22 密碼雜湊改版**（計畫 `docs/superpowers/plans/2026-10-22-v2a-client-hash.md`）：瀏覽器端 PBKDF2-SHA256 300,000 次（salt = `infinite-grimoire:v1:` + 帳號名稱 key，`src/game/password-hash.ts`），伺服器只收 43 字元雜湊，再用 secret pepper 做 HMAC-SHA256（`worker/password.ts`）。密碼不離開瀏覽器。pepper 是 Cloudflare secret `PASSWORD_PEPPER`，本機在 `.dev.vars`（不進 git，每台電腦自己建）；沒設定時帳號 API 回 500。**pepper 上線後不能更換**，換了所有帳號都無法登入。
 
 **尚未完成（下一位接手者的待辦）：**
-0. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）；由使用者決定 `feat/v2a-accounts` 的 push 與合併方式。下一個子專案是第二版 B（稀有魔法發現紀錄），要先做設計討論。**部署時注意：** 遠端 D1 要依序套用 0001→0003，套用 0003 前先備份。
+0. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）；已合併到 `main`，push 由使用者決定。下一個子專案是第二版 B（稀有魔法發現紀錄），要先做設計討論。**部署時注意：** 遠端 D1 要依序套用 0001→0003，套用 0003 前先備份。
 1. **使用者試玩新版面**：自動化驗收（headless Edge）已確認 1280／768／360 寬無橫向捲動、選擇器清單留在畫面內、斷線遮罩出現並恢復、三欄版面與殘卷線索位置。**還沒在真實瀏覽器確認**：卡頓感是否消失、燃燒／麻痺／冰凍特效、`beam` 分支光束、連鎖閃電、換地點後怪物角度重新隨機、玩到第三個地點。
 2. **部署（暫緩，2026-10-21 使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npx wrangler secret put PASSWORD_PEPPER`（隨機長字串，之後不能換）、`npm run deploy`。**部署前要先取得使用者同意。**
-3. **合併**：畫面驗收通過後，由使用者決定合併 `main` 或開 PR。
+3. **合併**：已完成（2026-10-22 使用者指示合併到 `main`）。
 
 ## 4. 本機啟動
 
@@ -125,6 +125,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-22（Claude Code，Opus 5.5，macOS）**：雜湊改版的最終審查 Critical 0、Important 0（4 個 minor 記在帳本）。使用者指示把 `feat/mvp-core-loop` 與 `feat/v2a-accounts` 合併回 `main`：`main` 只有 Initial commit，以 fast-forward 合併到 `feat/v2a-accounts`（已包含 MVP branch）。停在：本機 `main` 已合併，尚未 push。下一步：使用者 push → 第二版 B 設計討論（從 `main` 開新 branch）。
 
 - **2026-10-22（Claude Code，Opus 5.5，macOS）**：使用者問 PBKDF2 50k 次的 CPU 時間後，決定把慢的雜湊移到瀏覽器：瀏覽器 PBKDF2 300,000 次（headless Chrome 實測約 143ms）＋伺服器 HMAC-SHA256 與 secret pepper（使用者選擇；也確認安全性做到合理即可）。spec 已修訂，計畫 `docs/superpowers/plans/2026-10-22-v2a-client-hash.md` 4 個任務以 executing-plans 完成。舊的 `pbkdf2-sha256$` 雜湊不相容（沒有真實玩家），本機驗收用新帳號：綁定、另一台登入、改密碼、連錯限制、請求內無明文密碼、按鈕「處理中…」都通過。停在：全部 commit，尚未 push。下一步：使用者試用 → 決定 push／合併 → 第二版 B 設計討論。
 
