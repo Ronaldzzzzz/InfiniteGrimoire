@@ -25,9 +25,12 @@
 
 規格與計畫衝突時，以規格為準。計畫沒寫到的地方，看帳本中的 `Ruling:` 行。
 
-## 3. 目前狀態（2026-10-21）
+## 3. 目前狀態（2026-10-22）
 
-- **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit）。**尚未合併到 `main`。**
+- **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit）。**尚未合併到 `main`。** 本機比 `origin/feat/mvp-core-loop` 多 9 個 commit（`b43a952`～`a9dbbcd`：部署暫緩、審查小問題修正、第二版路線與 A 的 spec／計畫），**尚未 push**。
+- **跨電腦同步注意（2026-10-22 發現）：** 專案資料夾用 Syncthing 在 Windows 與 macOS 之間同步。
+  - `node_modules/` 是在 Windows 安裝後同步過來的，只有 win32 的原生 binding（rolldown、esbuild），而且 `.bin` 失去執行權限，所以在 macOS 上 `npm test` 會失敗（`Permission denied`、`Cannot find native binding`）。每台電腦要各自 `npm i`；建議在 Syncthing 的 `.stignore` 排除 `node_modules`、`.wrangler`、`dist`。
+  - 有 7 個檔案（`package-lock.json`、`src/main.tsx`、`src/game/runtime.ts`、`src/game/runtime.test.ts`、`src/ui/BattleCanvas.tsx`、`src/ui/perf-stats.test.ts`、`docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`）在工作區變成 CRLF 換行，內容和 commit 完全相同（`git diff --ignore-cr-at-eol` 為空）。建議加 `.gitattributes`（`* text=auto eol=lf`）統一換行。
 - **第一版（MVP）程式：** 14 個任務全部完成，每個任務都經過獨立審查；最終全 branch 審查找出的問題已修正並複審。
 - **測試：** `npm test` 36 個檔案、279 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
@@ -115,6 +118,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-22（Claude Code，Opus 5.5，macOS）**：重新讀取專案進度並更新第 3 節。確認第二版 A 計畫尚未執行（沒有 `docs/superpowers/sdd/2026-10-21-v2a-accounts/`）、本機多 9 個 commit 未 push。發現跨電腦同步問題：從 Windows 同步來的 `node_modules` 在 macOS 不能跑測試，另有 7 個檔案只有換行變成 CRLF（詳見第 3 節）。本次沒有跑到測試，279 個測試通過是上一位的紀錄。停在：等使用者決定是否在這台重裝 `node_modules`、是否加 `.gitattributes`、是否 push。下一步：第 3 節待辦 0（執行第二版 A 計畫）。
 
 - **2026-10-21（Claude Code，Opus 5.5）**：第二版設計開始。與使用者確認把第二版拆成 A 帳號 → B 發現紀錄 → C+D 排行與至尊稱號（`docs/superpowers/specs/2026-10-21-v2-roadmap.md`）。完成 A 的設計討論與 spec（`2026-10-21-v2a-accounts-design.md`）：多裝置各自 session、遊客切換帳號先提醒再捨棄、這次不做 Google、免費方案所以 PBKDF2-SHA256 50,000 次（本機實測 50k≈5ms、100k≈10ms，免費方案 CPU 上限 10ms）、`/api/guest` 每 IP 每小時 10 個。寫計畫時發現並修正 spec：帳密錯誤改回 403（401 會讓用戶端清掉 token）。實作計畫 `docs/superpowers/plans/2026-10-21-v2a-accounts.md`（11 個任務，已確認 vitest 可用 `node:sqlite` 測真正的 SQL 與 migration）。停在：計畫寫好、尚未執行。下一步：執行計畫（見第 3 節待辦 0）。
 
