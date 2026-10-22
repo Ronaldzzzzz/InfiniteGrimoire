@@ -1,0 +1,50 @@
+import { describe, expect, it, vi } from 'vitest';
+import { gameData } from '../engine/data';
+import { createInitialState } from '../engine/state';
+import { ApiError, AuthError, createApiClient, RateLimitedError } from './api';
+
+function fakeFetch(status: number, body: unknown) {
+  return vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
+}
+
+describe('account api', () => {
+  it('logs in and parses the save like createGuest', async () => {
+    const state = createInitialState(gameData);
+    const f = fakeFetch(200, { token: 't2', playerId: 'p', state, revision: 4 });
+    const api = createApiClient(() => null, f as unknown as typeof fetch);
+    expect(await api.login('mage_1', 'password1')).toEqual({ token: 't2', state, revision: 4 });
+    expect(f).toHaveBeenCalledWith('/api/login', expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'mage_1', password: 'password1' }) }));
+  });
+
+  it('maps 403 / 409 to ApiError with the server code', async () => {
+    const api403 = createApiClient(() => null, fakeFetch(403, { error: 'invalid_credentials' }) as unknown as typeof fetch);
+    await expect(api403.login('mage_1', 'password1')).rejects.toMatchObject({ status: 403, code: 'invalid_credentials' });
+    const api409 = createApiClient(() => 'tok', fakeFetch(409, { error: 'taken' }) as unknown as typeof fetch);
+    const err = await api409.bind('mage_1', 'password1').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).code).toBe('taken');
+  });
+
+  it('maps 429 to RateLimitedError with retryAfterSec', async () => {
+    const api = createApiClient(() => null, fakeFetch(429, { error: 'rate_limited', retryAfterSec: 125 }) as unknown as typeof fetch);
+    const err = await api.login('mage_1', 'password1').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RateLimitedError);
+    expect((err as RateLimitedError).retryAfterSec).toBe(125);
+  });
+
+  it('still maps 401 to AuthError', async () => {
+    const api = createApiClient(() => 'tok', fakeFetch(401, { error: 'unauthorized' }) as unknown as typeof fetch);
+    await expect(api.getAccount()).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it('reads account info and sends the other account calls', async () => {
+    const f = fakeFetch(200, { displayName: 'Aria', username: null, sessions: 2 });
+    const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
+    expect(await api.getAccount()).toEqual({ displayName: 'Aria', username: null, sessions: 2 });
+    await api.changePassword('password1', 'password2');
+    await api.logoutOthers();
+    await api.logout();
+    const paths = f.mock.calls.map((c) => (c as unknown as [string])[0]);
+    expect(paths).toEqual(['/api/account', '/api/account/password', '/api/account/logout-others', '/api/logout']);
+  });
+});

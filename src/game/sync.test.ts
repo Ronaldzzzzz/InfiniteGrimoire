@@ -13,6 +13,12 @@ function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
     loadSave: vi.fn(),
     upload: vi.fn(async () => ({ kind: 'ok' as const, revision: 8 })),
     synthesize: vi.fn(),
+    login: vi.fn(),
+    bind: vi.fn(),
+    getAccount: vi.fn(),
+    changePassword: vi.fn(),
+    logoutOthers: vi.fn(),
+    logout: vi.fn(),
     ...over,
   };
 }

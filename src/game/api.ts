@@ -17,16 +17,37 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** the server's `{ error }` code, e.g. 'taken' or 'invalid_credentials' */
+    readonly code?: string,
   ) {
     super(message);
   }
 }
 
+export class RateLimitedError extends ApiError {
+  constructor(readonly retryAfterSec: number) {
+    super('rate limited', 429, 'rate_limited');
+  }
+}
+
+export type LoginResult = { token: string; state: GameState; revision: number };
+export interface AccountInfo {
+  displayName: string;
+  username: string | null;
+  sessions: number;
+}
+
 export interface ApiClient {
-  createGuest(displayName: string): Promise<{ token: string; state: GameState; revision: number }>;
+  createGuest(displayName: string): Promise<LoginResult>;
   loadSave(): Promise<{ state: GameState; revision: number }>;
   upload(state: GameState, baseRevision: number, opts?: { keepalive?: boolean }): Promise<UploadOutcome>;
   synthesize(state: GameState, baseRevision: number, inputs: ItemId[]): Promise<SynthOutcome>;
+  login(username: string, password: string): Promise<LoginResult>;
+  bind(username: string, password: string): Promise<{ username: string }>;
+  getAccount(): Promise<AccountInfo>;
+  changePassword(current: string, next: string): Promise<void>;
+  logoutOthers(): Promise<void>;
+  logout(): Promise<void>;
 }
 
 interface Reply {
@@ -70,7 +91,19 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
     }
     if (res.status === 401) throw new AuthError('unauthorized');
     if (res.status >= 500) throw new NetworkError(`server error ${res.status}`);
-    if (!res.ok && !accept.includes(res.status)) throw new ApiError(`request failed ${res.status}`, res.status);
+    if (!res.ok && !accept.includes(res.status)) {
+      let code: string | undefined;
+      let retryAfterSec = 60;
+      try {
+        const b = (await res.json()) as Record<string, unknown>;
+        if (typeof b.error === 'string') code = b.error;
+        if (typeof b.retryAfterSec === 'number') retryAfterSec = b.retryAfterSec;
+      } catch {
+        // no readable body: keep the status only
+      }
+      if (res.status === 429) throw new RateLimitedError(retryAfterSec);
+      throw new ApiError(`request failed ${res.status}`, res.status, code);
+    }
     let parsed: unknown;
     try {
       parsed = await res.json();
@@ -111,6 +144,30 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
       if (status === 409) return { kind: 'conflict', state: next, revision };
       if (status === 422) return { kind: 'rejected', state: next, revision };
       return { kind: 'ok', result: body.result as SynthResult, state: next, revision };
+    },
+    async login(username, password) {
+      const { body } = await request('POST', '/api/login', { username, password });
+      if (typeof body.token !== 'string') throw new ApiError('invalid token from server', 0);
+      return { token: body.token, state: parseServerState(body.state), revision: revisionOf(body) };
+    },
+    async bind(username, password) {
+      const { body } = await request('POST', '/api/account/bind', { username, password });
+      if (typeof body.username !== 'string') throw new ApiError('invalid bind reply', 0);
+      return { username: body.username };
+    },
+    async getAccount() {
+      const { body } = await request('GET', '/api/account');
+      if (typeof body.displayName !== 'string' || typeof body.sessions !== 'number') throw new ApiError('invalid account reply', 0);
+      return { displayName: body.displayName, username: typeof body.username === 'string' ? body.username : null, sessions: body.sessions };
+    },
+    async changePassword(current, next) {
+      await request('POST', '/api/account/password', { current, next });
+    },
+    async logoutOthers() {
+      await request('POST', '/api/account/logout-others', {});
+    },
+    async logout() {
+      await request('POST', '/api/logout', {});
     },
   };
 }
