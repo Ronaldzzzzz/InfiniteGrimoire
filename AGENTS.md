@@ -17,7 +17,8 @@
 | `docs/superpowers/sdd/2026-10-21-mvp-core-loop/final-fix-report.md` | 最終審查後的修正報告（防作弊錨點窗口等） |
 | `docs/superpowers/specs/2026-10-21-v2-roadmap.md` | **第二版路線**：拆成 A 帳號 → B 發現紀錄 → C+D 排行與至尊稱號；C+D 開始前必須先決定的兩個問題 |
 | `docs/superpowers/specs/2026-10-21-v2a-accounts-design.md` | 第二版 A（帳號綁定）設計規格 |
-| `docs/superpowers/plans/2026-10-21-v2a-accounts.md` | 第二版 A 的 11 個任務實作計畫（**下一步就是執行它**） |
+| `docs/superpowers/plans/2026-10-21-v2a-accounts.md` | 第二版 A 的 11 個任務實作計畫（已執行完成） |
+| `docs/superpowers/sdd/2026-10-21-v2a-accounts/progress.md` | 第二版 A 的帳本：Ruling、瀏覽器驗收結果、最終審查 |
 | `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`、`docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`、`docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/` | 試玩回饋修正的規格、計畫、帳本與卡頓量測報告 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
@@ -27,7 +28,7 @@
 
 ## 3. 目前狀態（2026-10-22）
 
-- **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit）。**尚未合併到 `main`。** 本機有多個 commit 尚未 push（使用者自己 push）。
+- **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit），第二版 A 在 `feat/v2a-accounts`（從 `feat/mvp-core-loop` 分出）。兩者都**尚未合併到 `main`**。`feat/v2a-accounts` 尚未 push（使用者自己 push）。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。2026-10-22 之前規則放錯在 `~/syncthing/.stignore`，沒有生效，所以 Windows 版 `node_modules` 被同步到 macOS 而無法執行測試。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -35,14 +36,14 @@
   - **開對話時自動檢查**：`.claude/settings.json` 的 SessionStart hook 會執行 `scripts/session-context.mjs`（Claude Code 開始、接續、壓縮對話時都會跑），把這台電腦的 git 狀態、`node_modules` 是否為本平台安裝、Syncthing 衝突檔（`*.sync-conflict-*`）和本節內容交給 agent。其他 agent 可以自己執行 `node scripts/session-context.mjs` 看同樣的資訊。
   - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
 - **第一版（MVP）程式：** 14 個任務全部完成，每個任務都經過獨立審查；最終全 branch 審查找出的問題已修正並複審。
-- **測試：** `npm test` 36 個檔案、279 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 42 個檔案、332 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
 - **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
 
-- **第二版 A（帳號綁定）：** spec 與計畫已完成並經使用者確認，**程式尚未開始**。
+- **第二版 A（帳號綁定）：** 已完成，在 branch `feat/v2a-accounts`（從 `feat/mvp-core-loop` 分出，尚未 push、尚未合併）。帳號＋密碼綁定、多裝置 session、改密碼、登出其他裝置／這台裝置、登入嘗試限制、`/api/guest` 每 IP 每小時 10 個。migration `0003_accounts.sql`（本機已套用；遠端未套用）。本機 headless Chrome 驗收 7 項通過（帳本）。
 
 **尚未完成（下一位接手者的待辦）：**
-0. **執行第二版 A 的計畫**：`docs/superpowers/plans/2026-10-21-v2a-accounts.md`。用 superpowers:subagent-driven-development 或 superpowers:executing-plans（使用者上一次選的是 Native／executing-plans）。帳本放 `docs/superpowers/sdd/2026-10-21-v2a-accounts/progress.md`。計畫的 Global Constraints 已列出所有必須遵守的規則（不部署、不 push、401 只代表 token 無效等）。
+0. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）；由使用者決定 `feat/v2a-accounts` 的 push 與合併方式。下一個子專案是第二版 B（稀有魔法發現紀錄），要先做設計討論。**部署時注意：** 遠端 D1 要依序套用 0001→0003，套用 0003 前先備份。
 1. **使用者試玩新版面**：自動化驗收（headless Edge）已確認 1280／768／360 寬無橫向捲動、選擇器清單留在畫面內、斷線遮罩出現並恢復、三欄版面與殘卷線索位置。**還沒在真實瀏覽器確認**：卡頓感是否消失、燃燒／麻痺／冰凍特效、`beam` 分支光束、連鎖閃電、換地點後怪物角度重新隨機、玩到第三個地點。
 2. **部署（暫緩，2026-10-21 使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。**
 3. **合併**：畫面驗收通過後，由使用者決定合併 `main` 或開 PR。
@@ -57,7 +58,7 @@ npm test
 npm run build
 ```
 
-Node 22。新增 migration 後要重跑 `db:migrate:local`。
+Node 22.13 以上（資料庫測試用到 `node:sqlite`）。新增 migration 後要重跑 `db:migrate:local`。
 
 ## 5. 架構地圖
 
@@ -66,13 +67,15 @@ src/engine/   純 TypeScript 遊戲邏輯（瀏覽器與伺服器共用；禁止
   data.ts 資料載入與交叉檢查 · combat-rules.ts 傷害門檻/越級遞減/相剋 · battle.ts 戰鬥模擬
   synthesis.ts 合成 · inventory.ts 背包 · state.ts 遊戲狀態 · save.ts 存檔解析 · validate.ts 防作弊上限
 src/data/     魔法、配方、魔物、地點 JSON（內容與數值都在這裡）
-worker/       Cloudflare Worker（Hono）：遊客帳號、存檔上傳、伺服器擲骰合成；store.ts / d1-store.ts
-migrations/   D1 schema（0001 初始、0002 錨點窗口）
+worker/       Cloudflare Worker（Hono）：遊客與帳號（sessions／credentials、password.ts PBKDF2）、存檔上傳、伺服器擲骰合成；
+              store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）
+migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號）
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳/斷線/錯誤）、loop、boot
 src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何
 src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable、SynthesisPanel、GrimoirePanel（SVG）、
               Onboarding、OfflineOverlay；useGame.ts 的 useRuntime(selector)；開發用 PerfMeter
 tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）
+tests/d1/     node:sqlite 上的 D1Store 與 migration 測試
 ```
 
 TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.json`（worker + engine + data，無 DOM），這樣能強制引擎不碰 DOM。
@@ -105,7 +108,6 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - 各屬性通關時間差距大：風約 27 分鐘，雷、土約 50 分鐘。原因是魔王只有一隻，能同時打兩個目標的魔法佔便宜。
 - 魔王打不動時，玩家要自己退回前一個地點；HUD 有提示，但沒有自動處理。
 - 同一個 token 開多個分頁時，會互相以 409 覆蓋（不算作弊，資料一致）。
-- `/api/guest` 沒有速率限制（第二版 A 的計畫 Task 5 處理）。
 - 沒有 WebGL 時，Pixi 初始化失敗沒有提示。
 - 魔導書：滾輪縮放可能捲動頁面、不支援雙指縮放。
 
@@ -121,6 +123,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-22（Claude Code，Opus 5.5，macOS）**：以 executing-plans 執行第二版 A 計畫的 11 個任務（branch `feat/v2a-accounts`），帳本 `docs/superpowers/sdd/2026-10-21-v2a-accounts/progress.md`。重要 Ruling：migration 0003 改成「複製 → DROP → 以原名重建 → 插回」，因為計畫的 RENAME 做法在 SQLite 上 commit 時觸發外鍵錯誤；限制視窗改成剛好滿 1 小時／15 分鐘即過期，與 retryAfterSec 一致。本機 headless Chrome 驗收 7 項通過；最終全 branch 審查見帳本。停在：全部 commit，尚未 push。下一步：使用者試用帳號功能 → 決定 push／合併 → 第二版 B 設計討論。
 
 - **2026-10-22（Claude Code，Opus 5.5，macOS）**：重新讀取專案進度並更新第 3 節。確認第二版 A 計畫尚未執行（沒有 `docs/superpowers/sdd/2026-10-21-v2a-accounts/`）、本機多 9 個 commit 未 push。發現跨電腦同步問題：從 Windows 同步來的 `node_modules` 在 macOS 不能跑測試，另有 7 個檔案只有換行變成 CRLF（詳見第 3 節）。之後經使用者同意：加 `.gitattributes`（LF）並還原換行、把 Syncthing 忽略規則建在正確的資料夾根目錄、在 macOS 重裝 `node_modules`（`package-lock.json` 的 name／version 同步成 `package.json` 的值）。macOS 上 `npm test` 36 個檔案 279 個測試通過，`npm run build` 通過。停在：使用者自己 push。下一步：第 3 節待辦 0（執行第二版 A 計畫）。
 
