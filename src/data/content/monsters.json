@@ -1,0 +1,221 @@
+[
+  {
+    "id": "mist_slime",
+    "name": "迷霧史萊姆",
+    "nameEn": "Mist Slime",
+    "element": "water",
+    "tier": 1,
+    "hp": 30,
+    "defense": 3,
+    "regenPerSec": 0.5,
+    "speed": 0.05,
+    "radius": 0.03,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:water:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "ember_bunny",
+    "name": "餘燼兔",
+    "nameEn": "Ember Bunny",
+    "element": "fire",
+    "tier": 1,
+    "hp": 42,
+    "defense": 5,
+    "regenPerSec": 0.5,
+    "speed": 0.06,
+    "radius": 0.03,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.2,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:ember_core",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "meadow_sprite",
+    "name": "草原精靈",
+    "nameEn": "Meadow Sprite",
+    "element": "wind",
+    "tier": 2,
+    "hp": 60,
+    "defense": 8,
+    "regenPerSec": 0.5,
+    "speed": 0.07,
+    "radius": 0.03,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "mist_stag",
+    "name": "迷霧雄鹿",
+    "nameEn": "Mist Stag",
+    "element": "water",
+    "tier": 2,
+    "hp": 600,
+    "defense": 10,
+    "regenPerSec": 1,
+    "speed": 0.03,
+    "radius": 0.06,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:water:1",
+        "chance": 1,
+        "min": 3,
+        "max": 5
+      },
+      {
+        "itemId": "key:storm_heart",
+        "chance": 1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "gorge_hawk",
+    "name": "峽谷鷹",
+    "nameEn": "Gorge Hawk",
+    "element": "wind",
+    "tier": 3,
+    "hp": 150,
+    "defense": 20,
+    "regenPerSec": 0.5,
+    "speed": 0.08,
+    "radius": 0.035,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:wind:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.5,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_lizard",
+    "name": "雷蜥",
+    "nameEn": "Thunder Lizard",
+    "element": "thunder",
+    "tier": 4,
+    "hp": 260,
+    "defense": 30,
+    "regenPerSec": 0.5,
+    "speed": 0.06,
+    "radius": 0.04,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:thunder:1",
+        "chance": 0.7,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:1",
+        "chance": 0.4,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:ember_core",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "storm_roc",
+    "name": "風暴大鵬",
+    "nameEn": "Storm Roc",
+    "element": "thunder",
+    "tier": 4,
+    "hp": 2500,
+    "defense": 35,
+    "regenPerSec": 1,
+    "speed": 0.03,
+    "radius": 0.07,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:thunder:2",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      }
+    ]
+  }
+]

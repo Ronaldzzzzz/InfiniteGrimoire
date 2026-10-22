@@ -1,0 +1,16 @@
+[
+  {
+    "id": "core",
+    "name": "核心",
+    "nameEn": "Core",
+    "order": 1,
+    "initiallyVisible": true
+  },
+  {
+    "id": "outer",
+    "name": "外圍",
+    "nameEn": "Outer Reaches",
+    "order": 2,
+    "initiallyVisible": false
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "mat:ember_core",
+    "name": "餘燼核心",
+    "nameEn": "Ember Core",
+    "desc": "還在發熱的核心，摻進魔法裡會多一次小爆炸。",
+    "elements": [
+      "fire"
+    ],
+    "words": {
+      "pre": "餘燼",
+      "noun": "爆裂",
+      "preEn": "Ember",
+      "nounEn": "Burst"
+    },
+    "effect": {
+      "kind": "bolt",
+      "mult": 0.5,
+      "count": 1,
+      "radius": 0.1,
+      "target": "nearest"
+    }
+  }
+]

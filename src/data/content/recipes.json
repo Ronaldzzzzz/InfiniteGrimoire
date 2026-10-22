@@ -1,0 +1,145 @@
+[
+  {
+    "id": "fire_base",
+    "inputs": [
+      "el:fire:1",
+      "el:fire:1"
+    ],
+    "outcomes": [
+      {
+        "spellId": "fireball",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_empower",
+    "inputs": [
+      "fireball",
+      "el:fire:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "flame_burst",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_base",
+    "inputs": [
+      "el:wind:1",
+      "el:wind:1"
+    ],
+    "outcomes": [
+      {
+        "spellId": "wind_blade",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_empower",
+    "inputs": [
+      "wind_blade",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "tailwind",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_base",
+    "inputs": [
+      "el:thunder:1",
+      "el:thunder:1"
+    ],
+    "outcomes": [
+      {
+        "spellId": "lightning",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_empower",
+    "inputs": [
+      "lightning",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_hammer",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_base",
+    "inputs": [
+      "el:earth:1",
+      "el:earth:1"
+    ],
+    "outcomes": [
+      {
+        "spellId": "rock_spear",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_empower",
+    "inputs": [
+      "rock_spear",
+      "el:earth:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "earthquake",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_base",
+    "inputs": [
+      "el:water:1",
+      "el:water:1"
+    ],
+    "outcomes": [
+      {
+        "spellId": "water_wave",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_empower",
+    "inputs": [
+      "water_wave",
+      "el:water:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "tsunami",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_wind",
+    "inputs": [
+      "fireball",
+      "wind_blade"
+    ],
+    "outcomes": [
+      {
+        "spellId": "fire_tornado",
+        "weight": 1
+      }
+    ]
+  }
+]

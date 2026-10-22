@@ -1,0 +1,24 @@
+[
+  {
+    "id": "ember_affinity",
+    "name": "餘燼親和",
+    "nameEn": "Ember Affinity",
+    "desc": "火系魔法傷害 +10%。",
+    "node": {
+      "region": "outer",
+      "ring": 1,
+      "angle": 0
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": "fire",
+      "pct": 10
+    },
+    "unlock": {
+      "kind": "items",
+      "items": {
+        "mat:ember_core": 5
+      }
+    }
+  }
+]
