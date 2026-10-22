@@ -114,6 +114,34 @@ describe('AccountDialog (bound)', () => {
     expect(onLoggedOut).not.toHaveBeenCalled();
   });
 
+  it('switching from a bound account saves, logs this session out, then switches', async () => {
+    const { api, beforeLogout, onSwitched, loginResult } = setup('aria_1');
+    await screen.findByText('aria_1');
+    api.logout.mockRejectedValueOnce(new NetworkError('down'));
+    fireEvent.click(screen.getByRole('button', { name: '切換帳號' }));
+    type('帳號名稱', 'other_1');
+    type('密碼', 'password1');
+    fireEvent.click(screen.getByRole('button', { name: '登入' }));
+    await waitFor(() => expect(onSwitched).toHaveBeenCalledWith(loginResult));
+    const order = [api.login, beforeLogout, api.logout].map((f) => f.mock.invocationCallOrder[0]!);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order[2]!).toBeLessThan(onSwitched.mock.invocationCallOrder[0]!);
+  });
+
+  it('a failed switch login keeps this device logged in', async () => {
+    const { api, beforeLogout, onSwitched } = setup('aria_1');
+    await screen.findByText('aria_1');
+    api.login.mockRejectedValueOnce(new ApiError('x', 403, 'invalid_credentials'));
+    fireEvent.click(screen.getByRole('button', { name: '切換帳號' }));
+    type('帳號名稱', 'other_1');
+    type('密碼', 'password1');
+    fireEvent.click(screen.getByRole('button', { name: '登入' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('帳號或密碼錯誤'));
+    expect(beforeLogout).not.toHaveBeenCalled();
+    expect(api.logout).not.toHaveBeenCalled();
+    expect(onSwitched).not.toHaveBeenCalled();
+  });
+
   it('closes on Escape', async () => {
     const { onClose } = setup('aria_1');
     await screen.findByText('aria_1');

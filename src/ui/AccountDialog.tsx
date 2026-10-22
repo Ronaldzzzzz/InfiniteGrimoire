@@ -31,6 +31,7 @@ export function AccountDialog({
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const bound = info?.username != null;
 
   const refresh = async (): Promise<void> => {
     try {
@@ -87,7 +88,18 @@ export function AccountDialog({
     const up = usernameProblem(fields.username);
     if (up) return setError(usernameProblemMessage(up));
     if (passwordProblem(fields.password)) return setError(passwordProblemMessage());
-    void run(async () => onSwitched(await api.login(fields.username, fields.password)));
+    void run(async () => {
+      const next = await api.login(fields.username, fields.password);
+      if (bound) {
+        // a bound account can be recovered later: save its latest progress and end this session,
+        // still under the old token (onSwitched stores the new one)
+        await beforeLogout();
+        await api.logout().catch(() => {
+          // best effort: the old session just stays listed until it is logged out elsewhere
+        });
+      }
+      onSwitched(next);
+    });
   };
 
   const changePassword = (e: FormEvent): void => {
@@ -117,7 +129,6 @@ export function AccountDialog({
     }
   };
 
-  const bound = info?.username != null;
   return (
     <div className="dialog-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={dialogRef} className="dialog" role="dialog" aria-modal="true" aria-labelledby="account-title" tabIndex={-1} onKeyDown={onKeyDown}>

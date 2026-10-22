@@ -28,6 +28,8 @@ export class SyncController {
   private _status: ConnStatus = 'online';
   private uploading: Promise<unknown> | null = null;
   private retrying = false;
+  /** set by start()'s stop function: after an account switch this controller must not upload again */
+  private stopped = false;
   private failures = 0;
   private statusListeners = new Set<(s: ConnStatus) => void>();
   private authListeners = new Set<() => void>();
@@ -53,8 +55,12 @@ export class SyncController {
   }
 
   start(): () => void {
+    this.stopped = false;
     const id = this.timers.setInterval(() => void this.uploadNow(), UPLOAD_INTERVAL_MS);
-    return () => this.timers.clearInterval(id);
+    return () => {
+      this.stopped = true;
+      this.timers.clearInterval(id);
+    };
   }
 
   private setStatus(s: ConnStatus): void {
@@ -85,6 +91,10 @@ export class SyncController {
     if (this.uploading) {
       await this.uploading;
       if (!this.retrying) return;
+    }
+    if (this.stopped) {
+      this.retrying = false;
+      return;
     }
     const result = await this.doUpload();
     if (result === 'network') return this.scheduleRetry();
@@ -126,7 +136,7 @@ export class SyncController {
   }
 
   async uploadNow(opts?: { keepalive?: boolean }): Promise<void> {
-    if (this.uploading || this.retrying || this.runtime.getSnapshot().synthPending) return;
+    if (this.stopped || this.uploading || this.retrying || this.runtime.getSnapshot().synthPending) return;
     const result = await this.doUpload(opts);
     if (result === 'network') this.goOffline();
     else if (result !== 'auth') this.setStatus(this.reachableStatus(result));

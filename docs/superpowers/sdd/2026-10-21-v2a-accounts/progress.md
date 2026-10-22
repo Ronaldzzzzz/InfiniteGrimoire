@@ -28,3 +28,14 @@ Task 10: complete (commits f5dd2cb..732b1f8, tests: .superpowers/sdd/2026-10-21-
 Task 11: Ruling: README.md 沒有提到 Node 版本 — 不改 README；engines 與 AGENTS.md 已更新 — 無。
 Task 11: Ruling: Claude in Chrome 未使用；驗收用本機 Google Chrome headless + puppeteer-core（腳本在 scratchpad，不進專案），4 個 browser context 當 4 台裝置 — 計畫允許的替代方案 — 真實視窗瀏覽器的手感仍待使用者確認。
 Task 11: 驗收（npm run dev，本機 D1）：1 綁定後「未綁定」消失 PASS；2 B 以帳號登入，learned/inventory 與 A 相同 PASS；3 A、B 同時遊玩 31 秒無斷線遮罩／錯誤提示條 PASS；4 B 改密碼後 A 重新整理回到開始畫面，password1 顯示「帳號或密碼錯誤」、password2 可登入，B 仍可用 PASS；5 C 用不存在的名稱連錯 5 次，第 6 次「嘗試次數過多，請 15 分鐘後再試」PASS；6 360px 帳號對話框完整在畫面內、scrollWidth=360 PASS；7 遊客「登入其他帳號」提醒含名稱與「已學 1 個魔法」PASS。
+Task 11: complete (commits 732b1f8..5edd365, tests: .superpowers/sdd/2026-10-21-v2a-accounts/suite.sh →       Tests  332 passed (332))
+Final review: 新 context 審查（Fable 5.1）：Critical 0、Important 2、Minor 4。
+Final: fixed 換帳號後舊 SyncController 的離線重試鏈仍會用新帳號的 token 上傳舊存檔 — start() 的 stop 函式設 stopped 旗標，retry／uploadNow 檢查 — sync.test.ts「stopping the controller also stops the offline retry chain」RED→GREEN，suite 335/335
+Final: fixed 已綁定玩家「切換帳號」沒上傳最後進度、舊 session 留著 — 改成登入新帳號成功 → beforeLogout → api.logout（失敗忽略）→ onSwitched；登入失敗不動舊裝置 — AccountDialog.test.tsx「switching from a bound account saves, logs this session out, then switches」RED→GREEN（「a failed switch login keeps this device logged in」為護欄），suite 335/335
+Final: minor (deferred): 帳號對話框內收到 401 只顯示「發生錯誤」，要等下一次同步上傳（最多 30 秒）才回到開始畫面；可把 onAuthError 傳進 App／AccountDialog。
+Final: minor (deferred): /api/guest 限制是「先數再建」不是原子操作，同一 IP 並發請求可能超過 10 個。
+Final: minor (deferred): 登出前的 uploadNow 在上傳進行中、重試中或合成中會直接返回，最後幾秒進度可能沒上傳；可先 await 進行中的上傳。
+Final: minor (deferred): /api/login 用目前的密碼長度規則檢查，之後若收緊規則，舊密碼會收到 400；登入時可只檢查 128 上限。
+Final: Ruling: 任何人可用 5 次錯誤登入把某帳號名稱鎖 15 分鐘 — 規格明定每名稱限制，屬已知取捨 — 被惡意鎖帳時玩家要等 15 分鐘（已登入的裝置不受影響）。
+Final: Ruling: 綁定時 409 taken 會透露名稱已存在 — 規格定義的行為，名稱不是公開身分 — 可被列舉帳號名稱。
+Final: Ruling: /api/account/bind 沒有頻率限制 — 規格未要求，且需已登入 — 可被用來大量測試名稱是否存在。

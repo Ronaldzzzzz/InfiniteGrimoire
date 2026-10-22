@@ -36,7 +36,7 @@
   - **開對話時自動檢查**：`.claude/settings.json` 的 SessionStart hook 會執行 `scripts/session-context.mjs`（Claude Code 開始、接續、壓縮對話時都會跑），把這台電腦的 git 狀態、`node_modules` 是否為本平台安裝、Syncthing 衝突檔（`*.sync-conflict-*`）和本節內容交給 agent。其他 agent 可以自己執行 `node scripts/session-context.mjs` 看同樣的資訊。
   - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
 - **第一版（MVP）程式：** 14 個任務全部完成，每個任務都經過獨立審查；最終全 branch 審查找出的問題已修正並複審。
-- **測試：** `npm test` 42 個檔案、332 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 42 個檔案、335 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
 - **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
 
@@ -124,7 +124,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
-- **2026-10-22（Claude Code，Opus 5.5，macOS）**：以 executing-plans 執行第二版 A 計畫的 11 個任務（branch `feat/v2a-accounts`），帳本 `docs/superpowers/sdd/2026-10-21-v2a-accounts/progress.md`。重要 Ruling：migration 0003 改成「複製 → DROP → 以原名重建 → 插回」，因為計畫的 RENAME 做法在 SQLite 上 commit 時觸發外鍵錯誤；限制視窗改成剛好滿 1 小時／15 分鐘即過期，與 retryAfterSec 一致。本機 headless Chrome 驗收 7 項通過；最終全 branch 審查見帳本。停在：全部 commit，尚未 push。下一步：使用者試用帳號功能 → 決定 push／合併 → 第二版 B 設計討論。
+- **2026-10-22（Claude Code，Opus 5.5，macOS）**：以 executing-plans 執行第二版 A 計畫的 11 個任務（branch `feat/v2a-accounts`），帳本 `docs/superpowers/sdd/2026-10-21-v2a-accounts/progress.md`。重要 Ruling：migration 0003 改成「複製 → DROP → 以原名重建 → 插回」，因為計畫的 RENAME 做法在 SQLite 上 commit 時觸發外鍵錯誤；限制視窗改成剛好滿 1 小時／15 分鐘即過期，與 retryAfterSec 一致。本機 headless Chrome 驗收 7 項通過；最終全 branch 審查的 2 個 Important（換帳號後舊同步仍上傳、已綁定切換帳號沒存檔與登出）已修正，4 個小問題記在帳本 `minor (deferred)`。停在：全部 commit，尚未 push。下一步：使用者試用帳號功能 → 決定 push／合併 → 第二版 B 設計討論。
 
 - **2026-10-22（Claude Code，Opus 5.5，macOS）**：重新讀取專案進度並更新第 3 節。確認第二版 A 計畫尚未執行（沒有 `docs/superpowers/sdd/2026-10-21-v2a-accounts/`）、本機多 9 個 commit 未 push。發現跨電腦同步問題：從 Windows 同步來的 `node_modules` 在 macOS 不能跑測試，另有 7 個檔案只有換行變成 CRLF（詳見第 3 節）。之後經使用者同意：加 `.gitattributes`（LF）並還原換行、把 Syncthing 忽略規則建在正確的資料夾根目錄、在 macOS 重裝 `node_modules`（`package-lock.json` 的 name／version 同步成 `package.json` 的值）。macOS 上 `npm test` 36 個檔案 279 個測試通過，`npm run build` 通過。停在：使用者自己 push。下一步：第 3 節待辦 0（執行第二版 A 計畫）。
 

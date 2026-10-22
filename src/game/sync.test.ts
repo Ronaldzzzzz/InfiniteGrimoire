@@ -76,6 +76,20 @@ describe('SyncController', () => {
     await vi.advanceTimersByTimeAsync(RETRY_MS * 3);
     expect(upload).toHaveBeenCalledTimes(3);
   });
+  it('stopping the controller also stops the offline retry chain', async () => {
+    // a switched-away controller must never upload its old state with the new account's token
+    const rt = mk();
+    const upload = vi.fn().mockRejectedValueOnce(new NetworkError('x')).mockResolvedValue({ kind: 'ok', revision: 9 });
+    const sync = new SyncController(rt, fakeApi({ upload }));
+    const stop = sync.start();
+    await sync.uploadNow();
+    expect(sync.status).toBe('offline');
+    stop();
+    await vi.advanceTimersByTimeAsync(RETRY_MS * 3 + UPLOAD_INTERVAL_MS);
+    expect(upload).toHaveBeenCalledTimes(1);
+    await sync.uploadNow();
+    expect(upload).toHaveBeenCalledTimes(1);
+  });
   it('synthesize while pending returns null and sends one request', async () => {
     const rt = mk();
     let resolve!: (v: never) => void;
