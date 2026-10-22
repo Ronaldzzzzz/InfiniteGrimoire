@@ -124,6 +124,36 @@ describe('crafting', () => {
     expect(run(s, ['el:fire:1', 'el:fire:1']).result).toEqual({ kind: 'rejected', reason: 'insufficient' });
   });
 
+  /** Shipped content plus a recipe whose roll always falls through to the crafted spell of its inputs. */
+  const fallThrough = (inputs: [string, string]): Content => ({
+    ...content,
+    recipes: [...content.recipes, { id: 'r_fail', inputs, outcomes: [{ spellId: null, weight: 1 }] }],
+  });
+
+  it('retrying a random recipe that falls through to a known crafted spell is not free', () => {
+    const c = fallThrough(['el:fire:1', 'el:water:1']);
+    const crafted = craftedId('fireball', 'water_wave');
+    const first = run(mkState({ 'el:fire:1': 2, 'el:water:1': 2 }), ['el:fire:1', 'el:water:1'], 8, c);
+    expect(first.result).toEqual({ kind: 'learned', spellId: crafted, crafted: true });
+    expect(first.state.inventory).toEqual({ 'el:fire:1': 1, 'el:water:1': 1 });
+    // the second failed roll spends the inputs like a named duplicate: only the first (sorted) item comes back
+    const second = run(first.state, ['el:water:1', 'el:fire:1'], 8, c);
+    expect(second.result).toEqual({ kind: 'duplicate', spellId: crafted, refunded: ['el:fire:1'] });
+    expect(second.state.inventory).toEqual({ 'el:fire:1': 1 });
+    expect(second.state.learned).toEqual(first.state.learned);
+    expect(second.state.synthesisLog['el:fire:1+el:water:1']!.attempts).toBe(2);
+  });
+
+  it('a failed retry with one item input still pays the fusion cost', () => {
+    // spell + material (like 聖光審判): refunding the only item would make the retry free, so the fusion cost stays spent
+    const c = fallThrough(['thunder_hammer', 'mat:ember_core']);
+    const crafted = craftedId('mat:ember_core', 'thunder_hammer');
+    const s = mkState({ 'mat:ember_core': 1, 'el:fire:2': 1, 'el:thunder:2': 1 }, ['mana_bolt', 'thunder_hammer', crafted]);
+    const r = run(s, ['thunder_hammer', 'mat:ember_core'], 8, c);
+    expect(r.result).toEqual({ kind: 'duplicate', spellId: crafted, refunded: ['mat:ember_core'] });
+    expect(r.state.inventory).toEqual({ 'mat:ember_core': 1 });
+  });
+
   it('a random recipe can fall through to the crafted spell', () => {
     const c: Content = {
       ...content,

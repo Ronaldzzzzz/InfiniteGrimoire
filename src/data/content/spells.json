@@ -335,15 +335,21 @@
     "id": "tailwind",
     "name": "順風",
     "nameEn": "Tailwind",
-    "desc": "自己的施法速度變成 2 倍，持續 8 秒。",
+    "desc": "甩出四道疾風刃，自己的施法速度也變成 2 倍，持續 8 秒。",
     "hint": "殘卷：風刃裡再灌進淬鍊過的風，風會轉而推著施法者前進。",
     "elements": [
       "wind"
     ],
     "tier": 3,
-    "attack": 1,
+    "attack": 25,
     "cooldownMs": 3000,
     "effects": [
+      {
+        "kind": "blades",
+        "mult": 0.6,
+        "count": 4,
+        "push": 0.8
+      },
       {
         "kind": "haste",
         "factor": 2,

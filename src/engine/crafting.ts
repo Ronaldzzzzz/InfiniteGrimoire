@@ -126,6 +126,14 @@ export function synthesize(
   const resultId = overload ? OVERLOAD_SPELL : id;
   const synthesisLog = logAttempt(state, key, overload ? 'overload' : id, false);
   if (state.learned.includes(resultId)) {
+    if (recipe) {
+      // A random recipe's roll fell through to a crafted spell already known: the attempt is spent like a
+      // named duplicate (only the first item comes back, the fusion cost stays paid), so retries are not free.
+      return {
+        state: { ...state, inventory: first ? addItems(paid, [first]) : paid, synthesisLog },
+        result: { kind: 'duplicate', spellId: resultId, refunded: first ? [first] : [] },
+      };
+    }
     return {
       state: { ...state, synthesisLog },
       result: { kind: 'duplicate', spellId: resultId, refunded: spent },
