@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { gameData } from '../engine/data';
-import { createInitialState } from '../engine/state';
+import { content } from '../engine/content';
+import { createInitialState } from '../engine/persist';
 import { ApiError, AuthError, createApiClient, RateLimitedError } from './api';
 import { clientPasswordHash } from './password-hash';
 
@@ -17,7 +17,7 @@ function fakeFetch(status: number, body: unknown) {
 
 describe('account api', () => {
   it('logs in and parses the save like createGuest', async () => {
-    const state = createInitialState(gameData);
+    const state = createInitialState(content);
     const f = fakeFetch(200, { token: 't2', playerId: 'p', state, revision: 4 });
     const api = createApiClient(() => null, f as unknown as typeof fetch);
     expect(await api.login('mage_1', 'password1')).toEqual({ token: 't2', state, revision: 4 });
@@ -74,5 +74,41 @@ describe('account api', () => {
     await api.logout();
     const paths = f.mock.calls.map((c) => (c as unknown as [string])[0]);
     expect(paths).toEqual(['/api/account', '/api/account/password', '/api/account/logout-others', '/api/logout']);
+  });
+});
+
+describe('action api', () => {
+  const state = createInitialState(content);
+
+  it('posts each action with its id field', async () => {
+    const f = fakeFetch(200, { result: { kind: 'empowered', level: 2 }, state, revision: 5 });
+    const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
+    expect(await api.empower(state, 4, 'mana_bolt')).toEqual({ kind: 'ok', result: { kind: 'empowered', level: 2 }, state, revision: 5 });
+    await api.reveal(state, 4, 'key:storm_heart');
+    await api.unlockPassive(state, 4, 'ember_affinity');
+    await api.synthesize(state, 4, ['el:fire:1', 'el:fire:1']);
+    const calls = f.mock.calls.map((c) => {
+      const [path, init] = c as unknown as [string, RequestInit];
+      const { state: _s, ...rest } = JSON.parse(init.body as string) as Record<string, unknown>;
+      return [path, rest];
+    });
+    expect(calls).toEqual([
+      ['/api/empower', { baseRevision: 4, spellId: 'mana_bolt' }],
+      ['/api/reveal', { baseRevision: 4, keyItem: 'key:storm_heart' }],
+      ['/api/passive', { baseRevision: 4, passiveId: 'ember_affinity' }],
+      ['/api/synthesize', { baseRevision: 4, inputs: ['el:fire:1', 'el:fire:1'] }],
+    ]);
+  });
+
+  it('tells a game-rule refusal (422 with result) from an audit rejection (422 with reasons)', async () => {
+    const refused = createApiClient(() => 'tok', fakeFetch(422, { reason: 'rejected', result: { kind: 'rejected', reason: 'grade' }, state, revision: 4 }) as unknown as typeof fetch);
+    expect(await refused.synthesize(state, 4, ['el:fire:1', 'fireball'])).toEqual({ kind: 'refused', result: { kind: 'rejected', reason: 'grade' }, state, revision: 4 });
+    const audit = createApiClient(() => 'tok', fakeFetch(422, { reason: 'rejected', reasons: ['too many fire'], state, revision: 6 }) as unknown as typeof fetch);
+    expect(await audit.empower(state, 4, 'mana_bolt')).toEqual({ kind: 'rejected', state, revision: 6, reasons: ['too many fire'] });
+  });
+
+  it('maps 409 to a conflict with the server state', async () => {
+    const api = createApiClient(() => 'tok', fakeFetch(409, { reason: 'conflict', state, revision: 9 }) as unknown as typeof fetch);
+    expect(await api.reveal(state, 4, 'key:storm_heart')).toEqual({ kind: 'conflict', state, revision: 9 });
   });
 });

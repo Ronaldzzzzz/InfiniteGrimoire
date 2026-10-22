@@ -1,49 +1,48 @@
 import { Application, BitmapFont, BitmapText, Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
-import type { BattleEvent, BattleState, MonsterInstance } from '../engine/battle';
-import type { Snapshot } from '../game/runtime';
+import { bladePositions, boltTravel, ringRadius, STOP_R, type BattleEvent, type BattleState, type Foe } from '../engine/combat';
+import type { Content } from '../engine/model';
 import { createRng } from '../engine/rng';
-import type { GameData } from '../engine/types';
-import { boxRadius, ENGINE_STOP_X, floatTextStart, makeArena, monsterDistance, pickSpawnAngle, polarPoint, stopRadius, type Arena } from './arena';
+import type { ElementId } from '../engine/types';
+import type { Snapshot } from '../game/runtime';
+import { floatTextStart, makeArena, toScreen, type Arena } from './arena';
 import { floatingText, jaggedPath, type Pt } from './effects';
-import { interpolate, wander } from './motion';
+import { interpolate } from './motion';
 import { COLORS, spellColor } from './palette';
 
-const MONSTER_SIZE = 28;
+/** Foe bodies are drawn at this size and scaled to their engine radius. */
+const BODY_PX = 32;
 const HERO_W = 22;
 const HERO_H = 38;
 const TEXT_MS = 600;
-const HP_BAR_GAP = 9; // the hp bar sits this far above the body
 const IMMUNE_FONT_PX = 16; // fixed, readable at any arena size (spec 4.3)
 const TEXT_MARGIN = 24;
+/** Floating damage numbers alive at once; a crowd fight would otherwise spawn hundreds. */
+const MAX_FLOAT_TEXTS = 40;
 
-interface MonsterView {
+interface FoeView {
   defId: string;
   root: Container;
   body: Graphics | Sprite;
   hpBar: Graphics;
   fx: Graphics;
-  size: number;
   born: number;
   pos: Pt;
-  angle: number;
   /** current on-screen radius */
   r: number;
   lastFrac: number;
-  hadStatus: boolean;
-  /** random per monster: phase of its idle wander */
-  phase: number;
-  /** view time when it reached the stop ring, or null while walking */
-  arrivedAt: number | null;
+  statusKey: string;
 }
 
 interface Effect {
   age: number;
   life: number;
   node: Container;
+  text: boolean;
   update: (p: number, dtMs: number) => void;
 }
 
 const tint = (c: string): number => parseInt(c.slice(1), 16);
+const colorOf = (elements: readonly ElementId[]): string => spellColor({ elements });
 
 const DMG_FONT = 'ig-dmg';
 let dmgFontInstalled = false;
@@ -58,32 +57,40 @@ function ensureDamageFont(): void {
   dmgFontInstalled = true;
 }
 
+/**
+ * Pixi view of the 2D crowd battle. Foes sit at the engine's (x, y) scaled by the arena radius and are
+ * interpolated between fixed steps; running effects (ActiveFx) are redrawn every frame from the snapshot,
+ * one-shot events (burst, chain, strike, hits, kills) spawn short-lived effects.
+ */
 export class BattleView {
   private readonly app = new Application();
   private readonly ready: Promise<void>;
   private ready_ = false;
   private destroyed = false;
-  private readonly monsters = new Map<number, MonsterView>();
+  private readonly foes = new Map<number, FoeView>();
   private readonly effects: Effect[] = [];
   private readonly frameCbs = new Set<() => void>();
   private readonly rng = createRng((Date.now() ^ 0x9e3779b9) >>> 0);
+  private readonly maxFoeR: number;
   private world = new Container();
   private hero: Graphics | Sprite | null = null;
+  private activeFx = new Graphics();
   private fxLayer = new Container();
   private time = 0;
   private unit = 1;
   private arena: Arena = makeArena(1, 1, 0);
   private ring = new Graphics();
   private ringKey = '';
-  /** engine x of each monster at the previous fixed step, for interpolation */
-  private prevX = new Map<number, number>();
+  /** engine position of each foe at the previous fixed step, for interpolation */
+  private prevPos = new Map<number, Pt>();
   private lastBattle: BattleState | null = null;
 
   constructor(
     private readonly host: HTMLElement,
-    private readonly data: GameData,
+    private readonly content: Content,
     private readonly textures: Map<string, Texture>,
   ) {
+    this.maxFoeR = Math.max(0, ...Object.values(content.monsters).map((m) => m.radius));
     this.ready = this.init();
   }
 
@@ -94,7 +101,7 @@ export class BattleView {
       return;
     }
     this.host.appendChild(this.app.canvas);
-    this.app.stage.addChild(this.world, this.fxLayer);
+    this.app.stage.addChild(this.world, this.activeFx, this.fxLayer);
     this.world.addChild(this.ring);
     this.hero = this.makeHero();
     this.world.addChild(this.hero);
@@ -115,9 +122,6 @@ export class BattleView {
   private get h(): number {
     return this.app.screen.height;
   }
-  private get heroCenter(): Pt {
-    return this.arena.center;
-  }
 
   private makeHero(): Graphics | Sprite {
     const tex = this.textures.get('hero_idle');
@@ -133,20 +137,23 @@ export class BattleView {
     return g;
   }
 
-  private makeMonster(m: MonsterInstance): MonsterView {
-    const def = this.data.monsters[m.defId];
-    const size = MONSTER_SIZE * (def?.boss ? 2 : 1);
-    const tex = this.textures.get(`monster_${m.defId}`);
+  private makeFoe(f: Foe): FoeView {
+    const def = Object.hasOwn(this.content.monsters, f.defId) ? this.content.monsters[f.defId] : undefined;
+    const tex = this.textures.get(`monster_${f.defId}`);
+    const s = BODY_PX;
     let body: Graphics | Sprite;
     if (tex) {
-      body = new Sprite(tex);
-      (body as Sprite).anchor.set(0.5);
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5);
+      sp.width = sp.height = s;
+      body = sp;
     } else {
       const g = new Graphics();
       const color = COLORS.element[def?.element ?? 'none'];
-      g.rect(-size / 2, -size / 2, size, size).fill(color);
-      g.rect(-size / 2 + size * 0.2, -size * 0.2, size * 0.15, size * 0.15).fill(COLORS.bg);
-      g.rect(size / 2 - size * 0.35, -size * 0.2, size * 0.15, size * 0.15).fill(COLORS.bg);
+      g.rect(-s / 2, -s / 2, s, s).fill(color);
+      g.rect(-s / 2 + s * 0.2, -s * 0.2, s * 0.15, s * 0.15).fill(COLORS.bg);
+      g.rect(s / 2 - s * 0.35, -s * 0.2, s * 0.15, s * 0.15).fill(COLORS.bg);
+      if (def?.boss) g.rect(-s / 2, -s / 2, s, s).stroke({ width: 2, color: COLORS.amber });
       body = g;
     }
     const root = new Container();
@@ -154,8 +161,7 @@ export class BattleView {
     const fx = new Graphics();
     root.addChild(body, fx, hpBar);
     this.world.addChild(root);
-    const angle = pickSpawnAngle([...this.monsters.values()].map((v) => v.angle), this.rng);
-    return { defId: m.defId, root, body, hpBar, fx, size, born: this.time, pos: { x: 0, y: 0 }, angle, r: this.extent(size), lastFrac: -1, hadStatus: false, phase: this.rng.next() * Math.PI * 2, arrivedAt: null };
+    return { defId: f.defId, root, body, hpBar, fx, born: this.time, pos: { x: 0, y: 0 }, r: 0, lastFrac: -1, statusKey: '' };
   }
 
   /**
@@ -167,105 +173,177 @@ export class BattleView {
     const battle = snapshot.battle;
     if (battle !== this.lastBattle) {
       const last = this.lastBattle;
-      this.prevX.clear();
+      this.prevPos.clear();
       // a new battle (travel / reload) restarts uids: don't interpolate from the old one
       if (last && last.zoneId === battle.zoneId && battle.nextUid >= last.nextUid) {
-        for (const m of last.monsters) this.prevX.set(m.uid, m.x);
+        for (const f of last.foes) this.prevPos.set(f.uid, { x: f.x, y: f.y });
       }
       this.lastBattle = battle;
     }
     this.unit = Math.max(0.6, Math.min(1.6, Math.min(this.w, this.h) / 360));
     const u = this.unit;
-    const heroR = boxRadius(HERO_W / 2, HERO_H / 2) * u;
-    this.arena = makeArena(this.w, this.h, this.extent(MONSTER_SIZE * 2) * u);
+    this.arena = makeArena(this.w, this.h, this.maxFoeR);
     const c = this.arena.center;
     this.hero!.position.set(c.x, c.y);
     this.hero!.scale.set(u);
-    this.drawRing(heroR);
+    this.drawRing();
 
     const alive = new Set<number>();
-    for (const m of snapshot.battle.monsters) {
-      alive.add(m.uid);
-      let v = this.monsters.get(m.uid);
-      if (v && v.defId !== m.defId) {
-        // a reused uid for a different monster: never inherit the old body, size or angle
+    for (const f of battle.foes) {
+      alive.add(f.uid);
+      let v = this.foes.get(f.uid);
+      if (v && v.defId !== f.defId) {
+        // a reused uid for a different monster: never inherit the old body
         v.root.destroy({ children: true });
-        this.monsters.delete(m.uid);
+        this.foes.delete(f.uid);
         v = undefined;
       }
       if (!v) {
-        v = this.makeMonster(m);
-        this.monsters.set(m.uid, v);
+        v = this.makeFoe(f);
+        this.foes.set(f.uid, v);
       }
-      v.r = this.extent(v.size) * u;
-      const x = interpolate(this.prevX.get(m.uid) ?? m.x, m.x, alpha);
-      if (m.x > ENGINE_STOP_X + 1e-9) v.arrivedAt = null;
-      else if (v.arrivedAt === null) v.arrivedAt = this.time;
-      const w = wander(this.time, v.phase, v.arrivedAt === null ? 0 : this.time - v.arrivedAt);
-      const dist = monsterDistance(this.arena, stopRadius(this.arena, heroR, v.r), x) + w.dRadius * u;
-      v.pos = polarPoint(this.arena, v.angle + w.dAngle, dist);
+      const def = this.content.monsters[f.defId];
+      v.r = Math.max(5, (def?.radius ?? 0.03) * this.arena.radius);
+      const prev = this.prevPos.get(f.uid);
+      v.pos = toScreen(this.arena, interpolate(prev?.x ?? f.x, f.x, alpha), interpolate(prev?.y ?? f.y, f.y, alpha));
       const pop = Math.min(1, (this.time - v.born) / 200);
       v.root.position.set(v.pos.x, v.pos.y);
-      v.root.scale.set(u * (0.4 + 0.6 * pop));
+      v.root.scale.set(((2 * v.r) / BODY_PX) * (0.4 + 0.6 * pop));
       v.root.alpha = pop;
-      this.drawHp(v, m);
-      this.drawStatus(v, m);
+      this.drawHp(v, f);
+      this.drawStatus(v, f);
     }
-    // uids restart at 1 after travel / reload, so drop views (and their angles) that left the field
-    for (const [uid, v] of this.monsters) {
+    // uids restart at 1 after travel / reload, so drop views that left the field
+    for (const [uid, v] of this.foes) {
       if (!alive.has(uid)) {
         v.root.destroy({ children: true });
-        this.monsters.delete(uid);
+        this.foes.delete(uid);
+      }
+    }
+    this.drawActiveFx(battle);
+  }
+
+  /** Faint ring where foes stop; redrawn only when the view size changes. */
+  private drawRing(): void {
+    const key = `${this.w}x${this.h}`;
+    if (key === this.ringKey) return;
+    this.ringKey = key;
+    this.ring.clear();
+    this.ring.circle(this.arena.center.x, this.arena.center.y, STOP_R * this.arena.radius).stroke({ width: 1, color: COLORS.rune, alpha: 0.18 });
+  }
+
+  private drawHp(v: FoeView, f: Foe): void {
+    const frac = Math.max(0, Math.min(1, f.hp / f.maxHp));
+    if (frac === v.lastFrac) return;
+    v.lastFrac = frac;
+    v.hpBar.clear();
+    if (frac >= 1) return; // full health: no bar, the crowd stays readable
+    const w = BODY_PX;
+    v.hpBar.rect(-w / 2, -BODY_PX / 2 - 9, w, 5).fill('#3a2a2a');
+    v.hpBar.rect(-w / 2, -BODY_PX / 2 - 9, w * frac, 5).fill(frac > 0.35 ? COLORS.rune : '#e2643b');
+  }
+
+  private drawStatus(v: FoeView, f: Foe): void {
+    const burning = f.statuses.some((s) => s.kind === 'burn');
+    const flicker = burning && Math.floor(this.time / 120) % 2 === 0;
+    const key = f.statuses.map((s) => s.kind).sort().join(',') + (flicker ? '*' : '');
+    if (key === v.statusKey) return;
+    v.statusKey = key;
+    const g = v.fx;
+    g.clear();
+    const s = BODY_PX;
+    v.body.tint = 0xffffff;
+    for (const st of f.statuses) {
+      switch (st.kind) {
+        case 'burn':
+          v.body.tint = flicker ? tint(COLORS.element.fire) : 0xffffff;
+          g.rect(-s / 2, -s / 2, s, s).fill({ color: COLORS.element.fire, alpha: flicker ? 0.35 : 0.1 });
+          break;
+        case 'wet':
+          g.rect(-s / 2 - 1, -s / 2 - 1, s + 2, s + 2).stroke({ width: 2, color: COLORS.element.water });
+          break;
+        case 'freeze':
+          g.rect(-s / 2 - 2, -s / 2 - 2, s + 4, s + 4).stroke({ width: 2, color: '#d8f0ff' });
+          g.rect(-s / 2, -s / 2, s, s).fill({ color: COLORS.element.water, alpha: 0.35 });
+          break;
+        case 'stun': {
+          const pts = jaggedPath({ x: -s / 2, y: -s / 2 }, { x: s / 2, y: s / 2 }, 5, createRng(f.uid));
+          g.moveTo(pts[0]!.x, pts[0]!.y);
+          for (const p of pts.slice(1)) g.lineTo(p.x, p.y);
+          g.stroke({ width: 2, color: COLORS.element.thunder });
+          break;
+        }
+        case 'slow':
+          g.rect(-s / 2, s / 2 - 4, s, 4).fill({ color: COLORS.element.wind, alpha: 0.8 });
+          break;
+        case 'blind':
+          g.rect(-s / 2, -s / 2, s, s).fill({ color: '#000000', alpha: 0.35 });
+          break;
+        case 'regen':
+          g.rect(-s / 2, -s / 2, s, s).stroke({ width: 2, color: COLORS.rune });
+          break;
       }
     }
   }
 
-  /** Unscaled radius that encloses a monster body of `size` plus its hp bar. */
-  private extent(size: number): number {
-    return boxRadius(Math.max(12, size / 2), size / 2 + HP_BAR_GAP);
-  }
-
-  /** Faint ring where regular monsters stop; redrawn only when the view size changes. */
-  private drawRing(heroR: number): void {
-    const key = `${this.w}x${this.h}x${this.unit}`;
-    if (key === this.ringKey) return;
-    this.ringKey = key;
-    const r = stopRadius(this.arena, heroR, this.extent(MONSTER_SIZE) * this.unit);
-    this.ring.clear();
-    this.ring.circle(this.arena.center.x, this.arena.center.y, r).stroke({ width: 1, color: COLORS.rune, alpha: 0.18 });
-  }
-
-  private drawHp(v: MonsterView, m: MonsterInstance): void {
-    const frac = Math.max(0, Math.min(1, m.hp / m.maxHp));
-    if (frac === v.lastFrac) return;
-    v.lastFrac = frac;
-    const w = Math.max(24, v.size);
-    v.hpBar.clear();
-    v.hpBar.rect(-w / 2, -v.size / 2 - 9, w, 4).fill('#3a2a2a');
-    v.hpBar.rect(-w / 2, -v.size / 2 - 9, w * frac, 4).fill(frac > 0.35 ? COLORS.rune : '#e2643b');
-  }
-
-  private drawStatus(v: MonsterView, m: MonsterInstance): void {
-    if (m.statuses.length === 0 && !v.hadStatus) return;
-    v.hadStatus = m.statuses.length > 0;
-    const g = v.fx;
+  /** Running effects, redrawn every frame (placeholder shapes; Task 10 brings the real visuals). */
+  private drawActiveFx(battle: BattleState): void {
+    const g = this.activeFx;
     g.clear();
-    const s = v.size;
-    const body = v.body;
-    body.tint = 0xffffff;
-    for (const st of m.statuses) {
-      if (st.kind === 'burn') {
-        const on = Math.floor(this.time / 120) % 2 === 0;
-        body.tint = on ? tint(COLORS.element.fire) : 0xffffff;
-        g.rect(-s / 2, -s / 2, s, s).fill({ color: COLORS.element.fire, alpha: on ? 0.35 : 0.1 });
-      } else if (st.kind === 'paralyze') {
-        const pts = jaggedPath({ x: -s / 2, y: -s / 2 }, { x: s / 2, y: s / 2 }, 5, createRng(Math.floor(this.time / 90)));
-        g.moveTo(pts[0]!.x, pts[0]!.y);
-        for (const p of pts.slice(1)) g.lineTo(p.x, p.y);
-        g.stroke({ width: 2, color: COLORS.element.thunder });
-      } else {
-        g.rect(-s / 2 - 2, -s / 2 - 2, s + 4, s + 4).stroke({ width: 2, color: '#d8f0ff' });
-        g.rect(-s / 2, -s / 2, s, s).fill({ color: COLORS.element.water, alpha: 0.3 });
+    const a = this.arena;
+    const R = a.radius;
+    const u = this.unit;
+    const byUid = new Map(battle.foes.map((f) => [f.uid, f]));
+    for (const fx of battle.fx) {
+      const color = colorOf(fx.elements);
+      const e = fx.effect;
+      switch (e.kind) {
+        case 'bolt': {
+          const travel = boltTravel(fx);
+          for (const uid of fx.hits) {
+            const t = byUid.get(uid);
+            if (!t) continue;
+            const d = Math.hypot(t.x, t.y) || 1;
+            const k = Math.min(travel, d) / d;
+            const p = toScreen(a, t.x * k, t.y * k);
+            g.circle(p.x, p.y, Math.max(4, Math.min(14, e.radius * R * 0.25)) * u).fill(color);
+          }
+          break;
+        }
+        case 'ring': {
+          const r = Math.min(ringRadius(fx), e.radius) * R;
+          g.circle(a.center.x, a.center.y, r).stroke({ width: 4 * u, color, alpha: 0.8 });
+          break;
+        }
+        case 'blades':
+          for (const b of bladePositions(fx)) {
+            const p = toScreen(a, b.x, b.y);
+            g.rect(p.x - 5 * u, p.y - 5 * u, 10 * u, 10 * u).fill({ color, alpha: 0.9 });
+          }
+          break;
+        case 'zone': {
+          const p = toScreen(a, fx.x, fx.y);
+          g.circle(p.x, p.y, e.radius * R).fill({ color, alpha: 0.18 }).stroke({ width: 2 * u, color, alpha: 0.6 });
+          break;
+        }
+        case 'storm':
+          g.circle(a.center.x, a.center.y, R).fill({ color, alpha: 0.06 });
+          break;
+        case 'meteor':
+          for (const uid of fx.hits) {
+            const t = byUid.get(uid);
+            if (!t) continue;
+            const p = toScreen(a, t.x, t.y);
+            g.circle(p.x, p.y, e.radius * R).stroke({ width: 2 * u, color, alpha: 0.5 });
+          }
+          break;
+        case 'field':
+          g.circle(a.center.x, a.center.y, R * Math.min(1, fx.ageMs / Math.max(1, e.delayMs))).stroke({ width: 2 * u, color, alpha: 0.4 });
+          break;
+        case 'chain':
+        case 'haste':
+        case 'backfire':
+          break; // chain is drawn from its event; haste and backfire have no running visual
       }
     }
   }
@@ -274,146 +352,64 @@ export class BattleView {
     if (!this.ready_ || this.destroyed) return;
     for (const e of events) {
       switch (e.type) {
-        case 'cast':
-          this.castEffect(e.spellId, e.targets);
-          break;
         case 'hit': {
-          const v = this.monsters.get(e.uid);
+          const v = this.foes.get(e.uid);
           if (!v) break;
           const ft = floatingText(e);
           this.floatText(ft.text, ft.color, v.pos.x, v.pos.y - v.r, e.immune);
-          if (!e.immune) this.burst(v.pos, COLORS.amber, 5);
           break;
         }
         case 'kill': {
-          const v = this.monsters.get(e.uid);
-          if (!v) break;
-          const el = this.data.monsters[e.defId]?.element;
-          this.burst(v.pos, COLORS.element[el ?? 'none'], 12, 1.6);
+          const el = this.content.monsters[e.defId]?.element;
+          this.burst(toScreen(this.arena, e.x, e.y), COLORS.element[el ?? 'none'], 10, 1.4);
           break;
         }
-        default:
-          break; // spawn / status / bossDefeated are reflected via sync()
-      }
-    }
-  }
-
-  private addEffect(node: Container, life: number, update: Effect['update']): void {
-    this.fxLayer.addChild(node);
-    this.effects.push({ age: 0, life, node, update });
-  }
-
-  private targetPts(uids: number[]): Pt[] {
-    const out: Pt[] = [];
-    for (const uid of uids) {
-      const v = this.monsters.get(uid);
-      if (v) out.push(v.pos);
-    }
-    return out;
-  }
-
-  private fxSprite(key: string, color: string): Sprite | null {
-    const tex = this.textures.get(key);
-    if (!tex) return null;
-    const s = new Sprite(tex);
-    s.anchor.set(0.5);
-    s.tint = tint(color);
-    return s;
-  }
-
-  private castEffect(spellId: string, targets: number[]): void {
-    const spell = this.data.spells[spellId];
-    if (!spell) return;
-    const color = spellColor(spell);
-    const from = this.heroCenter;
-    const pts = this.targetPts(targets);
-    const u = this.unit;
-    switch (spell.pattern) {
-      case 'bolt': {
-        const to = pts[0];
-        if (!to) return;
-        const node = this.fxSprite('fx_bolt', color) ?? new Graphics().circle(0, 0, 5 * u).fill(color);
-        node.position.set(from.x, from.y);
-        this.addEffect(node, 160, (p) => {
-          node.position.set(from.x + (to.x - from.x) * p, from.y + (to.y - from.y) * p);
-        });
-        break;
-      }
-      case 'beam': {
-        pts.forEach((to, i) => {
-          const len = Math.hypot(to.x - from.x, to.y - from.y);
-          const ang = Math.atan2(to.y - from.y, to.x - from.x);
-          let node: Container;
-          const spr = this.fxSprite('fx_beam', color);
-          if (spr) {
-            spr.anchor.set(0, 0.5);
-            spr.width = len;
-            spr.rotation = ang;
-            if (i > 0) spr.height *= 0.5;
-            node = spr;
-          } else {
-            // R5: the first target gets the main beam, the second a thinner branch from the hero
-            const g = new Graphics();
-            const main = i === 0;
-            g.moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width: (main ? 5 : 2.5) * u, color });
-            if (main) g.moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width: 2 * u, color: '#ffffff' });
-            node = g;
-          }
-          node.position.set(spr ? from.x : 0, spr ? from.y : 0);
-          this.addEffect(node, 200, (p) => {
-            node.alpha = 1 - p;
-          });
-        });
-        break;
-      }
-      case 'chain': {
-        const nodes: Pt[] = [from, ...pts];
-        const segs: Pt[][] = [];
-        for (let i = 1; i < nodes.length; i++) segs.push(jaggedPath(nodes[i - 1]!, nodes[i]!, 5, this.rng));
-        if (segs.length === 0) return;
-        const g = new Graphics();
-        const life = 120 * segs.length + 150;
-        this.addEffect(g, life, (p) => {
-          const shown = Math.min(segs.length, Math.ceil(p * life / 120));
-          g.clear();
-          for (let i = 0; i < shown; i++) {
-            const s = segs[i]!;
-            g.moveTo(s[0]!.x, s[0]!.y);
-            for (const q of s.slice(1)) g.lineTo(q.x, q.y);
-            g.stroke({ width: 3 * u, color, alpha: Math.max(0, 1 - p * 0.6) });
-          }
-          g.alpha = p > 0.7 ? 1 - (p - 0.7) / 0.3 : 1;
-        });
-        for (const to of pts) {
-          const spark = this.fxSprite('fx_chain', color);
-          if (spark) {
-            spark.position.set(to.x, to.y);
-            this.addEffect(spark, life, (p) => {
-              spark.alpha = 1 - p;
-            });
-          }
+        case 'burst':
+          this.ringFx(toScreen(this.arena, e.x, e.y), e.r * this.arena.radius, colorOf(e.elements));
+          break;
+        case 'chain':
+          this.lightning(e.points.map((p) => toScreen(this.arena, p.x, p.y)), colorOf(e.elements));
+          break;
+        case 'strike': {
+          const to = toScreen(this.arena, e.x, e.y);
+          this.lightning([{ x: to.x, y: to.y - 90 * this.unit }, to], colorOf(e.elements));
+          break;
         }
-        break;
-      }
-      case 'nova': {
-        const maxR = Math.max(60 * u, ...pts.map((p) => Math.hypot(p.x - from.x, p.y - from.y) + 20));
-        const spr = this.fxSprite('fx_nova', color);
-        const g = spr ? null : new Graphics();
-        const node: Container = spr ?? g!;
-        node.position.set(from.x, from.y);
-        this.addEffect(node, 400, (p) => {
-          const r = maxR * (0.15 + 0.85 * p);
-          if (spr) {
-            spr.width = spr.height = r * 2;
-          } else {
-            g!.clear();
-            g!.circle(0, 0, r).stroke({ width: 4 * u, color });
-          }
-          node.alpha = 1 - p;
-        });
-        break;
+        case 'backfire':
+          this.floatText('反噬！', COLORS.amber, this.arena.center.x, this.arena.center.y - HERO_H * this.unit, true);
+          break;
+        default:
+          break; // spawn / cast / status / bossDefeated are reflected via sync()
       }
     }
+  }
+
+  private addEffect(node: Container, life: number, update: Effect['update'], text = false): void {
+    this.fxLayer.addChild(node);
+    this.effects.push({ age: 0, life, node, text, update });
+  }
+
+  private ringFx(at: Pt, r: number, color: string): void {
+    const g = new Graphics();
+    this.addEffect(g, 300, (p) => {
+      g.clear();
+      g.circle(at.x, at.y, Math.max(4, r * (0.3 + 0.7 * p))).stroke({ width: 3 * this.unit, color, alpha: 1 - p });
+    });
+  }
+
+  private lightning(points: Pt[], color: string): void {
+    if (points.length < 2) return;
+    const segs: Pt[][] = [];
+    for (let i = 1; i < points.length; i++) segs.push(jaggedPath(points[i - 1]!, points[i]!, 5, this.rng));
+    const g = new Graphics();
+    for (const s of segs) {
+      g.moveTo(s[0]!.x, s[0]!.y);
+      for (const q of s.slice(1)) g.lineTo(q.x, q.y);
+    }
+    g.stroke({ width: 3 * this.unit, color });
+    this.addEffect(g, 250, (p) => {
+      g.alpha = 1 - p;
+    });
   }
 
   private burst(at: Pt, color: string, count: number, speed = 1): void {
@@ -436,6 +432,9 @@ export class BattleView {
   }
 
   private floatText(text: string, color: string, x: number, y: number, fixedSize = false): void {
+    let texts = 0;
+    for (const ef of this.effects) if (ef.text) texts++;
+    if (texts >= MAX_FLOAT_TEXTS) return;
     const fontSize = fixedSize ? IMMUNE_FONT_PX : 16 * this.unit;
     // numbers use a shared bitmap font; 無效 stays a Text (Pixi caches its texture by content)
     const t = /^\d+$/.test(text)
@@ -449,7 +448,7 @@ export class BattleView {
     this.addEffect(t, TEXT_MS, (p) => {
       t.y = at.y - rise * p;
       t.alpha = 1 - p;
-    });
+    }, true);
   }
 
   private tick(dtMs: number): void {

@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
-import { gameData } from './data';
 import type { GameState } from './model';
 import { createInitialState, parseState, serialize } from './persist';
 import { craftedId } from './spells';
-import { createInitialState as createV1State } from './state';
 
 const zone0 = content.zones[0]!.id;
 const zone1 = content.zones[1]!.id;
@@ -46,7 +44,11 @@ describe('persist', () => {
   });
 
   it('a v1 save is null', () => {
-    expect(parseState(JSON.parse(JSON.stringify(createV1State(gameData))), content)).toBeNull();
+    const v1 = {
+      version: 1, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', currentZone: zone0,
+      unlockedZones: [zone0], defeatedBosses: [], zoneKills: {}, synthesisLog: {},
+    };
+    expect(parseState(v1, content)).toBeNull();
     expect(roundtrip((o) => (o.version = 1))).toBeNull();
   });
 

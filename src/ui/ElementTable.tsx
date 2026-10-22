@@ -3,7 +3,6 @@ import { itemName } from './messages';
 import { ELEMENT_LABEL } from './picker-data';
 
 const GRADES = Array.from({ length: MAX_ELEMENT_GRADE }, (_, i) => i + 1);
-const ALWAYS_SHOWN_MATERIALS: ItemId[] = ['mat:mana_crystal'];
 
 export function lowestUpgradableGrade(inv: Inventory, el: ElementId): number | null {
   for (let g = 1; g < MAX_ELEMENT_GRADE; g++) if ((inv[elementItem(el, g)] ?? 0) >= GRADE_UPGRADE_COST[g - 1]!) return g;
@@ -11,10 +10,13 @@ export function lowestUpgradableGrade(inv: Inventory, el: ElementId): number | n
 }
 
 function materialIds(inv: Inventory): ItemId[] {
-  return [...new Set([...ALWAYS_SHOWN_MATERIALS, ...Object.keys(inv).filter((k) => k.startsWith('mat:'))])].sort();
+  return Object.keys(inv).filter((k) => k.startsWith('mat:') && (inv[k] ?? 0) > 0).sort();
 }
 
-/** One row per element, one column per grade. Empty cells stay in place so the table keeps its shape. */
+/**
+ * One row per element, one column per grade. Empty cells stay in place so the table keeps its shape.
+ * Each grade header below the top shows its upgrade cost (3, 10, 30, 100 of it make one of the next).
+ */
 export function ElementTable({
   inventory,
   onPick,
@@ -32,9 +34,17 @@ export function ElementTable({
       <thead>
         <tr>
           <th scope="col" className="el-name"><span className="sr-only">屬性</span></th>
-          {GRADES.map((g) => (
-            <th key={g} scope="col">{GRADE_NAMES[g - 1]}</th>
-          ))}
+          {GRADES.map((g) => {
+            const cost = GRADE_UPGRADE_COST[g - 1];
+            return (
+              <th key={g} scope="col">
+                {GRADE_NAMES[g - 1]}
+                {cost !== undefined && (
+                  <span className="grade-cost" title={`${cost} 個${GRADE_NAMES[g - 1]}升成 1 個${GRADE_NAMES[g]}`}>{cost}→1</span>
+                )}
+              </th>
+            );
+          })}
           <th scope="col"><span className="sr-only">升階</span></th>
         </tr>
       </thead>
@@ -74,6 +84,7 @@ export function ElementTable({
         <tr className="mat-row">
           <th scope="row">素材</th>
           <td colSpan={GRADES.length + 1}>
+            {materialIds(inventory).length === 0 && <span className="muted">尚無素材</span>}
             {materialIds(inventory).map((id) => {
               const n = inventory[id] ?? 0;
               return (

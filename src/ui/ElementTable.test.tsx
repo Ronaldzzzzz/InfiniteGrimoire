@@ -55,12 +55,20 @@ describe('ElementTable', () => {
     expect(onPick).toHaveBeenCalledWith('el:fire:1');
   });
 
-  it('always shows the mana crystal in the materials row', () => {
+  it('lists the materials in stock and picks them', () => {
     const onPick = vi.fn();
     const { rerender } = render(<ElementTable inventory={{}} onPick={onPick} onUpgrade={() => {}} />);
-    expect(btn('魔晶 ×0').disabled).toBe(true);
-    rerender(<ElementTable inventory={{ 'mat:mana_crystal': 2 }} onPick={onPick} onUpgrade={() => {}} />);
-    fireEvent.click(btn('魔晶 ×2'));
-    expect(onPick).toHaveBeenCalledWith('mat:mana_crystal');
+    expect(screen.getByText('尚無素材')).toBeTruthy();
+    rerender(<ElementTable inventory={{ 'mat:ember_core': 2 }} onPick={onPick} onUpgrade={() => {}} />);
+    fireEvent.click(btn('餘燼核心 ×2'));
+    expect(onPick).toHaveBeenCalledWith('mat:ember_core');
+  });
+
+  it('ElementTable shows five grades and the escalating cost', () => {
+    render(<ElementTable inventory={{ 'el:fire:5': 1 }} onPick={() => {}} onUpgrade={() => {}} />);
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
+    expect(headers.slice(1, 6)).toEqual(['初階3→1', '中階10→1', '高階30→1', '極階100→1', '神階']);
+    expect(btn('極階水 ×0').disabled).toBe(true);
+    expect(btn('神階火 ×1').disabled).toBe(false);
   });
 });

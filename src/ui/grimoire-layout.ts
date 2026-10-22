@@ -1,4 +1,4 @@
-import { ELEMENT_ORDER, type SpellDef } from '../engine/types';
+import type { NamedSpellDef } from '../engine/model';
 
 export interface GrimoireLayout {
   nodes: { spellId: string; x: number; y: number }[];
@@ -6,9 +6,7 @@ export interface GrimoireLayout {
 }
 
 const RING_RADIUS = [0, 120, 185, 250];
-const HYBRID_RADIUS = 215;
-const SECTOR_DEG = 72;
-const OFFSET_DEG = 14;
+const OUTER_RING_STEP = 65;
 
 /** Screen-style polar: 0deg is up, angles grow clockwise, y points down. */
 function polar(deg: number, r: number): { x: number; y: number } {
@@ -16,24 +14,17 @@ function polar(deg: number, r: number): { x: number; y: number } {
   return { x: r * Math.sin(t), y: -r * Math.cos(t) };
 }
 
-function sectorOf(spell: SpellDef): { deg: number; r: number } {
-  const idx = spell.elements.map((e) => ELEMENT_ORDER.indexOf(e));
-  if (idx.length === 2) {
-    const n = ELEMENT_ORDER.length;
-    // the clockwise-earlier element is the one whose next sector is the other
-    const first = (idx[0] + 1) % n === idx[1] ? idx[0] : idx[1];
-    return { deg: first * SECTOR_DEG + SECTOR_DEG / 2, r: HYBRID_RADIUS };
-  }
-  const base = idx.length === 1 ? idx[0] * SECTOR_DEG : 0;
-  return { deg: base + spell.grimoire.offset * OFFSET_DEG, r: RING_RADIUS[spell.grimoire.ring] };
-}
+const ringRadius = (ring: number): number =>
+  RING_RADIUS[ring] ?? RING_RADIUS[RING_RADIUS.length - 1]! + (ring - RING_RADIUS.length + 1) * OUTER_RING_STEP;
 
-export function layoutGrimoire(spells: SpellDef[]): GrimoireLayout {
-  const nodes = spells.map((s) => {
-    const { deg, r } = sectorOf(s);
-    const { x, y } = polar(deg, r);
-    return { spellId: s.id, x, y };
-  });
-  const edges = spells.flatMap((s) => s.prerequisites.map((from) => ({ from, to: s.id })));
+/**
+ * Named spells placed by their tree node (ring, angle). Spells without a node and spells in regions the
+ * player can't see yet (fog) are left out, and so are edges to them.
+ */
+export function layoutGrimoire(spells: NamedSpellDef[], visible: ReadonlySet<string>): GrimoireLayout {
+  const shown = spells.filter((s) => s.node !== null && visible.has(s.node.region));
+  const ids = new Set(shown.map((s) => s.id));
+  const nodes = shown.map((s) => ({ spellId: s.id, ...polar(s.node!.angle, ringRadius(s.node!.ring)) }));
+  const edges = shown.flatMap((s) => s.prerequisites.filter((from) => ids.has(from)).map((from) => ({ from, to: s.id })));
   return { nodes, edges };
 }

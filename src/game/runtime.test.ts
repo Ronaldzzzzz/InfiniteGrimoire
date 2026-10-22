@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { gameData } from '../engine/data';
+import { content } from '../engine/content';
 import { createRng } from '../engine/rng';
-import { createInitialState } from '../engine/state';
-import { STEP_MS } from '../engine/battle';
-import * as battleMod from '../engine/battle';
+import { createInitialState } from '../engine/persist';
+import { STEP_MS } from '../engine/combat';
+import * as battleMod from '../engine/combat';
 import { GameRuntime, MAX_CATCHUP_MS } from './runtime';
 
-const make = () => new GameRuntime(gameData, createInitialState(gameData), 3, createRng(1));
+const make = () => new GameRuntime(content, createInitialState(content), 3, createRng(1));
 
 describe('GameRuntime', () => {
   it('advance clamps huge elapsed', () => {
@@ -54,10 +54,10 @@ describe('GameRuntime', () => {
     rt.advance(1000);
     rt.advance(1000); // past the first spawn
     const battle = rt.getSnapshot().battle;
-    expect(battle.monsters.length).toBeGreaterThan(0);
+    expect(battle.foes.length).toBeGreaterThan(0);
     const fn = vi.fn();
     rt.subscribe(fn);
-    const s = { ...createInitialState(gameData), equipped: 'mana_bolt' };
+    const s = { ...createInitialState(content), equipped: 'mana_bolt' };
     rt.replaceState(s, 9);
     const snap = rt.getSnapshot();
     expect(snap.revision).toBe(9);
@@ -69,12 +69,12 @@ describe('GameRuntime', () => {
     const rt = make();
     rt.advance(1000);
     rt.advance(1000);
-    const other = gameData.zones[1]!.id;
-    const s = { ...createInitialState(gameData), currentZone: other, unlockedZones: [gameData.zones[0]!.id, other] };
+    const other = content.zones[1]!.id;
+    const s = { ...createInitialState(content), currentZone: other, unlockedZones: [content.zones[0]!.id, other] };
     rt.replaceState(s, 9);
     const snap = rt.getSnapshot();
     expect(snap.battle.zoneId).toBe(other);
-    expect(snap.battle.monsters).toEqual([]);
+    expect(snap.battle.foes).toEqual([]);
   });
   it('getSnapshot stable when nothing changed', () => {
     const rt = make();

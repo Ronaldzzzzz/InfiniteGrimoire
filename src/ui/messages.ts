@@ -1,34 +1,85 @@
-import type { SynthResult } from '../engine/synthesis';
-import type { GameData, ItemId } from '../engine/types';
+import { content as defaultContent } from '../engine/content';
+import { requiredGrade } from '../engine/crafting';
+import type { Content } from '../engine/model';
+import { craftedId, inputToken, resolveSpell } from '../engine/spells';
+import { GRADE_NAMES, type ItemId } from '../engine/types';
 import { USERNAME_MAX, USERNAME_MIN, PASSWORD_MAX, PASSWORD_MIN, type UsernameProblem } from '../engine/account-rules';
-import { ApiError, NetworkError, RateLimitedError } from '../game/api';
+import { ApiError, NetworkError, RateLimitedError, type ActionResult } from '../game/api';
 
 const ELEMENT_NAMES: Record<string, string> = { fire: '火', wind: '風', thunder: '雷', earth: '土', water: '水' };
-const GRADE_NAMES: Record<string, string> = { '1': '初階', '2': '中階', '3': '高階' };
-const MATERIAL_NAMES: Record<string, string> = { mana_crystal: '魔晶' };
 
-export function itemName(itemId: ItemId): string {
+/** Element items by grade and element; materials and key items by their content name. */
+export function itemName(itemId: ItemId, content: Content = defaultContent): string {
   const [kind, a, b] = itemId.split(':');
-  if (kind === 'el' && a && b && ELEMENT_NAMES[a] && GRADE_NAMES[b]) return `${GRADE_NAMES[b]}${ELEMENT_NAMES[a]}`;
-  if (kind === 'mat' && a) return MATERIAL_NAMES[a] ?? a;
+  const grade = Number(b);
+  if (kind === 'el' && a && ELEMENT_NAMES[a] && GRADE_NAMES[grade - 1]) return `${GRADE_NAMES[grade - 1]}${ELEMENT_NAMES[a]}`;
+  if (kind === 'mat' && a) return Object.hasOwn(content.materials, itemId) ? content.materials[itemId]!.name : a;
+  if (kind === 'key' && a) return Object.hasOwn(content.keyItems, itemId) ? content.keyItems[itemId]!.name : a;
   return itemId;
 }
 
-export function synthMessage(result: SynthResult, data: GameData): string {
-  const spellName = (id: string): string => data.spells[id]?.name ?? id;
+/** A named or crafted spell's name, or the id itself when it is not a spell. */
+export function spellLabel(id: string, content: Content): string {
+  return resolveSpell(id, content)?.name ?? id;
+}
+
+/** What a synthesis slot shows: an item name, or the name of the spell put in it. */
+export function slotLabel(id: string, content: Content): string {
+  return /^(el|mat|key):/.test(id) ? itemName(id, content) : spellLabel(id, content);
+}
+
+/** Grade the crafted result of these inputs demands from its element inputs, or null when unknown. */
+function neededGrade(inputs: string[] | undefined, content: Content): number | null {
+  if (!inputs || inputs.length !== 2) return null;
+  const a = inputToken(inputs[0]!, content), b = inputToken(inputs[1]!, content);
+  if (a === null || b === null) return null;
+  const spell = resolveSpell(craftedId(a, b), content);
+  return spell ? requiredGrade(spell.depth) : null;
+}
+
+const REJECTED: Record<string, string> = {
+  insufficient: '材料不足',
+  slots: '請放入兩個素材',
+  unknownInput: '這個素材不能拿來合成',
+  notLearned: '還沒學會這個魔法',
+  maxLevel: '已經強化到最高等級',
+  noElements: '無屬性魔法不能強化',
+  unknown: '找不到這個項目',
+  notOwned: '沒有這個道具',
+  alreadyRevealed: '這個區域已經揭開了',
+  already: '已經解鎖了',
+  hidden: '這個區域還被迷霧遮住',
+  requirement: '還沒達成解鎖條件',
+};
+
+/** Message for a server action's result; `inputs` are the synthesis inputs (for the grade a refusal needed). */
+export function synthMessage(result: ActionResult, content: Content, inputs?: string[]): string {
   switch (result.kind) {
     case 'learned':
-      return `習得新魔法：${spellName(result.spellId)}`;
+      return result.crafted
+        ? `自創魔法：${spellLabel(result.spellId, content)}`
+        : `習得新魔法：${spellLabel(result.spellId, content)}`;
     case 'duplicate':
-      return `已習得 ${spellName(result.spellId)}，退還部分元素`;
+      return `已習得 ${spellLabel(result.spellId, content)}，退還部分元素`;
     case 'noReaction':
       return '沒有反應……材料損耗了一部分';
-    case 'knownNoReaction':
-      return '這個組合沒有反應';
     case 'dormant':
       return '似乎還缺少什麼……';
-    case 'rejected':
-      return result.reason === 'insufficient' ? '材料不足' : '請放入兩個素材';
+    case 'overload':
+      return '魔力過載！';
+    case 'empowered':
+      return `強化成功：Lv.${result.level}`;
+    case 'revealed':
+      return '迷霧散開了';
+    case 'unlocked':
+      return '被動已解鎖';
+    case 'rejected': {
+      if (result.reason === 'grade') {
+        const g = neededGrade(inputs, content);
+        return g === null ? '元素階級不夠' : `元素階級不夠，需要${GRADE_NAMES[g - 1]}以上`;
+      }
+      return REJECTED[result.reason] ?? '無法執行';
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-import type { ElementId, MonsterDef, SpellDef } from './types';
+import type { ElementId } from './types';
 import type { Monster } from './model';
 
 export const OVERLEVEL_K = 0.5;
@@ -26,16 +26,6 @@ export function affinityMultiplier(spellElements: ElementId[], monsterElement: E
   if (spellElements.some((e) => COUNTERS[e] === monsterElement)) return 1.1;
   if (spellElements.some((e) => COUNTERS[monsterElement] === e)) return 0.9;
   return 1;
-}
-
-/** Damage of one hit; 0 means the monster is immune. */
-export function computeHit(spell: SpellDef, monster: MonsterDef, opts: { frozen: boolean }): number {
-  if (!canDamage(spell, monster)) return 0;
-  const raw =
-    ((spell.attack * 100) / (100 + monster.defense)) *
-    affinityMultiplier(spell.elements, monster.element) *
-    (opts.frozen ? 1.15 : 1);
-  return Math.max(1, Math.round(raw));
 }
 
 /**

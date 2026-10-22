@@ -1,6 +1,6 @@
-import type { SynthResult } from '../engine/synthesis';
+import type { GameState } from '../engine/model';
 import type { ItemId } from '../engine/types';
-import { AuthError, NetworkError, type ApiClient } from './api';
+import { AuthError, NetworkError, type ActionOutcome, type ActionResult, type ApiClient } from './api';
 import type { GameRuntime } from './runtime';
 
 export const UPLOAD_INTERVAL_MS = 30_000;
@@ -10,6 +10,14 @@ export const ERROR_AFTER_FAILURES = 2;
 /** 'error': the server is reachable but keeps refusing uploads, so progress may not be saved. */
 export type ConnStatus = 'online' | 'offline' | 'error';
 type UploadResult = 'done' | 'network' | 'auth' | 'error';
+
+export interface ActionPayloads {
+  synthesize: { inputs: ItemId[] };
+  empower: { spellId: string };
+  reveal: { keyItem: ItemId };
+  passive: { passiveId: string };
+}
+export type ActionKind = keyof ActionPayloads;
 
 interface Timers {
   setInterval: typeof setInterval;
@@ -142,7 +150,13 @@ export class SyncController {
     else if (result !== 'auth') this.setStatus(this.reachableStatus(result));
   }
 
-  async synthesize(inputs: ItemId[]): Promise<SynthResult | null> {
+  /**
+   * Runs a server action on the current state. Applied: adopts the returned state and returns the result.
+   * Refused by the game rules (kind 'rejected'): the server wrote nothing, so the local state stays and the
+   * result is returned for the UI to explain. Conflict / audit rejection: adopts the server state, returns
+   * null. Busy, offline or auth failure: null. Other errors are thrown.
+   */
+  async action<K extends ActionKind>(kind: K, payload: ActionPayloads[K]): Promise<ActionResult | null> {
     if (this.retrying || this.runtime.getSnapshot().synthPending) return null;
     if (this.uploading) {
       await this.uploading;
@@ -151,7 +165,11 @@ export class SyncController {
     this.runtime.setSynthPending(true);
     try {
       const { game, revision } = this.runtime.getSnapshot();
-      const out = await this.api.synthesize(game, revision, inputs);
+      const out = await this.send(kind, payload, game, revision);
+      if (out.kind === 'refused') {
+        this.runtime.setRevision(out.revision);
+        return out.result;
+      }
       this.runtime.replaceState(out.state, out.revision);
       return out.kind === 'ok' ? out.result : null;
     } catch (e) {
@@ -162,5 +180,22 @@ export class SyncController {
     } finally {
       this.runtime.setSynthPending(false);
     }
+  }
+
+  private send(kind: ActionKind, payload: ActionPayloads[ActionKind], game: GameState, revision: number): Promise<ActionOutcome> {
+    switch (kind) {
+      case 'synthesize':
+        return this.api.synthesize(game, revision, (payload as ActionPayloads['synthesize']).inputs);
+      case 'empower':
+        return this.api.empower(game, revision, (payload as ActionPayloads['empower']).spellId);
+      case 'reveal':
+        return this.api.reveal(game, revision, (payload as ActionPayloads['reveal']).keyItem);
+      case 'passive':
+        return this.api.unlockPassive(game, revision, (payload as ActionPayloads['passive']).passiveId);
+    }
+  }
+
+  synthesize(inputs: ItemId[]): Promise<ActionResult | null> {
+    return this.action('synthesize', { inputs });
   }
 }

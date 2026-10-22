@@ -1,9 +1,9 @@
-import type { GameState } from '../engine/state';
-import type { GameData } from '../engine/types';
+import type { Content, GameState } from '../engine/model';
 import { COLORS } from '../render/palette';
 import { Picker, type PickerItem } from './Picker';
 import {
-  PATTERN_LABEL,
+  fightingSpell,
+  SHAPE_LABEL,
   spellPickerGroups,
   tierRangeLabel,
   ZONE_STATUS_LABEL,
@@ -43,21 +43,21 @@ function Swatches({ row }: { row: SpellRow }) {
 
 export function SpellPicker({
   game,
-  data,
+  content,
   sort,
   onSortChange,
   onEquip,
   disabled = false,
 }: {
   game: GameState;
-  data: GameData;
+  content: Content;
   sort: SpellSort;
   onSortChange: (s: SpellSort) => void;
   onEquip: (id: string) => void;
   disabled?: boolean;
 }) {
-  const groups = spellPickerGroups(game, data, sort);
-  const equipped = data.spells[game.equipped];
+  const groups = spellPickerGroups(game, content, sort);
+  const equipped = fightingSpell(game, game.equipped, content);
   const items: PickerItem[] = groups.flatMap((g) =>
     g.rows.map((r) => ({
       key: r.id,
@@ -69,7 +69,7 @@ export function SpellPicker({
           <Swatches row={r} />
           <span className="spell-row-name">{r.name}</span>
           <span className="spell-row-tier">Lv.{r.tier}</span>
-          <span className="muted">{PATTERN_LABEL[r.pattern]}</span>
+          <span className="muted">{SHAPE_LABEL[r.shape]}</span>
           <span className="muted">攻 {r.attack}</span>
           {r.bossImmune && <span className="tag warn">對魔王無效</span>}
           {r.dropEfficiency < 1 && <span className="tag">掉落 {Math.round(r.dropEfficiency * 100)}%</span>}
@@ -100,16 +100,16 @@ export function SpellPicker({
 
 export function ZonePicker({
   game,
-  data,
+  content,
   onTravel,
   disabled = false,
 }: {
   game: GameState;
-  data: GameData;
+  content: Content;
   onTravel: (id: string) => void;
   disabled?: boolean;
 }) {
-  const rows = zonePickerRows(game, data);
+  const rows = zonePickerRows(game, content);
   const current = rows.find((r) => r.status === 'current');
   const items: PickerItem[] = rows.map((r) => ({
     key: r.id,

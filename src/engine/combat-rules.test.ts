@@ -1,16 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { OVERLEVEL_K, affinityMultiplier, canDamage, computeDamage, computeHit, overlevelEfficiency } from './combat-rules';
+import { OVERLEVEL_K, affinityMultiplier, canDamage, computeDamage, overlevelEfficiency } from './combat-rules';
 import type { Monster } from './model';
-import { ELEMENT_ORDER, type MonsterDef, type SpellDef } from './types';
-
-const spell = (o: Partial<SpellDef> = {}): SpellDef => ({
-  id: 's', name: 's', nameEn: 's', elements: [], tier: 5, attack: 100, cooldownMs: 1000,
-  pattern: 'bolt', prerequisites: [], hint: '', grimoire: { ring: 0, offset: 0 }, ...o,
-});
-const monster = (o: Partial<MonsterDef> = {}): MonsterDef => ({
-  id: 'm', name: 'm', nameEn: 'm', element: 'fire', tier: 5, hp: 100, defense: 100,
-  regenPerSec: 0, boss: false, drops: [], ...o,
-});
+import { ELEMENT_ORDER } from './types';
 
 describe('canDamage', () => {
   it('tier >= monster tier - 1 always damages', () => {
@@ -55,24 +46,6 @@ describe('affinityMultiplier', () => {
       expect(v).toBeGreaterThanOrEqual(0.9);
       expect(v).toBeLessThanOrEqual(1.1);
     }
-  });
-});
-
-describe('computeHit', () => {
-  it('is 0 when it cannot damage', () => {
-    expect(computeHit(spell({ tier: 1, attack: 1 }), monster({ tier: 10, defense: 100 }), { frozen: false })).toBe(0);
-  });
-  it('is an integer >= 1 when it can damage', () => {
-    const h = computeHit(spell({ tier: 9, attack: 1 }), monster({ tier: 10, defense: 100000 }), { frozen: false });
-    expect(Number.isInteger(h)).toBe(true);
-    expect(h).toBeGreaterThanOrEqual(1);
-  });
-  it('applies defense formula', () => {
-    expect(computeHit(spell({ attack: 100 }), monster({ defense: 100 }), { frozen: false })).toBe(50);
-  });
-  it('frozen deals more', () => {
-    const s = spell(), m = monster();
-    expect(computeHit(s, m, { frozen: true })).toBeGreaterThan(computeHit(s, m, { frozen: false }));
   });
 });
 

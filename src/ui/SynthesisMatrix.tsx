@@ -1,61 +1,62 @@
 import { useState } from 'react';
-import { comboKey } from '../engine/synthesis';
-import type { SynthLogEntry } from '../engine/state';
-import { ELEMENT_ORDER, GRADE_NAMES, elementItem, MAX_ELEMENT_GRADE, type GameData, type ItemId } from '../engine/types';
-import { itemName } from './messages';
+import { comboKey } from '../engine/crafting';
+import type { Content, SynthLogEntry } from '../engine/model';
+import { ELEMENT_ORDER, GRADE_NAMES, elementItem, MAX_ELEMENT_GRADE, type ItemId } from '../engine/types';
+import { slotLabel, spellLabel } from './messages';
 import { ELEMENT_LABEL } from './picker-data';
 
 const GRADES = Array.from({ length: MAX_ELEMENT_GRADE }, (_, i) => i + 1);
-const MATERIAL: ItemId = 'mat:mana_crystal';
 
 type Log = Record<string, SynthLogEntry>;
 
 export interface MatrixCell {
-  a: ItemId;
-  b: ItemId;
+  a: string;
+  b: string;
   attempts: number;
   /** most frequent result, 無反應, or ？ when never tried */
   label: string;
   /** how many other results were seen */
   more: number;
-  /** e.g. 烈焰術 75%、爆炎 25%（試過 4 次）; 未嘗試 when never tried */
+  /** e.g. 火球 75%、魔力過載 25%（試過 4 次）; 未嘗試 when never tried */
   detail: string;
 }
 
-function resultName(id: string, data: GameData): string {
-  return id === 'none' ? '無反應' : (data.spells[id]?.name ?? id);
+function resultName(id: string, content: Content): string {
+  if (id === 'none') return '無反應';
+  if (id === 'overload') return '魔力過載';
+  return spellLabel(id, content);
 }
 
 /** What the player has learned about a + b, from their own attempts only (no recipe is revealed). */
-export function matrixCell(log: Log, a: ItemId, b: ItemId, data: GameData): MatrixCell {
-  const entry = log[comboKey([a, b])];
+export function matrixCell(log: Log, a: string, b: string, content: Content): MatrixCell {
+  const key = comboKey([a, b]);
+  const entry = Object.hasOwn(log, key) ? log[key] : undefined;
   if (!entry || entry.attempts === 0) return { a, b, attempts: 0, label: '？', more: 0, detail: '未嘗試' };
   const results = Object.entries(entry.results).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
   const detail = results
-    .map(([id, n]) => `${resultName(id, data)} ${Math.round((n / entry.attempts) * 100)}%`)
+    .map(([id, n]) => `${resultName(id, content)} ${Math.round((n / entry.attempts) * 100)}%`)
     .join('、');
   return {
     a,
     b,
     attempts: entry.attempts,
-    label: results[0] ? resultName(results[0][0], data) : '無反應',
+    label: results[0] ? resultName(results[0][0], content) : '無反應',
     more: Math.max(0, results.length - 1),
     detail: `${detail}（試過 ${entry.attempts} 次）`,
   };
 }
 
-/** A combo fits a grade table when it is two elements of one grade, or an element plus the mana crystal. */
+/** A combo fits a grade table when it is two elements of one grade. */
 function fitsTable(key: string): boolean {
   const [x, y] = key.split('+');
   if (!x || !y) return false;
   const [kx, , gx] = x.split(':');
   const [ky, , gy] = y.split(':');
-  if (kx === 'el' && ky === 'el') return gx === gy;
-  return (kx === 'el' && y === MATERIAL) || (ky === 'el' && x === MATERIAL);
+  return kx === 'el' && ky === 'el' && gx === gy;
 }
 
-/** Tried combos that no grade table shows (e.g. 初階火 + 中階風), sorted by key. */
-export function crossGradeEntries(log: Log): { key: string; a: ItemId; b: ItemId }[] {
+/** Tried combos that no grade table shows (初階火 + 中階風, materials, spells), sorted by key. No id contains '+'. */
+export function crossGradeEntries(log: Log): { key: string; a: string; b: string }[] {
   return Object.keys(log)
     .filter((k) => !fitsTable(k))
     .sort()
@@ -65,20 +66,20 @@ export function crossGradeEntries(log: Log): { key: string; a: ItemId; b: ItemId
     });
 }
 
-const pairName = (a: ItemId, b: ItemId): string => `${itemName(a)} + ${itemName(b)}`;
+const pairName = (a: string, b: string, content: Content): string => `${slotLabel(a, content)} + ${slotLabel(b, content)}`;
 
 export function SynthesisMatrix({
   log,
-  data,
+  content,
   onPickPair,
 }: {
   log: Log;
-  data: GameData;
-  onPickPair: (a: ItemId, b: ItemId) => void;
+  content: Content;
+  onPickPair: (a: string, b: string) => void;
 }) {
   const [grade, setGrade] = useState(1);
   const [picked, setPicked] = useState<MatrixCell | null>(null);
-  const cols: ItemId[] = [...ELEMENT_ORDER.map((el) => elementItem(el, grade)), MATERIAL];
+  const cols: ItemId[] = ELEMENT_ORDER.map((el) => elementItem(el, grade));
 
   const pick = (cell: MatrixCell): void => {
     setPicked(cell);
@@ -100,8 +101,8 @@ export function SynthesisMatrix({
           <tr>
             <th scope="col"><span className="sr-only">元素</span></th>
             {cols.map((id) => (
-              <th key={id} scope="col" className={id === MATERIAL ? 'mat' : `el-${id.split(':')[1]}`}>
-                {id === MATERIAL ? '魔晶' : ELEMENT_LABEL[ELEMENT_ORDER.find((e) => id === elementItem(e, grade))!]}
+              <th key={id} scope="col" className={`el-${id.split(':')[1]}`}>
+                {ELEMENT_LABEL[ELEMENT_ORDER.find((e) => id === elementItem(e, grade))!]}
               </th>
             ))}
           </tr>
@@ -113,15 +114,15 @@ export function SynthesisMatrix({
               <tr key={el}>
                 <th scope="row" className={`el-${el}`}>{ELEMENT_LABEL[el]}</th>
                 {cols.map((col) => {
-                  const cell = matrixCell(log, row, col, data);
+                  const cell = matrixCell(log, row, col, content);
                   const state = cell.attempts === 0 ? 'unknown' : cell.label === '無反應' ? 'none' : 'found';
                   return (
                     <td key={col}>
                       <button
                         type="button"
                         className={`matrix-cell ${state}`}
-                        aria-label={`${pairName(row, col)}：${cell.detail}`}
-                        title={`${pairName(row, col)}：${cell.detail}`}
+                        aria-label={`${pairName(row, col, content)}：${cell.detail}`}
+                        title={`${pairName(row, col, content)}：${cell.detail}`}
                         onClick={() => pick(cell)}
                       >
                         <span className="matrix-label">{cell.label}</span>
@@ -136,18 +137,18 @@ export function SynthesisMatrix({
         </tbody>
       </table>
       <p className="matrix-detail" aria-live="polite">
-        {picked ? `${pairName(picked.a, picked.b)}：${picked.detail}` : '點格子把這兩個素材放進合成槽'}
+        {picked ? `${pairName(picked.a, picked.b, content)}：${picked.detail}` : '點格子把這兩個素材放進合成槽'}
       </p>
       {cross.length > 0 && (
         <>
-          <h4>跨階級組合</h4>
+          <h4>其他組合</h4>
           <ul className="matrix-cross">
             {cross.map(({ key, a, b }) => {
-              const cell = matrixCell(log, a, b, data);
+              const cell = matrixCell(log, a, b, content);
               return (
                 <li key={key}>
-                  <button type="button" aria-label={`${pairName(a, b)}：${cell.detail}`} onClick={() => pick(cell)}>
-                    {pairName(a, b)} → {cell.detail}
+                  <button type="button" aria-label={`${pairName(a, b, content)}：${cell.detail}`} onClick={() => pick(cell)}>
+                    {pairName(a, b, content)} → {cell.detail}
                   </button>
                 </li>
               );

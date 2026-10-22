@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { gameData } from '../engine/data';
-import { createInitialState } from '../engine/state';
+import { content } from '../engine/content';
+import { createInitialState } from '../engine/persist';
 import { ApiError, NetworkError } from '../game/api';
 import { AccountDialog } from './AccountDialog';
 
 afterEach(cleanup);
 
 function setup(username: string | null) {
-  const loginResult = { token: 't2', state: createInitialState(gameData), revision: 1 };
+  const loginResult = { token: 't2', state: createInitialState(content), revision: 1 };
   const api = {
     getAccount: vi.fn(async () => ({ displayName: 'Aria', username, sessions: 2 })),
     bind: vi.fn(async (u: string) => ({ username: u })),

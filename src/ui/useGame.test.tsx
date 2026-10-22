@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createBattle } from '../engine/battle';
-import { gameData } from '../engine/data';
-import { createInitialState } from '../engine/state';
+import { createBattle } from '../engine/combat';
+import { content } from '../engine/content';
+import { createInitialState } from '../engine/persist';
 import type { Snapshot } from '../game/runtime';
 import { bossAlive, useRuntime } from './useGame';
 
@@ -26,7 +26,7 @@ function fakeStore(initial: Snapshot) {
 }
 
 function initial(): Snapshot {
-  const game = createInitialState(gameData);
+  const game = createInitialState(content);
   return { game, battle: createBattle(game.currentZone), revision: 1, paused: false, synthPending: false };
 }
 
@@ -41,7 +41,7 @@ describe('useRuntime', () => {
     }
     render(<Probe />);
     const before = renders;
-    act(() => store.set({ ...store.getSnapshot(), battle: { ...store.getSnapshot().battle, castTimerMs: 999 } }));
+    act(() => store.set({ ...store.getSnapshot(), battle: { ...store.getSnapshot().battle, spawnTimerMs: 999 } }));
     expect(renders).toBe(before);
     act(() => store.set({ ...store.getSnapshot(), game: { ...store.getSnapshot().game, equipped: 'fireball' } }));
     expect(renders).toBe(before + 1);
@@ -51,10 +51,10 @@ describe('useRuntime', () => {
 describe('bossAlive', () => {
   it('is true only while the zone boss is on the field during a boss fight', () => {
     const s = initial();
-    const zone = gameData.zones[0]!;
-    const boss = { uid: 9, defId: zone.bossId, hp: 1, maxHp: 1, x: 1, statuses: [] };
-    expect(bossAlive(s, gameData)).toBe(false);
-    expect(bossAlive({ ...s, battle: { ...s.battle, bossActive: true, monsters: [boss] } }, gameData)).toBe(true);
-    expect(bossAlive({ ...s, battle: { ...s.battle, bossActive: true, monsters: [] } }, gameData)).toBe(false);
+    const zone = content.zones[0]!;
+    const boss = { uid: 9, defId: zone.bossId, hp: 1, maxHp: 1, x: 1, y: 0, statuses: [], kx: 0, ky: 0, wander: 0 };
+    expect(bossAlive(s, content)).toBe(false);
+    expect(bossAlive({ ...s, battle: { ...s.battle, bossActive: true, foes: [boss] } }, content)).toBe(true);
+    expect(bossAlive({ ...s, battle: { ...s.battle, bossActive: true, foes: [] } }, content)).toBe(false);
   });
 });

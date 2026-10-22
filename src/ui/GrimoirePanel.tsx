@@ -1,5 +1,7 @@
 import { memo, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
-import { gameData } from '../engine/data';
+import { content as defaultContent } from '../engine/content';
+import type { Content } from '../engine/model';
+import { visibleRegions } from '../engine/tree';
 import type { GameRuntime } from '../game/runtime';
 import { COLORS, spellColor } from '../render/palette';
 import { layoutGrimoire } from './grimoire-layout';
@@ -14,14 +16,20 @@ const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 export const GrimoirePanel = memo(function GrimoirePanel({
   runtime,
   onHint,
+  content = defaultContent,
 }: {
   runtime: RuntimeStore & Pick<GameRuntime, 'equip'>;
   onHint: (spellId: string | null) => void;
+  content?: Content;
 }) {
   const learned = useRuntime(runtime, (s) => s.game.learned);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
+  const revealed = useRuntime(runtime, (s) => s.game.revealed);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
-  const layout = useMemo(() => layoutGrimoire(Object.values(gameData.spells)), []);
+  const layout = useMemo(
+    () => layoutGrimoire(Object.values(content.spells), visibleRegions({ revealed }, content)),
+    [content, revealed],
+  );
   const pos = useMemo(() => new Map(layout.nodes.map((n) => [n.spellId, n])), [layout]);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -90,7 +98,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
           );
         })}
         {layout.nodes.map((n) => {
-          const spell = gameData.spells[n.spellId];
+          const spell = content.spells[n.spellId]!;
           const isLearned = learned.includes(n.spellId);
           const isEquipped = equipped === n.spellId;
           const color = spellColor(spell);

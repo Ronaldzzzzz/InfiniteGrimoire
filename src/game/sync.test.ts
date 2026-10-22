@@ -1,18 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { gameData } from '../engine/data';
+import { content } from '../engine/content';
 import { createRng } from '../engine/rng';
-import { createInitialState } from '../engine/state';
+import { createInitialState } from '../engine/persist';
 import { ApiError, AuthError, NetworkError, type ApiClient } from './api';
 import { GameRuntime } from './runtime';
 import { RETRY_MS, SyncController, UPLOAD_INTERVAL_MS } from './sync';
 
-const server = { ...createInitialState(gameData), equipped: 'mana_bolt', zoneKills: { x: 5 } };
+const server = { ...createInitialState(content), equipped: 'mana_bolt', zoneKills: { x: 5 } };
 function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
   return {
     createGuest: vi.fn(),
     loadSave: vi.fn(),
     upload: vi.fn(async () => ({ kind: 'ok' as const, revision: 8 })),
     synthesize: vi.fn(),
+    empower: vi.fn(),
+    reveal: vi.fn(),
+    unlockPassive: vi.fn(),
     login: vi.fn(),
     bind: vi.fn(),
     getAccount: vi.fn(),
@@ -22,7 +25,7 @@ function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
     ...over,
   };
 }
-const mk = () => new GameRuntime(gameData, createInitialState(gameData), 7, createRng(1));
+const mk = () => new GameRuntime(content, createInitialState(content), 7, createRng(1));
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -108,13 +111,56 @@ describe('SyncController', () => {
   });
   it('synthesize ok applies server state and returns result', async () => {
     const rt = mk();
-    const result = { kind: 'learned' as const, spellId: 'mana_bolt' };
+    const result = { kind: 'learned' as const, spellId: 'mana_bolt', crafted: false };
     const api = fakeApi({ synthesize: vi.fn(async () => ({ kind: 'ok' as const, result, state: server, revision: 10 })) });
     const sync = new SyncController(rt, api);
     expect(await sync.synthesize(['el:fire:1', 'el:fire:1'])).toEqual(result);
     expect(rt.getSnapshot().game).toBe(server);
     expect(rt.getSnapshot().revision).toBe(10);
     expect(api.synthesize).toHaveBeenCalledWith(expect.anything(), 7, ['el:fire:1', 'el:fire:1']);
+  });
+  it("sync.action('empower') adopts the server state", async () => {
+    const rt = mk();
+    const result = { kind: 'empowered' as const, level: 2 };
+    const empowered = { ...server, levels: { mana_bolt: 2 } };
+    const api = fakeApi({ empower: vi.fn(async () => ({ kind: 'ok' as const, result, state: empowered, revision: 10 })) });
+    const sync = new SyncController(rt, api);
+    expect(await sync.action('empower', { spellId: 'mana_bolt' })).toEqual(result);
+    expect(api.empower).toHaveBeenCalledWith(expect.anything(), 7, 'mana_bolt');
+    expect(rt.getSnapshot().game).toBe(empowered);
+    expect(rt.getSnapshot().revision).toBe(10);
+    expect(rt.getSnapshot().synthPending).toBe(false);
+  });
+  it('sends reveal and passive actions with their ids', async () => {
+    const rt = mk();
+    const api = fakeApi({
+      reveal: vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'revealed' as const, region: 'outer' }, state: server, revision: 10 })),
+      unlockPassive: vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'unlocked' as const }, state: server, revision: 11 })),
+    });
+    const sync = new SyncController(rt, api);
+    expect(await sync.action('reveal', { keyItem: 'key:storm_heart' })).toEqual({ kind: 'revealed', region: 'outer' });
+    expect(api.reveal).toHaveBeenCalledWith(expect.anything(), 7, 'key:storm_heart');
+    expect(await sync.action('passive', { passiveId: 'ember_affinity' })).toEqual({ kind: 'unlocked' });
+    expect(api.unlockPassive).toHaveBeenCalledWith(expect.anything(), 10, 'ember_affinity');
+  });
+  it('a rejected action keeps the state and reports the result', async () => {
+    const rt = mk();
+    const before = rt.getSnapshot().game;
+    const result = { kind: 'rejected' as const, reason: 'insufficient' as const };
+    const api = fakeApi({ empower: vi.fn(async () => ({ kind: 'refused' as const, result, state: server, revision: 7 })) });
+    const sync = new SyncController(rt, api);
+    expect(await sync.action('empower', { spellId: 'mana_bolt' })).toEqual(result);
+    expect(rt.getSnapshot().game).toBe(before);
+    expect(rt.getSnapshot().revision).toBe(7);
+    expect(rt.getSnapshot().synthPending).toBe(false);
+  });
+  it('an audit-rejected action adopts the server state and returns null', async () => {
+    const rt = mk();
+    const api = fakeApi({ synthesize: vi.fn(async () => ({ kind: 'rejected' as const, state: server, revision: 12, reasons: ['too many'] })) });
+    const sync = new SyncController(rt, api);
+    expect(await sync.action('synthesize', { inputs: ['el:fire:1', 'el:fire:1'] })).toBeNull();
+    expect(rt.getSnapshot().game).toBe(server);
+    expect(rt.getSnapshot().revision).toBe(12);
   });
   it('synthesize while offline returns null; conflict replaces state', async () => {
     const rt = mk();

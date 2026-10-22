@@ -1,8 +1,8 @@
 import { Profiler, useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { gameData } from './engine/data';
+import { content } from './engine/content';
 import { createRng } from './engine/rng';
-import type { GameState } from './engine/state';
+import type { GameState } from './engine/model';
 import { createApiClient, type ApiClient } from './game/api';
 import { classifyBootError } from './game/boot';
 import { startLoop } from './game/loop';
@@ -41,7 +41,7 @@ function Boot() {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
 
   const start = useCallback((loaded: Loaded) => {
-    const runtime = new GameRuntime(gameData, loaded.state, loaded.revision, createRng(Date.now() >>> 0));
+    const runtime = new GameRuntime(content, loaded.state, loaded.revision, createRng(Date.now() >>> 0));
     setPhase({ kind: 'ready', runtime, sync: new SyncController(runtime, api) });
   }, []);
 
@@ -104,7 +104,7 @@ function Boot() {
         <App
           runtime={phase.runtime}
           sync={phase.sync}
-          data={gameData}
+          content={content}
           api={api}
           onSwitched={(r) => {
             if (!writeToken(storage(), r.token)) console.warn('could not persist token');

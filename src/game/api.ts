@@ -1,16 +1,23 @@
-import { gameData } from '../engine/data';
-import { parseState } from '../engine/save';
-import type { GameState } from '../engine/state';
-import type { SynthResult } from '../engine/synthesis';
+import { content } from '../engine/content';
+import type { SynthResult } from '../engine/crafting';
+import type { EmpowerResult } from '../engine/empower';
+import type { GameState } from '../engine/model';
+import { parseState } from '../engine/persist';
+import type { RevealResult, UnlockResult } from '../engine/tree';
 import type { ItemId } from '../engine/types';
 import { clientPasswordHash } from './password-hash';
 
 export type UploadOutcome =
   | { kind: 'ok'; revision: number }
   | { kind: 'conflict' | 'rejected'; state: GameState; revision: number; reasons?: string[] };
-export type SynthOutcome =
-  | { kind: 'ok'; result: SynthResult; state: GameState; revision: number }
-  | { kind: 'conflict' | 'rejected'; state: GameState; revision: number };
+export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult;
+/**
+ * 'ok': the server applied the action. 'refused': the game rules said no (a 422 with a result); the server
+ * wrote nothing and the local state stays. 'conflict' / 'rejected' (a 422 with audit reasons): adopt `state`.
+ */
+export type ActionOutcome =
+  | { kind: 'ok' | 'refused'; result: ActionResult; state: GameState; revision: number }
+  | { kind: 'conflict' | 'rejected'; state: GameState; revision: number; reasons?: string[] };
 
 export class NetworkError extends Error {}
 export class AuthError extends Error {}
@@ -42,7 +49,10 @@ export interface ApiClient {
   createGuest(displayName: string): Promise<LoginResult>;
   loadSave(): Promise<{ state: GameState; revision: number }>;
   upload(state: GameState, baseRevision: number, opts?: { keepalive?: boolean }): Promise<UploadOutcome>;
-  synthesize(state: GameState, baseRevision: number, inputs: ItemId[]): Promise<SynthOutcome>;
+  synthesize(state: GameState, baseRevision: number, inputs: ItemId[]): Promise<ActionOutcome>;
+  empower(state: GameState, baseRevision: number, spellId: string): Promise<ActionOutcome>;
+  reveal(state: GameState, baseRevision: number, keyItem: ItemId): Promise<ActionOutcome>;
+  unlockPassive(state: GameState, baseRevision: number, passiveId: string): Promise<ActionOutcome>;
   login(username: string, password: string): Promise<LoginResult>;
   bind(username: string, password: string): Promise<{ username: string }>;
   getAccount(): Promise<AccountInfo>;
@@ -58,9 +68,17 @@ interface Reply {
 }
 
 function parseServerState(raw: unknown): GameState {
-  const s = parseState(raw, gameData);
+  const s = parseState(raw, content);
   if (!s) throw new ApiError('invalid state from server', 0);
   return s;
+}
+
+function resultOf(body: Record<string, unknown>): ActionResult {
+  const r = body.result;
+  if (typeof r !== 'object' || r === null || typeof (r as { kind?: unknown }).kind !== 'string') {
+    throw new ApiError('invalid result from server', 0);
+  }
+  return r as ActionResult;
 }
 
 function revisionOf(body: Record<string, unknown>): number {
@@ -116,6 +134,19 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
     return { status: res.status, body: parsed as Record<string, unknown> };
   }
 
+  /** A server action: 200 applied, 409 conflict, 422 with `result` refused by the rules, 422 with `reasons` audit rejection. */
+  async function action(path: string, body: Record<string, unknown>): Promise<ActionOutcome> {
+    const { status, body: reply } = await request('POST', path, body, undefined, [409, 422]);
+    const state = parseServerState(reply.state);
+    const revision = revisionOf(reply);
+    if (status === 409) return { kind: 'conflict', state, revision };
+    if (status === 422 && reply.result === undefined) {
+      const reasons = Array.isArray(reply.reasons) ? reply.reasons.filter((r): r is string => typeof r === 'string') : [];
+      return { kind: 'rejected', state, revision, reasons };
+    }
+    return { kind: status === 422 ? 'refused' : 'ok', result: resultOf(reply), state, revision };
+  }
+
   return {
     async createGuest(displayName) {
       const { body } = await request('POST', '/api/guest', { displayName });
@@ -139,14 +170,10 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
       }
       return { kind: 'ok', revision: revisionOf(body) };
     },
-    async synthesize(state, baseRevision, inputs) {
-      const { status, body } = await request('POST', '/api/synthesize', { state, baseRevision, inputs }, undefined, [409, 422]);
-      const next = parseServerState(body.state);
-      const revision = revisionOf(body);
-      if (status === 409) return { kind: 'conflict', state: next, revision };
-      if (status === 422) return { kind: 'rejected', state: next, revision };
-      return { kind: 'ok', result: body.result as SynthResult, state: next, revision };
-    },
+    synthesize: (state, baseRevision, inputs) => action('/api/synthesize', { state, baseRevision, inputs }),
+    empower: (state, baseRevision, spellId) => action('/api/empower', { state, baseRevision, spellId }),
+    reveal: (state, baseRevision, keyItem) => action('/api/reveal', { state, baseRevision, keyItem }),
+    unlockPassive: (state, baseRevision, passiveId) => action('/api/passive', { state, baseRevision, passiveId }),
     async login(username, password) {
       const { body } = await request('POST', '/api/login', { username, password: await clientPasswordHash(username, password) });
       if (typeof body.token !== 'string') throw new ApiError('invalid token from server', 0);

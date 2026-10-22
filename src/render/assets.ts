@@ -1,9 +1,9 @@
 import { Assets, type Texture } from 'pixi.js';
-import { gameData } from '../engine/data';
+import { content } from '../engine/content';
 
 export const ASSET_KEYS: string[] = [
   'hero_idle',
-  ...Object.keys(gameData.monsters).map((id) => `monster_${id}`),
+  ...Object.keys(content.monsters).map((id) => `monster_${id}`),
   'fx_bolt',
   'fx_beam',
   'fx_chain',

@@ -1,10 +1,15 @@
 import { canDamage, overlevelEfficiency } from '../engine/combat-rules';
-import type { GameState } from '../engine/state';
-import { ELEMENT_ORDER, type ElementId, type GameData, type SpellDef, type SpellPattern, type ZoneDef } from '../engine/types';
+import type { Content, Effect, GameState, Spell, Zone } from '../engine/model';
+import { resolveSpell, spellAtLevel } from '../engine/spells';
+import { ELEMENT_ORDER, type ElementId } from '../engine/types';
 
 export type SpellSort = 'element' | 'tier';
 
-export const PATTERN_LABEL: Record<SpellPattern, string> = { bolt: '單體', beam: '光束', chain: '連鎖', nova: '擴散' };
+/** Short label for a spell's main effect shape. */
+export const SHAPE_LABEL: Record<Effect['kind'], string> = {
+  bolt: '飛彈', ring: '擴散', blades: '刃', chain: '連鎖', zone: '區域', storm: '風暴',
+  meteor: '隕石', field: '全場', haste: '加速', backfire: '反噬',
+};
 export const ELEMENT_LABEL: Record<ElementId, string> = { fire: '火', wind: '風', thunder: '雷', earth: '土', water: '水' };
 
 export interface SpellRow {
@@ -12,7 +17,7 @@ export interface SpellRow {
   name: string;
   elements: ElementId[];
   tier: number;
-  pattern: SpellPattern;
+  shape: Effect['kind'];
   attack: number;
   equipped: boolean;
   bossImmune: boolean;
@@ -25,24 +30,31 @@ export interface SpellGroup {
 }
 
 /** Overlevel is measured against the strongest regular monster of the zone (same as the HUD note). */
-export function zoneRegularTier(zone: ZoneDef, data: GameData): number {
-  return Math.max(...zone.monsters.map((id) => data.monsters[id]?.tier ?? 1));
+export function zoneRegularTier(zone: Zone, content: Content): number {
+  return Math.max(...zone.monsters.map((id) => content.monsters[id]?.tier ?? 1));
 }
 
-export function spellPickerGroups(game: GameState, data: GameData, sort: SpellSort): SpellGroup[] {
-  const zone = data.zones.find((z) => z.id === game.currentZone);
-  const boss = zone ? data.monsters[zone.bossId] : undefined;
-  const regular = zone ? zoneRegularTier(zone, data) : 1;
+/** A learned spell as it fights: named or crafted, at its empower level. Null for an unknown id. */
+export function fightingSpell(game: GameState, id: string, content: Content): Spell | null {
+  const base = resolveSpell(id, content);
+  if (!base) return null;
+  return spellAtLevel(base, Object.hasOwn(game.levels, id) ? game.levels[id]! : 1);
+}
+
+export function spellPickerGroups(game: GameState, content: Content, sort: SpellSort): SpellGroup[] {
+  const zone = content.zones.find((z) => z.id === game.currentZone);
+  const boss = zone ? content.monsters[zone.bossId] : undefined;
+  const regular = zone ? zoneRegularTier(zone, content) : 1;
   const rows: SpellRow[] = game.learned
-    .map((id) => data.spells[id])
-    .filter((s): s is SpellDef => Boolean(s))
+    .map((id) => fightingSpell(game, id, content))
+    .filter((s): s is Spell => Boolean(s))
     .map((s) => ({
       id: s.id,
       name: s.name,
       elements: s.elements,
       tier: s.tier,
-      pattern: s.pattern,
-      attack: s.attack,
+      shape: s.effects[0]?.kind ?? 'bolt',
+      attack: Math.round(s.attack),
       equipped: s.id === game.equipped,
       bossImmune: boss ? !canDamage(s, boss) : false,
       dropEfficiency: overlevelEfficiency(s.tier, regular),
@@ -81,12 +93,12 @@ export interface ZoneRow {
   lockText: string | null;
 }
 
-export function zonePickerRows(game: GameState, data: GameData): ZoneRow[] {
-  const zones = [...data.zones].sort((a, b) => a.order - b.order);
+export function zonePickerRows(game: GameState, content: Content): ZoneRow[] {
+  const zones = [...content.zones].sort((a, b) => a.order - b.order);
   return zones.map((z, i) => {
-    const tiers = z.monsters.map((id) => data.monsters[id]?.tier ?? 1);
-    const boss = data.monsters[z.bossId];
-    const prevBoss = i > 0 ? data.monsters[zones[i - 1]!.bossId] : undefined;
+    const tiers = z.monsters.map((id) => content.monsters[id]?.tier ?? 1);
+    const boss = content.monsters[z.bossId];
+    const prevBoss = i > 0 ? content.monsters[zones[i - 1]!.bossId] : undefined;
     const status: ZoneStatus =
       game.currentZone === z.id
         ? 'current'

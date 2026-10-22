@@ -1,4 +1,4 @@
-import type { ElementId, SpellDef } from '../engine/types';
+import type { ElementId } from '../engine/types';
 
 export const COLORS: { bg: string; rune: string; amber: string; element: Record<ElementId | 'none', string> } = {
   bg: '#0d0f14',
@@ -15,7 +15,7 @@ export const COLORS: { bg: string; rune: string; amber: string; element: Record<
 };
 
 /** Spell effect colour: the first element's colour, or the neutral colour for element-less spells. */
-export function spellColor(spell: SpellDef): string {
+export function spellColor(spell: { elements: readonly ElementId[] }): string {
   const first = spell.elements[0];
   return first ? COLORS.element[first] : COLORS.element.none;
 }

@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { gameData } from '../engine/data';
-import { createInitialState } from '../engine/state';
+import { content } from '../engine/content';
+import { createInitialState } from '../engine/persist';
 import { Onboarding } from './Onboarding';
 
 afterEach(cleanup);
 
 function setup() {
-  const result = { token: 't', state: createInitialState(gameData), revision: 1 };
+  const result = { token: 't', state: createInitialState(content), revision: 1 };
   const api = { createGuest: vi.fn(async () => result), login: vi.fn(async () => result) };
   const onDone = vi.fn();
   render(<Onboarding api={api} onDone={onDone} />);

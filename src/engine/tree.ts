@@ -18,7 +18,7 @@ export function depthCap(state: GameState, content: Content): number {
   return Math.min(HARD_MAX_DEPTH, BASE_DEPTH_CAP + add);
 }
 
-export function visibleRegions(state: GameState, content: Content): Set<string> {
+export function visibleRegions(state: Pick<GameState, 'revealed'>, content: Content): Set<string> {
   const out = new Set<string>(state.revealed);
   for (const r of content.regions) if (r.initiallyVisible) out.add(r.id);
   return out;

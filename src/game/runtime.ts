@@ -1,8 +1,8 @@
-import { createBattle, STEP_MS, stepBattle, type BattleEvent, type BattleState } from '../engine/battle';
+import { createBattle, STEP_MS, stepBattle, type BattleEvent, type BattleState } from '../engine/combat';
 import { upgradeElement } from '../engine/inventory';
+import type { Content, GameState } from '../engine/model';
 import type { Rng } from '../engine/rng';
-import { equipSpell, travel, type GameState } from '../engine/state';
-import type { ElementId, GameData } from '../engine/types';
+import type { ElementId } from '../engine/types';
 
 export const MAX_CATCHUP_MS = 1000;
 
@@ -11,6 +11,7 @@ export interface Snapshot {
   battle: BattleState;
   revision: number;
   paused: boolean;
+  /** a server action (synthesis, empower, reveal, passive) is in flight; its reply replaces the game state */
   synthPending: boolean;
 }
 
@@ -21,7 +22,7 @@ export class GameRuntime {
   private eventListeners = new Set<(events: BattleEvent[]) => void>();
 
   constructor(
-    private readonly data: GameData,
+    private readonly content: Content,
     state: GameState,
     revision: number,
     private readonly rng: Rng,
@@ -62,7 +63,7 @@ export class GameRuntime {
     let steps = 0;
     while (this.leftoverMs >= STEP_MS) {
       this.leftoverMs -= STEP_MS;
-      const r = stepBattle(game, battle, this.data, this.rng);
+      const r = stepBattle(game, battle, this.content, this.rng);
       game = r.game;
       battle = r.battle;
       events.push(...r.events);
@@ -80,7 +81,7 @@ export class GameRuntime {
   }
 
   /**
-   * Adopts a server state (synthesis result or upload conflict). The battle is client-side only and never
+   * Adopts a server state (action result or upload conflict). The battle is client-side only and never
    * saved, so it keeps running unless the server's state is in another zone; kill progress lives in
    * `state.zoneKills`, which comes from the server either way.
    */
@@ -105,14 +106,15 @@ export class GameRuntime {
   }
 
   equip(spellId: string): void {
-    const next = equipSpell(this.snapshot.game, spellId);
-    if (next !== this.snapshot.game) this.set({ game: next });
+    const g = this.snapshot.game;
+    if (g.equipped === spellId || !g.learned.includes(spellId)) return;
+    this.set({ game: { ...g, equipped: spellId } });
   }
 
   travel(zoneId: string): boolean {
-    const next = travel(this.snapshot.game, zoneId);
-    if (!next) return false;
-    this.set({ game: next, battle: createBattle(zoneId) });
+    const g = this.snapshot.game;
+    if (!g.unlockedZones.includes(zoneId)) return false;
+    this.set({ game: { ...g, currentZone: zoneId }, battle: createBattle(zoneId) });
     return true;
   }
 

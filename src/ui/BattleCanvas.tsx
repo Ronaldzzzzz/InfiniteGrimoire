@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { loadOptionalTextures } from '../render/assets';
 import { BattleView } from '../render/battle-view';
-import { gameData } from '../engine/data';
+import { content } from '../engine/content';
 import type { GameRuntime } from '../game/runtime';
 
 export function BattleCanvas({ runtime }: { runtime: GameRuntime }) {
@@ -15,7 +15,7 @@ export function BattleCanvas({ runtime }: { runtime: GameRuntime }) {
 
     void loadOptionalTextures(import.meta.env.BASE_URL).then((textures) => {
       if (cancelled) return;
-      const view = new BattleView(host, gameData, textures);
+      const view = new BattleView(host, content, textures);
       const offEvents = runtime.onEvents((events) => view.handle(events));
       const offFrame = view.onFrame(() => view.sync(runtime.getSnapshot(), runtime.stepAlpha()));
       cleanup = () => {
