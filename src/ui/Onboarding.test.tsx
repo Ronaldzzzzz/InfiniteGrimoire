@@ -82,6 +82,15 @@ describe('Onboarding login', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('嘗試次數過多，請 2 分鐘後再試'));
   });
 
+  it('shows progress on the button while logging in', async () => {
+    const { api, user, pass, submitLogin } = openLogin();
+    api.login.mockImplementationOnce(() => new Promise(() => {}));
+    fireEvent.change(user, { target: { value: 'mage_1' } });
+    fireEvent.change(pass, { target: { value: 'password1' } });
+    submitLogin();
+    expect(await screen.findByRole('button', { name: '處理中…' })).toBeTruthy();
+  });
+
   it('can go back to creating a new character', () => {
     openLogin();
     fireEvent.click(screen.getByRole('button', { name: '建立新角色' }));

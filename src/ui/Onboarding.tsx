@@ -76,7 +76,7 @@ export function Onboarding({
         </>
       )}
       {error && <p className="error" role="alert">{error}</p>}
-      <button type="submit" className="primary" disabled={busy}>{mode === 'new' ? '開始冒險' : '登入'}</button>
+      <button type="submit" className="primary" disabled={busy}>{busy ? '處理中…' : mode === 'new' ? '開始冒險' : '登入'}</button>
       <button type="button" className="link-button" onClick={() => switchMode(mode === 'new' ? 'login' : 'new')}>
         {mode === 'new' ? '已有帳號？登入' : '建立新角色'}
       </button>

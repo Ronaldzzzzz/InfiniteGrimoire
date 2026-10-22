@@ -3,6 +3,7 @@ import { parseState } from '../engine/save';
 import type { GameState } from '../engine/state';
 import type { SynthResult } from '../engine/synthesis';
 import type { ItemId } from '../engine/types';
+import { clientPasswordHash } from './password-hash';
 
 export type UploadOutcome =
   | { kind: 'ok'; revision: number }
@@ -45,7 +46,8 @@ export interface ApiClient {
   login(username: string, password: string): Promise<LoginResult>;
   bind(username: string, password: string): Promise<{ username: string }>;
   getAccount(): Promise<AccountInfo>;
-  changePassword(current: string, next: string): Promise<void>;
+  /** `username` is the account's name: the browser-side hash is salted with it. */
+  changePassword(username: string, current: string, next: string): Promise<void>;
   logoutOthers(): Promise<void>;
   logout(): Promise<void>;
 }
@@ -146,12 +148,12 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
       return { kind: 'ok', result: body.result as SynthResult, state: next, revision };
     },
     async login(username, password) {
-      const { body } = await request('POST', '/api/login', { username, password });
+      const { body } = await request('POST', '/api/login', { username, password: await clientPasswordHash(username, password) });
       if (typeof body.token !== 'string') throw new ApiError('invalid token from server', 0);
       return { token: body.token, state: parseServerState(body.state), revision: revisionOf(body) };
     },
     async bind(username, password) {
-      const { body } = await request('POST', '/api/account/bind', { username, password });
+      const { body } = await request('POST', '/api/account/bind', { username, password: await clientPasswordHash(username, password) });
       if (typeof body.username !== 'string') throw new ApiError('invalid bind reply', 0);
       return { username: body.username };
     },
@@ -160,8 +162,9 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
       if (typeof body.displayName !== 'string' || typeof body.sessions !== 'number') throw new ApiError('invalid account reply', 0);
       return { displayName: body.displayName, username: typeof body.username === 'string' ? body.username : null, sessions: body.sessions };
     },
-    async changePassword(current, next) {
-      await request('POST', '/api/account/password', { current, next });
+    async changePassword(username, current, next) {
+      const [c, n] = await Promise.all([clientPasswordHash(username, current), clientPasswordHash(username, next)]);
+      await request('POST', '/api/account/password', { current: c, next: n });
     },
     async logoutOthers() {
       await request('POST', '/api/account/logout-others', {});

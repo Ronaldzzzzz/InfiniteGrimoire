@@ -107,7 +107,7 @@ export function AccountDialog({
     const problem = checkNewPassword(fields.next, fields.confirmNext);
     if (problem) return setError(problem);
     void run(async () => {
-      await api.changePassword(fields.current, fields.next);
+      await api.changePassword(info!.username!, fields.current, fields.next);
       setFields((f) => ({ ...f, current: '', next: '', confirmNext: '' }));
       await refresh();
       setNotice('密碼已更新，其他裝置已登出');
@@ -151,7 +151,7 @@ export function AccountDialog({
               <input id="acc-password" type="password" value={fields.password} onChange={set('password')} autoComplete="new-password" />
               <label htmlFor="acc-confirm">確認密碼</label>
               <input id="acc-confirm" type="password" value={fields.confirm} onChange={set('confirm')} autoComplete="new-password" />
-              <button type="submit" className="primary" disabled={busy}>綁定帳號</button>
+              <button type="submit" className="primary" disabled={busy}>{busy ? '處理中…' : '綁定帳號'}</button>
             </form>
             <button type="button" className="link-button" onClick={() => setView('confirm-switch')}>登入其他帳號</button>
           </>
@@ -168,7 +168,7 @@ export function AccountDialog({
               <input id="acc-next" type="password" value={fields.next} onChange={set('next')} autoComplete="new-password" />
               <label htmlFor="acc-confirm-next">確認新密碼</label>
               <input id="acc-confirm-next" type="password" value={fields.confirmNext} onChange={set('confirmNext')} autoComplete="new-password" />
-              <button type="submit" disabled={busy}>更改密碼</button>
+              <button type="submit" disabled={busy}>{busy ? '處理中…' : '更改密碼'}</button>
             </form>
             <div className="dialog-actions">
               <button type="button" disabled={busy} onClick={() => void run(async () => { await api.logoutOthers(); await refresh(); })}>登出其他裝置</button>
@@ -194,7 +194,7 @@ export function AccountDialog({
             <input id="acc-login-username" value={fields.username} onChange={set('username')} autoComplete="username" />
             <label htmlFor="acc-login-password">密碼</label>
             <input id="acc-login-password" type="password" value={fields.password} onChange={set('password')} autoComplete="current-password" />
-            <button type="submit" className="primary" disabled={busy}>登入</button>
+            <button type="submit" className="primary" disabled={busy}>{busy ? '處理中…' : '登入'}</button>
             <button type="button" className="link-button" onClick={() => setView('main')}>返回</button>
           </form>
         )}

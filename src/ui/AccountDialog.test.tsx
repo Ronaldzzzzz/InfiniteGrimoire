@@ -84,8 +84,22 @@ describe('AccountDialog (bound)', () => {
     type('新密碼', 'password2');
     type('確認新密碼', 'password2');
     fireEvent.click(screen.getByRole('button', { name: '更改密碼' }));
-    await waitFor(() => expect(api.changePassword).toHaveBeenCalledWith('password1', 'password2'));
+    await waitFor(() => expect(api.changePassword).toHaveBeenCalledWith('aria_1', 'password1', 'password2'));
     expect(await screen.findByText('密碼已更新，其他裝置已登出')).toBeTruthy();
+  });
+
+  it('shows progress on the button while the password is hashed and sent', async () => {
+    const { api } = setup('aria_1');
+    await screen.findByText('aria_1');
+    let finish = () => {};
+    api.changePassword.mockImplementationOnce(() => new Promise<void>((r) => (finish = r)));
+    type('目前密碼', 'password1');
+    type('新密碼', 'password2');
+    type('確認新密碼', 'password2');
+    fireEvent.click(screen.getByRole('button', { name: '更改密碼' }));
+    expect(await screen.findByRole('button', { name: '處理中…' })).toBeTruthy();
+    finish();
+    expect(await screen.findByRole('button', { name: '更改密碼' })).toBeTruthy();
   });
 
   it('logs out other devices', async () => {
