@@ -26,6 +26,9 @@ export const MAX_WINDOW_MS = 180_000;
 /** An accepted save becomes the new anchor once the anchor is at least this old. */
 export const ANCHOR_ADVANCE_MS = 60_000;
 
+/** A session's last_seen_at is written at most this often. */
+export const SESSION_TOUCH_MS = 60 * 60 * 1000;
+
 /**
  * Applies the inventory change of a synthesis (before -> after, exactly as the engine applied it:
  * inputs out, refunds back in) to the anchor. Counts may go negative: a negative count is the debt
@@ -45,7 +48,7 @@ export function chargeAnchor(anchor: GameState, before: GameState, after: GameSt
   return { ...anchor, inventory };
 }
 
-type Env = { Variables: { player: PlayerRow } };
+type Env = { Variables: { player: PlayerRow; sessionHash: string } };
 type Ctx = Context<Env>;
 
 class HttpError extends Error {
@@ -88,23 +91,22 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (name.length < 1 || [...name].length > 16) throw new HttpError(400, 'invalid displayName');
     const token = newToken();
     const t = now();
-    const player: PlayerRow = {
-      id: crypto.randomUUID(),
-      displayName: name,
-      tokenHash: await hashToken(token),
-      createdAt: t,
-      suspicious: false,
-    };
+    const player: PlayerRow = { id: crypto.randomUUID(), displayName: name, createdAt: t, suspicious: false };
     const state = createInitialState(data);
-    await store.createPlayer(player, serialize(state), t);
+    await store.createPlayer(player, await hashToken(token), serialize(state), t);
     return c.json({ token, playerId: player.id, state, revision: 0 }, 201);
   });
 
   async function auth(c: Ctx, next: () => Promise<void>) {
     const m = /^Bearer (\S+)$/.exec(c.req.header('authorization') ?? '');
-    const player = m ? await store.findPlayerByTokenHash(await hashToken(m[1]!)) : null;
-    if (!player) return c.json({ error: 'unauthorized' }, 401);
-    c.set('player', player);
+    if (!m) return c.json({ error: 'unauthorized' }, 401);
+    const hash = await hashToken(m[1]!);
+    const found = await store.findPlayerBySession(hash);
+    if (!found) return c.json({ error: 'unauthorized' }, 401);
+    const t = now();
+    if (t - found.lastSeenAt >= SESSION_TOUCH_MS) await store.touchSession(hash, t);
+    c.set('player', found.player);
+    c.set('sessionHash', hash);
     await next();
   }
   app.use('/api/save', auth);

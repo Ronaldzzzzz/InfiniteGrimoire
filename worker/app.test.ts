@@ -7,6 +7,7 @@ import { ELEMENT_ORDER } from '../src/engine/types';
 import { elementEquivalent } from '../src/engine/inventory';
 import { GAIN_SLACK, GAIN_TOLERANCE, maxGain } from '../src/engine/validate';
 import { ANCHOR_ADVANCE_MS, createApp, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
+import { hashToken } from './auth';
 import { MemoryStore, type SaveRow } from './store';
 
 let store: MemoryStore;
@@ -48,7 +49,8 @@ describe('POST /api/guest', () => {
     expect(body.state).toEqual(createInitialState(gameData));
     expect(body.token.length).toBeGreaterThanOrEqual(43);
     expect(store.players.get(body.playerId)?.displayName).toBe('Mage');
-    expect(store.players.get(body.playerId)?.tokenHash).not.toBe(body.token);
+    expect(store.sessions.get(await hashToken(body.token))?.playerId).toBe(body.playerId);
+    expect([...store.sessions.keys()]).not.toContain(body.token);
     expect(store.saves.get(body.playerId)?.savedAt).toBe(clock);
     expect(store.saves.get(body.playerId)?.anchorAt).toBe(clock);
     expect(JSON.parse(store.saves.get(body.playerId)!.anchorState)).toEqual(body.state);
@@ -74,6 +76,17 @@ describe('auth', () => {
     expect((await app.request('/api/save', { headers: { authorization: 'Bearer nope' } })).status).toBe(401);
     expect((await app.request('/api/save', json({}, undefined, 'PUT'))).status).toBe(401);
     expect((await app.request('/api/synthesize', json({}))).status).toBe(401);
+  });
+
+  it('touches last_seen_at at most once an hour', async () => {
+    const { body } = await guest();
+    const hash = await hashToken(body.token);
+    clock += 10 * 60 * 1000;
+    await app.request('/api/save', { headers: { authorization: `Bearer ${body.token}` } });
+    expect(store.sessions.get(hash)?.lastSeenAt).toBe(1_000_000);
+    clock += 60 * 60 * 1000;
+    await app.request('/api/save', { headers: { authorization: `Bearer ${body.token}` } });
+    expect(store.sessions.get(hash)?.lastSeenAt).toBe(clock);
   });
 });
 
@@ -254,10 +267,10 @@ describe('synthesize', () => {
 });
 
 describe('MemoryStore.commitSave', () => {
-  const player = { id: 'p', displayName: 'x', tokenHash: 'h', createdAt: 0, suspicious: false };
+  const player = { id: 'p', displayName: 'x', createdAt: 0, suspicious: false };
   it('stale baseRevision returns false and leaves the save unchanged', async () => {
     const s = new MemoryStore();
-    await s.createPlayer(player, 'A', 0);
+    await s.createPlayer(player, 'h', 'A', 0);
     expect(await s.commitSave('p', 0, 'B', 10, null)).toBe(true);
     expect(await s.commitSave('p', 0, 'C', 20, { state: 'C', at: 20 })).toBe(false);
     expect(await s.getSave('p')).toMatchObject({
@@ -266,7 +279,7 @@ describe('MemoryStore.commitSave', () => {
   });
   it('writes the anchor only when given one, in the same commit', async () => {
     const s = new MemoryStore();
-    await s.createPlayer(player, 'A', 0);
+    await s.createPlayer(player, 'h', 'A', 0);
     expect(await s.getSave('p')).toMatchObject({ anchorState: 'A', anchorAt: 0 });
     await s.commitSave('p', 0, 'B', 10, null);
     expect(await s.getSave('p')).toMatchObject({ state: 'B', anchorState: 'A', anchorAt: 0 });

@@ -1,7 +1,6 @@
 export interface PlayerRow {
   id: string;
   displayName: string;
-  tokenHash: string;
   createdAt: number;
   suspicious: boolean;
 }
@@ -23,9 +22,45 @@ export interface AnchorWrite {
   at: number;
 }
 
+export interface CredentialsRow {
+  playerId: string;
+  username: string;
+  /** NFKC + lowercase; unique */
+  usernameKey: string;
+  passwordHash: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type BindResult = 'ok' | 'taken' | 'already_bound';
+
+/** Events in a time window: how many, and the oldest one's time (for Retry-After). */
+export interface RateWindow {
+  count: number;
+  oldest: number | null;
+}
+
 export interface Store {
-  createPlayer(p: PlayerRow, initialState: string, now: number): Promise<void>;
-  findPlayerByTokenHash(hash: string): Promise<PlayerRow | null>;
+  /** Creates the player, its first session and its initial save. */
+  createPlayer(p: PlayerRow, sessionHash: string, initialState: string, now: number): Promise<void>;
+  getPlayer(id: string): Promise<PlayerRow | null>;
+  findPlayerBySession(hash: string): Promise<{ player: PlayerRow; lastSeenAt: number } | null>;
+  createSession(hash: string, playerId: string, now: number): Promise<void>;
+  touchSession(hash: string, now: number): Promise<void>;
+  deleteSession(hash: string): Promise<void>;
+  deleteOtherSessions(playerId: string, keepHash: string): Promise<void>;
+  countSessions(playerId: string): Promise<number>;
+  findCredentialsByKey(usernameKey: string): Promise<CredentialsRow | null>;
+  findCredentialsByPlayer(playerId: string): Promise<CredentialsRow | null>;
+  /** 'taken' when another player has the username key; 'already_bound' when this player has credentials. */
+  createCredentials(row: CredentialsRow): Promise<BindResult>;
+  updatePasswordHash(playerId: string, passwordHash: string, now: number): Promise<void>;
+  /** Also deletes failures older than a day. */
+  recordLoginFailure(keys: string[], now: number): Promise<void>;
+  loginFailures(key: string, since: number): Promise<RateWindow>;
+  /** Also deletes records older than a day. */
+  recordGuestCreation(ip: string, now: number): Promise<void>;
+  guestCreations(ip: string, since: number): Promise<RateWindow>;
   getSave(playerId: string): Promise<SaveRow | null>;
   /**
    * revision 等於 baseRevision 時，把目前存檔移到 prev，寫入新存檔並讓 revision+1；不一致時回傳 false。
@@ -40,6 +75,10 @@ export interface Store {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+function windowOf(times: number[]): RateWindow {
+  return { count: times.length, oldest: times.length > 0 ? Math.min(...times) : null };
+}
+
 /** In-memory store for tests. commitSave is a synchronous compare-and-set. */
 export class MemoryStore implements Store {
   players = new Map<string, PlayerRow>();
@@ -47,8 +86,14 @@ export class MemoryStore implements Store {
   rejections: { playerId: string; at: number; reasons: string[] }[] = [];
   synthEvents: { playerId: string; at: number; combo: string; result: string }[] = [];
 
-  async createPlayer(p: PlayerRow, initialState: string, now: number): Promise<void> {
+  sessions = new Map<string, { playerId: string; createdAt: number; lastSeenAt: number }>();
+  credentials = new Map<string, CredentialsRow>(); // by playerId
+  loginFailureLog: { key: string; at: number }[] = [];
+  guestCreationLog: { ip: string; at: number }[] = [];
+
+  async createPlayer(p: PlayerRow, sessionHash: string, initialState: string, now: number): Promise<void> {
     this.players.set(p.id, { ...p });
+    this.sessions.set(sessionHash, { playerId: p.id, createdAt: now, lastSeenAt: now });
     this.saves.set(p.id, {
       playerId: p.id,
       state: initialState,
@@ -61,9 +106,76 @@ export class MemoryStore implements Store {
     });
   }
 
-  async findPlayerByTokenHash(hash: string): Promise<PlayerRow | null> {
-    for (const p of this.players.values()) if (p.tokenHash === hash) return { ...p };
+  async getPlayer(id: string): Promise<PlayerRow | null> {
+    const p = this.players.get(id);
+    return p ? { ...p } : null;
+  }
+
+  async findPlayerBySession(hash: string): Promise<{ player: PlayerRow; lastSeenAt: number } | null> {
+    const s = this.sessions.get(hash);
+    const p = s ? this.players.get(s.playerId) : undefined;
+    return s && p ? { player: { ...p }, lastSeenAt: s.lastSeenAt } : null;
+  }
+
+  async createSession(hash: string, playerId: string, now: number): Promise<void> {
+    this.sessions.set(hash, { playerId, createdAt: now, lastSeenAt: now });
+  }
+
+  async touchSession(hash: string, now: number): Promise<void> {
+    const s = this.sessions.get(hash);
+    if (s) s.lastSeenAt = now;
+  }
+
+  async deleteSession(hash: string): Promise<void> {
+    this.sessions.delete(hash);
+  }
+
+  async deleteOtherSessions(playerId: string, keepHash: string): Promise<void> {
+    for (const [h, s] of this.sessions) if (s.playerId === playerId && h !== keepHash) this.sessions.delete(h);
+  }
+
+  async countSessions(playerId: string): Promise<number> {
+    return [...this.sessions.values()].filter((s) => s.playerId === playerId).length;
+  }
+
+  async findCredentialsByKey(usernameKey: string): Promise<CredentialsRow | null> {
+    for (const c of this.credentials.values()) if (c.usernameKey === usernameKey) return { ...c };
     return null;
+  }
+
+  async findCredentialsByPlayer(playerId: string): Promise<CredentialsRow | null> {
+    const c = this.credentials.get(playerId);
+    return c ? { ...c } : null;
+  }
+
+  async createCredentials(row: CredentialsRow): Promise<BindResult> {
+    if (this.credentials.has(row.playerId)) return 'already_bound';
+    if (await this.findCredentialsByKey(row.usernameKey)) return 'taken';
+    this.credentials.set(row.playerId, { ...row });
+    return 'ok';
+  }
+
+  async updatePasswordHash(playerId: string, passwordHash: string, now: number): Promise<void> {
+    const c = this.credentials.get(playerId);
+    if (c) this.credentials.set(playerId, { ...c, passwordHash, updatedAt: now });
+  }
+
+  async recordLoginFailure(keys: string[], now: number): Promise<void> {
+    this.loginFailureLog = this.loginFailureLog.filter((f) => f.at >= now - DAY_MS);
+    for (const key of keys) this.loginFailureLog.push({ key, at: now });
+  }
+
+  async loginFailures(key: string, since: number): Promise<RateWindow> {
+    return windowOf(this.loginFailureLog.filter((f) => f.key === key && f.at >= since).map((f) => f.at));
+  }
+
+  async recordGuestCreation(ip: string, now: number): Promise<void> {
+    this.guestCreationLog = this.guestCreationLog.filter((g) => g.at >= now - DAY_MS);
+    this.guestCreationLog.push({ ip, at: now });
+  }
+
+  async guestCreations(ip: string, since: number): Promise<RateWindow> {
+    return windowOf(this.guestCreationLog.filter((g) => g.ip === ip && g.at >= since).map((g) => g.at));
   }
 
   async getSave(playerId: string): Promise<SaveRow | null> {

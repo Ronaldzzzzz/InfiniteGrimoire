@@ -1,4 +1,4 @@
-import type { AnchorWrite, PlayerRow, SaveRow, Store } from './store';
+import type { AnchorWrite, BindResult, CredentialsRow, PlayerRow, RateWindow, SaveRow, Store } from './store';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -23,22 +23,68 @@ interface SaveDb {
 export class D1Store implements Store {
   constructor(private readonly db: D1Database) {}
 
-  async createPlayer(p: PlayerRow, initialState: string, now: number): Promise<void> {
-    await this.db.batch([
-      this.db
-        .prepare('INSERT INTO players (id, display_name, token_hash, created_at, suspicious) VALUES (?, ?, ?, ?, ?)')
-        .bind(p.id, p.displayName, p.tokenHash, p.createdAt, p.suspicious ? 1 : 0),
-      this.db
-        .prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 0, ?, ?, ?)')
-        .bind(p.id, initialState, now, initialState, now),
-    ]);
+  async createPlayer(_p: PlayerRow, _sessionHash: string, _initialState: string, _now: number): Promise<void> {
+    throw new Error('not implemented: Task 4');
   }
 
-  async findPlayerByTokenHash(hash: string): Promise<PlayerRow | null> {
-    const r = await this.db.prepare('SELECT * FROM players WHERE token_hash = ?').bind(hash).first<PlayerDb>();
-    return r
-      ? { id: r.id, displayName: r.display_name, tokenHash: r.token_hash, createdAt: r.created_at, suspicious: r.suspicious === 1 }
-      : null;
+  async getPlayer(_id: string): Promise<PlayerRow | null> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async findPlayerBySession(_hash: string): Promise<{ player: PlayerRow; lastSeenAt: number } | null> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async createSession(_hash: string, _playerId: string, _now: number): Promise<void> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async touchSession(_hash: string, _now: number): Promise<void> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async deleteSession(_hash: string): Promise<void> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async deleteOtherSessions(_playerId: string, _keepHash: string): Promise<void> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async countSessions(_playerId: string): Promise<number> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async findCredentialsByKey(_usernameKey: string): Promise<CredentialsRow | null> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async findCredentialsByPlayer(_playerId: string): Promise<CredentialsRow | null> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async createCredentials(_row: CredentialsRow): Promise<BindResult> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async updatePasswordHash(_playerId: string, _passwordHash: string, _now: number): Promise<void> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async recordLoginFailure(_keys: string[], _now: number): Promise<void> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async loginFailures(_key: string, _since: number): Promise<RateWindow> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async recordGuestCreation(_ip: string, _now: number): Promise<void> {
+    throw new Error('not implemented: Task 4');
+  }
+
+  async guestCreations(_ip: string, _since: number): Promise<RateWindow> {
+    throw new Error('not implemented: Task 4');
   }
 
   async getSave(playerId: string): Promise<SaveRow | null> {
