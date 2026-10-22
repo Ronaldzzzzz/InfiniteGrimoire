@@ -29,6 +29,18 @@ export const ANCHOR_ADVANCE_MS = 60_000;
 /** A session's last_seen_at is written at most this often. */
 export const SESSION_TOUCH_MS = 60 * 60 * 1000;
 
+export const GUEST_LIMIT_PER_HOUR = 10;
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Client IP for rate limits: Cloudflare's header, or 'local' in tests and `wrangler dev` without it. */
+function clientIp(c: Ctx): string {
+  return c.req.header('cf-connecting-ip') ?? 'local';
+}
+
+function rateLimited(c: Ctx, retryAfterSec: number): Response {
+  return c.json({ error: 'rate_limited', retryAfterSec: Math.max(1, Math.ceil(retryAfterSec)) }, 429);
+}
+
 /**
  * Applies the inventory change of a synthesis (before -> after, exactly as the engine applied it:
  * inputs out, refunds back in) to the anchor. Counts may go negative: a negative count is the debt
@@ -89,11 +101,20 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const body = await readJson(c);
     const name = typeof body.displayName === 'string' ? body.displayName.trim() : '';
     if (name.length < 1 || [...name].length > 16) throw new HttpError(400, 'invalid displayName');
+    const ip = clientIp(c);
+    const t0 = now();
+    // a record exactly an hour old has expired, matching retryAfterSec
+    const recent = await store.guestCreations(ip, t0 - HOUR_MS + 1);
+    if (recent.count >= GUEST_LIMIT_PER_HOUR && recent.oldest !== null) {
+      return rateLimited(c, (recent.oldest + HOUR_MS - t0) / 1000);
+    }
+
     const token = newToken();
     const t = now();
     const player: PlayerRow = { id: crypto.randomUUID(), displayName: name, createdAt: t, suspicious: false };
     const state = createInitialState(data);
     await store.createPlayer(player, await hashToken(token), serialize(state), t);
+    await store.recordGuestCreation(ip, t);
     return c.json({ token, playerId: player.id, state, revision: 0 }, 201);
   });
 

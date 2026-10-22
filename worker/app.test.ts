@@ -42,6 +42,20 @@ describe('createApp', () => {
 });
 
 describe('POST /api/guest', () => {
+  it('allows 10 guests per ip per hour', async () => {
+    const make = (ip: string) =>
+      app.request('/api/guest', { ...json({ displayName: 'Mage' }), headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip } });
+    for (let i = 0; i < 10; i++) expect((await make('1.2.3.4')).status).toBe(201);
+    const blocked = await make('1.2.3.4');
+    expect(blocked.status).toBe(429);
+    const body = (await blocked.json()) as { error: string; retryAfterSec: number };
+    expect(body.error).toBe('rate_limited');
+    expect(body.retryAfterSec).toBe(3600);
+    expect((await make('5.6.7.8')).status).toBe(201);
+    clock += 60 * 60 * 1000;
+    expect((await make('1.2.3.4')).status).toBe(201);
+  });
+
   it('creates player and returns initial state', async () => {
     const { res, body } = await guest('  Mage  ');
     expect(res.status).toBe(201);
