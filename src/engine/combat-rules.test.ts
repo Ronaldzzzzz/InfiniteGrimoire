@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OVERLEVEL_K, affinityMultiplier, canDamage, computeHit, overlevelEfficiency } from './combat-rules';
+import { OVERLEVEL_K, affinityMultiplier, canDamage, computeDamage, computeHit, overlevelEfficiency } from './combat-rules';
+import type { Monster } from './model';
 import { ELEMENT_ORDER, type MonsterDef, type SpellDef } from './types';
 
 const spell = (o: Partial<SpellDef> = {}): SpellDef => ({
@@ -72,5 +73,28 @@ describe('computeHit', () => {
   it('frozen deals more', () => {
     const s = spell(), m = monster();
     expect(computeHit(s, m, { frozen: true })).toBeGreaterThan(computeHit(s, m, { frozen: false }));
+  });
+});
+
+describe('computeDamage', () => {
+  const mon = (o: Partial<Monster> = {}): Monster => ({
+    id: 'm', name: 'm', nameEn: 'm', element: 'fire', tier: 5, hp: 100, defense: 100,
+    regenPerSec: 0, speed: 0, radius: 0.03, boss: false, drops: [], ...o,
+  });
+  const sp = { tier: 5, attack: 100, elements: [] };
+  const plain = { frozen: false, wetThunder: false, bonusPct: 0 };
+  it('is 0 when the spell cannot damage', () => {
+    expect(computeDamage(1000, { tier: 1, attack: 1, elements: [] }, mon({ tier: 10, defense: 100 }), plain)).toBe(0);
+  });
+  it('applies defense, counters, frozen, wet thunder and bonus', () => {
+    expect(computeDamage(200, sp, mon(), plain)).toBe(100);
+    expect(computeDamage(200, { ...sp, elements: ['water'] }, mon(), plain)).toBe(110);
+    expect(computeDamage(200, sp, mon(), { ...plain, frozen: true })).toBe(150);
+    expect(computeDamage(200, sp, mon(), { ...plain, wetThunder: true })).toBe(200);
+    expect(computeDamage(200, sp, mon(), { ...plain, bonusPct: 10 })).toBe(110);
+    expect(computeDamage(200, sp, mon(), { frozen: true, wetThunder: true, bonusPct: 50 })).toBe(450);
+  });
+  it('is at least 1 when it can damage', () => {
+    expect(computeDamage(0.01, sp, mon({ defense: 1e6 }), plain)).toBe(1);
   });
 });

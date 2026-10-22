@@ -1,4 +1,5 @@
 import type { ElementId, MonsterDef, SpellDef } from './types';
+import type { Monster } from './model';
 
 export const OVERLEVEL_K = 0.5;
 
@@ -34,5 +35,25 @@ export function computeHit(spell: SpellDef, monster: MonsterDef, opts: { frozen:
     ((spell.attack * 100) / (100 + monster.defense)) *
     affinityMultiplier(spell.elements, monster.element) *
     (opts.frozen ? 1.15 : 1);
+  return Math.max(1, Math.round(raw));
+}
+
+/**
+ * Damage of one hit of `attack` (the spell's attack already scaled by the effect) on a monster; 0 means immune.
+ * Frozen foes take x1.5, wet foes take x2 from thunder, bonusPct comes from passives.
+ */
+export function computeDamage(
+  attack: number,
+  spell: { tier: number; attack: number; elements: ElementId[] },
+  monster: Monster,
+  opts: { frozen: boolean; wetThunder: boolean; bonusPct: number },
+): number {
+  if (!canDamage(spell, monster)) return 0;
+  const raw =
+    ((attack * 100) / (100 + monster.defense)) *
+    affinityMultiplier(spell.elements, monster.element) *
+    (opts.frozen ? 1.5 : 1) *
+    (opts.wetThunder ? 2 : 1) *
+    (1 + opts.bonusPct / 100);
   return Math.max(1, Math.round(raw));
 }
