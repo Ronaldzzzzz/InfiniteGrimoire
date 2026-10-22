@@ -5,10 +5,34 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 interface PlayerDb {
   id: string;
   display_name: string;
-  token_hash: string;
   created_at: number;
   suspicious: number;
 }
+interface CredentialsDb {
+  player_id: string;
+  username: string;
+  username_key: string;
+  password_hash: string;
+  created_at: number;
+  updated_at: number;
+}
+
+const toPlayer = (r: PlayerDb): PlayerRow => ({
+  id: r.id,
+  displayName: r.display_name,
+  createdAt: r.created_at,
+  suspicious: r.suspicious === 1,
+});
+
+const toCredentials = (r: CredentialsDb): CredentialsRow => ({
+  playerId: r.player_id,
+  username: r.username,
+  usernameKey: r.username_key,
+  passwordHash: r.password_hash,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
 interface SaveDb {
   player_id: string;
   state: string;
@@ -23,68 +47,123 @@ interface SaveDb {
 export class D1Store implements Store {
   constructor(private readonly db: D1Database) {}
 
-  async createPlayer(_p: PlayerRow, _sessionHash: string, _initialState: string, _now: number): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async createPlayer(p: PlayerRow, sessionHash: string, initialState: string, now: number): Promise<void> {
+    await this.db.batch([
+      this.db
+        .prepare('INSERT INTO players (id, display_name, created_at, suspicious) VALUES (?, ?, ?, ?)')
+        .bind(p.id, p.displayName, p.createdAt, p.suspicious ? 1 : 0),
+      this.db
+        .prepare('INSERT INTO sessions (token_hash, player_id, created_at, last_seen_at) VALUES (?, ?, ?, ?)')
+        .bind(sessionHash, p.id, now, now),
+      this.db
+        .prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 0, ?, ?, ?)')
+        .bind(p.id, initialState, now, initialState, now),
+    ]);
   }
 
-  async getPlayer(_id: string): Promise<PlayerRow | null> {
-    throw new Error('not implemented: Task 4');
+  async getPlayer(id: string): Promise<PlayerRow | null> {
+    const r = await this.db.prepare('SELECT * FROM players WHERE id = ?').bind(id).first<PlayerDb>();
+    return r ? toPlayer(r) : null;
   }
 
-  async findPlayerBySession(_hash: string): Promise<{ player: PlayerRow; lastSeenAt: number } | null> {
-    throw new Error('not implemented: Task 4');
+  async findPlayerBySession(hash: string): Promise<{ player: PlayerRow; lastSeenAt: number } | null> {
+    const r = await this.db
+      .prepare(
+        'SELECT p.id, p.display_name, p.created_at, p.suspicious, s.last_seen_at FROM sessions s JOIN players p ON p.id = s.player_id WHERE s.token_hash = ?',
+      )
+      .bind(hash)
+      .first<PlayerDb & { last_seen_at: number }>();
+    return r ? { player: toPlayer(r), lastSeenAt: r.last_seen_at } : null;
   }
 
-  async createSession(_hash: string, _playerId: string, _now: number): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async createSession(hash: string, playerId: string, now: number): Promise<void> {
+    await this.db
+      .prepare('INSERT INTO sessions (token_hash, player_id, created_at, last_seen_at) VALUES (?, ?, ?, ?)')
+      .bind(hash, playerId, now, now)
+      .run();
   }
 
-  async touchSession(_hash: string, _now: number): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async touchSession(hash: string, now: number): Promise<void> {
+    await this.db.prepare('UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?').bind(now, hash).run();
   }
 
-  async deleteSession(_hash: string): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async deleteSession(hash: string): Promise<void> {
+    await this.db.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(hash).run();
   }
 
-  async deleteOtherSessions(_playerId: string, _keepHash: string): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async deleteOtherSessions(playerId: string, keepHash: string): Promise<void> {
+    await this.db.prepare('DELETE FROM sessions WHERE player_id = ? AND token_hash <> ?').bind(playerId, keepHash).run();
   }
 
-  async countSessions(_playerId: string): Promise<number> {
-    throw new Error('not implemented: Task 4');
+  async countSessions(playerId: string): Promise<number> {
+    const r = await this.db.prepare('SELECT COUNT(*) AS n FROM sessions WHERE player_id = ?').bind(playerId).first<{ n: number }>();
+    return r?.n ?? 0;
   }
 
-  async findCredentialsByKey(_usernameKey: string): Promise<CredentialsRow | null> {
-    throw new Error('not implemented: Task 4');
+  async findCredentialsByKey(usernameKey: string): Promise<CredentialsRow | null> {
+    const r = await this.db.prepare('SELECT * FROM credentials WHERE username_key = ?').bind(usernameKey).first<CredentialsDb>();
+    return r ? toCredentials(r) : null;
   }
 
-  async findCredentialsByPlayer(_playerId: string): Promise<CredentialsRow | null> {
-    throw new Error('not implemented: Task 4');
+  async findCredentialsByPlayer(playerId: string): Promise<CredentialsRow | null> {
+    const r = await this.db.prepare('SELECT * FROM credentials WHERE player_id = ?').bind(playerId).first<CredentialsDb>();
+    return r ? toCredentials(r) : null;
   }
 
-  async createCredentials(_row: CredentialsRow): Promise<BindResult> {
-    throw new Error('not implemented: Task 4');
+  async createCredentials(row: CredentialsRow): Promise<BindResult> {
+    if (await this.findCredentialsByPlayer(row.playerId)) return 'already_bound';
+    try {
+      await this.db
+        .prepare(
+          'INSERT INTO credentials (player_id, username, username_key, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        )
+        .bind(row.playerId, row.username, row.usernameKey, row.passwordHash, row.createdAt, row.updatedAt)
+        .run();
+      return 'ok';
+    } catch (e) {
+      // a concurrent bind can still lose the race on either unique column
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/UNIQUE constraint failed: credentials\.player_id/.test(msg)) return 'already_bound';
+      if (/UNIQUE constraint failed/.test(msg)) return 'taken';
+      throw e;
+    }
   }
 
-  async updatePasswordHash(_playerId: string, _passwordHash: string, _now: number): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async updatePasswordHash(playerId: string, passwordHash: string, now: number): Promise<void> {
+    await this.db
+      .prepare('UPDATE credentials SET password_hash = ?, updated_at = ? WHERE player_id = ?')
+      .bind(passwordHash, now, playerId)
+      .run();
   }
 
-  async recordLoginFailure(_keys: string[], _now: number): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async recordLoginFailure(keys: string[], now: number): Promise<void> {
+    await this.db.batch([
+      this.db.prepare('DELETE FROM login_failures WHERE at < ?').bind(now - DAY_MS),
+      ...keys.map((k) => this.db.prepare('INSERT INTO login_failures (key, at) VALUES (?, ?)').bind(k, now)),
+    ]);
   }
 
-  async loginFailures(_key: string, _since: number): Promise<RateWindow> {
-    throw new Error('not implemented: Task 4');
+  async loginFailures(key: string, since: number): Promise<RateWindow> {
+    const r = await this.db
+      .prepare('SELECT COUNT(*) AS n, MIN(at) AS oldest FROM login_failures WHERE key = ? AND at >= ?')
+      .bind(key, since)
+      .first<{ n: number; oldest: number | null }>();
+    return { count: r?.n ?? 0, oldest: r?.oldest ?? null };
   }
 
-  async recordGuestCreation(_ip: string, _now: number): Promise<void> {
-    throw new Error('not implemented: Task 4');
+  async recordGuestCreation(ip: string, now: number): Promise<void> {
+    await this.db.batch([
+      this.db.prepare('DELETE FROM guest_creations WHERE at < ?').bind(now - DAY_MS),
+      this.db.prepare('INSERT INTO guest_creations (ip, at) VALUES (?, ?)').bind(ip, now),
+    ]);
   }
 
-  async guestCreations(_ip: string, _since: number): Promise<RateWindow> {
-    throw new Error('not implemented: Task 4');
+  async guestCreations(ip: string, since: number): Promise<RateWindow> {
+    const r = await this.db
+      .prepare('SELECT COUNT(*) AS n, MIN(at) AS oldest FROM guest_creations WHERE ip = ? AND at >= ?')
+      .bind(ip, since)
+      .first<{ n: number; oldest: number | null }>();
+    return { count: r?.n ?? 0, oldest: r?.oldest ?? null };
   }
 
   async getSave(playerId: string): Promise<SaveRow | null> {
