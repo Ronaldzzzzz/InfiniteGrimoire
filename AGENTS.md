@@ -20,6 +20,9 @@
 | `docs/superpowers/plans/2026-10-21-v2a-accounts.md` | 第二版 A 的 11 個任務實作計畫（已執行完成） |
 | `docs/superpowers/sdd/2026-10-21-v2a-accounts/progress.md` | 第二版 A 的帳本：Ruling、瀏覽器驗收結果、最終審查 |
 | `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`、`docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`、`docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/` | 試玩回饋修正的規格、計畫、帳本與卡頓量測報告 |
+| `docs/superpowers/specs/2026-10-22-core-rework-design.md` | **核心重做設計規格（目前玩法的最高依據）**：成群魔物、元素五階、名魔法與自創魔法、相性、強化、迷霧與關鍵道具、被動節點 |
+| `docs/superpowers/plans/2026-10-22-core-rework.md` | 核心重做的 12 個任務實作計畫（已執行完成） |
+| `docs/superpowers/sdd/2026-10-22-core-rework/progress.md` | 核心重做的帳本：Ruling R1～R17、各任務審查結果、模擬通關時間、延後的小問題 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼的管理員重設流程、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
@@ -29,26 +32,24 @@
 
 ## 3. 目前狀態（2026-10-22）
 
-- **Branch：** `feat/mvp-core-loop`（從 `main` 分出，含 `docs/initial-design` 的設計文件 commit），第二版 A 在 `feat/v2a-accounts`（從 `feat/mvp-core-loop` 分出）。2026-10-22 經使用者指示，兩者都已 fast-forward 合併到 `main`（本機；push 由使用者自己做）。之後的新功能從 `main` 開新 branch。
+- **Branch：** `feat/core-rework`（從 `feat/v2a-accounts` 分出，疊在 `feat/mvp-core-loop` → `feat/v2a-accounts` 之上），**尚未 push、尚未合併到 `main`**（使用者決定）。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
-  - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。2026-10-22 之前規則放錯在 `~/syncthing/.stignore`，沒有生效，所以 Windows 版 `node_modules` 被同步到 macOS 而無法執行測試。
+  - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
   - `.gitattributes` 強制 LF 換行，避免 Windows 編輯後整個檔案都顯示為修改。
-  - **開對話時自動檢查**：`.claude/settings.json` 的 SessionStart hook 會執行 `scripts/session-context.mjs`（Claude Code 開始、接續、壓縮對話時都會跑），把這台電腦的 git 狀態、`node_modules` 是否為本平台安裝、Syncthing 衝突檔（`*.sync-conflict-*`）和本節內容交給 agent。其他 agent 可以自己執行 `node scripts/session-context.mjs` 看同樣的資訊。
+  - **開對話時自動檢查**：`.claude/settings.json` 的 SessionStart hook 會執行 `scripts/session-context.mjs`，把這台電腦的 git 狀態、`node_modules` 是否為本平台安裝、Syncthing 衝突檔和本節內容交給 agent。其他 agent 可以自己執行 `node scripts/session-context.mjs`。
   - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
-- **第一版（MVP）程式：** 14 個任務全部完成，每個任務都經過獨立審查；最終全 branch 審查找出的問題已修正並複審。
-- **測試：** `npm test` 43 個檔案、343 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
-- **試玩回饋修正：** 已完成（計畫 `docs/superpowers/plans/2026-10-21-playtest-ux-fixes.md`，帳本與量測報告在 `docs/superpowers/sdd/2026-10-21-playtest-ux-fixes/`）。新版面（戰鬥｜魔導書｜元素表＋合成，不再有分頁）、分類元素表、自製地點／魔法選擇器、正圓戰場、React 改用 selector 訂閱（戰鬥中重畫從每秒 20 次降到 0 次）。
-- **模擬結果：** 五條單一屬性路線經由真實伺服器 API，都能打通三個地點，正常遊玩 0 次被拒。全程約 27～50 分鐘。
-
-- **第二版 A（帳號綁定）：** 已完成，已合併到 `main`。帳號＋密碼綁定、多裝置 session、改密碼、登出其他裝置／這台裝置、登入嘗試限制、`/api/guest` 每 IP 每小時 10 個。migration `0003_accounts.sql`（本機已套用；遠端未套用）。本機 headless Chrome 驗收 7 項通過（帳本）。
-  - **2026-10-22 密碼雜湊改版**（計畫 `docs/superpowers/plans/2026-10-22-v2a-client-hash.md`）：瀏覽器端 PBKDF2-SHA256 300,000 次（salt = `infinite-grimoire:v1:` + 帳號名稱 key，`src/game/password-hash.ts`），伺服器只收 43 字元雜湊，再用 secret pepper 做 HMAC-SHA256（`worker/password.ts`）。密碼不離開瀏覽器。pepper 是 Cloudflare secret `PASSWORD_PEPPER`，本機在 `.dev.vars`（不進 git，每台電腦自己建）；沒設定時帳號 API 回 500。**pepper 上線後不能更換**，換了所有帳號都無法登入。
+- **核心重做：** 12 個任務全部完成，每個任務都經過獨立審查，帳本在 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`。玩法改成：魔物成群出現、元素五階（升階成本 3／10／30／100）、名魔法＋自創魔法（任兩個輸入合成、有相性）、同元素強化與融合、魔法強化（`levels`）、魔導書迷霧＋關鍵道具（`revealed`）、被動節點（`passives`）。migration `0004_core_rework.sql` 本機已套用，**會重置所有存檔**；遠端未套用。
+- **測試：** `npm test` 49 個檔案、439 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。偶發過一次未重現的失敗（兩位實作者並行工作時看到、連跑 6 次全過），推測與負載有關，最終審查已記錄。
+- **模擬通關時間（Task 10 修正後，種子 20261021，模擬分鐘，0 次被拒）：** 火 90.4、風 111.8、雷 90.2、土 126.6、水 96.9、混合 93.2；每條純屬性路線落在 60～240 分鐘（R12）。
+- **驗收（headless Chrome，2026-10-22）：** 遊客 → 合出火球 → 升階 → 同元素強化（烈焰爆發）→ 融合（火焰龍捲，出現「新發現！」）→ 自創魔法出現在筆記 → 強化 → 第一個魔王倒下拿到風暴之心 → 使用後迷霧散開 → 解鎖被動 → 綁定帳號後重新整理進度都在，全部通過、無頁面錯誤。元素存量與「差 1 隻到魔王」的擊殺數是直接改本機存檔種進去的（其餘都是實際操作）。截圖在工作區 scratchpad，未進版本庫。
+- **之前的功能：** MVP、試玩回饋修正、第二版 A（帳號綁定，`feat/v2a-accounts`；migration 0003 已在本機套用）都已完成，見各自的帳本。
 
 **尚未完成（下一位接手者的待辦）：**
-0. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）；已合併到 `main`，push 由使用者決定。下一個子專案是第二版 B（稀有魔法發現紀錄），要先做設計討論。**部署時注意：** 遠端 D1 要依序套用 0001→0003，套用 0003 前先備份。
-1. **使用者試玩新版面**：自動化驗收（headless Edge）已確認 1280／768／360 寬無橫向捲動、選擇器清單留在畫面內、斷線遮罩出現並恢復、三欄版面與殘卷線索位置。**還沒在真實瀏覽器確認**：卡頓感是否消失、燃燒／麻痺／冰凍特效、`beam` 分支光束、連鎖閃電、換地點後怪物角度重新隨機、玩到第三個地點。
-2. **部署（暫緩，2026-10-21 使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npx wrangler secret put PASSWORD_PEPPER`（隨機長字串，之後不能換）、`npm run deploy`。**部署前要先取得使用者同意。**部署前先照 `docs/prelaunch-checklist.md` 統整一次；其中的**管理員重設密碼工具是上線前必做項目**，要完成並測試。
-3. **合併**：已完成（2026-10-22 使用者指示合併到 `main`）。
+0. **使用者在真實瀏覽器試玩核心重做**：成群清場的手感與「一網打盡」、各元素特效、魔導書迷霧散開、卡頓感（自動化量測：1280x900、80 隻怪加滿畫面約 50 fps，無長時間卡頓）、平衡（通關時間是否合適）。再由使用者決定 push 與合併方式（三個 branch 疊在一起）。
+1. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）。
+2. **第二版 B（稀有魔法發現紀錄）**：要先做設計討論；核心重做的 `synthesisLog` 與自創魔法 id 是它的基礎（帳本 R5：`dormant` 結果不寫進 `synthesisLog`，B 可能想要）。
+3. **部署（暫緩，使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。** 遠端 D1 要依序套用 0001→0003→0004；0004 會重置所有存檔。見 `docs/prelaunch-checklist.md`。
 
 ## 4. 本機啟動
 
@@ -67,16 +68,25 @@ Node 22.13 以上（資料庫測試用到 `node:sqlite`）。新增 migration �
 
 ```
 src/engine/   純 TypeScript 遊戲邏輯（瀏覽器與伺服器共用；禁止 DOM/React/Pixi/Workers API）
-  data.ts 資料載入與交叉檢查 · combat-rules.ts 傷害門檻/越級遞減/相剋 · battle.ts 戰鬥模擬
-  synthesis.ts 合成 · inventory.ts 背包 · state.ts 遊戲狀態 · save.ts 存檔解析 · validate.ts 防作弊上限
-src/data/     魔法、配方、魔物、地點 JSON（內容與數值都在這裡）
-worker/       Cloudflare Worker（Hono）：遊客與帳號（sessions／credentials、password.ts 對瀏覽器雜湊做 HMAC＋pepper）、存檔上傳、伺服器擲骰合成；
+  model.ts 內容與遊戲狀態的型別 · content.ts 內容載入與交叉檢查（zod）· types.ts 元素／階級／道具 id
+  spells.ts 名魔法與自創魔法的解析（resolveSpell、craftedId、spellAtLevel、攻擊上限）
+  crafting.ts 合成（配方、相性、融合成本、重擲不免費）· tree.ts 魔導書節點與迷霧、深度上限、被動解鎖
+  empower.ts 魔法強化與被動加成 · inventory.ts 背包與升階
+  combat-rules.ts 傷害門檻／越級遞減／相剋 · combat.ts 戰鬥模擬（成群魔物、各種魔法效果、狀態、ENGAGE_R 瞄準、MAX_ACTIVE_FX）
+  persist.ts 初始存檔與存檔解析（zod）· audit.ts 防作弊：上傳上限檢查（取代舊的 validate.ts）· rng.ts
+src/data/content/  魔法 spells、配方 recipes、魔物 monsters、地點 zones、素材 materials、關鍵道具 key-items、
+              被動 passives、魔導書區域 regions（*.json；內容與數值都在這裡）
+worker/       Cloudflare Worker（Hono）：遊客與帳號（sessions／credentials、password.ts 對瀏覽器雜湊做 HMAC＋pepper）、
+              存檔上傳、伺服器擲骰合成、強化、使用關鍵道具、解鎖被動；
               store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）
-migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號）
-src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳/斷線/錯誤）、loop、boot
-src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何
-src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable、SynthesisPanel、GrimoirePanel（SVG）、
-              Onboarding、OfflineOverlay；useGame.ts 的 useRuntime(selector)；開發用 PerfMeter
+migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔）
+src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳／動作／斷線／錯誤）、loop、boot
+src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何；
+              element-fx.ts 各元素的粒子語彙；effects.ts 特效視覺；motion.ts 怪物擺動
+src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable、SynthesisPanel／SynthesisMatrix、
+              DiscoveryBanner（新發現、一網打盡）、Notebook（魔法筆記）、EmpowerPanel（強化）、
+              GrimoirePanel（SVG，含迷霧與關鍵道具）、Onboarding、OfflineOverlay；
+              useGame.ts 的 useRuntime(selector)；開發用 PerfMeter
 tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）
 tests/d1/     node:sqlite 上的 D1Store 與 migration 測試
 ```
@@ -85,12 +95,19 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 ## 6. 不能違反的規則
 
-- **專精路線不能被內容卡住**：重要素材不能只從單一屬性取得；屬性相剋最多 ±10%。
+- **專精路線不能被內容卡住**：重要素材不能只從單一屬性取得；屬性相剋最多 ±10%。每條純屬性路線都要能通關，`tests/sim` 的通關時間要落在 60～240 模擬分鐘。
 - **傷害門檻**：魔法階級 ≥ 魔物階級 − 1，或攻擊力 ≥ 防禦 × 0.7，否則傷害為 0（畫面顯示「無效」）。
-- **越級遞減**：d = 魔法階級 − 魔物階級，d ≥ 2 時掉落效益 = 0.5 + 0.5 × 0.5^(d−1)。
+- **越級遞減**：d = 魔法階級 − 魔物階級，d ≥ 2 時掉落效益 = 0.5 + 0.5 × 0.5^(d−1)。例外：`key:` 道具不受遞減影響（R13），每個魔王第一次擊倒一定掉關鍵道具。
 - **小人沒有血條、不會死。**
-- **伺服器是銀行**：`learned`、`synthesisLog` 只能由伺服器改變；合成一律伺服器擲骰。
-- **防作弊錨點窗口**：上傳以「錨點存檔 + 目前的伺服器欄位」為基準檢查增益；錨點每 60 秒前進一次，最多採計 180 秒；合成時把扣掉的材料也記到錨點（可為負，代表欠量）。改動 `validate.ts` 或 `worker/app.ts` 時，必須保持 `tests/sim` 的五條路線 0 次被拒，以及 worker 的對抗測試全部通過。
+- **伺服器是銀行**：`learned`、`levels`、`revealed`、`passives`、`synthesisLog` 只能由伺服器改變（合成、強化、使用關鍵道具、解鎖被動都是伺服器動作）；合成一律伺服器擲骰。被拒絕的動作回 422、不寫入、不算作弊（R9、R11）。
+- **元素五階**：初階／中階／高階／極階／神階；升階成本 3／10／30／100 個低一階的元素。
+- **隨機配方的重試不免費**（R14、R14b）：落空到已會的自創魔法時，照名魔法重複的方式扣成本。
+- **自創魔法 id 只有一種寫法**：`c(<a>|<b>)`，兩個輸入 token 依字串排序（`craftedId`）；不照順序或只有素材的 id 解析成 null（R4）。深度上限 `HARD_MAX_DEPTH`，強化等級上限 `MAX_SPELL_LEVEL`，攻擊上限 `CEILING_FACTOR`。
+- **特效上限**：場上同時存在的特效 `MAX_ACTIVE_FX = 24`（`combat.ts`），畫面與引擎共用；新增特效不要繞過它。
+- **範圍魔法的瞄準**：最密、隨機、最強等目標只考慮中心 `ENGAGE_R = 0.4` 以內的魔物，沒有才退回全部（R16）；一網打盡一定要在畫面裡看得到。
+- **防作弊錨點窗口**：上傳以「錨點存檔 + 目前的伺服器欄位」為基準檢查增益（`audit.ts`）；錨點每 60 秒前進一次，最多採計 180 秒；合成時把扣掉的材料也記到錨點（可為負，代表欠量）；`key:` 道具不給 `GAIN_SLACK`，必須來自真的魔王擊殺（R8）。改動 `audit.ts` 或 `worker/app.ts` 時，必須保持 `tests/sim` 各條路線 0 次被拒，以及 worker 的對抗測試全部通過。
+- **React 效能**：魔導書與節點詳情用窄 selector 訂閱，不能訂閱整個 `game` 或背包（戰鬥中每次掉落會讓整個 SVG 重畫）；有 Profiler 測試把關。
+- **「Lv.」永遠是魔法／魔物階級**；強化等級顯示成「強化 +N」（R17）。
 - **遊客 token 只在 401 時清除**，其他錯誤一律保留 token 並讓玩家重試。
 - **不收集 email**；介面文字用繁體中文，資料名稱附 `nameEn`。
 - 配色：背景 `#0d0f14`、符文綠 `#8fd16a`、琥珀金 `#e8b84a`；元素色見 `src/render/palette.ts`。
@@ -106,9 +123,15 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 ## 8. 已知問題與延後項目
 
-完整清單見帳本 `progress.md` 的 `minor (deferred)` 行；最終審查判定都可以之後再處理。重點：
-- 美術貼圖目前只支援單張圖，不支援多格動畫。
-- 各屬性通關時間差距大：風約 27 分鐘，雷、土約 50 分鐘。原因是魔王只有一隻，能同時打兩個目標的魔法佔便宜。
+完整清單見各帳本的 `minor (deferred)` 行；最終審查判定都可以之後再處理。核心重做中玩家看得到的：
+- 一個狀態中的怪切換成打不動牠的魔法後，牠身上已有的燃燒仍會跳傷害。
+- 追上進度（卡頓後補算）時，擊殺時間用畫面時間記錄，可能誤報「一網打盡」。
+- 最密／最強等多目標魔法在交戰圈內魔物很少時，目標數可能少於 n。
+- 「迷霧散開了」的提示不會自動消失；魔導書過載沒有橫幅。
+- 兩個魔法名字重複用字（雷鳴、颶風）；「感電之海」的線索提到大地。
+- 降級落空到已會的魔法時，畫面不可寫「全部退還」（實際只退第一個輸入）。
+- 平衡數值的產生器（SCALE 表）不在版本庫；`tests/sim` 約 30 秒，模擬一小時約 3 秒。
+- 美術貼圖只支援單張圖，不支援多格動畫；特效的貼圖流程已移除（沒有被要求）。
 - 魔王打不動時，玩家要自己退回前一個地點；HUD 有提示，但沒有自動處理。
 - 同一個 token 開多個分頁時，會互相以 409 覆蓋（不算作弊，資料一致）。
 - 沒有 WebGL 時，Pixi 初始化失敗沒有提示。
@@ -126,6 +149,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-22（Claude Code，Opus 5.5 與 Sonnet 5.5，macOS）**：以 subagent-driven-development 在 branch `feat/core-rework` 執行核心重做計畫的 12 個任務（實作者與審查者分開，帳本 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`，Ruling R1～R17）。重要裁定：隨機配方重試要付成本（R14）、關鍵道具不受越級遞減（R13）、範圍魔法只瞄準交戰圈內的魔物（R16）、「Lv.」只代表階級、強化顯示「強化 +N」（R17）。最後一項任務在 headless Chrome 走完整條流程（火球 → 升階 → 同元素強化 → 融合 → 自創 → 強化 → 魔王 → 關鍵道具 → 被動 → 綁定帳號重整），全部通過；元素存量與魔王前的擊殺數是種進本機存檔的。migration 0004 會重置所有存檔，已寫進上線前檢查清單。停在：全部 commit，尚未 push、尚未合併。下一步：使用者在真實瀏覽器試玩核心重做（感受、平衡、卡頓）→ 決定 push 與合併 → 第二版 B 設計討論。
 
 - **2026-10-22（Claude Code，Opus 5.5，macOS）**：與使用者確認目前不再投入基礎建設，把延後項目整理成 `docs/prelaunch-checklist.md`（含忘記密碼時管理員手動重設的流程，以及部署時要另外保存 pepper），上線前統整一次。使用者把「管理員重設密碼工具」列為上線前必做（或之後討論更合規的替代方案），並指示文件類的修改直接在 `main` commit。停在：已合併到 `main`，尚未 push。下一步：第二版 B 設計討論。
 
