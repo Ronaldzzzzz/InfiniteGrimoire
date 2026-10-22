@@ -581,3 +581,100 @@ describe('honest play through the real engine', () => {
     expect(((await load.json()) as { state: GameState }).state.defeatedBosses).toEqual([firstBoss]);
   });
 });
+describe('accounts: bind and login', () => {
+  const authed = (token: string): RequestInit => ({ headers: { authorization: `Bearer ${token}` } });
+  const bind = (token: string, username: string, password: string) =>
+    app.request('/api/account/bind', json({ username, password }, token));
+  const login = (username: string, password: string, ip = '1.1.1.1') =>
+    app.request('/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip },
+      body: JSON.stringify({ username, password }),
+    });
+
+  it('binds a guest and logs in from another device, keeping both sessions', async () => {
+    const { body: g } = await guest('Aria');
+    const res = await bind(g.token, ' Ａｒｉａ_1 ', 'correct horse');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ username: 'Aria_1' });
+    const cred = store.credentials.get(g.playerId)!;
+    expect(cred.usernameKey).toBe('aria_1');
+    expect(cred.passwordHash).not.toContain('correct horse');
+
+    const lr = await login('ARIA_1', 'correct horse');
+    expect(lr.status).toBe(200);
+    const lb = (await lr.json()) as { token: string; playerId: string; state: GameState; revision: number };
+    expect(lb.playerId).toBe(g.playerId);
+    expect(lb.token).not.toBe(g.token);
+    expect(lb.revision).toBe(0);
+    expect(lb.state).toEqual(createInitialState(gameData));
+    expect((await app.request('/api/save', authed(g.token))).status).toBe(200);
+    expect((await app.request('/api/save', authed(lb.token))).status).toBe(200);
+  });
+
+  it('rejects taken names (case and width insensitive), double binds and bad input', async () => {
+    const { body: a } = await guest('A');
+    const { body: b } = await guest('B');
+    expect((await bind(a.token, 'mage_1', 'password1')).status).toBe(200);
+    const taken = await bind(b.token, 'ＭＡＧＥ_1', 'password1');
+    expect(taken.status).toBe(409);
+    expect(await taken.json()).toEqual({ error: 'taken' });
+    const again = await bind(a.token, 'other', 'password1');
+    expect(again.status).toBe(409);
+    expect(await again.json()).toEqual({ error: 'already_bound' });
+    expect((await bind(b.token, 'ab', 'password1')).status).toBe(400);
+    expect((await bind(b.token, 'a-b-c', 'password1')).status).toBe(400);
+    expect((await bind(b.token, 'mage_2', 'short')).status).toBe(400);
+    expect((await app.request('/api/account/bind', json({ username: 'x_y_z', password: 'password1' }))).status).toBe(401);
+  });
+
+  it('answers a wrong password and an unknown name the same way (403)', async () => {
+    const { body: g } = await guest();
+    await bind(g.token, 'mage_1', 'password1');
+    const wrong = await login('mage_1', 'password2');
+    const unknown = await login('nobody', 'password2');
+    expect(wrong.status).toBe(403);
+    expect(unknown.status).toBe(403);
+    expect(await wrong.json()).toEqual({ error: 'invalid_credentials' });
+    expect(await unknown.json()).toEqual({ error: 'invalid_credentials' });
+    expect((await login('ab', 'password1')).status).toBe(400);
+  });
+
+  it('locks a name after 5 failures in 15 minutes, even for the right password', async () => {
+    const { body: g } = await guest();
+    await bind(g.token, 'mage_1', 'password1');
+    for (let i = 0; i < 5; i++) expect((await login('mage_1', 'nope-nope', `9.9.9.${i}`)).status).toBe(403);
+    const blocked = await login('mage_1', 'password1', '8.8.8.8');
+    expect(blocked.status).toBe(429);
+    const body = (await blocked.json()) as { error: string; retryAfterSec: number };
+    expect(body.error).toBe('rate_limited');
+    expect(body.retryAfterSec).toBeGreaterThan(0);
+    expect(body.retryAfterSec).toBeLessThanOrEqual(900);
+    clock += 15 * 60 * 1000 + 1;
+    expect((await login('mage_1', 'password1', '8.8.8.8')).status).toBe(200);
+  });
+
+  it('a success does not reset the failure count', async () => {
+    const { body: g } = await guest();
+    await bind(g.token, 'mage_1', 'password1');
+    for (let i = 0; i < 4; i++) await login('mage_1', 'nope-nope');
+    expect((await login('mage_1', 'password1')).status).toBe(200);
+    expect((await login('mage_1', 'nope-nope')).status).toBe(403);
+    expect((await login('mage_1', 'password1')).status).toBe(429);
+  });
+
+  it('locks an ip after 20 failures across names', async () => {
+    for (let i = 0; i < 20; i++) expect((await login(`name_${i}`, 'nope-nope', '7.7.7.7')).status).toBe(403);
+    expect((await login('name_x', 'nope-nope', '7.7.7.7')).status).toBe(429);
+    expect((await login('name_x', 'nope-nope', '6.6.6.6')).status).toBe(403);
+  });
+
+  it('upgrades a weaker stored hash on login', async () => {
+    const { body: g } = await guest();
+    await bind(g.token, 'mage_1', 'password1');
+    const { hashPassword } = await import('./password');
+    store.credentials.get(g.playerId)!.passwordHash = await hashPassword('password1', 1000);
+    expect((await login('mage_1', 'password1')).status).toBe(200);
+    expect(store.credentials.get(g.playerId)!.passwordHash).toMatch(/^pbkdf2-sha256\$50000\$/);
+  });
+});

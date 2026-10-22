@@ -7,6 +7,8 @@ import type { Rng } from '../src/engine/rng';
 import type { GameData } from '../src/engine/types';
 import { hashToken, newToken } from './auth';
 import type { PlayerRow, Store } from './store';
+import { normalizeUsername, passwordProblem, usernameKey, usernameProblem } from '../src/engine/account-rules';
+import { DUMMY_HASH, hashPassword, needsRehash, verifyPassword } from './password';
 
 export interface AppDeps {
   store: Store;
@@ -30,6 +32,9 @@ export const ANCHOR_ADVANCE_MS = 60_000;
 export const SESSION_TOUCH_MS = 60 * 60 * 1000;
 
 export const GUEST_LIMIT_PER_HOUR = 10;
+export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+export const USER_FAIL_LIMIT = 5;
+export const IP_FAIL_LIMIT = 20;
 const HOUR_MS = 60 * 60 * 1000;
 
 /** Client IP for rate limits: Cloudflare's header, or 'local' in tests and `wrangler dev` without it. */
@@ -130,6 +135,66 @@ export function createApp(deps: AppDeps): Hono<Env> {
     c.set('sessionHash', hash);
     await next();
   }
+  app.use('/api/account/*', auth);
+  app.use('/api/logout', auth);
+
+  function readCredentials(body: Record<string, unknown>): { username: string; password: string } {
+    const username = typeof body.username === 'string' ? body.username : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+    if (usernameProblem(username)) throw new HttpError(400, 'invalid_username');
+    if (passwordProblem(password)) throw new HttpError(400, 'invalid_password');
+    return { username, password };
+  }
+
+  /** Seconds until the oldest counted failure leaves the window, or null when no limit is hit. */
+  async function loginBlocked(limits: [key: string, limit: number][], t: number): Promise<number | null> {
+    let retry: number | null = null;
+    for (const [key, limit] of limits) {
+      const w = await store.loginFailures(key, t - LOGIN_WINDOW_MS + 1); // see guest limit
+      if (w.count >= limit && w.oldest !== null) retry = Math.max(retry ?? 0, (w.oldest + LOGIN_WINDOW_MS - t) / 1000);
+    }
+    return retry;
+  }
+
+  app.post('/api/account/bind', async (c) => {
+    const { username, password } = readCredentials(await readJson(c));
+    const player = c.get('player');
+    const t = now();
+    const result = await store.createCredentials({
+      playerId: player.id,
+      username: normalizeUsername(username),
+      usernameKey: usernameKey(username),
+      passwordHash: await hashPassword(password),
+      createdAt: t,
+      updatedAt: t,
+    });
+    if (result !== 'ok') return c.json({ error: result }, 409);
+    return c.json({ username: normalizeUsername(username) });
+  });
+
+  app.post('/api/login', async (c) => {
+    const { username, password } = readCredentials(await readJson(c));
+    const key = usernameKey(username);
+    const ip = clientIp(c);
+    const t = now();
+    const retry = await loginBlocked([[`u:${key}`, USER_FAIL_LIMIT], [`ip:${ip}`, IP_FAIL_LIMIT]], t);
+    if (retry !== null) return rateLimited(c, retry);
+    const cred = await store.findCredentialsByKey(key);
+    // always run one PBKDF2 so an unknown name takes as long as a wrong password
+    const matches = await verifyPassword(password, cred?.passwordHash ?? DUMMY_HASH);
+    if (!cred || !matches) {
+      await store.recordLoginFailure([`u:${key}`, `ip:${ip}`], t);
+      return c.json({ error: 'invalid_credentials' }, 403);
+    }
+    const player = await store.getPlayer(cred.playerId);
+    const save = await store.getSave(cred.playerId);
+    if (!player || !save) return c.json({ error: 'internal error' }, 500);
+    if (needsRehash(cred.passwordHash)) await store.updatePasswordHash(player.id, await hashPassword(password), t);
+    const token = newToken();
+    await store.createSession(await hashToken(token), player.id, t);
+    return c.json({ token, playerId: player.id, state: JSON.parse(save.state), revision: save.revision });
+  });
+
   app.use('/api/save', auth);
   app.use('/api/synthesize', auth);
 
