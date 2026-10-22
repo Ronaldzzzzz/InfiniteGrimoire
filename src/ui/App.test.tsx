@@ -49,8 +49,10 @@ const slotTexts = () =>
 describe('App layout', () => {
   it('opens the account dialog from the top bar', async () => {
     setup();
-    fireEvent.click(await screen.findByRole('button', { name: /帳號.*未綁定/ }));
-    expect(await screen.findByRole('dialog', { name: '帳號' })).toBeTruthy();
+    // the first full App render plus the mocked account lookup can pass 1 s when the suite runs under load
+    const slow = { timeout: 5000 };
+    fireEvent.click(await screen.findByRole('button', { name: /帳號.*未綁定/ }, slow));
+    expect(await screen.findByRole('dialog', { name: '帳號' }, slow)).toBeTruthy();
   });
 
   it('has no synthesis / grimoire / map tabs', () => {

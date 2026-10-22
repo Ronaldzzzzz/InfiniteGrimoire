@@ -74,6 +74,20 @@ export function synthesize(
   const fusionCost = (elements: string[], depth: number): ItemId[] =>
     fused ? elements.map((e) => `el:${e}:${requiredGrade(depth)}`) : [];
 
+  /** The crafted spell these inputs fall through to, with its fusion cost, or why it cannot be made. */
+  const craftedOutcome = ():
+    | { id: string; spell: NonNullable<ReturnType<typeof resolveSpell>>; cost: ItemId[] }
+    | { reject: 'unknownInput' | 'grade' } => {
+    const ta = inputToken(inputs[0]!, content), tb = inputToken(inputs[1]!, content);
+    if (ta === null || tb === null) return { reject: 'unknownInput' };
+    const id = craftedId(ta, tb);
+    const spell = resolveSpell(id, content);
+    if (!spell) return { reject: 'unknownInput' };
+    const need = requiredGrade(spell.depth);
+    if (items.some((it) => isElementItem(it) && Number(it.split(':')[2]) < need)) return { reject: 'grade' };
+    return { id, spell, cost: fusionCost(spell.elements, spell.depth) };
+  };
+
   const recipe = findRecipe(content, key);
   let namedId: string | null = null;
   if (recipe) {
@@ -81,6 +95,22 @@ export function synthesize(
       .filter((o) => o.spellId === null || (content.spells[o.spellId]?.prerequisites ?? []).every((p) => state.learned.includes(p)))
       .map((o) => ({ value: o.spellId, weight: o.weight }));
     if (eligible.length === 0) return unchanged({ kind: 'dormant' });
+    // Every outcome the roll could land on must be affordable before rolling; otherwise an unaffordable
+    // outcome would be rejected for free and the player could retry until the affordable one comes up.
+    for (const { value } of eligible) {
+      let cost: ItemId[];
+      if (value === null) {
+        const c = craftedOutcome();
+        if ('reject' in c) return unchanged({ kind: 'rejected', reason: c.reject });
+        cost = c.cost;
+      } else if (state.learned.includes(value)) {
+        continue; // a named duplicate costs no fusion
+      } else {
+        const named = content.spells[value]!;
+        cost = fusionCost(named.elements, named.depth);
+      }
+      if (!removeItems(removed, cost)) return unchanged({ kind: 'rejected', reason: 'insufficient' });
+    }
     namedId = pickWeighted(rng, eligible);
   } else if (items.length === SYNTH_SLOTS) {
     return {
@@ -107,17 +137,9 @@ export function synthesize(
   }
 
   // Crafted spell.
-  const ta = inputToken(inputs[0]!, content), tb = inputToken(inputs[1]!, content);
-  if (ta === null || tb === null) return unchanged({ kind: 'rejected', reason: 'unknownInput' });
-  const id = craftedId(ta, tb);
-  const spell = resolveSpell(id, content);
-  if (!spell) return unchanged({ kind: 'rejected', reason: 'unknownInput' });
-
-  const need = requiredGrade(spell.depth);
-  if (items.some((it) => isElementItem(it) && Number(it.split(':')[2]) < need)) {
-    return unchanged({ kind: 'rejected', reason: 'grade' });
-  }
-  const cost = fusionCost(spell.elements, spell.depth);
+  const c = craftedOutcome();
+  if ('reject' in c) return unchanged({ kind: 'rejected', reason: c.reject });
+  const { id, spell, cost } = c;
   const paid = removeItems(removed, cost);
   if (!paid) return unchanged({ kind: 'rejected', reason: 'insufficient' });
   const spent = [...items, ...cost];

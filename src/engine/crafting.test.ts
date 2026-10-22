@@ -171,4 +171,42 @@ describe('crafting', () => {
     expect(kinds).toContain('fire_tornado:false');
     expect([...kinds].some((k) => k.startsWith('c('))).toBe(true);
   });
+
+  describe('a random recipe needs every outcome affordable before the roll', () => {
+    const inputs = ['thunder_hammer', 'mat:sun_shard'];
+    const learned = ['mana_bolt', 'lightning', 'thunder_hammer'];
+    const crafted = craftedId('mat:sun_shard', 'thunder_hammer');
+    it('the outcomes really cost different amounts', () => {
+      expect(content.spells.holy_judgment!.depth).toBe(3);
+      expect(resolveSpell(crafted, content)!.depth).toBe(2);
+    });
+    for (const [label, stock] of [
+      ['only the crafted fall-through', { 'el:fire:2': 1, 'el:thunder:2': 1 }],
+      ['only the named outcome', { 'el:fire:3': 1, 'el:thunder:3': 1 }],
+    ] as const) {
+      it(`stock covering ${label} is rejected on every seed, spending nothing`, () => {
+        const s = mkState({ 'mat:sun_shard': 1, ...stock }, learned);
+        for (let seed = 1; seed <= 40; seed++) {
+          const r = run(s, inputs, 8, content, seed);
+          expect(r.result).toEqual({ kind: 'rejected', reason: 'insufficient' });
+          expect(r.state).toEqual(s);
+        }
+      });
+    }
+    it('stock covering every outcome rolls and pays as before', () => {
+      const s = mkState({ 'mat:sun_shard': 1, 'el:fire:2': 1, 'el:thunder:2': 1, 'el:fire:3': 1, 'el:thunder:3': 1 }, learned);
+      const seen = new Set<string>();
+      for (let seed = 1; seed <= 60; seed++) {
+        const r = run(s, inputs, 8, content, seed);
+        expect(r.result.kind).toBe('learned');
+        if (r.result.kind !== 'learned') continue;
+        seen.add(r.result.spellId);
+        expect(r.state.learned).toContain(r.result.spellId);
+        expect(r.state.inventory).toEqual(r.result.spellId === 'holy_judgment'
+          ? { 'el:fire:2': 1, 'el:thunder:2': 1 }
+          : { 'el:fire:3': 1, 'el:thunder:3': 1 });
+      }
+      expect(seen).toEqual(new Set(['holy_judgment', crafted]));
+    });
+  });
 });
