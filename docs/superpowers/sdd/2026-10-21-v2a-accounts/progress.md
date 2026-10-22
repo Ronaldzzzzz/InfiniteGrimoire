@@ -39,3 +39,15 @@ Final: minor (deferred): /api/login 用目前的密碼長度規則檢查，之�
 Final: Ruling: 任何人可用 5 次錯誤登入把某帳號名稱鎖 15 分鐘 — 規格明定每名稱限制，屬已知取捨 — 被惡意鎖帳時玩家要等 15 分鐘（已登入的裝置不受影響）。
 Final: Ruling: 綁定時 409 taken 會透露名稱已存在 — 規格定義的行為，名稱不是公開身分 — 可被列舉帳號名稱。
 Final: Ruling: /api/account/bind 沒有頻率限制 — 規格未要求，且需已登入 — 可被用來大量測試名稱是否存在。
+
+## 2026-10-22 修訂：瀏覽器端密碼雜湊（plan docs/superpowers/plans/2026-10-22-v2a-client-hash.md）
+
+Pre-flight: Task 1 的 clientPasswordHash 供 Task 3 使用，簽章一致；Task 2 的 CLIENT_HASH_RE（43 字元 base64url）符合 Task 1 的 32 bytes 輸出 — clean。
+Task 1: complete — src/game/password-hash.ts，3 個測試 RED→GREEN。
+Task 2: complete — worker/password.ts 改 HMAC＋pepper；app 只收 43 字元雜湊（否則 400 invalid_password）、移除假雜湊與 rehash；pepper 空字串回 500。suite 339/339。
+Task 2: Ruling: app.test.ts 用 SHA-256 base64url 代替瀏覽器 PBKDF2 當測試雜湊（ph()），bind/login helper 自動雜湊、bindRaw/loginRaw 送原始值 — 伺服器只看格式，不需跑 30 萬次 — 無。
+Task 3: complete — api.ts 送出前雜湊，changePassword(username, current, next)；綁定／改密碼／登入按鈕忙碌時顯示「處理中…」（登出按鈕不雜湊，維持原文字）。suite 343/343。
+Task 4: 驗收（npm run dev，本機 D1，headless Chrome）：1 綁定 PASS；2 另一台登入同存檔 PASS；登入按鈕出現「處理中…」PASS；4 改密碼後舊密碼「帳號或密碼錯誤」、新密碼可登入、另一台被登出 PASS；5 連錯 5 次後「嘗試次數過多，請 15 分鐘後再試」PASS；23 個 /api 請求 body 都沒有明文密碼 PASS。Chrome 實測 300k 次 PBKDF2 ≈ 143ms。
+Task 4: 之前的 minor「/api/login 用目前的密碼長度規則檢查」已不存在：伺服器不再檢查密碼長度。
+Final: minor (deferred): 舊格式 `pbkdf2-sha256$` 的帳號無法登入（只影響本機驗收資料，沒有真實玩家）。
+
