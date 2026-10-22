@@ -105,4 +105,13 @@ Task 11: minor (deferred): keyMessage 「迷霧散開了」 never clears; overlo
 Task 11: fix round 1/5 (1 addressed, 0 open — narrow selectors, Profiler test; commits 0226dee..3699262)
 Task 11: complete (commits e7b9393..3699262, review clean)
 Task 12: dispatched (BASE 3699262, implementer sonnet)
-Task 12: acceptance (headless Chrome) all steps passed; docs written; npm test 49 files / 439 tests, build ok
+Task 12: minor (deferred): AGENTS.md §9 roadmap stale; ledger header vs AGENTS §3 branch origin wording; 一網打盡 banner not asserted in T12 run
+Task 12: complete (commits 3699262..e101141, review clean)
+Final review: dispatched (merge-base b9e74db, opus)
+Final review: Critical 0, Important 1 (I1 random recipe free re-roll via outcome-dependent fusion cost: unaffordable outcome → rejected insufficient, nothing spent, retry), flake root cause found (App.test.tsx:52 findByRole 1000 ms default timeout under sim CPU load).
+Final: Ruling: flake fix enters the fix pass with I1 — reviewer found its cause; a flaky gate erodes every later run — cost if wrong: one test option.
+Final: minor (deferred): M1 learned-count passives count only named spells while UI text says 「學會 N 個魔法」; M2 balanced depth-5 crafted ids may exceed 512 chars → 「無法辨識」; M3 runtime.test real-time <50 ms assertion; M4 resolveSpell cache unbounded (consider LRU before launch)
+Final: fix dispatched (BASE e101141)
+Final: fixed I1 random recipe free re-roll — crafting.test "stock covering only one outcome is rejected on every seed" RED→GREEN, suite 443/443 ×3
+Final: fixed flake App.test account dialog findByRole timeout 5000 — suite 443/443 ×3
+Final: re-review — all findings addressed (commits e101141..b651a5a)
