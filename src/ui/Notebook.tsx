@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { Content } from '../engine/model';
 import { resolveSpell, spellAtLevel } from '../engine/spells';
 import type { GameRuntime } from '../game/runtime';
@@ -9,7 +9,7 @@ import { empowerLabel } from './messages';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /** 「魔法筆記」: the crafted spells (not on the tree). Click a row to put it into the slots. */
-export function Notebook({
+export const Notebook = memo(function Notebook({
   runtime,
   sync,
   content,
@@ -62,4 +62,4 @@ export function Notebook({
       })}
     </ul>
   );
-}
+});

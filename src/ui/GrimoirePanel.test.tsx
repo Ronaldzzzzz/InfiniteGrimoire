@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { Profiler } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
@@ -85,5 +86,26 @@ describe('GrimoirePanel', () => {
     act(() => rt.set({ game: { passives: ['ember_affinity'] } }));
     expect(screen.queryByRole('button', { name: '解鎖' })).toBeNull();
     expect(screen.getByRole('region', { name: '節點詳情' }).textContent).toContain('已解鎖');
+  });
+
+  it('the tree and its open details do not re-render when only the inventory changes', () => {
+    const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], revealed: ['outer'], inventory: { 'el:fire:1': 1 } });
+    const onRender = vi.fn();
+    render(
+      <Profiler id="grimoire" onRender={onRender}>
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} content={content} />
+      </Profiler>,
+    );
+    fireEvent.click(node(content.spells.fireball!.name)); // details + empower panel open
+    const before = onRender.mock.calls.length;
+    // drops that touch neither a key item nor the empower cost (fireball 1->2 costs 4 初階火)
+    act(() => rt.set({ game: { inventory: { 'el:fire:1': 1, 'el:wind:1': 7, 'mat:mist_dew': 2 } } }));
+    act(() => rt.set({ game: { zoneKills: { mist_meadow: 9 } } }));
+    expect(onRender.mock.calls.length).toBe(before);
+    // ...but a drop the panel shows does
+    act(() => rt.set({ game: { inventory: { 'el:fire:1': 4 } } }));
+    expect(onRender.mock.calls.length).toBe(before + 1);
+    act(() => rt.set({ game: { inventory: { 'el:fire:1': 4, 'key:thunder_eye': 1 } } }));
+    expect(screen.getByRole('button', { name: '使用大鵬之眼' })).toBeTruthy();
   });
 });

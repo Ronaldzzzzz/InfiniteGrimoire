@@ -20,13 +20,18 @@ export function EmpowerPanel({
   content: Content;
 }) {
   const levels = useRuntime(runtime, (s) => s.game.levels);
-  const inventory = useRuntime(runtime, (s) => s.game.inventory);
   const pending = useRuntime(runtime, (s) => s.synthPending);
   const [message, setMessage] = useState('');
   const spell = resolveSpell(spellId, content);
-  if (!spell) return null;
   const level = Object.hasOwn(levels, spellId) ? levels[spellId]! : 1;
-  const have = (id: ItemId) => (Object.hasOwn(inventory, id) ? inventory[id]! : 0);
+  const costIds = spell && level < MAX_SPELL_LEVEL ? [...new Set(empowerCost(spell, level))] : [];
+  // only the counts of the cost items, as a string: other drops don't re-render the panel
+  const held = useRuntime(runtime, (s) =>
+    costIds.map((id) => (Object.hasOwn(s.game.inventory, id) ? s.game.inventory[id]! : 0)).join(','),
+  );
+  if (!spell) return null;
+  const heldCounts = held ? held.split(',').map(Number) : [];
+  const have = (id: ItemId) => heldCounts[costIds.indexOf(id)] ?? 0;
 
   let body;
   if (level >= MAX_SPELL_LEVEL) body = <p className="muted">已經強化到最高等級</p>;

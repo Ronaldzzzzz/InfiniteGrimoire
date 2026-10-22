@@ -69,7 +69,6 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const revealed = useRuntime(runtime, (s) => s.game.revealed);
   const passives = useRuntime(runtime, (s) => s.game.passives);
-  const inventory = useRuntime(runtime, (s) => s.game.inventory);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
   const visible = useMemo(() => visibleRegions({ revealed }, content), [content, revealed]);
   const layout = useMemo(
@@ -130,9 +129,14 @@ export const GrimoirePanel = memo(function GrimoirePanel({
     onHint(kind === 'spell' && !learned.includes(id) ? id : null);
   };
 
-  const keys = Object.keys(inventory).filter(
-    (id) => inventory[id]! > 0 && Object.hasOwn(content.keyItems, id) && !visible.has(content.keyItems[id]!.reveals),
-  );
+  // a joined string, so drops that don't add a usable key item don't re-render the tree
+  const keyList = useRuntime(runtime, (s) => {
+    const inv = s.game.inventory;
+    return Object.keys(inv)
+      .filter((id) => inv[id]! > 0 && Object.hasOwn(content.keyItems, id) && !visible.has(content.keyItems[id]!.reveals))
+      .join(',');
+  });
+  const keys = keyList ? keyList.split(',') : [];
   const useKey = async (keyItem: string): Promise<void> => {
     const { result, message } = await runAction(() => sync.action('reveal', { keyItem }), content);
     setKeyMessage(message);
@@ -252,7 +256,12 @@ function NodeDetail({
   content: Content;
   onPick: (spellId: string) => void;
 }) {
-  const game = useRuntime(runtime, (s) => s.game);
+  // narrow selectors: kills and drops change the game state several times a second
+  const learned = useRuntime(runtime, (s) => s.game.learned);
+  const levels = useRuntime(runtime, (s) => s.game.levels);
+  const equipped = useRuntime(runtime, (s) => s.game.equipped);
+  const passives = useRuntime(runtime, (s) => s.game.passives);
+  const met = useRuntime(runtime, (s) => selected?.kind === 'passive' && passiveRequirementMet(s.game, selected.id, content));
   const pending = useRuntime(runtime, (s) => s.synthPending);
   const [message, setMessage] = useState('');
   useEffect(() => setMessage(''), [selected?.id]);
@@ -261,7 +270,7 @@ function NodeDetail({
   if (!selected) body = <p className="muted">點技能樹上的節點查看詳情；未學會的魔法會顯示殘卷線索。</p>;
   else if (selected.kind === 'spell') {
     const spell = content.spells[selected.id]!;
-    if (!game.learned.includes(spell.id)) {
+    if (!learned.includes(spell.id)) {
       body = (
         <>
           <h4>{spell.name}<span className="muted">（未學會）</span></h4>
@@ -269,8 +278,8 @@ function NodeDetail({
         </>
       );
     } else {
-      const level = Object.hasOwn(game.levels, spell.id) ? game.levels[spell.id]! : 1;
-      const isEquipped = game.equipped === spell.id;
+      const level = Object.hasOwn(levels, spell.id) ? levels[spell.id]! : 1;
+      const isEquipped = equipped === spell.id;
       body = (
         <>
           <h4>
@@ -291,8 +300,7 @@ function NodeDetail({
     }
   } else {
     const p = content.passives[selected.id]!;
-    const unlocked = game.passives.includes(p.id);
-    const met = passiveRequirementMet(game, p.id, content);
+    const unlocked = passives.includes(p.id);
     const unlock = async (): Promise<void> => {
       setMessage((await runAction(() => sync.action('passive', { passiveId: p.id }), content)).message);
     };
