@@ -260,11 +260,25 @@ describe('stepBattle: effects', () => {
       foe(2, 'dummy', 0.58, 0, c),
       foe(3, 'dummy', 0.8, 0, c),
     ]);
-    const r = run(mkGame({ equipped: '' }), b, c, 1);
+    const r = run(mkGame({ equipped: 'fireball' }), b, c, 1);
     expect(r.events.some((e) => e.type === 'kill' && e.uid === 1)).toBe(true);
     const by = (u: number) => r.battle.foes.find((f) => f.uid === u)!;
     expect(by(2).statuses.some((s) => s.kind === 'burn')).toBe(true);
     expect(by(3).statuses.some((s) => s.kind === 'burn')).toBe(false);
+  });
+
+  it('burn never spreads to foes the spell cannot damage', () => {
+    const c = withTest();
+    const b = staged([
+      foe(1, 'weak', 0.5, 0, c, [{ kind: 'burn', remainingMs: 3000, power: 1e3 }]),
+      foe(2, 'thunder_lizard', 0.55, 0, c),
+    ]);
+    const lizard = c.monsters.thunder_lizard!;
+    const one = run(mkGame({ equipped: 'fireball' }), b, c, 1);
+    expect(one.events.some((e) => e.type === 'kill' && e.uid === 1)).toBe(true);
+    expect(one.battle.foes.find((f) => f.uid === 2)!.statuses).toEqual([]);
+    const later = run(mkGame({ equipped: 'fireball' }), one.battle, c, 40);
+    expect(later.battle.foes.find((f) => f.uid === 2)!.hp).toBe(lizard.hp);
   });
 
   it('regen heals foes', () => {

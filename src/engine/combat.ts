@@ -573,9 +573,12 @@ export function stepBattle(
   const bossWasActive = bossActive;
   for (const f of dead) {
     const burn = statusOf(f, 'burn');
-    if (burn?.power) {
+    // spread fire, but never onto foes the equipped spell cannot damage (immune foes take no statuses)
+    if (burn?.power && equipped) {
       for (const o of foes) {
         if (!alive(o) || Math.hypot(o.x - f.x, o.y - f.y) > BURN_SPREAD_R) continue;
+        const odef = monsterOf(ctx, o);
+        if (!odef || !canDamage(equipped, odef)) continue;
         const own = statusOf(o, 'burn');
         if (own) {
           own.remainingMs = Math.max(own.remainingMs, BURN_SPREAD_MS);
