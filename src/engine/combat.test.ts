@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import {
-  MAX_ACTIVE_FX, STEP_MS, STOP_R, createBattle, stepBattle,
+  ENGAGE_R, MAX_ACTIVE_FX, STEP_MS, STOP_R, createBattle, stepBattle,
   type ActiveStatus, type BattleEvent, type BattleState, type Foe,
 } from './combat';
 import { createRng, type Rng } from './rng';
@@ -142,6 +142,49 @@ describe('stepBattle: damage', () => {
     const casts = (r: Run) => r.events.filter((e) => e.type === 'cast').length;
     expect(casts(plain)).toBe(11); // at 0 s, then every second
     expect(casts(boosted)).toBe(21);
+  });
+});
+
+describe('stepBattle: area targeting aims at the visible fight', () => {
+  const meteorAt = (target: 'densest' | 'random' | 'strongest') =>
+    testSpell(`t_meteor_${target}`, [{ kind: 'meteor', mult: 0.01, count: 1, radius: 0.1, delayMs: 1e6, lavaMs: 0, target }]);
+  const castFx = (target: 'densest' | 'random' | 'strongest', foes: (c: Content) => Foe[]) => {
+    const spell = meteorAt(target);
+    const c = withTest([spell]);
+    const r = run(mkGame({ equipped: spell.id }), staged(foes(c)), c, 1);
+    const fx = r.battle.fx.find((f) => f.effect.kind === 'meteor');
+    expect(fx).toBeDefined();
+    return fx!;
+  };
+  /** a just-spawned pack of 8 around (0.98, 0) and a pair inside the engage radius */
+  const outerPack = (c: Content) => Array.from({ length: 8 }, (_, i) => foe(i + 1, 'dummy', 0.98, (i - 3.5) * 0.02, c));
+  const innerPair = (c: Content) => [foe(50, 'dummy', 0, 0.3, c), foe(51, 'dummy', 0.03, 0.3, c)];
+
+  it('exports an engage radius inside the view', () => {
+    expect(ENGAGE_R).toBe(0.4);
+  });
+
+  it('densest picks the inner group over a bigger pack at the edge', () => {
+    const fx = castFx('densest', (c) => [...outerPack(c), ...innerPair(c)]);
+    expect([50, 51]).toContain(fx.hits[0]);
+    expect(Math.hypot(fx.x, fx.y)).toBeLessThan(ENGAGE_R);
+  });
+
+  it('densest still picks the outer pack when nobody is inside the engage radius', () => {
+    const fx = castFx('densest', (c) => [...outerPack(c), foe(60, 'dummy', -0.9, 0, c)]);
+    expect(fx.hits[0]).toBeLessThanOrEqual(8);
+  });
+
+  it('strongest and random only look inside the engage radius when someone is there', () => {
+    const strong = castFx('strongest', (c) => [
+      ...outerPack(c),
+      { ...foe(50, 'dummy', 0, 0.3, c), hp: 10 },
+    ]);
+    expect(strong.hits[0]).toBe(50);
+    for (let i = 0; i < 5; i++) {
+      const rnd = castFx('random', (c) => [...outerPack(c), foe(50, 'dummy', 0.2, 0, c)]);
+      expect(rnd.hits[0]).toBe(50);
+    }
   });
 });
 

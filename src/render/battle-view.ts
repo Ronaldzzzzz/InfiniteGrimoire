@@ -154,6 +154,8 @@ export class BattleView {
   private banner: Text | null = null;
   private bannerAge = BANNER_MS;
   private bannerN = 0;
+  /** banner width at scale 1, measured when its text changes */
+  private bannerW = 1;
   private castLabel: Text | null = null;
   private castAge = CAST_LABEL_MS;
   private readonly killTimes: number[] = [];
@@ -1054,6 +1056,8 @@ export class BattleView {
     if (label && label.n > this.bannerN) {
       this.bannerN = label.n;
       b.text = `×${label.n} 一網打盡！`;
+      b.scale.set(1);
+      this.bannerW = Math.max(1, b.width);
       this.bannerAge = 0;
     } else if (!label) {
       this.bannerN = 0;
@@ -1064,7 +1068,9 @@ export class BattleView {
     b.visible = this.bannerAge < BANNER_MS;
     if (b.visible) {
       const pop = Math.max(0, 1 - this.bannerAge / 200);
-      b.scale.set(u * (1 + pop * 0.6));
+      // never wider than the view (minus the text margin on both sides), even mid-pop on a phone
+      const fit = Math.max(0, this.w - 2 * TEXT_MARGIN) / this.bannerW;
+      b.scale.set(Math.min(u * (1 + pop * 0.6), fit));
       b.alpha = Math.min(1, ((BANNER_MS - this.bannerAge) / BANNER_MS) * 2);
       b.position.set(a.center.x, Math.max(28 * u, a.center.y - a.radius + 40 * u));
     }

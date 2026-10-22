@@ -14,6 +14,11 @@ import type { ElementId, ItemId } from './types';
 export const STEP_MS = 50;
 export const STOP_R = 0.15;
 export const MAX_ACTIVE_FX = 24;
+/**
+ * Area spells aimed at 'densest' / 'random' / 'strongest' pick among foes within this distance of the mage
+ * (the visible fight); only when nobody is that close do they consider the whole field.
+ */
+export const ENGAGE_R = 0.4;
 
 const DT = STEP_MS / 1000;
 const PACK_SPREAD = 0.12;
@@ -101,7 +106,7 @@ interface Ctx {
   game: GameState; content: Content; rng: Rng; events: BattleEvent[];
   foes: Foe[]; byUid: Map<number, Foe>; newFx: ActiveFx[]; nextUid: number;
   spells: Map<string, Spell | null>; bonus: ReturnType<typeof passiveBonuses> | null;
-  densest: Foe | null | undefined; counts: Map<number, number> | null;
+  densest: Foe | null | undefined; counts: Map<number, number> | null; engaged: Foe[] | null;
 }
 
 function spellOf(ctx: Ctx, id: string): Spell | null {
@@ -217,11 +222,20 @@ function neighbourCounts(ctx: Ctx): Map<number, number> {
   return ctx.counts;
 }
 
+/** Live foes inside ENGAGE_R, or every live foe when none are (computed once per step). */
+function engagedFoes(ctx: Ctx): Foe[] {
+  if (ctx.engaged) return ctx.engaged;
+  const live = ctx.foes.filter(alive);
+  const r2 = ENGAGE_R * ENGAGE_R;
+  const near = live.filter((f) => f.x * f.x + f.y * f.y <= r2);
+  return (ctx.engaged = near.length > 0 ? near : live);
+}
+
 function densestFoe(ctx: Ctx): Foe | null {
   if (ctx.densest !== undefined) return ctx.densest;
   const counts = neighbourCounts(ctx);
   let best: Foe | null = null, bn = -1;
-  for (const f of ctx.foes) {
+  for (const f of engagedFoes(ctx)) {
     const c = counts.get(f.uid);
     if (c !== undefined && c > bn) { bn = c; best = f; }
   }
@@ -229,7 +243,7 @@ function densestFoe(ctx: Ctx): Foe | null {
 }
 
 function pickTargets(ctx: Ctx, target: Target, n: number): Foe[] {
-  const live = ctx.foes.filter(alive);
+  const live = target === 'center' || target === 'nearest' ? ctx.foes.filter(alive) : engagedFoes(ctx).filter(alive);
   switch (target) {
     case 'center':
     case 'nearest':
@@ -481,7 +495,7 @@ export function stepBattle(
   const foes: Foe[] = battle.foes.map((f) => ({ ...f, statuses: f.statuses.map((s) => ({ ...s })) }));
   const ctx: Ctx = {
     game, content, rng, events, foes, byUid: new Map(foes.map((f) => [f.uid, f])), newFx: [],
-    nextUid: battle.nextUid, spells: new Map(), bonus: null, densest: undefined, counts: null,
+    nextUid: battle.nextUid, spells: new Map(), bonus: null, densest: undefined, counts: null, engaged: null,
   };
   const mage: Mage = { ...battle.mage };
   let spawnTimerMs = battle.spawnTimerMs + STEP_MS;
