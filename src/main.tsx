@@ -100,7 +100,22 @@ function Boot() {
         />
       );
     case 'ready': {
-      const app = <App runtime={phase.runtime} sync={phase.sync} data={gameData} />;
+      const app = (
+        <App
+          runtime={phase.runtime}
+          sync={phase.sync}
+          data={gameData}
+          api={api}
+          onSwitched={(r) => {
+            if (!writeToken(storage(), r.token)) console.warn('could not persist token');
+            start(r);
+          }}
+          onLoggedOut={() => {
+            clearToken();
+            setPhase({ kind: 'onboarding' });
+          }}
+        />
+      );
       if (!import.meta.env.DEV) return app;
       return (
         <>

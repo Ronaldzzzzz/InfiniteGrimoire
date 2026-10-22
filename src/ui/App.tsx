@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { GameData, ItemId } from '../engine/types';
+import type { AccountInfo, ApiClient, LoginResult } from '../game/api';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import './App.css';
+import { AccountDialog } from './AccountDialog';
 import { BattleCanvas } from './BattleCanvas';
 import { ElementTable } from './ElementTable';
 import { GrimoirePanel } from './GrimoirePanel';
@@ -11,12 +13,37 @@ import { emptySlots, SynthesisPanel, type Slots } from './SynthesisPanel';
 import { TopBar } from './TopBar';
 import { useConnStatus, useGameState, useRuntime } from './useGame';
 
-export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncController; data: GameData }) {
+export function App({
+  runtime,
+  sync,
+  data,
+  api,
+  onSwitched,
+  onLoggedOut,
+}: {
+  runtime: GameRuntime;
+  sync: SyncController;
+  data: GameData;
+  api: ApiClient;
+  onSwitched: (r: LoginResult) => void;
+  onLoggedOut: () => void;
+}) {
   const status = useConnStatus(sync);
   const game = useGameState(runtime);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
   const [slots, setSlots] = useState<Slots>(emptySlots);
   const [hintId, setHintId] = useState<string | null>(null);
+  const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    api.getAccount().then((info) => alive && setAccount(info)).catch(() => {
+      // the badge just stays hidden; auth errors are handled by sync
+    });
+    return () => {
+      alive = false;
+    };
+  }, [api]);
 
   const pick = (id: ItemId): void => {
     const i = slots.indexOf(null);
@@ -27,7 +54,13 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
 
   return (
     <div className="app">
-      <TopBar runtime={runtime} data={data} status={status} />
+      <TopBar
+        runtime={runtime}
+        data={data}
+        status={status}
+        bound={account ? account.username !== null : null}
+        onOpenAccount={() => setAccountOpen(true)}
+      />
       <main className="main">
         <div className="battle">
           <BattleCanvas runtime={runtime} />
@@ -61,6 +94,18 @@ export function App({ runtime, sync, data }: { runtime: GameRuntime; sync: SyncC
           </section>
         </div>
       </main>
+      {accountOpen && (
+        <AccountDialog
+          api={api}
+          displayName={account?.displayName ?? ''}
+          learnedCount={game.learned.length}
+          onClose={() => setAccountOpen(false)}
+          onAccountChange={setAccount}
+          onSwitched={onSwitched}
+          onLoggedOut={onLoggedOut}
+          beforeLogout={() => sync.uploadNow()}
+        />
+      )}
       <OfflineOverlay status={status} />
     </div>
   );

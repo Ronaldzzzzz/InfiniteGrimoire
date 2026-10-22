@@ -5,6 +5,7 @@ import { createBattle } from '../engine/battle';
 import { gameData } from '../engine/data';
 import { createInitialState } from '../engine/state';
 import type { GameRuntime, Snapshot } from '../game/runtime';
+import type { ApiClient } from '../game/api';
 import type { SyncController } from '../game/sync';
 import { App } from './App';
 
@@ -21,8 +22,16 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
     travel: vi.fn(),
     upgrade: vi.fn(() => true),
   } as unknown as GameRuntime;
-  const sync = { status: 'online', onStatus: () => () => {}, synthesize: vi.fn() } as unknown as SyncController;
-  render(<App runtime={runtime} sync={sync} data={gameData} />);
+  const sync = { status: 'online', onStatus: () => () => {}, synthesize: vi.fn(), uploadNow: vi.fn(async () => {}) } as unknown as SyncController;
+  const api = {
+    getAccount: vi.fn(async () => ({ displayName: 'Aria', username: null, sessions: 1 })),
+    bind: vi.fn(),
+    changePassword: vi.fn(),
+    logoutOthers: vi.fn(),
+    logout: vi.fn(),
+    login: vi.fn(),
+  } as unknown as ApiClient;
+  render(<App runtime={runtime} sync={sync} data={gameData} api={api} onSwitched={vi.fn()} onLoggedOut={vi.fn()} />);
   return { runtime };
 }
 
@@ -30,6 +39,12 @@ const slotTexts = () =>
   screen.getAllByRole('button').filter((b) => b.classList.contains('slot')).map((b) => b.textContent);
 
 describe('App layout', () => {
+  it('opens the account dialog from the top bar', async () => {
+    setup();
+    fireEvent.click(await screen.findByRole('button', { name: /帳號.*未綁定/ }));
+    expect(await screen.findByRole('dialog', { name: '帳號' })).toBeTruthy();
+  });
+
   it('has no synthesis / grimoire / map tabs', () => {
     setup();
     expect(screen.queryByRole('button', { name: '魔導書' })).toBeNull();

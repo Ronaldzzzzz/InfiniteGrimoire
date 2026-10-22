@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBattle } from '../engine/battle';
 import { gameData } from '../engine/data';
@@ -17,7 +17,7 @@ function runtime(game: GameState, battlePatch: Partial<Snapshot['battle']> = {},
 
 describe('TopBar', () => {
   it('shows the zone picker, the equipped spell and the spell picker', () => {
-    render(<TopBar runtime={runtime(createInitialState(gameData))} data={gameData} status="online" />);
+    render(<TopBar runtime={runtime(createInitialState(gameData))} data={gameData} status="online" bound={true} onOpenAccount={() => {}} />);
     expect(screen.getByRole('button', { name: '選擇地點' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '裝備魔法' })).toBeTruthy();
     expect(screen.getAllByText(/魔力彈/).length).toBeGreaterThan(0);
@@ -26,22 +26,31 @@ describe('TopBar', () => {
   it('shows the overlevel note and the stuck-boss hint', () => {
     const g = { ...createInitialState(gameData), currentZone: 'ash_volcano', unlockedZones: ['mist_meadow', 'thunder_gorge', 'ash_volcano'] };
     const boss = { uid: 1, defId: 'ash_dragon', hp: 1, maxHp: 1, x: 1, statuses: [] };
-    render(<TopBar runtime={runtime(g, { bossActive: true, monsters: [boss] })} data={gameData} status="online" />);
+    render(<TopBar runtime={runtime(g, { bossActive: true, monsters: [boss] })} data={gameData} status="online" bound={true} onOpenAccount={() => {}} />);
     expect(screen.getByText(BOSS_HINT)).toBeTruthy();
     cleanup();
     const over = { ...createInitialState(gameData), learned: ['mana_bolt', 'explosion'], equipped: 'explosion' };
-    render(<TopBar runtime={runtime(over)} data={gameData} status="online" />);
+    render(<TopBar runtime={runtime(over)} data={gameData} status="online" bound={true} onOpenAccount={() => {}} />);
     expect(screen.getByText(/越級：掉落效益 56%/)).toBeTruthy();
   });
 
   it('locks zone and spell changes while a synthesis is in flight (its result would undo them)', () => {
-    render(<TopBar runtime={runtime(createInitialState(gameData), {}, true)} data={gameData} status="online" />);
+    render(<TopBar runtime={runtime(createInitialState(gameData), {}, true)} data={gameData} status="online" bound={true} onOpenAccount={() => {}} />);
     expect((screen.getByRole('button', { name: '選擇地點' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: '裝備魔法' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('shows the save error banner when the status is error', () => {
-    render(<TopBar runtime={runtime(createInitialState(gameData))} data={gameData} status="error" />);
+    render(<TopBar runtime={runtime(createInitialState(gameData))} data={gameData} status="error" bound={true} onOpenAccount={() => {}} />);
     expect(screen.getByRole('alert').textContent).toBe(SAVE_ERROR_MESSAGE);
+  });
+
+  it('shows the account button with an unbound badge for guests', () => {
+    const onOpenAccount = vi.fn();
+    render(<TopBar runtime={runtime(createInitialState(gameData))} data={gameData} status="online" bound={false} onOpenAccount={onOpenAccount} />);
+    const button = screen.getByRole('button', { name: /帳號/ });
+    expect(button.textContent).toContain('未綁定');
+    fireEvent.click(button);
+    expect(onOpenAccount).toHaveBeenCalled();
   });
 });
