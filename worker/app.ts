@@ -195,6 +195,47 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ token, playerId: player.id, state: JSON.parse(save.state), revision: save.revision });
   });
 
+  app.get('/api/account', async (c) => {
+    const player = c.get('player');
+    const cred = await store.findCredentialsByPlayer(player.id);
+    return c.json({ displayName: player.displayName, username: cred?.username ?? null, sessions: await store.countSessions(player.id) });
+  });
+
+  app.post('/api/account/password', async (c) => {
+    const body = await readJson(c);
+    const current = typeof body.current === 'string' ? body.current : '';
+    const next = typeof body.next === 'string' ? body.next : '';
+    if (passwordProblem(next)) throw new HttpError(400, 'invalid_password');
+    const player = c.get('player');
+    const cred = await store.findCredentialsByPlayer(player.id);
+    if (!cred) return c.json({ error: 'not_bound' }, 409);
+    const ip = clientIp(c);
+    const t = now();
+    const retry = await loginBlocked([[`u:${cred.usernameKey}`, USER_FAIL_LIMIT], [`ip:${ip}`, IP_FAIL_LIMIT]], t);
+    if (retry !== null) return rateLimited(c, retry);
+    if (!(await verifyPassword(current, cred.passwordHash))) {
+      await store.recordLoginFailure([`u:${cred.usernameKey}`, `ip:${ip}`], t);
+      return c.json({ error: 'invalid_credentials' }, 403);
+    }
+    await store.updatePasswordHash(player.id, await hashPassword(next), t);
+    await store.deleteOtherSessions(player.id, c.get('sessionHash'));
+    return c.json({});
+  });
+
+  app.post('/api/account/logout-others', async (c) => {
+    const player = c.get('player');
+    await store.deleteOtherSessions(player.id, c.get('sessionHash'));
+    return c.json({ sessions: await store.countSessions(player.id) });
+  });
+
+  app.post('/api/logout', async (c) => {
+    const player = c.get('player');
+    // a guest without credentials could never get this progress back
+    if (!(await store.findCredentialsByPlayer(player.id))) return c.json({ error: 'not_bound' }, 409);
+    await store.deleteSession(c.get('sessionHash'));
+    return c.json({});
+  });
+
   app.use('/api/save', auth);
   app.use('/api/synthesize', auth);
 

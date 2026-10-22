@@ -678,3 +678,61 @@ describe('accounts: bind and login', () => {
     expect(store.credentials.get(g.playerId)!.passwordHash).toMatch(/^pbkdf2-sha256\$50000\$/);
   });
 });
+describe('accounts: info, password and logout', () => {
+  const get = (path: string, token: string) => app.request(path, { headers: { authorization: `Bearer ${token}` } });
+  const post = (path: string, token: string, body: unknown = {}) => app.request(path, json(body, token));
+  async function boundGuest() {
+    const { body: g } = await guest('Aria');
+    await post('/api/account/bind', g.token, { username: 'aria_1', password: 'password1' });
+    const lr = await app.request('/api/login', json({ username: 'aria_1', password: 'password1' }));
+    const second = ((await lr.json()) as { token: string }).token;
+    return { g, second };
+  }
+
+  it('reports display name, username and session count', async () => {
+    const { body: g } = await guest('Aria');
+    expect(await (await get('/api/account', g.token)).json()).toEqual({ displayName: 'Aria', username: null, sessions: 1 });
+    const { g: b, second } = await boundGuest();
+    expect(await (await get('/api/account', second)).json()).toEqual({ displayName: 'Aria', username: 'aria_1', sessions: 2 });
+    expect(b.token).not.toBe(second);
+  });
+
+  it('changes the password and logs out the other devices only', async () => {
+    const { g, second } = await boundGuest();
+    const res = await post('/api/account/password', second, { current: 'password1', next: 'password2' });
+    expect(res.status).toBe(200);
+    expect((await get('/api/save', g.token)).status).toBe(401);
+    expect((await get('/api/save', second)).status).toBe(200);
+    expect((await app.request('/api/login', json({ username: 'aria_1', password: 'password2' }))).status).toBe(200);
+    expect((await app.request('/api/login', json({ username: 'aria_1', password: 'password1' }))).status).toBe(403);
+  });
+
+  it('a wrong current password is 403 (not 401) and counts as a failure', async () => {
+    const { second } = await boundGuest();
+    for (let i = 0; i < 5; i++) {
+      expect((await post('/api/account/password', second, { current: 'nope-nope', next: 'password2' })).status).toBe(403);
+    }
+    expect((await post('/api/account/password', second, { current: 'password1', next: 'password2' })).status).toBe(429);
+    expect((await get('/api/save', second)).status).toBe(200);
+  });
+
+  it('refuses password change and logout for guests', async () => {
+    const { body: g } = await guest();
+    const pw = await post('/api/account/password', g.token, { current: 'password1', next: 'password2' });
+    expect(pw.status).toBe(409);
+    expect(await pw.json()).toEqual({ error: 'not_bound' });
+    const out = await post('/api/logout', g.token);
+    expect(out.status).toBe(409);
+    expect(await out.json()).toEqual({ error: 'not_bound' });
+    expect((await get('/api/save', g.token)).status).toBe(200);
+  });
+
+  it('logs out this device, or all the others', async () => {
+    const { g, second } = await boundGuest();
+    const others = await post('/api/account/logout-others', second);
+    expect(await others.json()).toEqual({ sessions: 1 });
+    expect((await get('/api/save', g.token)).status).toBe(401);
+    expect((await post('/api/logout', second)).status).toBe(200);
+    expect((await get('/api/save', second)).status).toBe(401);
+  });
+});
