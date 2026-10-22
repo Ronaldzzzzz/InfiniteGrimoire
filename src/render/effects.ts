@@ -28,3 +28,18 @@ export function floatingText(hit: { damage: number; immune: boolean }): { text: 
   if (hit.immune) return { text: '無效', color: '#9aa3b2' };
   return { text: String(Math.round(hit.damage)), color: '#ffffff' };
 }
+
+/** Points along an ellipse (radii rx, ry) rotated by `rot` around `c`, from angle a0 to a1 (segments + 1 points). */
+export function ellipseArc(c: Pt, rx: number, ry: number, rot: number, a0: number, a1: number, segments: number): Pt[] {
+  const n = Math.max(1, Math.floor(segments));
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+  const pts: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = a0 + ((a1 - a0) * i) / n;
+    const x = Math.cos(t) * rx;
+    const y = Math.sin(t) * ry;
+    pts.push({ x: c.x + x * cos - y * sin, y: c.y + x * sin + y * cos });
+  }
+  return pts;
+}

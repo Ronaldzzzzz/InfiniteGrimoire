@@ -249,44 +249,5 @@ pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-alias
 
 ## 特效
 
-特效目前請提供單張 32×32 圖。程式會依法術屬性對特效貼圖上色（tint），因此建議以白色／淺色繪製。光束（fx_beam）會被沿長度方向拉伸至光束長度。之後（切格播放實作後）可改為 4–6 格的橫向 sprite sheet（128×32 至 192×32）。
+特效（火星、風痕、閃電、碎石、水滴、龍捲、熔岩、冰霜等）全部由程式繪製（`src/render/element-fx.ts`、`src/render/battle-view.ts`），不需要貼圖。
 
-### fx_bolt
-
-- 檔名：`public/assets/fx_bolt.png`
-- 用途：魔彈：單體射彈的飛行與命中。
-- 尺寸：現階段 32×32 單張；之後建議 6 格，總尺寸 192×32。
-- 提示詞：
-```
-pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, a small glowing magic bolt projectile flying right with a short trailing tail, white and pale #b8c7ff colors so it can be tinted
-```
-
-### fx_beam
-
-- 檔名：`public/assets/fx_beam.png`
-- 用途：光束：持續照射的直線光束。
-- 尺寸：現階段 32×32 單張；之後建議 6 格，總尺寸 192×32。
-- 提示詞：
-```
-pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, a straight horizontal energy beam segment that pulses and flickers, stretched along its length (the game scales the whole texture to the beam length, so keep it uniform along the length), white and pale #b8c7ff colors so it can be tinted
-```
-
-### fx_chain
-
-- 檔名：`public/assets/fx_chain.png`
-- 用途：連鎖：在多個目標間跳躍的鋸齒閃電。
-- 尺寸：現階段 32×32 單張；之後建議 6 格，總尺寸 192×32。
-- 提示詞：
-```
-pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, a jagged zig-zag chain lightning arc segment crackling with small sparks, white and pale #b8c7ff colors so it can be tinted
-```
-
-### fx_nova
-
-- 檔名：`public/assets/fx_nova.png`
-- 用途：新星：以施法者為中心向外擴散的環狀爆發。
-- 尺寸：現階段 32×32 單張；之後建議 6 格，總尺寸 192×32。
-- 提示詞：
-```
-pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, a circular nova shockwave expanding outward from the center, thin bright ring, white and pale #b8c7ff colors so it can be tinted
-```

@@ -4,10 +4,6 @@ import { content } from '../engine/content';
 export const ASSET_KEYS: string[] = [
   'hero_idle',
   ...Object.keys(content.monsters).map((id) => `monster_${id}`),
-  'fx_bolt',
-  'fx_beam',
-  'fx_chain',
-  'fx_nova',
 ];
 
 /** Loads whichever optional PNGs exist; failures are ignored so placeholder shapes are used instead. */
