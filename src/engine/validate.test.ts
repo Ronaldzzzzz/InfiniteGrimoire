@@ -3,7 +3,7 @@ import { STEP_MS, createBattle, stepBattle } from './battle';
 import { createRng } from './rng';
 import { createInitialState, type GameState } from './state';
 import { GAIN_SLACK, GAIN_TOLERANCE, maxGain, validateUpload } from './validate';
-import type { GameData, MonsterDef, SpellDef } from './types';
+import { gradeValue, type GameData, type MonsterDef, type SpellDef } from './types';
 
 const spell = (o: Partial<SpellDef> & { id: string }): SpellDef => ({
   name: o.id, nameEn: o.id, elements: [], tier: 1, attack: 10, cooldownMs: 900, pattern: 'bolt',
@@ -57,6 +57,19 @@ describe('maxGain', () => {
     // boss drops: floor(13/5)+1 = 3 boss kills * 4
     expect(g.elements.wind).toBe(12);
     expect(g.elements.water).toBe(0);
+  });
+  it('converts every grade with gradeValue', () => {
+    const grades = [1, 2, 3, 4, 5];
+    const gd: GameData = {
+      ...data,
+      monsters: {
+        ...data.monsters,
+        slime: mon({ id: 'slime', drops: grades.map((g) => ({ itemId: `el:earth:${g}`, chance: 1, min: 1, max: 1 })) }),
+      },
+    };
+    const sum = grades.reduce((a, g) => a + gradeValue(g), 0);
+    expect(gradeValue(3)).toBe(30);
+    expect(maxGain(base(), 10_000, gd).elements.earth).toBe(13 * sum);
   });
   it('treats negative elapsed as zero', () => {
     expect(maxGain(base(), -5, data)).toEqual(maxGain(base(), 0, data));

@@ -8,10 +8,11 @@ afterEach(cleanup);
 const btn = (name: string) => screen.getByRole('button', { name }) as HTMLButtonElement;
 
 describe('lowestUpgradableGrade', () => {
-  it('picks the lowest grade with at least 3, never the top grade', () => {
+  it('picks the lowest grade holding its upgrade cost (3, 10, 30, 100), never the top grade', () => {
     expect(lowestUpgradableGrade({ 'el:fire:1': 3, 'el:fire:2': 5 }, 'fire')).toBe(1);
-    expect(lowestUpgradableGrade({ 'el:fire:1': 2, 'el:fire:2': 3 }, 'fire')).toBe(2);
-    expect(lowestUpgradableGrade({ 'el:fire:3': 9 }, 'fire')).toBeNull();
+    expect(lowestUpgradableGrade({ 'el:fire:1': 2, 'el:fire:2': 10 }, 'fire')).toBe(2);
+    expect(lowestUpgradableGrade({ 'el:fire:1': 2, 'el:fire:2': 9 }, 'fire')).toBeNull();
+    expect(lowestUpgradableGrade({ 'el:fire:5': 999 }, 'fire')).toBeNull();
     expect(lowestUpgradableGrade({}, 'fire')).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { canDamage } from './combat-rules';
 import { elementEquivalent } from './inventory';
 import type { GameState } from './state';
-import { ELEMENT_ORDER, type ElementId, type GameData, type SpellDef } from './types';
+import { ELEMENT_ORDER, gradeValue, type ElementId, type GameData, type SpellDef } from './types';
 
 export const GAIN_TOLERANCE = 1.25;
 export const GAIN_SLACK = 6;
@@ -21,7 +21,7 @@ function dropMaxima(drops: { itemId: string; max: number }[]): Map<string, numbe
   for (const d of drops) {
     let value = d.max;
     const m = /^el:([a-z]+):(\d+)$/.exec(d.itemId);
-    if (m) value *= 3 ** (Number(m[2]) - 1);
+    if (m) value *= gradeValue(Number(m[2]));
     out.set(d.itemId, (out.get(d.itemId) ?? 0) + value);
   }
   return out;

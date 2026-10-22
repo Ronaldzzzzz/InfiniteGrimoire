@@ -1,10 +1,10 @@
 import { Hono, type Context } from 'hono';
 import { createInitialState, type GameState } from '../src/engine/state';
-import { ITEM_ID_RE, parseState, serialize } from '../src/engine/save';
+import { parseState, serialize } from '../src/engine/save';
 import { comboKey, synthesize } from '../src/engine/synthesis';
 import { validateUpload } from '../src/engine/validate';
 import type { Rng } from '../src/engine/rng';
-import type { GameData } from '../src/engine/types';
+import { ITEM_ID_RE, type GameData } from '../src/engine/types';
 import { hashToken, newToken } from './auth';
 import type { PlayerRow, Store } from './store';
 import { normalizeUsername, usernameKey, usernameProblem } from '../src/engine/account-rules';

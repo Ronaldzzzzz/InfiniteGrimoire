@@ -1,10 +1,8 @@
 import { z } from 'zod';
-import { ELEMENT_ORDER, MAX_ELEMENT_GRADE, type GameData } from './types';
+import { ITEM_ID_RE, type GameData } from './types';
 import type { GameState } from './state';
 
 const count = z.number().int().min(0);
-/** Format of every inventory / synthesis item id. */
-export const ITEM_ID_RE = new RegExp(`^(el:(${ELEMENT_ORDER.join('|')}):[1-${MAX_ELEMENT_GRADE}]|mat:[a-z_]+)$`);
 
 const synthLogEntry = z.strictObject({
   attempts: count,

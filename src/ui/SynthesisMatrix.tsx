@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { comboKey } from '../engine/synthesis';
 import type { SynthLogEntry } from '../engine/state';
-import { ELEMENT_ORDER, elementItem, MAX_ELEMENT_GRADE, type GameData, type ItemId } from '../engine/types';
+import { ELEMENT_ORDER, GRADE_NAMES, elementItem, MAX_ELEMENT_GRADE, type GameData, type ItemId } from '../engine/types';
 import { itemName } from './messages';
 import { ELEMENT_LABEL } from './picker-data';
 
 const GRADES = Array.from({ length: MAX_ELEMENT_GRADE }, (_, i) => i + 1);
-const GRADE_LABEL = ['初階', '中階', '高階'];
 const MATERIAL: ItemId = 'mat:mana_crystal';
 
 type Log = Record<string, SynthLogEntry>;
@@ -92,7 +91,7 @@ export function SynthesisMatrix({
       <div className="matrix-grades" role="group" aria-label="階級">
         {GRADES.map((g) => (
           <button key={g} type="button" aria-pressed={grade === g} className={grade === g ? 'active' : ''} onClick={() => setGrade(g)}>
-            {GRADE_LABEL[g - 1]}
+            {GRADE_NAMES[g - 1]}
           </button>
         ))}
       </div>

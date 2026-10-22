@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ELEMENT_ORDER } from './types';
+import { ELEMENT_ORDER, ITEM_ID_RE } from './types';
 import type { GameData } from './types';
 import spellsJson from '../data/spells.json';
 import recipesJson from '../data/recipes.json';
@@ -15,8 +15,7 @@ export class DataError extends Error {
 
 const element = z.enum(ELEMENT_ORDER);
 const tier = z.number().int().min(1).max(20);
-const ITEM_RE = /^(el:(fire|wind|thunder|earth|water):[1-3]|mat:[a-z_]+)$/;
-const itemId = z.string().refine((v) => ITEM_RE.test(v), { error: (iss) => `invalid item id "${String(iss.input)}"` });
+const itemId = z.string().refine((v) => ITEM_ID_RE.test(v), { error: (iss) => `invalid item id "${String(iss.input)}"` });
 
 const spellSchema = z.object({
   id: z.string().min(1),

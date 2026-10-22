@@ -1,13 +1,12 @@
-import { ELEMENT_ORDER, elementItem, MAX_ELEMENT_GRADE, type ElementId, type Inventory, type ItemId } from '../engine/types';
+import { ELEMENT_ORDER, GRADE_NAMES, GRADE_UPGRADE_COST, elementItem, MAX_ELEMENT_GRADE, type ElementId, type Inventory, type ItemId } from '../engine/types';
 import { itemName } from './messages';
 import { ELEMENT_LABEL } from './picker-data';
 
 const GRADES = Array.from({ length: MAX_ELEMENT_GRADE }, (_, i) => i + 1);
-const GRADE_LABEL = ['初階', '中階', '高階'];
 const ALWAYS_SHOWN_MATERIALS: ItemId[] = ['mat:mana_crystal'];
 
 export function lowestUpgradableGrade(inv: Inventory, el: ElementId): number | null {
-  for (let g = 1; g < MAX_ELEMENT_GRADE; g++) if ((inv[elementItem(el, g)] ?? 0) >= 3) return g;
+  for (let g = 1; g < MAX_ELEMENT_GRADE; g++) if ((inv[elementItem(el, g)] ?? 0) >= GRADE_UPGRADE_COST[g - 1]!) return g;
   return null;
 }
 
@@ -34,7 +33,7 @@ export function ElementTable({
         <tr>
           <th scope="col" className="el-name"><span className="sr-only">屬性</span></th>
           {GRADES.map((g) => (
-            <th key={g} scope="col">{GRADE_LABEL[g - 1]}</th>
+            <th key={g} scope="col">{GRADE_NAMES[g - 1]}</th>
           ))}
           <th scope="col"><span className="sr-only">升階</span></th>
         </tr>

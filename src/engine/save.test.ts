@@ -72,8 +72,11 @@ describe('save', () => {
     expect(roundtrip((o) => (o.inventory['el:fire:1'] = 1.5))).toBeNull();
     expect(roundtrip((o) => (o.inventory['el:fire:1'] = '3'))).toBeNull();
   });
+  it('accepts grade 5 elements and key items', () => {
+    expect(roundtrip((o) => { o.inventory['el:fire:5'] = 1; o.inventory['key:storm_heart'] = 1; })).not.toBeNull();
+  });
   it('rejects malformed inventory keys', () => {
-    for (const k of ['el:fire:4', 'el:fire:0', 'el:dark:1', 'foo', 'mat:', '__proto__x']) {
+    for (const k of ['el:fire:6', 'el:fire:0', 'key:', 'key:Up', 'el:dark:1', 'foo', 'mat:', '__proto__x']) {
       expect(roundtrip((o) => (o.inventory[k] = 1))).toBeNull();
     }
   });
