@@ -2,6 +2,8 @@
 
 - 日期：2026-10-21
 - 狀態：設計已與使用者逐段確認（資料與 API、畫面與流程、測試與安全）。
+- **2026-10-22 修訂【使用者決定】**：密碼雜湊改成「瀏覽器端 PBKDF2 ＋ 伺服器端 HMAC（pepper）」，取代伺服器端 PBKDF2 50,000 次。原因：伺服器端算 PBKDF2 會吃掉免費方案每個請求 10ms 的 CPU 上限，而且 5 萬次偏低。受影響的是第 2、4、6 節中標了「修訂」的部分。
+- **安全性的程度【使用者決定】**：這是非營利的小型遊戲，安全性與防作弊做到合理即可，不追求滴水不漏。
 - 上層規格：`docs/superpowers/specs/2026-10-21-infinite-grimoire-design.md` 第 3 節（隱私）、4.11（帳號）、4.12（防作弊）。
 - 第二版拆成子專案，依序做：**A 帳號綁定（本文件）→ B 稀有魔法發現紀錄 → C+D 排行榜與至尊稱號**。每個子專案各自走 spec → 計畫 → 實作。
 
@@ -43,10 +45,10 @@
 | Google 登入 | 這次不做 | 【使用者決定】 |
 | Cloudflare 方案 | 免費方案 | 【使用者決定】 |
 | 架構 | 新增 `sessions`、`credentials`、`login_failures` 表 | 【使用者決定】（方案一） |
-| 密碼雜湊 | PBKDF2-SHA256，50,000 次迭代 | 【使用者決定】 |
+| 密碼雜湊（修訂） | 瀏覽器端 PBKDF2-SHA256 300,000 次，伺服器端再做 HMAC-SHA256（pepper） | 【使用者決定】 |
 | `/api/guest` 頻率限制 | 同一個 IP 每小時最多 10 個 | 【使用者決定】 |
 
-**為什麼迭代次數是 50,000**：本機實測 WebCrypto PBKDF2-SHA256 每 50,000 次約 5ms、100,000 次約 10ms。Workers 免費方案每次請求的 CPU 上限是 10ms，雜湊也算在內，所以 100,000 次（Cloudflare 允許的上限）有機率讓登入超時。強度不足的部分靠登入嘗試次數限制補足。雜湊格式帶有迭代次數，之後改用付費方案或提高強度時，玩家下次成功登入就會自動升級。
+**為什麼改成瀏覽器端雜湊（修訂）**：Workers 免費方案每個請求的 CPU 上限是 10ms。伺服器端 PBKDF2 5 萬次約 5ms，改密碼要算兩次，約 10ms，可能超時；而 5 萬次本身也偏低。改成在瀏覽器上算慢的那一段，伺服器只做一次 HMAC（不到 0.1ms）。次數定為 300,000：本機 600,000 次約 400ms，手機上會到 1～2 秒，這個遊戲不需要做到那麼重；300,000 次在桌機約 0.2 秒、手機約 0.5～1 秒。
 
 ## 3. 資料（migration `0003_accounts.sql`）
 
@@ -110,7 +112,8 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 
 **驗證規則**
 - **帳號名稱**：先做 NFKC 正規化並去掉前後空白，長度 3～20 個字。只允許 Unicode 字母、數字和底線（`^[\p{L}\p{N}_]{3,20}$`）。`username_key` 是正規化後轉小寫的結果。
-- **密碼**：8～128 個字，不做其他組成規則。
+- **密碼**：8～128 個字，不做其他組成規則。**（修訂）** 伺服器收不到密碼本身，所以長度只由瀏覽器檢查。
+- **（修訂）送給伺服器的不是密碼**：表格中的 `password`、`current`、`next` 欄位都改成瀏覽器算出的雜湊值（見下方「密碼雜湊」），格式必須是 43 個字元的 base64url，否則回 400 `invalid_password`。
 - 帳號名稱和遊戲內的顯示名稱是分開的。
 
 **登入嘗試限制**
@@ -120,13 +123,19 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 - 登入成功不會清除失敗紀錄（避免攻擊者夾雜正確密碼來重置計數）。
 
 **不透露帳號是否存在**
-- 帳號不存在時，仍然用一組固定的假雜湊跑一次 PBKDF2 再回 403，讓回應時間和密碼錯誤時一樣。
-- 錯誤代碼都是 `invalid_credentials`。
+- 帳號不存在和密碼錯誤，錯誤代碼都是 `invalid_credentials`。
+- **（修訂）** 伺服器端只做一次 HMAC，帳號存在與否的回應時間本來就幾乎相同，不再需要假雜湊。
 
-**密碼雜湊**
-- 格式：`pbkdf2-sha256$<iterations>$<salt base64url>$<hash base64url>`。salt 16 bytes，hash 32 bytes。
-- 用常數時間比對。
-- 登入成功時，如果儲存的迭代次數低於目前設定（50,000），就用新設定重新雜湊並寫回。
+**密碼雜湊（修訂）**
+- **瀏覽器端**：`PBKDF2-SHA256(密碼, salt, 300,000 次)`，輸出 32 bytes，以 base64url 傳送（43 個字元）。
+  - salt 用固定公式：`"infinite-grimoire:v1:" + username_key`，不需要另外向伺服器要。每個帳號的 salt 不同；帳號名稱不能改，salt 也不會變。
+  - 程式放在 `src/game/`（瀏覽器執行層），不放 `src/engine/`。
+- **伺服器端**：存 `hmac-sha256$v1$<HMAC-SHA256(pepper, 瀏覽器雜湊) 的 base64url>`，用常數時間比對。
+  - pepper 是 Cloudflare 的 secret `PASSWORD_PEPPER`，不放進資料庫。本機開發用 `.dev.vars`（不進 git）。
+  - 沒設定 pepper 時，綁定、登入、改密碼一律回 500，不會用空的鑰匙存雜湊。
+  - pepper 一旦上線就不能更換，換了所有帳號都無法登入。
+- 不做自動升級次數。以後要提高次數，再另外設計（salt 裡的 `v1` 留給那時使用）。
+- 已知取捨：salt 事先可知，攻擊者能針對特定帳號預先計算；但沒有 pepper 就無法驗證猜測的結果。
 
 **Session**
 - 登入成功或建立遊客時，產生新的隨機 token（沿用 `newToken()`），只把 SHA-256 雜湊存進 `sessions`。
@@ -171,6 +180,8 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 | 格式不符 | 在欄位旁即時提示：帳號名稱的長度或字元、密碼長度、兩次密碼不一致 |
 | 網路錯誤 | 連線異常，請稍後再試（對話框內顯示，不觸發斷線遮罩） |
 
+**（修訂）** 瀏覽器端雜湊在手機上約需 0.5～1 秒：送出期間按鈕顯示「處理中…」並停用。
+
 **API 用戶端**：`src/game/api.ts` 新增 `login`、`bind`、`getAccount`、`changePassword`、`logoutOthers`、`logout`，沿用現有的 `NetworkError`、`AuthError`、`ApiError`。429 改成帶有 `retryAfterSec` 的錯誤型別。
 
 ## 6. 測試【我的決定】
@@ -182,7 +193,7 @@ CREATE INDEX idx_guest_creations_ip_at ON guest_creations (ip, at);
 - 改密碼：其他 session 回 401，目前這台仍可用；舊密碼錯誤回 403 並算一次失敗。
 - 登出：遊客回 409；已綁定的玩家登出後，這個 token 回 401；「登出其他裝置」只留下目前這台。
 - `/api/guest`：同一個 IP 一小時內第 11 次回 429。
-- 雜湊：格式正確、驗證正確、迭代次數較低時登入後會升級。
+- 雜湊（修訂）：瀏覽器端相同的帳號與密碼算出相同結果，帳號名稱大小寫或全形半形不同也算出相同結果，密碼不同結果就不同；伺服器端格式正確、驗證正確、pepper 不同就驗證失敗、沒有 pepper 時回 500；送來的不是 43 字元 base64url 時回 400。
 
 **資料庫層（新增）**
 - 目前 `D1Store` 的 SQL 沒有自動化測試。這次用 Node 內建的 `node:sqlite` 包一個和 D1 相同介面的小轉接器（`prepare/bind/first/all/run/batch`）。
