@@ -47,7 +47,7 @@
 **尚未完成（下一位接手者的待辦）：**
 0. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）；已合併到 `main`，push 由使用者決定。下一個子專案是第二版 B（稀有魔法發現紀錄），要先做設計討論。**部署時注意：** 遠端 D1 要依序套用 0001→0003，套用 0003 前先備份。
 1. **使用者試玩新版面**：自動化驗收（headless Edge）已確認 1280／768／360 寬無橫向捲動、選擇器清單留在畫面內、斷線遮罩出現並恢復、三欄版面與殘卷線索位置。**還沒在真實瀏覽器確認**：卡頓感是否消失、燃燒／麻痺／冰凍特效、`beam` 分支光束、連鎖閃電、換地點後怪物角度重新隨機、玩到第三個地點。
-2. **部署（暫緩，2026-10-21 使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npx wrangler secret put PASSWORD_PEPPER`（隨機長字串，之後不能換）、`npm run deploy`。**部署前要先取得使用者同意。**部署前先照 `docs/prelaunch-checklist.md` 統整一次。
+2. **部署（暫緩，2026-10-21 使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npx wrangler secret put PASSWORD_PEPPER`（隨機長字串，之後不能換）、`npm run deploy`。**部署前要先取得使用者同意。**部署前先照 `docs/prelaunch-checklist.md` 統整一次；其中的**管理員重設密碼工具是上線前必做項目**，要完成並測試。
 3. **合併**：已完成（2026-10-22 使用者指示合併到 `main`）。
 
 ## 4. 本機啟動
@@ -100,7 +100,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - 使用者偏好以**繁體中文**溝通。
 - 新功能流程（superpowers）：先討論設計並寫進 `docs/superpowers/specs/`，再寫計畫到 `docs/superpowers/plans/`，執行時用 `docs/superpowers/sdd/<plan名>/progress.md` 當帳本（每完成一個任務就記一行）。
 - 採 TDD，任務完成前要跑 `npm test` 與 `npm run build`。
-- 不要直接 commit 到 `main`；開功能 branch。**push、部署、合併前都要先問使用者。**
+- 不要直接 commit 到 `main`；開功能 branch。**例外（2026-10-22 使用者指示）：只改文件的討論與紀錄（`docs/`、AGENTS.md）直接在 `main` commit，不開新 branch。****push、部署、合併前都要先問使用者。**
 - Commit 訊息用 Conventional Commits（英文），結尾加上所用 agent 的 Co-Authored-By 標記。
 - `.superpowers/` 是本機暫存（被 gitignore）；要保留的紀錄請放在 `docs/`。
 
@@ -127,7 +127,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
-- **2026-10-22（Claude Code，Opus 5.5，macOS）**：與使用者確認目前不再投入基礎建設，把延後項目整理成 `docs/prelaunch-checklist.md`（含忘記密碼時管理員手動重設的流程，以及部署時要另外保存 pepper），上線前統整一次。停在：branch `docs/prelaunch-checklist`，尚未 push／合併。下一步：使用者決定合併 → 第二版 B 設計討論。
+- **2026-10-22（Claude Code，Opus 5.5，macOS）**：與使用者確認目前不再投入基礎建設，把延後項目整理成 `docs/prelaunch-checklist.md`（含忘記密碼時管理員手動重設的流程，以及部署時要另外保存 pepper），上線前統整一次。使用者把「管理員重設密碼工具」列為上線前必做（或之後討論更合規的替代方案），並指示文件類的修改直接在 `main` commit。停在：已合併到 `main`，尚未 push。下一步：第二版 B 設計討論。
 
 - **2026-10-22（Claude Code，Opus 5.5，macOS）**：雜湊改版的最終審查 Critical 0、Important 0（4 個 minor 記在帳本）。使用者指示把 `feat/mvp-core-loop` 與 `feat/v2a-accounts` 合併回 `main`：`main` 只有 Initial commit，以 fast-forward 合併到 `feat/v2a-accounts`（已包含 MVP branch）。停在：本機 `main` 已合併，尚未 push。下一步：使用者 push → 第二版 B 設計討論（從 `main` 開新 branch）。
 
