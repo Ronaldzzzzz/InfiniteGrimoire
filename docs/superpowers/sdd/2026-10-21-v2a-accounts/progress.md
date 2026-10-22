@@ -51,3 +51,8 @@ Task 4: 驗收（npm run dev，本機 D1，headless Chrome）：1 綁定 PASS；
 Task 4: 之前的 minor「/api/login 用目前的密碼長度規則檢查」已不存在：伺服器不再檢查密碼長度。
 Final: minor (deferred): 舊格式 `pbkdf2-sha256$` 的帳號無法登入（只影響本機驗收資料，沒有真實玩家）。
 
+Final review（雜湊改版）: 新 context 審查（Opus）：Critical 0、Important 0、Minor 4。
+Final: minor (deferred): 沒設 pepper 時，login 對不存在的名稱回 403、存在的名稱回 500（`!cred ||` 短路），設定錯誤時可看出名稱是否存在；可在 login 開頭先檢查 pepper。
+Final: minor (deferred): 非 HTTPS（如 `vite --host` 用手機連 http://192.168.x.x）時 crypto.subtle 不存在，綁定／登入只顯示「發生錯誤」；正式環境是 HTTPS 不受影響。
+Final: minor (deferred): 沒設 pepper 回 500 只測了綁定，login 與改密碼沒測。
+Final: minor (deferred): 舊版前端送明文會收到 400 invalid_password，畫面顯示「密碼需要 8～128 個字」，原因說明不準確（只影響快取舊 bundle）。
