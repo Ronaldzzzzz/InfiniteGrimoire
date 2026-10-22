@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>元素合成原型</title>
+<style>
+  :root { --bg:#0d0f14; --panel:#151922; --line:#252b38; --text:#e6e9f0; --dim:#8a93a6; --rune:#8fd16a; --amber:#e8b84a;
+    --fire:#e2643b; --wind:#7fd0c0; --thunder:#f3e36b; --earth:#c79a5a; --water:#5aa0e8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"PingFang TC","Noto Sans TC",sans-serif; }
+  .wrap { display:flex; gap:16px; padding:16px; justify-content:center; align-items:flex-start; flex-wrap:wrap; }
+  .stage { position:relative; width:min(640px,100%); }
+  canvas { width:100%; aspect-ratio:1; display:block; }
+  .banner { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.9); background:rgba(13,15,20,.92); border:1px solid var(--amber);
+    border-radius:12px; padding:18px 22px; text-align:center; min-width:260px; max-width:86%; opacity:0; pointer-events:none; transition:all .25s; }
+  .banner.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .banner .kicker { color:var(--amber); font-size:13px; letter-spacing:.2em; }
+  .banner .nm { font-size:28px; font-weight:700; margin:6px 0; }
+  .banner .ds { color:var(--dim); font-size:14px; line-height:1.5; }
+  .panel { width:min(340px,100%); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .panel h3 { margin:12px 0 8px; font-size:14px; color:var(--dim); font-weight:600; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; font-size:12px; color:var(--dim); }
+  .stats b { display:block; color:var(--text); font-size:18px; }
+  .slots { display:flex; align-items:center; gap:6px; }
+  .slot { flex:1; min-height:44px; border:1px dashed var(--line); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer; padding:4px; text-align:center; }
+  .slot.filled { border-style:solid; }
+  button { font:inherit; color:var(--text); background:#1d2330; border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer; }
+  button:hover { border-color:var(--dim); }
+  button.primary { background:var(--rune); color:#10140c; border-color:var(--rune); font-weight:700; }
+  .els { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  .els button { font-size:18px; font-weight:700; padding:10px 0; }
+  .book { display:flex; flex-direction:column; gap:6px; max-height:300px; overflow:auto; }
+  .card { display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px; padding:6px 8px; font-size:13px; cursor:pointer; }
+  .card.eq { border-color:var(--rune); }
+  .card .dots { display:flex; gap:2px; }
+  .card .dots i { width:8px; height:8px; border-radius:50%; display:block; }
+  .card .n { flex:1; }
+  .tag { font-size:11px; padding:1px 6px; border-radius:10px; border:1px solid currentColor; }
+  .t-good { color:var(--rune); } .t-bad { color:#e86a6a; } .t-odd { color:#b48ae8; } .t-base { color:var(--dim); } .t-self { color:var(--amber); }
+  .card button { padding:3px 8px; font-size:12px; }
+  .msg { min-height:20px; font-size:13px; color:var(--dim); margin-top:6px; }
+  .eqline { font-size:13px; color:var(--dim); margin-top:8px; }
+  .eqline b { color:var(--text); }
+  .hint { font-size:12px; color:var(--dim); line-height:1.5; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage">
+    <canvas id="cv" width="640" height="640"></canvas>
+    <div class="banner" id="banner"><div class="kicker" id="bk">新發現！</div><div class="nm" id="bn"></div><div class="ds" id="bd"></div></div>
+  </div>
+  <div class="panel">
+    <div class="stats">
+      <div>擊殺<b id="sk">0</b></div>
+      <div>每秒擊殺<b id="sps">0</b></div>
+      <div>最多一網打盡<b id="smax">0</b></div>
+    </div>
+    <h3>合成</h3>
+    <div class="slots">
+      <div class="slot" id="slotA">點下方元素或魔法</div>
+      <span>＋</span>
+      <div class="slot" id="slotB">放進來</div>
+      <button class="primary" id="mix">合成</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <h3>元素</h3>
+    <div class="els" id="els"></div>
+    <h3>魔導書（已發現 <span id="cnt">5</span> 種）</h3>
+    <div class="book" id="book"></div>
+    <div class="eqline">裝備中：<b id="eq"></b>（自動施放）</div>
+    <div class="hint">原型：合成出的魔法也能再拿去合。沒有存檔，重新整理就重來。</div>
+  </div>
+</div>
+<script>
+'use strict';
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const CX = 320, CY = 320, R = 305, STOP = 48;
+const EL = {
+  fire:    { name:'火', color:'#e2643b' },
+  wind:    { name:'風', color:'#7fd0c0' },
+  thunder: { name:'雷', color:'#f3e36b' },
+  earth:   { name:'土', color:'#c79a5a' },
+  water:   { name:'水', color:'#5aa0e8' },
+};
+const rand = (a, b) => a + Math.random() * (b - a);
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+// ---------------- world ----------------
+let monsters = [], effects = [], particles = [], texts = [];
+let time = 0, kills = 0, killTimes = [], bestMulti = 0, multiShown = 0, shake = 0;
+const mage = { x:CX, y:CY, cd:0, haste:0, stun:0, fog:0, flash:0, flashColor:'#8fd16a' };
+
+function spawn(angle, n) {
+  const hp = 70 * (1 + time / 90);
+  for (let i = 0; i < n; i++) {
+    const a = angle + rand(-.12, .12), r = R - rand(0, 30);
+    monsters.push({ x: CX + Math.cos(a) * r, y: CY + Math.sin(a) * r, hp, max: hp, sp: rand(22, 40), r: rand(8, 11),
+      burn:0, burnDps:0, wet:0, slow:0, stun:0, frozen:0, blind:0, kx:0, ky:0, wander: rand(0, 6.28), heal:0 });
+  }
+}
+let spawnAcc = 0, packAcc = 0;
+function updateSpawns(dt) {
+  if (monsters.length > 170) return;
+  spawnAcc += dt * (4 + time / 30);
+  while (spawnAcc >= 1) { spawnAcc--; spawn(rand(0, 6.28), 1); }
+  packAcc += dt;
+  if (packAcc > 4) { packAcc = 0; spawn(rand(0, 6.28), 14 + Math.floor(time / 15)); }
+}
+
+function hit(m, d, el, opts = {}) {
+  if (m.dead) return;
+  if (m.frozen > 0) d *= 1.5;
+  m.hp -= d;
+  if (Math.random() < (opts.numChance ?? .5)) addText(m.x + rand(-6, 6), m.y - 10, Math.round(d).toString(), EL[el]?.color || '#fff', d > 150 ? 18 : 12);
+  if (m.hp <= 0) kill(m, el);
+}
+function kill(m, el) {
+  m.dead = true; kills++; killTimes.push(time);
+  burst(m.x, m.y, EL[el]?.color || '#fff', 10, 120);
+  if (m.burn > 0) for (const o of near(m.x, m.y, 40)) ignite(o, 2.5, m.burnDps);
+}
+function ignite(m, t, dps) { m.burn = Math.max(m.burn, t); m.burnDps = Math.max(m.burnDps, dps); }
+function near(x, y, r) { return monsters.filter(m => !m.dead && Math.hypot(m.x - x, m.y - y) <= r); }
+function nearest(x, y, skip) {
+  let best = null, bd = 1e9;
+  for (const m of monsters) if (!m.dead && !skip?.has(m)) { const d = Math.hypot(m.x - x, m.y - y); if (d < bd) { bd = d; best = m; } }
+  return best;
+}
+function densest(r = 80) {
+  let best = null, bn = -1;
+  for (const m of monsters) { if (m.dead) continue; let n = 0; for (const o of monsters) if (!o.dead && Math.abs(o.x - m.x) < r && Math.abs(o.y - m.y) < r) n++; if (n > bn) { bn = n; best = m; } }
+  return best ? { x: best.x, y: best.y } : { x: CX + rand(-100, 100), y: CY + rand(-100, 100) };
+}
+function push(m, fx, fy, power) { const d = Math.hypot(m.x - fx, m.y - fy) || 1; m.kx += (m.x - fx) / d * power; m.ky += (m.y - fy) / d * power; }
+
+function updateMonsters(dt) {
+  for (const m of monsters) {
+    if (m.dead) continue;
+    if (m.burn > 0) { m.burn -= dt; m.hp -= m.burnDps * dt; if (Math.random() < dt * 8) particles.push(part(m.x + rand(-5, 5), m.y, '#ff8a3d', 0, -40, .5, 3)); if (m.hp <= 0) { kill(m, 'fire'); continue; } }
+    if (m.heal > 0) { m.heal -= dt; m.hp = Math.min(m.max, m.hp + m.max * .15 * dt); }
+    for (const k of ['wet', 'slow', 'stun', 'frozen', 'blind']) if (m[k] > 0) m[k] -= dt;
+    m.x += m.kx * dt; m.y += m.ky * dt; m.kx *= Math.pow(.02, dt); m.ky *= Math.pow(.02, dt);
+    if (m.stun > 0 || m.frozen > 0) continue;
+    const sp = m.sp * (m.slow > 0 ? .25 : 1);
+    if (m.blind > 0) { m.wander += rand(-3, 3) * dt; m.x += Math.cos(m.wander) * sp * dt; m.y += Math.sin(m.wander) * sp * dt; }
+    else { const d = Math.hypot(m.x - CX, m.y - CY); if (d > STOP + m.r) { m.x -= (m.x - CX) / d * sp * dt; m.y -= (m.y - CY) / d * sp * dt; } }
+    const d = Math.hypot(m.x - CX, m.y - CY); if (d > R) { m.x = CX + (m.x - CX) / d * R; m.y = CY + (m.y - CY) / d * R; }
+  }
+  monsters = monsters.filter(m => !m.dead);
+}
+
+// ---------------- visuals ----------------
+function part(x, y, color, vx, vy, life, size) { return { x, y, vx, vy, life, max: life, color, size }; }
+function burst(x, y, color, n, speed) { for (let i = 0; i < n; i++) { const a = rand(0, 6.28), s = rand(.3, 1) * speed; particles.push(part(x, y, color, Math.cos(a) * s, Math.sin(a) * s, rand(.3, .7), rand(2, 4))); } }
+function addText(x, y, s, color, size = 12, life = .9) { texts.push({ x, y, s, color, size, life, max: life }); }
+function castLabel(spell) { if (spell.tier > 0) addText(CX, CY - 40, spell.name, spell.els.length ? EL[spell.els[0]].color : '#fff', 20, 1.2); mage.flash = .3; mage.flashColor = spell.els.length ? EL[spell.els[spell.els.length - 1]].color : '#fff'; }
+function jagged(ctx, x1, y1, x2, y2, color, w) {
+  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x1, y1);
+  const n = Math.max(3, Math.floor(Math.hypot(x2 - x1, y2 - y1) / 14));
+  for (let i = 1; i < n; i++) { const t = i / n; ctx.lineTo(x1 + (x2 - x1) * t + rand(-7, 7), y1 + (y2 - y1) * t + rand(-7, 7)); }
+  ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+// ---------------- effect building blocks ----------------
+function fx(o) { o.t = 0; effects.push(o); return o; }
+function explosion(x, y, r, color, dmg, el, extra) {
+  for (const m of near(x, y, r)) { hit(m, dmg, el); extra?.(m); }
+  burst(x, y, color, Math.min(40, 10 + r / 3), r * 2.2);
+  fx({ dur: .35, draw(c) { const k = this.t / this.dur; c.globalAlpha = 1 - k; c.strokeStyle = color; c.lineWidth = 6 * (1 - k) + 1; c.beginPath(); c.arc(x, y, r * (.3 + .7 * k), 0, 7); c.stroke(); c.globalAlpha = 1; } });
+}
+function projectile(target, color, speed, onHit, size = 6) {
+  const p = { x: mage.x, y: mage.y };
+  fx({ dur: 4, update(dt) {
+      if (target.dead) target = nearest(p.x, p.y) || target;
+      const d = dist(p, target); if (d < 8 || target.dead) { onHit(p.x, p.y, target); this.t = this.dur; return; }
+      p.x += (target.x - p.x) / d * speed * dt; p.y += (target.y - p.y) / d * speed * dt;
+      particles.push(part(p.x, p.y, color, rand(-20, 20), rand(-20, 20), .3, size * .6));
+    }, draw(c) { c.fillStyle = color; c.beginPath(); c.arc(p.x, p.y, size, 0, 7); c.fill(); } });
+}
+function ring(maxR, color, onTouch, speed = 260, width = 10) {
+  const touched = new Set();
+  fx({ dur: maxR / speed, update() { const r = this.t * speed; for (const m of near(CX, CY, r)) if (!touched.has(m)) { touched.add(m); onTouch(m); } },
+    draw(c) { const r = this.t * speed; c.globalAlpha = 1 - this.t / this.dur * .7; c.strokeStyle = color; c.lineWidth = width; c.beginPath(); c.arc(CX, CY, r, 0, 7); c.stroke(); c.globalAlpha = 1; } });
+}
+function chain(from, hops, range, dmg, color, onHop) {
+  const pts = [{ x: from.x, y: from.y }], seen = new Set(); let cur = from;
+  for (let i = 0; i < hops; i++) {
+    const n = nearest(cur.x, cur.y, seen); if (!n || (i > 0 && dist(cur, n) > range)) break;
+    seen.add(n); pts.push({ x: n.x, y: n.y }); hit(n, dmg * (n.wet > 0 ? 2 : 1), 'thunder'); onHop?.(n); cur = n;
+  }
+  fx({ dur: .3, draw(c) { c.globalAlpha = 1 - this.t / this.dur; for (let i = 1; i < pts.length; i++) { jagged(c, pts[i-1].x, pts[i-1].y, pts[i].x, pts[i].y, color, 3); jagged(c, pts[i-1].x, pts[i-1].y, pts[i].x, pts[i].y, '#fff', 1); } c.globalAlpha = 1; } });
+}
+function strike(m, dmg, color = '#f3e36b') {
+  if (!m) return; hit(m, dmg * (m.wet > 0 ? 2 : 1), 'thunder'); const x = m.x, y = m.y; burst(x, y, color, 8, 140);
+  fx({ dur: .25, draw(c) { c.globalAlpha = 1 - this.t / this.dur; jagged(c, x + rand(-30, 30), y - 260, x, y, color, 4); jagged(c, x, y - 260, x, y, '#fff', 1.5); c.globalAlpha = 1; } });
+}
+function zone(x, y, r, dur, tick, draw, every = .25) {
+  let acc = 0;
+  return fx({ x, y, r, dur, update(dt) { acc += dt; while (acc >= every) { acc -= every; tick(near(this.x, this.y, this.r), this); } }, draw(c) { draw(c, this); } });
+}
+function meteor(x, y, r, dmg, delay, lava) {
+  fx({ dur: delay, draw(c) { const k = this.t / this.dur; c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(x, y, r * k, 0, 7); c.fill();
+      const mx = x + (1 - k) * 160, my = y - (1 - k) * 320; c.fillStyle = '#ff7a3d'; c.beginPath(); c.arc(mx, my, 10 + 6 * k, 0, 7); c.fill();
+      particles.push(part(mx, my, '#c79a5a', rand(-30, 30), rand(-30, 30), .4, 5)); },
+    update() { if (this.t + 1 / 60 >= this.dur && !this.done) { this.done = true; shake = Math.max(shake, 10); explosion(x, y, r, '#ff7a3d', dmg, 'fire', m => { push(m, x, y, 260); ignite(m, 3, 15); });
+        burst(x, y, '#c79a5a', 30, 260); if (lava) zone(x, y, r * .7, 4, ms => ms.forEach(m => { hit(m, 6, 'fire', { numChance: .1 }); ignite(m, 2, 12); }), (c, z) => { c.globalAlpha = .35 * (1 - z.t / z.dur) + .1; c.fillStyle = '#e2643b'; c.beginPath(); c.arc(x, y, z.r, 0, 7); c.fill(); c.globalAlpha = 1; }); } } });
+}
+function tornado(x, y, r, dur, p, opts = {}) {
+  let ang = 0;
+  zone(x, y, r, dur, (ms, z) => {
+    ms.forEach(m => { hit(m, (8 + ms.length * 1.8) * p, 'wind', { numChance: .15 }); if (opts.fire) ignite(m, 2, 10 * p); });
+    if (opts.thunder && ms.length) strike(ms[Math.floor(Math.random() * ms.length)], 45 * p);
+  }, (c, z) => {
+    ang += .25; const fade = Math.min(1, (z.dur - z.t) * 2);
+    for (let i = 0; i < 4; i++) { const rr = z.r * (.25 + i * .22); c.globalAlpha = .55 * fade; c.strokeStyle = i % 2 ? '#7fd0c0' : (opts.fire ? '#ff9a3d' : '#bfe8ff'); c.lineWidth = 4;
+      c.beginPath(); c.ellipse(z.x, z.y, rr, rr * .45, ang * (1 + i * .3), 0, 5); c.stroke(); }
+    if (opts.fire) { c.globalAlpha = .3 * fade; c.fillStyle = '#ff5a1f'; c.beginPath(); c.arc(z.x, z.y, z.r * .35, 0, 7); c.fill(); }
+    c.globalAlpha = 1;
+  });
+  const z = effects[effects.length - 1];
+  const base = z.update;
+  z.update = function (dt) { base.call(this, dt); for (const m of near(this.x, this.y, this.r * 1.6)) { const d = Math.hypot(m.x - this.x, m.y - this.y) || 1; const f = 160 * dt; m.x -= (m.x - this.x) / d * Math.min(f, d) - (m.y - this.y) / d * f * .6; m.y -= (m.y - this.y) / d * Math.min(f, d) + (m.x - this.x) / d * f * .6; }
+    const tgt = densest(); this.x += (tgt.x - this.x) * dt * .5; this.y += (tgt.y - this.y) * dt * .5; };
+}
+function cloud(dur, every, dmg, color = '#f3e36b', wet = false) {
+  let a = rand(0, 6.28);
+  zone(CX, CY, 400, dur, () => { const ms = monsters.filter(m => !m.dead); if (!ms.length) return; const m = ms[Math.floor(Math.random() * ms.length)]; if (wet) m.wet = 4; strike(m, dmg, color); }, (c, z) => {
+    a += .02; z.x = CX + Math.cos(a) * 120; z.y = CY - 150 + Math.sin(a) * 30; const fade = Math.min(1, (z.dur - z.t) * 2);
+    c.globalAlpha = .55 * fade; c.fillStyle = '#4a5266'; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(z.x - 60 + i * 30, z.y + (i % 2) * 10, 30, 0, 7); c.fill(); } c.globalAlpha = 1;
+  }, every);
+  effects[effects.length - 1].r = 0;
+}
+
+// ---------------- spells ----------------
+const SP = {};
+function def(id, o) { SP[id] = Object.assign({ id, tier: 1, depth: 1 }, o); }
+// base: the five elements are also the first spells
+def('fire', { name:'火球', pre:'灼熱', noun:'火球', els:['fire'], aff:'base', tier:0, depth:0, cd:1.1, desc:'打中會爆開並點燃，燃燒的怪死掉會把火傳給旁邊的怪。',
+  cast: p => { const t = nearest(CX, CY); if (t) projectile(t, '#e2643b', 420, (x, y) => explosion(x, y, 40 * Math.sqrt(p), '#e2643b', 35 * p, 'fire', m => ignite(m, 3, 10 * p))); } });
+def('wind', { name:'疾風刃', pre:'疾風', noun:'旋風', els:['wind'], aff:'base', tier:0, depth:0, cd:1.1, desc:'向外甩出風刃，把怪擊退。',
+  cast: p => { for (let k = 0; k < 3; k++) { const a0 = rand(0, 6.28), hitSet = new Set(); const b = { a: a0, r: 10 };
+      fx({ dur: 1.1, update(dt) { b.r += 300 * dt; b.a += 1.2 * dt; const x = CX + Math.cos(b.a) * b.r, y = CY + Math.sin(b.a) * b.r; for (const m of near(x, y, 22)) if (!hitSet.has(m)) { hitSet.add(m); hit(m, 20 * p, 'wind'); push(m, CX, CY, 320); } },
+        draw(c) { const x = CX + Math.cos(b.a) * b.r, y = CY + Math.sin(b.a) * b.r; c.strokeStyle = '#7fd0c0'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, 14, b.a, b.a + 2.4); c.stroke(); } }); } } });
+def('thunder', { name:'落雷', pre:'雷鳴', noun:'雷擊', els:['thunder'], aff:'base', tier:0, depth:0, cd:1.1, desc:'閃電在怪之間跳躍。打到濕的怪傷害加倍。',
+  cast: p => chain(mage, 5, 90, 32 * p, '#f3e36b') });
+def('earth', { name:'岩槍', pre:'岩石', noun:'岩槍', els:['earth'], aff:'base', tier:0, depth:0, cd:1.1, desc:'在怪最多的地方突出岩槍，暈眩一下。',
+  cast: p => { const c = densest(); explosion(c.x, c.y, 45 * Math.sqrt(p), '#c79a5a', 50 * p, 'earth', m => { m.stun = 1; }); } });
+def('water', { name:'水波', pre:'流水', noun:'浪潮', els:['water'], aff:'base', tier:0, depth:0, cd:1.1, desc:'水波擴散，讓怪變慢、變濕。',
+  cast: p => ring(200 * Math.sqrt(p), '#5aa0e8', m => { hit(m, 14 * p, 'water', { numChance: .2 }); m.slow = 3; m.wet = 5; push(m, CX, CY, 120); }) });
+
+// good affinity
+def('fire+wind', { name:'火焰龍捲', pre:'烈焰', noun:'龍捲', els:['fire','wind'], aff:'good', cd:3.2, desc:'風把怪吸到中心，火在中心燒。怪越多，傷害越高。',
+  cast: p => { const c = densest(); tornado(c.x, c.y, 85, 4, p, { fire: true }); } });
+def('thunder+water', { name:'感電之海', pre:'感電', noun:'雷海', els:['water','thunder'], aff:'good', cd:3.5, desc:'先把整個戰場淹濕，再讓雷劈向每一隻濕掉的怪。',
+  cast: p => { monsters.forEach(m => { m.wet = 5; m.slow = 1.5; });
+    fx({ dur: 1, draw(c) { c.globalAlpha = .25 * (1 - this.t); c.fillStyle = '#5aa0e8'; c.beginPath(); c.arc(CX, CY, R, 0, 7); c.fill(); c.globalAlpha = 1; },
+      update() { if (this.t > .5 && !this.done) { this.done = true; shake = Math.max(shake, 6); monsters.filter(m => !m.dead).forEach(m => strike(m, 30 * p)); } } }); } });
+def('thunder+wind', { name:'雷暴雲', pre:'暴風', noun:'雷雲', els:['wind','thunder'], aff:'good', cd:4, desc:'一朵雷雲在戰場上空飄，不停往下劈。',
+  cast: p => cloud(5, .14, 34 * p) });
+def('earth+fire', { name:'隕石', pre:'熔岩', noun:'隕石', els:['earth','fire'], aff:'good', cd:3.5, desc:'隕石砸向怪最多的地方，留下一灘熔岩。',
+  cast: p => { const c = densest(); meteor(c.x, c.y, 95 * Math.sqrt(p), 170 * p, .8, true); } });
+def('water+wind', { name:'冰風暴', pre:'冰霜', noun:'冰暴', els:['water','wind'], aff:'good', cd:3.5, desc:'把周圍的怪全部凍住；凍住的怪受到的傷害變成 1.5 倍。',
+  cast: p => { ring(260, '#cfefff', m => { m.frozen = 2.5; hit(m, 18 * p, 'water', { numChance: .2 }); }, 420, 18); for (let i = 0; i < 60; i++) particles.push(part(CX + rand(-260, 260), CY + rand(-260, 260), '#e8f6ff', rand(-60, 60), rand(20, 80), 1.2, 2)); } });
+def('fire+thunder', { name:'雷炎鎖鏈', pre:'雷炎', noun:'鎖鏈', els:['fire','thunder'], aff:'good', cd:2.6, desc:'跳躍的閃電在每一跳都炸開。',
+  cast: p => chain(mage, 9, 110, 30 * p, '#ffb347', n => explosion(n.x, n.y, 34, '#e2643b', 22 * p, 'fire', m => ignite(m, 2, 8 * p))) });
+// odd: little damage, strong side effects
+def('earth+water', { name:'泥沼', pre:'泥濘', noun:'泥沼', els:['earth','water'], aff:'odd', cd:4, desc:'幾乎沒有傷害，但整片怪都卡在泥巴裡動不了。',
+  cast: p => zone(CX, CY, 170, 6, ms => ms.forEach(m => { m.slow = .5; m.wet = 2; hit(m, 2 * p, 'earth', { numChance: .02 }); }), (c, z) => { c.globalAlpha = .28 * Math.min(1, (z.dur - z.t) * 2); c.fillStyle = '#6b5236'; c.beginPath(); c.arc(CX, CY, z.r, 0, 7); c.fill(); c.globalAlpha = 1; }) });
+def('earth+wind', { name:'沙塵暴', pre:'沙塵', noun:'沙暴', els:['earth','wind'], aff:'odd', cd:4, desc:'怪全都看不見，開始到處亂走。',
+  cast: p => { monsters.forEach(m => { m.blind = 4; hit(m, 4 * p, 'earth', { numChance: .05 }); }); fx({ dur: 4, draw(c) { c.globalAlpha = .18 * (1 - this.t / this.dur); c.fillStyle = '#c79a5a'; c.fillRect(0, 0, 640, 640); c.globalAlpha = 1; },
+    update() { if (Math.random() < .6) particles.push(part(rand(0, 640), rand(0, 640), '#c79a5a', 160, rand(-20, 20), .8, 2)); } }); } });
+def('wind+wind', { name:'順風', pre:'順風', noun:'疾風', els:['wind'], aff:'self', cd:3, desc:'自己的施法速度變成 2 倍，持續 8 秒。',
+  cast: p => { mage.haste = 8; addText(CX, CY + 40, '施法速度 ×2', '#7fd0c0', 16, 1.5); burst(CX, CY, '#7fd0c0', 30, 200); } });
+// bad affinity
+def('fire+water', { name:'蒸氣', pre:'潮濕', noun:'蒸氣', els:['fire','water'], aff:'bad', cd:3, desc:'噗嘶……火被水澆熄了。蒸氣遮住視線，還讓裡面的怪回血。',
+  cast: p => { addText(CX, CY + 40, '噗嘶……', '#cfd6e0', 18, 1.5); mage.fog = 3; monsters.forEach(m => { m.burn = 0; if (Math.hypot(m.x - CX, m.y - CY) < 160) m.heal = 2; }); } });
+def('earth+thunder', { name:'接地', pre:'接地', noun:'磁岩', els:['earth','thunder'], aff:'bad', cd:2.5, desc:'雷電被大地吸收了。……但偶爾岩石會被磁化炸開。',
+  cast: p => { if (Math.random() < .7) { addText(CX, CY + 40, '雷電被大地吸收了…', '#a8a29a', 15, 1.3); burst(CX, CY + 20, '#f3e36b', 6, 60); }
+    else { addText(CX, CY + 40, '磁化岩爆！', '#f3e36b', 20, 1.3); shake = 8; for (let i = 0; i < 14; i++) { const t = monsters[Math.floor(Math.random() * monsters.length)]; if (t) projectile(t, '#c79a5a', 520, (x, y) => explosion(x, y, 30, '#f3e36b', 60 * p, 'earth', m => { m.stun = .8; }), 5); } } } });
+// self pairs: plain amplification
+def('fire+fire', { name:'烈焰爆發', pre:'狂焰', noun:'爆炎', els:['fire'], aff:'self', cd:2.2, desc:'更大的火球。',
+  cast: p => { const t = densest(); explosion(t.x, t.y, 90 * Math.sqrt(p), '#e2643b', 70 * p, 'fire', m => ignite(m, 4, 14 * p)); shake = 4; } });
+def('water+water', { name:'大海嘯', pre:'怒濤', noun:'海嘯', els:['water'], aff:'self', cd:2.8, desc:'整個戰場的怪都被沖回邊緣。',
+  cast: p => ring(300, '#5aa0e8', m => { hit(m, 28 * p, 'water', { numChance: .2 }); m.wet = 6; push(m, CX, CY, 520); }, 320, 22) });
+def('thunder+thunder', { name:'雷神之槌', pre:'神雷', noun:'雷槌', els:['thunder'], aff:'self', cd:2.6, desc:'打最硬的那一隻，再往外跳。',
+  cast: p => { let t = null; for (const m of monsters) if (!t || m.hp > t.hp) t = m; if (t) { strike(t, 260 * p); shake = 6; chain(t, 6, 100, 40 * p, '#f3e36b'); } } });
+def('earth+earth', { name:'地震', pre:'震地', noun:'地震', els:['earth'], aff:'self', cd:3.2, desc:'全場暈眩 1.5 秒。',
+  cast: p => { shake = 14; monsters.forEach(m => { m.stun = 1.5; hit(m, 30 * p, 'earth', { numChance: .2 }); }); } });
+// second tier: spells combined again
+def('fire+wind|thunder', { name:'雷火颶風', pre:'雷火', noun:'颶風', els:['fire','wind','thunder'], aff:'good', tier:2, depth:2, cd:4.5, desc:'火焰龍捲裡多了閃電，被吸進去的怪會被連續劈中。',
+  cast: p => { const c = densest(); tornado(c.x, c.y, 120, 5, p * 1.3, { fire: true, thunder: true }); } });
+def('thunder+water|wind', { name:'雷鳴海嘯', pre:'雷鳴', noun:'怒潮', els:['water','thunder','wind'], aff:'good', tier:2, depth:2, cd:4.5, desc:'帶著雷的海嘯，把全場淹濕、沖走、再劈一輪。',
+  cast: p => { ring(300, '#5aa0e8', m => { m.wet = 6; push(m, CX, CY, 380); hit(m, 20 * p, 'water', { numChance: .1 }); }, 340, 24); setTimeout(() => monsters.forEach(m => strike(m, 40 * p)), 700); } });
+def('earth+fire|fire', { name:'流星雨', pre:'流星', noun:'星雨', els:['earth','fire'], aff:'good', tier:2, depth:2, cd:5, desc:'不只一顆。',
+  cast: p => { for (let i = 0; i < 9; i++) { const t = monsters[Math.floor(Math.random() * monsters.length)] || { x: CX + rand(-200, 200), y: CY + rand(-200, 200) }; meteor(t.x, t.y, 70, 120 * p, .6 + i * .18, i % 3 === 0); } } });
+def('fire+water|thunder', { name:'雷雨雲', pre:'驟雨', noun:'雷雨', els:['fire','water','thunder'], aff:'good', tier:2, depth:2, cd:4, desc:'沒用的蒸氣加上雷，竟然變成會下雨又打雷的雲。失敗作也值得留著。',
+  cast: p => { monsters.forEach(m => m.wet = 6); cloud(6, .1, 30 * p, '#cfe7ff', true); } });
+def('earth|water+wind', { name:'冰封大地', pre:'冰封', noun:'凍土', els:['water','wind','earth'], aff:'good', tier:2, depth:2, cd:4.5, desc:'凍住全場，然後地面裂開把冰塊震碎。',
+  cast: p => { monsters.forEach(m => m.frozen = 2); shake = 6; fx({ dur: 1, update() { if (this.t > .7 && !this.done) { this.done = true; shake = 12; monsters.forEach(m => { hit(m, 60 * p, 'earth', { numChance: .3 }); m.frozen = 0; burst(m.x, m.y, '#e8f6ff', 4, 120); }); } },
+    draw(c) { c.globalAlpha = .2; c.fillStyle = '#cfefff'; c.beginPath(); c.arc(CX, CY, R, 0, 7); c.fill(); c.globalAlpha = 1; } }); } });
+
+// any other pair: built from its parts (so the book never runs out)
+const AFF = { 'fire|wind':1, 'thunder|water':1, 'thunder|wind':1, 'earth|fire':1, 'water|wind':1, 'fire|thunder':1, 'fire|water':-1, 'earth|thunder':-1 };
+function affinity(a, b) { let s = 0; for (const x of a) for (const y of b) if (x !== y) s += AFF[[x, y].sort().join('|')] || 0; return s > 0 ? 'good' : s < 0 ? 'bad' : 'odd'; }
+function keyOf(a, b) { return [a, b].sort().join('|'); }
+function recipeId(a, b) {
+  if (EL[a] && EL[b]) return [a, b].sort().join('+');
+  return keyOf(a, b);
+}
+function generated(a, b) {
+  const A = SP[a], B = SP[b], id = recipeId(a, b);
+  const els = [...new Set([...A.els, ...B.els])], depth = Math.max(A.depth, B.depth) + 1, aff = affinity(A.els, B.els);
+  if (depth > 4) return Object.assign({ id, name:'魔力過載', pre:'過載', noun:'亂流', els, aff:'bad', tier:3, depth, cd:3, desc:'疊太多層了。魔力在手上炸開，小人暈了兩秒。',
+    cast: () => { mage.stun = 2; burst(CX, CY, '#b48ae8', 40, 260); monsters.filter(m => Math.hypot(m.x - CX, m.y - CY) < 120).forEach(m => push(m, CX, CY, 500)); addText(CX, CY + 40, '魔力過載！', '#b48ae8', 18, 1.3); } });
+  const mult = aff === 'good' ? 1.35 : aff === 'bad' ? .6 : 1;
+  const name = (aff === 'bad' ? '失控的' : '') + A.pre + B.noun;
+  const desc = aff === 'good' ? `${A.name}和${B.name}互相增幅。` : aff === 'bad' ? `${A.name}和${B.name}互相干擾，威力下降，偶爾會反噬自己。` : `${A.name}和${B.name}同時發動。`;
+  return { id, name, pre: A.pre, noun: B.noun, els, aff, tier: Math.min(3, depth), depth, cd: Math.min(6, (A.cd + B.cd) * .8), desc,
+    cast: p => { if (aff === 'bad' && Math.random() < .3) { mage.stun = 1.2; addText(CX, CY + 40, '反噬！', '#e86a6a', 18, 1.2); return; } A.cast(p * mult); B.cast(p * mult); } };
+}
+function combine(a, b) {
+  const id = recipeId(a, b);
+  if (SP[id]) return SP[id];
+  // tier-2 recipes are keyed by "<spell>|<element>"
+  for (const [x, y] of [[a, b], [b, a]]) { const k = `${x}|${y}`; if (SP[k]) return SP[k]; }
+  const g = generated(a, b); SP[id] = g; return g;
+}
+
+// ---------------- player state & UI ----------------
+const book = ['fire', 'wind', 'thunder', 'earth', 'water'];
+let equipped = 'fire', slotA = null, slotB = null;
+const $ = id => document.getElementById(id);
+const tagText = { good:'相性極佳', bad:'相性差', odd:'奇妙', base:'基礎', self:'同元素強化' };
+function dots(els) { return `<span class="dots">${els.map(e => `<i style="background:${EL[e].color}"></i>`).join('')}</span>`; }
+function render() {
+  $('els').innerHTML = Object.entries(EL).map(([k, e]) => `<button data-it="${k}" style="color:${e.color}">${e.name}</button>`).join('');
+  $('book').innerHTML = book.map(id => { const s = SP[id]; return `<div class="card ${id === equipped ? 'eq' : ''}" data-it="${id}">${dots(s.els)}<span class="n">${s.name}</span><span class="tag t-${s.aff}">${tagText[s.aff]}</span><button data-eq="${id}">${id === equipped ? '裝備中' : '裝備'}</button></div>`; }).join('');
+  $('cnt').textContent = book.length;
+  $('slotA').innerHTML = slotA ? `${dots(SP[slotA].els)} ${SP[slotA].name}` : '點下方元素或魔法'; $('slotA').classList.toggle('filled', !!slotA);
+  $('slotB').innerHTML = slotB ? `${dots(SP[slotB].els)} ${SP[slotB].name}` : '放進來'; $('slotB').classList.toggle('filled', !!slotB);
+  $('eq').textContent = SP[equipped].name;
+}
+document.addEventListener('click', e => {
+  const eq = e.target.closest('[data-eq]'); if (eq) { equipped = eq.dataset.eq; mage.cd = 0; render(); return; }
+  const it = e.target.closest('[data-it]'); if (it) { if (!slotA) slotA = it.dataset.it; else slotB = it.dataset.it; render(); return; }
+  if (e.target.closest('#slotA')) { slotA = null; render(); } if (e.target.closest('#slotB')) { slotB = null; render(); }
+});
+let bannerTimer = 0;
+$('mix').onclick = () => {
+  if (!slotA || !slotB) { $('msg').textContent = '放兩樣東西進去。'; return; }
+  const s = combine(slotA, slotB); slotA = slotB = null;
+  const isNew = !book.includes(s.id);
+  if (isNew) book.push(s.id);
+  equipped = s.id; mage.cd = 0;
+  $('bk').textContent = isNew ? '新發現！' : '已經會了';
+  $('bk').style.color = s.aff === 'bad' ? '#e86a6a' : s.aff === 'odd' ? '#b48ae8' : '#e8b84a';
+  $('bn').innerHTML = `${dots(s.els)} ${s.name}`; $('bd').textContent = `【${tagText[s.aff]}】${s.desc}`;
+  $('banner').classList.add('show'); clearTimeout(bannerTimer); bannerTimer = setTimeout(() => $('banner').classList.remove('show'), 2600);
+  $('msg').textContent = isNew ? `合出「${s.name}」，已裝備。` : `「${s.name}」已裝備。`;
+  render();
+};
+
+// ---------------- loop ----------------
+function update(dt) {
+  time += dt; updateSpawns(dt);
+  if (mage.haste > 0) mage.haste -= dt; if (mage.fog > 0) mage.fog -= dt; if (mage.flash > 0) mage.flash -= dt;
+  if (mage.stun > 0) mage.stun -= dt;
+  else { mage.cd -= dt * (mage.haste > 0 ? 2 : 1) * (mage.fog > 0 ? .5 : 1);
+    if (mage.cd <= 0 && monsters.length) { const s = SP[equipped]; s.cast(1); castLabel(s); mage.cd = s.cd; } }
+  for (const e of effects) { e.t += dt; e.update?.(dt); }
+  effects = effects.filter(e => e.t < e.dur);
+  updateMonsters(dt);
+  for (const p of particles) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .96; p.vy *= .96; }
+  particles = particles.filter(p => p.life > 0); if (particles.length > 1500) particles.splice(0, particles.length - 1500);
+  for (const t of texts) { t.life -= dt; t.y -= 30 * dt; } texts = texts.filter(t => t.life > 0);
+  killTimes = killTimes.filter(t => time - t < .8);
+  const n = killTimes.length;
+  if (n >= 6 && n > multiShown) { multiShown = n; bestMulti = Math.max(bestMulti, n); multiText = { n, life: 1.2 }; }
+  if (n === 0) multiShown = 0;
+  if (multiText) { multiText.life -= dt; if (multiText.life <= 0) multiText = null; }
+  shake *= Math.pow(.01, dt);
+}
+let multiText = null;
+function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0d0f14'; ctx.fillRect(0, 0, 640, 640);
+  if (shake > .5) ctx.translate(rand(-shake, shake), rand(-shake, shake));
+  ctx.fillStyle = '#121620'; ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#1f2a1c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(CX, CY, STOP, 0, 7); ctx.stroke();
+  for (const e of effects) if (e.r !== undefined) e.draw?.(ctx);
+  for (const m of monsters) {
+    ctx.fillStyle = m.frozen > 0 ? '#bfe4f2' : m.blind > 0 ? '#5a5560' : '#6d5b85';
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 7); ctx.fill();
+    if (m.burn > 0) { ctx.strokeStyle = '#ff8a3d'; ctx.lineWidth = 2; ctx.stroke(); }
+    else if (m.wet > 0) { ctx.strokeStyle = '#5aa0e8'; ctx.lineWidth = 2; ctx.stroke(); }
+    if (m.heal > 0) { ctx.strokeStyle = '#8fd16a'; ctx.lineWidth = 2; ctx.stroke(); }
+    if (m.stun > 0) { ctx.fillStyle = '#f3e36b'; ctx.fillText('✦', m.x - 4, m.y - m.r - 2); }
+    ctx.fillStyle = '#2a2f3a'; ctx.fillRect(m.x - 10, m.y + m.r + 3, 20, 3); ctx.fillStyle = '#d65a5a'; ctx.fillRect(m.x - 10, m.y + m.r + 3, 20 * Math.max(0, m.hp / m.max), 3);
+  }
+  for (const e of effects) if (e.r === undefined) e.draw?.(ctx);
+  for (const p of particles) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); } ctx.globalAlpha = 1;
+  const glow = mage.flash > 0 ? mage.flashColor : '#8fd16a';
+  ctx.fillStyle = glow; ctx.shadowColor = glow; ctx.shadowBlur = mage.flash > 0 ? 30 : 12; ctx.beginPath(); ctx.arc(CX, CY, 12, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+  if (mage.stun > 0) { ctx.fillStyle = '#b48ae8'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('@_@', CX, CY - 18); }
+  if (mage.haste > 0) { ctx.strokeStyle = '#7fd0c0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(CX, CY, 20 + Math.sin(time * 10) * 2, 0, 7); ctx.stroke(); }
+  if (mage.fog > 0) { ctx.globalAlpha = Math.min(.6, mage.fog * .3); ctx.fillStyle = '#cfd6e0'; ctx.beginPath(); ctx.arc(CX, CY, 170, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+  ctx.textAlign = 'center';
+  for (const t of texts) { ctx.globalAlpha = Math.min(1, t.life / t.max * 2); ctx.fillStyle = t.color; ctx.font = `bold ${t.size}px system-ui, sans-serif`; ctx.fillText(t.s, t.x, t.y); } ctx.globalAlpha = 1;
+  if (multiText) { const k = 1 + Math.max(0, multiText.life - 1) * 2; ctx.globalAlpha = Math.min(1, multiText.life * 2); ctx.fillStyle = '#e8b84a'; ctx.font = `900 ${Math.round(30 * k)}px system-ui, sans-serif`; ctx.fillText(`×${multiText.n} 一網打盡！`, CX, 90); ctx.globalAlpha = 1; }
+  ctx.textAlign = 'left';
+}
+let last = performance.now(), statAcc = 0, kpsKills = [];
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  update(dt); draw();
+  statAcc += dt; if (statAcc > .25) { statAcc = 0; kpsKills.push([time, kills]); kpsKills = kpsKills.filter(k => time - k[0] <= 5);
+    $('sk').textContent = kills; $('sps').textContent = kpsKills.length > 1 ? ((kills - kpsKills[0][1]) / (time - kpsKills[0][0])).toFixed(1) : '0'; $('smax').textContent = bestMulti; }
+  requestAnimationFrame(frame);
+}
+render(); spawn(0, 8); spawn(2.5, 8); spawn(4.4, 8);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

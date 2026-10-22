@@ -8,3 +8,4 @@
 
 這些檔案是 HTML 片段，原本由 brainstorming 工具外框包裝。直接用瀏覽器打開也能看，只是少了外框樣式。
 - `layout-v1.html`：試玩回饋後的新版面（A／B 兩案，使用者選 **B**：面板分兩欄，元素表緊貼合成槽）。對應 `docs/superpowers/specs/2026-10-21-playtest-ux-fixes-design.md`
+- `combo-prototype.html`：核心重做的拋棄式原型（完整網頁，直接打開就能玩）：成群魔物、元素特性、名魔法與自創魔法、相性、可再合。對應 `docs/superpowers/specs/2026-10-22-core-rework-design.md`
