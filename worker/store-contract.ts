@@ -111,8 +111,12 @@ export function describeStoreContract(name: string, make: () => Promise<Store>):
       expect(await s.findGmToken('t1', 4999)).toBe('p1');
       expect(await s.findGmToken('t1', 5000)).toBeNull();
       expect(await s.findGmToken('nope', 0)).toBeNull();
+      await s.createGmToken('t2', 'p2', 5000);
+      expect(await s.findGmToken('t1', 0)).toBe('p1');
+      expect(await s.findGmToken('t2', 0)).toBe('p2');
       await s.deleteGmTokens('p1');
       expect(await s.findGmToken('t1', 0)).toBeNull();
+      expect(await s.findGmToken('t2', 0)).toBe('p2');
 
       await s.createSession('h1b', 'p1', 1500);
       await s.deleteSessions('p1');

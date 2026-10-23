@@ -1171,6 +1171,40 @@ describe('GM login and tokens', () => {
     expect((await req(a, PROBE, {}, undefined, gmToken)).status).toBe(401);
   });
 
+  it('odd spellings of GM paths never reach a GM action without a GM token', async () => {
+    const a = gmApp('gm_one');
+    const g = await bound('gm_one');
+    const b = await bound('player_b');
+    const before = store.credentials.get(b.playerId)!.passwordHash;
+    const loginBody = { username: 'gm_one', password: await ph('password1') };
+    const actionBodies = [
+      { state: g.state, baseRevision: 0, items: { 'el:fire:1': 5 } },
+      { state: g.state, baseRevision: 0, op: 'unlock_all' },
+      { username: 'player_b', password: await ph('Temp12345678') },
+    ];
+    const paths = ['/api/gm', '/api/gm/', '/api/gm/login/', '/api/GM/login', '/api/gm%2Flogin',
+      '/api/gm/inventory/', '/api/GM/inventory', '/api/gm/%69nventory', '/api/gm%2Finventory', '/api/gm/%7Aones',
+      '/api/gm/reset-password/', '/api/gm//reset-password', '/api/gm/reset%2Dpassword'];
+    for (const path of paths) {
+      for (const body of [loginBody, ...actionBodies]) {
+        const res = await req(a, path, body, g.token);
+        expect([403, 404], `${path} ${res.status}`).toContain(res.status);
+      }
+    }
+    expect(store.gmTokens.size).toBe(0);
+    // percent-encoded letters decode to the real login route (route and guard both see '/api/gm/login'):
+    // it still needs the GM password, and an action body is never run there
+    for (const body of actionBodies) {
+      const res = await req(a, '/api/gm/%6Cogin', body, g.token);
+      expect([400, 403], `%6Cogin ${res.status}`).toContain(res.status);
+    }
+    expect((await req(a, '/api/gm/%6Cogin', loginBody, g.token)).status).toBe(200);
+    expect(store.gmActions.map((x) => x.action)).toEqual(['login']);
+    expect(store.saves.get(g.playerId)!.revision).toBe(0);
+    expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
+    expect(store.credentials.get(b.playerId)!.passwordHash).toBe(before);
+  });
+
   it('a GM token expires after 30 minutes without touching the session', async () => {
     const a = gmApp('gm_one');
     const g = await bound('gm_one');
