@@ -3,12 +3,16 @@ import type { Content } from '../engine/model';
 import { ApiError, GmExpiredError, RateLimitedError, type ApiClient } from '../game/api';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
+import { GmInventoryTab } from './gm/GmInventoryTab';
+import { GmMapTab } from './gm/GmMapTab';
+import { GmPlayersTab } from './gm/GmPlayersTab';
+import { GmRecipesTab } from './gm/GmRecipesTab';
 
 /** What the GM tabs receive: the short-lived token and what to call when the server says it is gone. */
 export type GmContext = { token: string; onExpired: () => void };
 
 type Props = {
-  api: Pick<ApiClient, 'gmLogin'>;
+  api: Pick<ApiClient, 'gmLogin' | 'gmResetPassword'>;
   sync: SyncController;
   runtime: GameRuntime;
   content: Content;
@@ -26,6 +30,17 @@ type TabId = (typeof TABS)[number]['id'];
 type Layout = { x: number; y: number; min: boolean };
 const DEFAULT_LAYOUT: Layout = { x: 24, y: 72, min: false };
 const EXPIRED = 'GM 驗證已過期，請重新驗證';
+/** Fallback size when the window has not been laid out yet (and in jsdom). */
+const FALLBACK_WIDTH = 440;
+/** How much of the title bar must stay on screen so it can still be grabbed. */
+const GRAB_HEIGHT = 40;
+
+/** Keeps the whole width and the title bar inside the viewport. */
+function clampLayout(l: Layout, width: number): Layout {
+  const maxX = Math.max(0, window.innerWidth - width);
+  const maxY = Math.max(0, window.innerHeight - GRAB_HEIGHT);
+  return { ...l, x: Math.min(maxX, Math.max(0, l.x)), y: Math.min(maxY, Math.max(0, l.y)) };
+}
 
 function loadLayout(): Layout {
   try {
@@ -46,9 +61,9 @@ function saveLayout(l: Layout): void {
   }
 }
 
-export function GmWindow({ api, username }: Props) {
+export function GmWindow({ api, sync, runtime, content, username }: Props) {
   const [open, setOpen] = useState(() => new URLSearchParams(window.location.search).has('gm'));
-  const [layout, setLayout] = useState<Layout>(loadLayout);
+  const [layout, setLayout] = useState<Layout>(() => clampLayout(loadLayout(), FALLBACK_WIDTH));
   const [auth, setAuth] = useState<{ token: string; expiresAt: number } | null>(null);
   const [tab, setTab] = useState<TabId>('items');
   const [name, setName] = useState(username ?? '');
@@ -56,12 +71,13 @@ export function GmWindow({ api, username }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.code === 'Backquote' && e.ctrlKey && e.shiftKey) {
+      if (e.code === 'Backquote' && e.ctrlKey && e.shiftKey && !e.repeat) {
         e.preventDefault();
         setOpen((o) => !o);
       }
@@ -101,7 +117,8 @@ export function GmWindow({ api, username }: Props) {
   const onMove = (e: PointerEvent<HTMLDivElement>): void => {
     const d = drag.current;
     if (!d) return;
-    setLayout({ ...layoutRef.current, x: Math.max(0, e.clientX - d.dx), y: Math.max(0, e.clientY - d.dy) });
+    const width = box.current?.offsetWidth || FALLBACK_WIDTH;
+    setLayout(clampLayout({ ...layoutRef.current, x: e.clientX - d.dx, y: e.clientY - d.dy }, width));
   };
   const onUp = (): void => {
     if (!drag.current) return;
@@ -116,13 +133,13 @@ export function GmWindow({ api, username }: Props) {
     try {
       const r = await api.gmLogin(name, password);
       setAuth({ token: r.gmToken, expiresAt: r.expiresAt });
-      setPassword('');
     } catch (err) {
       if (err instanceof GmExpiredError) setError(EXPIRED);
       else if (err instanceof RateLimitedError) setError('嘗試太多次，請稍後再試');
       else if (err instanceof ApiError && err.status === 403) setError('帳號或密碼錯誤');
       else setError('連線失敗，請稍後再試');
     } finally {
+      setPassword('');
       setBusy(false);
     }
   };
@@ -131,6 +148,7 @@ export function GmWindow({ api, username }: Props) {
 
   return (
     <div
+      ref={box}
       className={`gm-window${layout.min ? ' gm-min' : ''}`}
       role="dialog"
       aria-label="GM 工具"
@@ -170,7 +188,12 @@ export function GmWindow({ api, username }: Props) {
                   <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>{t.label}</button>
                 ))}
               </div>
-              <div className="gm-pane" role="tabpanel">{TABS.find((t) => t.id === tab)?.label}（Task 7 填入）</div>
+              <div className="gm-pane" role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
+                {tab === 'items' && <GmInventoryTab ctx={ctx} sync={sync} runtime={runtime} content={content} />}
+                {tab === 'zones' && <GmMapTab ctx={ctx} sync={sync} content={content} />}
+                {tab === 'recipes' && <GmRecipesTab runtime={runtime} content={content} />}
+                {tab === 'players' && <GmPlayersTab ctx={ctx} api={api} />}
+              </div>
             </>
           )}
         </div>

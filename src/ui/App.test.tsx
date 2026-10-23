@@ -71,6 +71,14 @@ const placeFromTree = (name: string) => {
 };
 
 describe('App layout', () => {
+  it('the normal game screen shows no GM text and no GM button', async () => {
+    setup();
+    await screen.findByRole('button', { name: /帳號.*未綁定/ }, { timeout: 5000 }); // after the account lookup settles
+    expect(document.body.textContent).not.toMatch(/GM/);
+    expect(screen.queryByRole('button', { name: /GM/ })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'GM 工具' })).toBeNull();
+  });
+
   it('the altar and the key item bar do not re-render when only unrelated inventory changes', () => {
     const { runtime } = setup();
     const altar = renders.altar.mock.calls.length;

@@ -6,6 +6,7 @@ import { ApiError, GmExpiredError, RateLimitedError, type ApiClient } from '../g
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import { GmWindow } from './GmWindow';
+import { fakeRuntime } from './test-runtime';
 
 afterEach(() => {
   cleanup();
@@ -17,12 +18,12 @@ afterEach(() => {
 beforeEach(() => localStorage.clear());
 
 function setup(username: string | null = 'aria') {
-  const api = { gmLogin: vi.fn(async () => ({ gmToken: 'g1', expiresAt: Date.now() + 600_000 })) };
+  const api = { gmLogin: vi.fn(async () => ({ gmToken: 'g1', expiresAt: Date.now() + 600_000 })), gmResetPassword: vi.fn(async () => {}) };
   render(
     <GmWindow
       api={api as unknown as ApiClient}
-      sync={{} as SyncController}
-      runtime={{} as GameRuntime}
+      sync={{ action: vi.fn(async () => ({ kind: 'gm' })) } as unknown as SyncController}
+      runtime={fakeRuntime() as unknown as GameRuntime}
       content={content}
       username={username}
     />,
@@ -39,11 +40,59 @@ async function login() {
 
 describe('GmWindow', () => {
   it('renders nothing by default', () => {
-    const { container } = render(<div />);
     setup();
     expect(dialog()).toBeNull();
     expect(screen.queryByRole('button', { name: /GM/ })).toBeNull();
-    expect(container.textContent).not.toMatch(/GM/);
+    expect(document.body.textContent).not.toMatch(/GM/);
+  });
+
+  it('ignores a held-down hotkey repeating', () => {
+    setup();
+    toggle();
+    fireEvent.keyDown(window, { code: 'Backquote', ctrlKey: true, shiftKey: true, repeat: true });
+    expect(dialog()).toBeTruthy();
+  });
+
+  it('clears the password after a failed login', async () => {
+    const { api } = setup();
+    api.gmLogin.mockRejectedValueOnce(new ApiError('x', 403, 'invalid_credentials'));
+    await login();
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect((screen.getByLabelText('密碼') as HTMLInputElement).value).toBe('');
+  });
+
+  it('keeps a saved position inside the viewport', () => {
+    localStorage.setItem('ig.gmWindow', JSON.stringify({ x: 99999, y: -50, min: false }));
+    setup();
+    toggle();
+    const style = dialog()!.style;
+    expect(parseFloat(style.left)).toBeLessThanOrEqual(window.innerWidth - 40);
+    expect(parseFloat(style.left)).toBeGreaterThanOrEqual(0);
+    expect(parseFloat(style.top)).toBe(0);
+  });
+
+  it('keeps the window inside the viewport while dragging', () => {
+    setup();
+    toggle();
+    const bar = screen.getByTestId('gm-titlebar');
+    fireEvent.pointerDown(bar, { clientX: 100, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(bar, { clientX: 99999, clientY: 99999, pointerId: 1 });
+    const style = dialog()!.style;
+    expect(parseFloat(style.left)).toBeLessThanOrEqual(window.innerWidth - 40);
+    expect(parseFloat(style.top)).toBeLessThanOrEqual(window.innerHeight - 40);
+    fireEvent.pointerUp(bar, { clientX: 99999, clientY: 99999, pointerId: 1 });
+  });
+
+  it("shows each tab's content after login", async () => {
+    setup();
+    await login();
+    expect(await screen.findByRole('button', { name: '套用' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: '地圖' }));
+    expect(screen.getByRole('button', { name: '散開所有迷霧' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: '配方表' }));
+    expect(screen.getByRole('searchbox')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: '玩家' }));
+    expect(screen.getByRole('button', { name: '重設密碼' })).toBeTruthy();
   });
 
   it('toggles with Ctrl+Shift+backquote only', () => {
