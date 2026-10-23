@@ -1,28 +1,20 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createBattle } from '../engine/combat';
 import { content } from '../engine/content';
-import { createInitialState } from '../engine/persist';
-import type { GameRuntime, Snapshot } from '../game/runtime';
+import type { GameRuntime } from '../game/runtime';
 import type { ActionResult, ApiClient } from '../game/api';
 import { craftedId, resolveSpell } from '../engine/spells';
 import type { SyncController } from '../game/sync';
 import { App } from './App';
+import { fakeRuntime } from './test-runtime';
 
 vi.mock('./BattleCanvas', () => ({ BattleCanvas: () => null }));
 afterEach(cleanup);
 
 function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1': 1 }, learned = ['mana_bolt'], actionResult: ActionResult | null = null) {
-  const game = { ...createInitialState(content), inventory, learned };
-  const snapshot: Snapshot = { game, battle: createBattle(game.currentZone), revision: 1, paused: false, synthPending: false };
-  const runtime = {
-    getSnapshot: () => snapshot,
-    subscribe: () => () => {},
-    equip: vi.fn(),
-    travel: vi.fn(),
-    upgrade: vi.fn(() => true),
-  } as unknown as GameRuntime;
+  const fake = fakeRuntime({ inventory, learned });
+  const runtime = Object.assign(fake, { travel: vi.fn(), upgrade: vi.fn(() => true) }) as unknown as GameRuntime;
   let reply: (r: ActionResult | null) => void = () => {};
   const sync = {
     status: 'online',
@@ -40,11 +32,19 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
     login: vi.fn(),
   } as unknown as ApiClient;
   render(<App runtime={runtime} sync={sync} content={content} api={api} onSwitched={vi.fn()} onLoggedOut={vi.fn()} />);
-  return { runtime, sync, reply: (r: ActionResult | null) => reply(r) };
+  return { runtime, sync, reply: (r: ActionResult | null) => reply(r), pending: (p: boolean) => act(() => fake.set({ synthPending: p })) };
 }
 
 const slotTexts = () =>
-  screen.getAllByRole('button').filter((b) => b.classList.contains('slot')).map((b) => b.textContent);
+  screen
+    .getAllByRole('button')
+    .filter((b) => b.classList.contains('altar-side'))
+    .map((b) => b.querySelector('.altar-name')?.textContent ?? '空');
+
+const placeFromTree = (name: string) => {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }));
+  fireEvent.click(within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }));
+};
 
 describe('App layout', () => {
   it('using a key item from the battle view switches back to the tree tab', async () => {
@@ -77,9 +77,9 @@ describe('App layout', () => {
   it('puts a clicked element cell into the first empty slot, then the next one', () => {
     setup();
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    expect(slotTexts()).toEqual(['初階火', '空']);
+    expect(slotTexts()).toEqual(['火・初階', '空']);
     fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
-    expect(slotTexts()).toEqual(['初階火', '初階風']);
+    expect(slotTexts()).toEqual(['火・初階', '風・初階']);
   });
 
   it('keeps the slots when an element is upgraded', () => {
@@ -87,7 +87,7 @@ describe('App layout', () => {
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     fireEvent.click(screen.getByRole('button', { name: '升階火' }));
     expect(runtime.upgrade).toHaveBeenCalledWith('fire', 1);
-    expect(slotTexts()).toEqual(['初階火', '空']);
+    expect(slotTexts()).toEqual(['火・初階', '空']);
   });
 
   it('shows a locked spell hint next to the slots, and clears it when a learned spell is clicked', () => {
@@ -110,13 +110,13 @@ describe('App layout', () => {
     const id = craftedId('fireball', 'wind_blade');
     const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball', 'wind_blade']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    fireEvent.change(screen.getByRole('combobox', { name: '放入魔法' }), { target: { value: 'wind_blade' } });
+    placeFromTree(content.spells.wind_blade!.name);
     fireEvent.click(screen.getByRole('button', { name: '合成' }));
     expect(runtime.equip).not.toHaveBeenCalled();
     reply({ kind: 'learned', spellId: id, crafted: true });
-    await waitFor(() => expect(runtime.equip).toHaveBeenCalledWith(id));
-    const banner = screen.getByRole('status', { name: '新發現' });
-    expect(banner.textContent).toContain('新發現！');
+    await waitFor(() => expect(runtime.equip).toHaveBeenCalledWith(id), { timeout: 3000 });
+    const banner = screen.getByRole('status', { name: '合成結果' });
+    expect(banner.textContent).toContain('自創魔法！');
     expect(banner.textContent).toContain(resolveSpell(id, content)!.name);
   });
 
@@ -126,7 +126,34 @@ describe('App layout', () => {
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     fireEvent.click(screen.getByRole('button', { name: '合成' }));
     reply({ kind: 'duplicate', spellId: 'fireball', refunded: ['el:fire:1'] });
-    await waitFor(() => expect(screen.getByRole('status', { name: '新發現' }).textContent).toContain('已經會了'));
+    await waitFor(() => expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('已經會了'), { timeout: 3000 });
     expect(runtime.equip).not.toHaveBeenCalled();
+  });
+
+  it('while the synthesis is pending nothing can be placed; after the reveal both sides are empty', async () => {
+    const { runtime, sync, reply, pending } = setup({ 'el:fire:1': 3, 'el:wind:1': 1 }, ['mana_bolt', 'fireball', 'wind_blade']);
+    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
+    placeFromTree(content.spells.wind_blade!.name);
+    expect(slotTexts()).toEqual(['火・初階', content.spells.wind_blade!.name]);
+    fireEvent.click(screen.getByRole('button', { name: '合成' }));
+    expect(sync.synthesize).toHaveBeenCalled();
+    pending(true);
+    // element cell, bubble button and double-click all do nothing (and no toast)
+    fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
+    expect((within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.doubleClick(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
+    expect(slotTexts()).toEqual(['火・初階', content.spells.wind_blade!.name]);
+    expect(screen.queryByText(`已放入合成台：${content.spells.fireball!.name}`)).toBeNull();
+    pending(false);
+    reply({ kind: 'learned', spellId: craftedId('fireball', 'wind_blade'), crafted: true });
+    await waitFor(() => expect(slotTexts()).toEqual(['空', '空']), { timeout: 3000 });
+    expect(runtime.equip).toHaveBeenCalled();
+  });
+
+  it('has no 放入魔法 combobox and no 嘗試紀錄 heading any more', () => {
+    setup();
+    expect(screen.queryByRole('combobox', { name: '放入魔法' })).toBeNull();
+    expect(screen.queryByText('嘗試紀錄')).toBeNull();
   });
 });

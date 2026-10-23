@@ -13,8 +13,7 @@ import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
 import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
-import { emptySlots, fillSlot, type Slots } from './SynthesisAltar';
-import { SynthesisPanel } from './SynthesisPanel';
+import { emptySlots, fillSlot, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { TopBar } from './TopBar';
 import { useConnStatus, useGameState, useRuntime } from './useGame';
 
@@ -64,7 +63,11 @@ export function App({
     };
   }, [api]);
 
-  const pick = useCallback((id: string): void => setSlots((s) => fillSlot(s, id)), []);
+  // a synthesis in flight owns both sides: placing anything now would be wiped by the reveal
+  const pick = useCallback((id: string): void => {
+    if (runtime.getSnapshot().synthPending) return;
+    setSlots((s) => fillSlot(s, id));
+  }, [runtime]);
   const onSynthResult = (result: ActionResult): void => {
     if (result.kind !== 'learned' && result.kind !== 'duplicate') return;
     const spell = resolveSpell(result.spellId, content);
@@ -95,15 +98,8 @@ export function App({
         </div>
         <div className="side">
           <section className="workbench" aria-label="元素與合成">
-            <ElementTable
-              inventory={game.inventory}
-              onPick={pick}
-              onUpgrade={(el, g) => runtime.upgrade(el, g)}
-              upgradeLocked={synthPending}
-            />
-            <SynthesisPanel
-              game={game}
-              synthPending={synthPending}
+            <SynthesisAltar
+              runtime={runtime}
               sync={sync}
               content={content}
               slots={slots}
@@ -111,13 +107,19 @@ export function App({
               hint={hint}
               onResult={onSynthResult}
             />
+            <ElementTable
+              inventory={game.inventory}
+              onPick={pick}
+              onUpgrade={(el, g) => runtime.upgrade(el, g)}
+              upgradeLocked={synthPending}
+            />
           </section>
           <section className="grimoire-col" aria-label="魔導書">
             <div className="grimoire-tabs" role="tablist" aria-label="魔導書">
               <button type="button" role="tab" aria-selected={tab === 'tree'} onClick={() => setTab('tree')}>技能樹</button>
               <button type="button" role="tab" aria-selected={tab === 'notebook'} onClick={() => setTab('notebook')}>魔法筆記</button>
             </div>
-            {/* <768px the slots are scrolled out of view above the grimoire; the node bubble repeats the hint */}
+            {/* <768px the altar is scrolled out of view above the grimoire; the node bubble repeats the hint */}
             {tab === 'tree' ? (
               <GrimoirePanel runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={!slots.includes(null)} lifting={lifting} content={content} />
             ) : (

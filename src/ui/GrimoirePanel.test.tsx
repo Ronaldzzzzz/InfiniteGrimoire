@@ -118,6 +118,19 @@ describe('GrimoirePanel', () => {
     expect(screen.queryByText(/已放入合成台/)).toBeNull();
   });
 
+  it('while a synthesis is pending, 放入合成 is disabled in the bubble and the card, and double-click does nothing', () => {
+    const { onPick } = setup({ learned: ['mana_bolt', 'fireball'] }, true);
+    fireEvent.doubleClick(node(content.spells.fireball!.name));
+    expect(onPick).not.toHaveBeenCalled();
+    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+    fireEvent.click(node(content.spells.fireball!.name));
+    expect((screen.getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    expect((within(screen.getByLabelText('節點詳情')).getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(onPick).not.toHaveBeenCalled();
+    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+  });
+
   it('a drag that ends on a node opens nothing', () => {
     const { onPick } = setup({ learned: ['mana_bolt', 'fireball'] });
     const n = node(content.spells.fireball!.name);

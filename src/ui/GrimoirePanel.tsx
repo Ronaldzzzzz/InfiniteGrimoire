@@ -63,6 +63,9 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const revealed = useRuntime(runtime, (s) => s.game.revealed);
   const passives = useRuntime(runtime, (s) => s.game.passives);
+  const synthPending = useRuntime(runtime, (s) => s.synthPending);
+  // while a synthesis is in flight nothing may be placed (and no toast or flash may suggest it was)
+  const noPlace = slotsFull || synthPending;
   const visible = useMemo(() => visibleRegions({ revealed }, content), [content, revealed]);
   const layout = useMemo(
     () => layoutGrimoire(Object.values(content.spells), visible, Object.values(content.passives), content.regions),
@@ -179,11 +182,12 @@ export const GrimoirePanel = memo(function GrimoirePanel({
     }
   };
   const place = (id: string) => {
+    if (synthPending) return;
     onPick(id);
     setToast(`已放入合成台：${content.spells[id]?.name ?? id}`);
   };
   const doubleActivate = (id: string) => {
-    if (wasDrag.current || slotsFull || !learned.includes(id)) return;
+    if (wasDrag.current || noPlace || !learned.includes(id)) return;
     place(id);
     setBubble(null);
     setFlash(id);
@@ -290,7 +294,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
           selected={selected}
           runtime={runtime}
           content={content}
-          slotsFull={slotsFull}
+          slotsFull={noPlace}
           position={bubble}
           onPick={place}
           onDetails={() => { setBubble(null); setCardOpen(true); }}
@@ -298,7 +302,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
         />
       )}
       {cardOpen && (
-        <NodeCard selected={selected} runtime={runtime} sync={sync} content={content} slotsFull={slotsFull} onPick={place} onClose={() => setCardOpen(false)} />
+        <NodeCard selected={selected} runtime={runtime} sync={sync} content={content} slotsFull={noPlace} onPick={place} onClose={() => setCardOpen(false)} />
       )}
       {toast && <p className="tree-toast only-narrow" role="status">{toast}</p>}
       </div>
