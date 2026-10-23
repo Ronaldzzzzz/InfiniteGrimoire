@@ -8,7 +8,7 @@ import { createInitialState } from '../src/engine/persist';
 import { createRng } from '../src/engine/rng';
 import { craftedId } from '../src/engine/spells';
 import { ELEMENT_ORDER } from '../src/engine/types';
-import { ANCHOR_ADVANCE_MS, createApp, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
+import { ANCHOR_ADVANCE_MS, createApp, FEED_LIMIT, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
 import { hashToken, toBase64Url } from './auth';
 import { MemoryStore, type SaveRow } from './store';
 
@@ -890,5 +890,101 @@ describe('accounts: info, password and logout', () => {
     expect((await get('/api/save', g.token)).status).toBe(401);
     expect((await post('/api/logout', second)).status).toBe(200);
     expect((await get('/api/save', second)).status).toBe(401);
+  });
+});
+
+describe('rare discoveries', () => {
+  const rolling = (value: number) => ({ next: () => value, int: (min: number) => min });
+  const rareApp = (value: number) =>
+    createApp({ store, now: () => clock, rng: () => rolling(value), content, pepper: 'test-pepper' });
+
+  /** A player who knows inferno and holds high-grade fire, in both the save and its anchor. */
+  async function rarePlayer(name: string, grades = [3, 4, 5]) {
+    const { body } = await guest(name);
+    const inventory: Record<string, number> = {};
+    for (const g of grades) inventory[`el:fire:${g}`] = 5;
+    const seeded: GameState = { ...body.state, learned: [...body.state.learned, 'inferno'], inventory };
+    const row = store.saves.get(body.playerId)!;
+    store.saves.set(body.playerId, { ...row, state: JSON.stringify(seeded), anchorState: JSON.stringify(seeded) });
+    return { ...body, state: seeded };
+  }
+  const roll = async (p: { token: string; state: GameState }, value: number, revision = 0) => {
+    const res = await rareApp(value).request(
+      '/api/synthesize',
+      json({ inputs: ['inferno', 'el:fire:3'], state: p.state, baseRevision: revision }, p.token),
+    );
+    return { status: res.status, out: (await res.json()) as ActionOut & { result: { rare?: unknown; crafted?: boolean } } };
+  };
+  const feed = async (token: string, query = '') => {
+    const res = await app.request(`/api/discoveries${query}`, { headers: { authorization: `Bearer ${token}` } });
+    return { status: res.status, body: (await res.json()) as { discoveries: Record<string, unknown>[] } };
+  };
+
+  it('records the rare roll, first for the first player only, and serves the feed newest first', async () => {
+    const a = await rarePlayer('Ann');
+    const b = await rarePlayer('Bob');
+    const ra = await roll(a, 0.001);
+    expect(ra.status).toBe(200);
+    expect(ra.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
+    clock += 1000;
+    const rb = await roll(b, 0.001);
+    expect(rb.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    const { status, body } = await feed(a.token);
+    expect(status).toBe(200);
+    expect(body.discoveries.map((d) => d.first)).toEqual([false, true]);
+    expect(body.discoveries.map((d) => d.displayName)).toEqual(['Bob', 'Ann']);
+    for (const d of body.discoveries) expect(Object.keys(d).sort()).toEqual(['at', 'displayName', 'first', 'id', 'spellId']);
+    const afterFirst = await feed(a.token, `?after=${body.discoveries[1]!.id}`);
+    expect(afterFirst.body.discoveries.map((d) => d.displayName)).toEqual(['Bob']);
+  });
+
+  it('a missed roll learns the crafted spell with no rare field and no discovery', async () => {
+    const a = await rarePlayer('Ann');
+    const r = await roll(a, 0.99);
+    expect(r.status).toBe(200);
+    expect(r.out.result.kind).toBe('learned');
+    expect(r.out.result.crafted).toBe(true);
+    expect('rare' in r.out.result).toBe(false);
+    expect(store.discoveryLog).toEqual([]);
+  });
+
+  it('a rejected action writes no discovery', async () => {
+    const a = await rarePlayer('Ann', [1]);
+    const seeded = { ...a.state, inventory: {} };
+    const r = await roll({ token: a.token, state: seeded }, 0.001);
+    expect(r.status).toBe(422);
+    expect(store.discoveryLog).toEqual([]);
+  });
+
+  it('a conflict writes no discovery', async () => {
+    const a = await rarePlayer('Ann');
+    const r = await roll(a, 0.001, 7);
+    expect(r.status).toBe(409);
+    expect(store.discoveryLog).toEqual([]);
+  });
+
+  it('a suspicious player learns the spell but is not recorded', async () => {
+    const a = await rarePlayer('Ann');
+    await store.markSuspicious(a.playerId);
+    const r = await roll(a, 0.001);
+    expect(r.status).toBe(200);
+    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    expect(saved(a.playerId).learned).toContain('worldfire');
+    expect(store.discoveryLog).toEqual([]);
+  });
+
+  it('GET /api/discoveries needs a session and a valid after', async () => {
+    expect((await app.request('/api/discoveries')).status).toBe(401);
+    const a = await rarePlayer('Ann');
+    expect((await feed(a.token, '?after=abc')).status).toBe(400);
+    expect((await feed(a.token, '?after=-1')).status).toBe(400);
+    expect((await feed(a.token, '?after=1.5')).status).toBe(400);
+    expect((await feed(a.token)).body).toEqual({ discoveries: [] });
+  });
+
+  it('limits the feed to FEED_LIMIT rows', async () => {
+    const a = await guest('Ann');
+    for (let i = 0; i < FEED_LIMIT + 5; i++) await store.recordDiscovery({ spellId: 'worldfire', playerId: a.body.playerId, displayName: 'Ann', at: i });
+    expect((await feed(a.body.token)).body.discoveries).toHaveLength(FEED_LIMIT);
   });
 });

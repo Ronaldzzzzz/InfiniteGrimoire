@@ -7,7 +7,7 @@ import { ITEM_ID_RE, type ItemId } from './types';
 export const SYNTH_SLOTS = 2;
 
 export type SynthResult =
-  | { kind: 'learned'; spellId: string; crafted: boolean }
+  | { kind: 'learned'; spellId: string; crafted: boolean; /** Filled by the worker for rare spells only. */ rare?: { first: boolean } }
   | { kind: 'duplicate'; spellId: string; refunded: ItemId[] }
   | { kind: 'noReaction' }
   | { kind: 'dormant' }

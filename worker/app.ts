@@ -35,12 +35,14 @@ export const ANCHOR_ADVANCE_MS = 60_000;
 /** A session's last_seen_at is written at most this often. */
 export const SESSION_TOUCH_MS = 60 * 60 * 1000;
 
+/** Most rows GET /api/discoveries returns. */
+export const FEED_LIMIT = 20;
 export const GUEST_LIMIT_PER_HOUR = 10;
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const USER_FAIL_LIMIT = 5;
 export const IP_FAIL_LIMIT = 20;
 const HOUR_MS = 60 * 60 * 1000;
-const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive'] as const;
+const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/discoveries'] as const;
 
 /** Client IP for rate limits: Cloudflare's header, or 'local' in tests and `wrangler dev` without it. */
 function clientIp(c: Ctx): string {
@@ -243,6 +245,13 @@ export function createApp(deps: AppDeps): Hono<Env> {
   app.use('/api/save', auth);
   for (const path of ACTION_PATHS) app.use(path, auth);
 
+  app.get('/api/discoveries', async (c) => {
+    const raw = c.req.query('after');
+    if (raw !== undefined && !/^\d{1,15}$/.test(raw)) throw new HttpError(400, 'invalid after');
+    const discoveries = await store.recentDiscoveries(raw === undefined ? null : Number(raw), FEED_LIMIT);
+    return c.json({ discoveries });
+  });
+
   app.get('/api/save', async (c) => {
     const player = c.get('player');
     const save = await store.getSave(player.id);
@@ -344,7 +353,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     c: Ctx,
     body: Record<string, unknown>,
     apply: (state: GameState) => { state: GameState; result: R },
-    onCommit?: (playerId: string, t: number, result: R) => Promise<void>,
+    onCommit?: (playerId: string, t: number, result: R) => Promise<R | void>,
   ): Promise<Response> {
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
@@ -363,8 +372,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
       : { state: serialize(chargeAnchor(checked.anchor, checked.state, state)), at: checked.anchorAt };
     const done = await store.commitSave(checked.playerId, checked.revision, committed, checked.t, anchor);
     if (!done) return conflict(c, checked.playerId);
-    if (onCommit) await onCommit(checked.playerId, checked.t, result);
-    return c.json({ result, state, revision: checked.revision + 1 });
+    const final = (onCommit && (await onCommit(checked.playerId, checked.t, result))) || result;
+    return c.json({ result: final, state, revision: checked.revision + 1 });
   }
 
   /** A string id field of an action body (spell ids may be crafted, so up to CRAFTED_MAX_LEN). */
@@ -392,6 +401,12 @@ export function createApp(deps: AppDeps): Hono<Env> {
       async (playerId, t, result) => {
         const resultKey = 'spellId' in result ? `${result.kind}:${result.spellId}` : result.kind;
         await store.recordSynthesis(playerId, t, comboKey(list), resultKey);
+        if (result.kind !== 'learned' || !content.spells[result.spellId]?.rare) return;
+        // decided by the DB insert, and only after the save committed; suspicious players learn but are not recorded
+        const player = await store.getPlayer(playerId);
+        if (!player || player.suspicious) return { ...result, rare: { first: false } };
+        const { first } = await store.recordDiscovery({ spellId: result.spellId, playerId, displayName: player.displayName, at: t });
+        return { ...result, rare: { first } };
       },
     );
   });
