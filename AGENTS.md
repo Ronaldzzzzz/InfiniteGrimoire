@@ -32,7 +32,7 @@
 
 ## 3. 目前狀態（2026-10-23）
 
-- **Branch：** `feat/synthesis-altar`（四層疊起來：`main` → `feat/mvp-core-loop` → `feat/v2a-accounts` → `feat/core-rework` → `feat/synthesis-altar`；`main` 只有文件，其餘 branch **尚未 push、尚未合併**，`feat/core-rework` 與 `feat/synthesis-altar` 是使用者決定先不動）。
+- **Branch：** `feat/synthesis-altar`（疊在 `feat/core-rework` 之上，`feat/core-rework` 又從 `main` 分出）。`main` 已經包含 MVP 與第二版 A（`feat/mvp-core-loop`、`feat/v2a-accounts` 都是 `main` 的祖先）和文件；**還沒合併的只有 `feat/core-rework`（比 `main` 多 22 個 commit）與 `feat/synthesis-altar`（再多 13 個）**，兩者都**尚未 push**（遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`）。本機 `main` 比 `origin/main` 多 8 個 commit（都是文件）尚未 push；`main` 另有 2 個文件 commit 不在 `feat/core-rework` 上。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -48,7 +48,7 @@
 - **之前的功能：** MVP、試玩回饋修正、第二版 A（帳號綁定，`feat/v2a-accounts`；migration 0003 已在本機套用）都已完成，見各自的帳本。
 
 **尚未完成（下一位接手者的待辦）：**
-0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。再由使用者決定 push 與合併方式（四個 branch 疊在一起）。
+0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。再由使用者決定 push 與合併方式（兩個還沒合併的 branch 疊在一起：`feat/core-rework` → `feat/synthesis-altar`）。
 1. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）。
 2. **第二版 B（稀有魔法發現紀錄）**：要先做設計討論；核心重做的 `synthesisLog` 與自創魔法 id 是它的基礎（帳本 R5：`dormant` 結果不寫進 `synthesisLog`，B 可能想要）。
 3. **部署（暫緩，使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。** 遠端 D1 要依序套用 0001→0003→0004；0004 會重置所有存檔。見 `docs/prelaunch-checklist.md`。
@@ -154,7 +154,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
-- **2026-10-23（Claude Code，Sonnet 5.5，Windows）**：以 subagent-driven-development 在 branch `feat/synthesis-altar`（從 `feat/core-rework` 分出）執行合成台介面改版 7 個任務，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。內容：方形合成台取代合成區與嘗試紀錄、魔導書的泡泡／雙擊／浮動詳情卡、縮放按鈕進技能樹與滾輪只縮放、拖曳不經過 React、關鍵道具按鈕移到戰鬥畫面。最後一項任務在 headless Edge 驗收規格第 9 節 10 項全過，並修正一個泡泡高度估錯的問題。停在：全部 commit，尚未 push、尚未合併（`feat/core-rework` 與 `feat/synthesis-altar` 都沒有）。下一步：使用者在真實瀏覽器試玩合成台，再決定 push 與合併；平衡數值使用者明確延後；之後是第二版 B 設計討論。
+- **2026-10-23（Claude Code，Sonnet 5.5，Windows）**：以 subagent-driven-development 在 branch `feat/synthesis-altar`（從 `feat/core-rework` 分出）執行合成台介面改版 7 個任務，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。內容：方形合成台取代合成區與嘗試紀錄、魔導書的泡泡／雙擊／浮動詳情卡、縮放按鈕進技能樹與滾輪只縮放、拖曳不經過 React、關鍵道具按鈕移到戰鬥畫面。最後一項任務在 headless Edge 驗收規格第 9 節 10 項全過，並修正一個泡泡高度估錯的問題。停在：全部 commit，`feat/core-rework` 與 `feat/synthesis-altar` 都尚未 push、尚未合併到 `main`（`main` 已含 MVP 與第二版 A）。下一步：使用者在真實瀏覽器試玩合成台，再決定 push 與合併；平衡數值使用者明確延後；之後是第二版 B 設計討論。
 
 - **2026-10-22（Claude Code，Opus 5.5 與 Sonnet 5.5，macOS）**：以 subagent-driven-development 在 branch `feat/core-rework` 執行核心重做計畫的 12 個任務（實作者與審查者分開，帳本 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`，Ruling R1～R17）。重要裁定：隨機配方重試要付成本（R14）、關鍵道具不受越級遞減（R13）、範圍魔法只瞄準交戰圈內的魔物（R16）、「Lv.」只代表階級、強化顯示「強化 +N」（R17）。最後一項任務在 headless Chrome 走完整條流程（火球 → 升階 → 同元素強化 → 融合 → 自創 → 強化 → 魔王 → 關鍵道具 → 被動 → 綁定帳號重整），全部通過；元素存量與魔王前的擊殺數是種進本機存檔的。migration 0004 會重置所有存檔，已寫進上線前檢查清單。停在：全部 commit，尚未 push、尚未合併。下一步：使用者在真實瀏覽器試玩核心重做（感受、平衡、卡頓）→ 決定 push 與合併 → 第二版 B 設計討論。
 
