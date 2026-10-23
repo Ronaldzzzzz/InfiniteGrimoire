@@ -1,0 +1,69 @@
+<h2>合成區塊改成方形「合成台」</h2>
+<p class="subtitle">上：整個畫面的配置（我的理解）。下：合成台的三個瞬間。請到終端機告訴我哪裡不對。</p>
+
+<style>
+  .lay { display:grid; grid-template-columns: 1fr 1.1fr 1fr; gap:6px; background:#0d0f14; padding:8px; border-radius:8px; font-family:sans-serif; color:#e6e9ef; font-size:12px; height:340px; }
+  .col { border:1px solid #2a3140; border-radius:6px; padding:6px; display:flex; flex-direction:column; gap:6px; }
+  .col h4 { margin:0; color:#9aa3b2; font-size:11px; font-weight:normal; }
+  .ph { flex:1; border:1px dashed #2a3140; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#6b7385; }
+  .altar { aspect-ratio:1/1; position:relative; border:1px solid #8fd16a; border-radius:8px; display:grid; grid-template-columns:1fr 1fr; overflow:hidden; }
+  .half { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; position:relative; }
+  .half .orb { width:46%; aspect-ratio:1/1; border-radius:50%; }
+  .half .nm { font-weight:bold; } .half .meta { color:#9aa3b2; font-size:10px; }
+  .fire { background: radial-gradient(circle at 50% 60%, #e06b3a55, #0d0f14 70%); }
+  .fire .orb { background: radial-gradient(circle, #ffd27a, #e06b3a 55%, #e06b3a00 72%); box-shadow:0 0 18px #e06b3a; }
+  .wind { background: radial-gradient(circle at 50% 60%, #6bc7e055, #0d0f14 70%); }
+  .wind .orb { background: conic-gradient(from 0deg, #6bc7e0, #d8f4ff, #6bc7e0, #2b6f80, #6bc7e0); -webkit-mask: radial-gradient(circle, transparent 28%, #000 30%, #000 60%, transparent 62%); box-shadow:0 0 18px #6bc7e0; }
+  .empty .orb { border:2px dashed #3a4252; }
+  .go { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:26%; aspect-ratio:1/1; border-radius:50%; background:#8fd16a; color:#0d0f14; font-weight:bold; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 4px #0d0f14, 0 0 16px #8fd16a; }
+  .go.off { background:#2a3140; color:#6b7385; box-shadow:0 0 0 4px #0d0f14; }
+  .divider { position:absolute; left:50%; top:0; bottom:0; width:1px; background:#2a3140; }
+  .frames { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px; }
+  .frame { background:#0d0f14; padding:10px; border-radius:8px; color:#e6e9ef; font-family:sans-serif; font-size:12px; }
+  .frame p { color:#9aa3b2; margin:6px 0 0; font-size:11px; }
+  .fuse { background: radial-gradient(circle at 50% 50%, #fff 0, #ffd27a 8%, #e06b3a55 30%, #6bc7e055 50%, #0d0f14 75%); }
+  .result { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; background: radial-gradient(circle, #e06b3a33, #6bc7e033 50%, #0d0f14 75%); }
+  .result .big { width:40%; aspect-ratio:1/1; border-radius:50%; background: conic-gradient(#e06b3a, #ffd27a, #6bc7e0, #e06b3a); box-shadow:0 0 22px #e8b84a; }
+  .result .tag { color:#e8b84a; font-weight:bold; }
+  .elt { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; }
+  .elt span { border:1px solid #2a3140; border-radius:3px; text-align:center; padding:2px 0; font-size:10px; }
+</style>
+
+<div class="lay">
+  <div class="col"><h4>戰鬥畫面</h4><div class="ph">（不變）</div></div>
+  <div class="col"><h4>技能樹（點魔法 → 泡泡：放入合成／裝備）</h4><div class="ph">技能樹</div></div>
+  <div class="col">
+    <h4>合成台</h4>
+    <div class="altar">
+      <div class="half fire"><div class="orb"></div><div class="nm">烈焰爆發</div><div class="meta">火・Lv.2</div></div>
+      <div class="half wind"><div class="orb"></div><div class="nm">風刃</div><div class="meta">風・Lv.1</div></div>
+      <div class="divider"></div>
+      <div class="go">合成</div>
+    </div>
+    <h4>元素</h4>
+    <div class="elt"><span>火 12</span><span>風 8</span><span>雷 5</span><span>土 9</span><span>水 3</span></div>
+    <div class="ph" style="flex:0 0 40px">殘卷線索／訊息</div>
+  </div>
+</div>
+
+<div class="frames">
+  <div class="frame">
+    <div class="altar">
+      <div class="half fire"><div class="orb"></div><div class="nm">烈焰爆發</div><div class="meta">火・Lv.2</div></div>
+      <div class="half empty"><div class="orb"></div><div class="meta">從技能樹或元素放入</div></div>
+      <div class="divider"></div>
+      <div class="go off">合成</div>
+    </div>
+    <p>① 放一邊：該側亮起火焰特效，另一側空著，按鈕灰色。</p>
+  </div>
+  <div class="frame">
+    <div class="altar fuse"></div>
+    <p>② 按下合成：兩側特效往中間捲進去、兩色交融（等伺服器回應的時間也藏在這段裡）。</p>
+  </div>
+  <div class="frame">
+    <div class="altar result">
+      <div class="big"></div><div class="tag">新發現！</div><div class="nm">火焰龍捲</div><div class="meta">火＋風・Lv.2</div>
+    </div>
+    <p>③ 結果在合成台中央出現；點一下或幾秒後回到空的合成台。</p>
+  </div>
+</div>
