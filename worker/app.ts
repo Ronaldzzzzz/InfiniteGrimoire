@@ -22,7 +22,8 @@ export interface AppDeps {
   pepper: string;
   /**
    * Comma-separated GM account names (Cloudflare secret GM_USERNAMES), compared by usernameKey.
-   * Unset or blank means every /api/gm/* path is 404.
+   * Unset or blank (or only invalid usernames, which are ignored) means every /api/gm/* path is 404.
+   * GM identity is the first account to bind a listed name: list only names already bound to you.
    */
   gmUsernames?: string;
 }
@@ -119,13 +120,14 @@ async function readJson(c: Ctx): Promise<Record<string, unknown>> {
 
 export function createApp(deps: AppDeps): Hono<Env> {
   const { store, now, content, pepper } = deps;
-  const gmKeys = new Set(
-    (deps.gmUsernames ?? '')
-      .split(',')
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0)
-      .map(usernameKey),
-  );
+  const gmNames = (deps.gmUsernames ?? '')
+    .split(',')
+    .map((n) => n.trim())
+    .filter((n) => n.length > 0);
+  // a name no account can have is a typo: skip it (an invalid-only list disables GM); never log the names
+  const validGmNames = gmNames.filter((n) => usernameProblem(n) === null);
+  if (validGmNames.length < gmNames.length) console.error('GM_USERNAMES lists an invalid username; it is ignored');
+  const gmKeys = new Set(validGmNames.map(usernameKey));
   const app = new Hono<Env>();
 
   app.onError((err, c) => {

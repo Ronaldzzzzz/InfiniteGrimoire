@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GAIN_SLACK, GAIN_TOLERANCE, maxGain } from '../src/engine/audit';
 import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engine/combat';
 import { content } from '../src/engine/content';
@@ -1113,6 +1113,46 @@ describe('GM login and tokens', () => {
     expect([...store.gmTokens.keys()]).toEqual([await hashToken(out.gmToken)]);
     expect(store.gmActions).toEqual([{ gmPlayerId: g.playerId, at: clock, action: 'login', target: null, detail: null }]);
     expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
+  });
+
+  it('ignores listed GM names that are not valid usernames, logging one line without the names', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const a = gmApp('x!, gm_one ,ab');
+      expect(err).toHaveBeenCalledTimes(1);
+      const line = String(err.mock.calls[0]?.[0]);
+      expect(line).toMatch(/GM_USERNAMES/);
+      expect(line).not.toContain('x!');
+      const g = await bound('gm_one');
+      expect((await login(a, g.token, 'gm_one')).status).toBe(200);
+    } finally {
+      err.mockRestore();
+    }
+  });
+
+  it('a GM list with only invalid names disables GM (404)', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const g = await bound('gm_one');
+      const a = gmApp('x!,ab,bad name');
+      expect(err).toHaveBeenCalledTimes(1);
+      expect((await login(a, g.token, 'gm_one')).status).toBe(404);
+      expect((await req(a, '/api/gm/inventory', {}, g.token)).status).toBe(404);
+      expect((await req(a, '/api/gm/inventory', {})).status).toBe(404);
+    } finally {
+      err.mockRestore();
+    }
+  });
+
+  it('a valid GM list logs nothing', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      gmApp(' Other , ＧＭ_One ');
+      gmApp();
+      expect(err).not.toHaveBeenCalled();
+    } finally {
+      err.mockRestore();
+    }
   });
 
   it('guarded GM paths need a valid X-GM-Token for the session player', async () => {
