@@ -30,9 +30,9 @@
 
 規格與計畫衝突時，以規格為準。計畫沒寫到的地方，看帳本中的 `Ruling:` 行。
 
-## 3. 目前狀態（2026-10-22）
+## 3. 目前狀態（2026-10-23）
 
-- **Branch：** `feat/core-rework`（從 `feat/v2a-accounts` 分出，疊在 `feat/mvp-core-loop` → `feat/v2a-accounts` 之上），**尚未 push、尚未合併到 `main`**（使用者決定）。
+- **Branch：** `feat/synthesis-altar`（四層疊起來：`main` → `feat/mvp-core-loop` → `feat/v2a-accounts` → `feat/core-rework` → `feat/synthesis-altar`；`main` 只有文件，其餘 branch **尚未 push、尚未合併**，`feat/core-rework` 與 `feat/synthesis-altar` 是使用者決定先不動）。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -40,13 +40,15 @@
   - **開對話時自動檢查**：`.claude/settings.json` 的 SessionStart hook 會執行 `scripts/session-context.mjs`，把這台電腦的 git 狀態、`node_modules` 是否為本平台安裝、Syncthing 衝突檔和本節內容交給 agent。其他 agent 可以自己執行 `node scripts/session-context.mjs`。
   - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
 - **核心重做：** 12 個任務全部完成，每個任務都經過獨立審查，帳本在 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`。玩法改成：魔物成群出現、元素五階（升階成本 3／10／30／100）、名魔法＋自創魔法（任兩個輸入合成、有相性）、同元素強化與融合、魔法強化（`levels`）、魔導書迷霧＋關鍵道具（`revealed`）、被動節點（`passives`）。migration `0004_core_rework.sql` 本機已套用，**會重置所有存檔**；遠端未套用。
-- **測試：** `npm test` 49 個檔案、439 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。偶發過一次未重現的失敗（兩位實作者並行工作時看到、連跑 6 次全過），推測與負載有關，最終審查已記錄。
+- **合成台介面改版（2026-10-23，`feat/synthesis-altar`）：** 規格 `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md`，計畫 `docs/superpowers/plans/2026-10-23-synthesis-altar.md`，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。右欄改成方形合成台（`SynthesisAltar`：左右各放一個輸入、各依元素與魔法有不同特效、中間「合成」、按下後融合特效再揭曉結果；被拒絕時不播完整動畫、兩邊保留並顯示原因）；原本的合成區下拉選單與「嘗試紀錄」組合表已移除（伺服器的 `synthesisLog` 保留給第二版 B）。魔導書：單擊魔法冒出泡泡（放入合成／裝備／詳情）、雙擊直接放入合成台、詳情與強化合成一張浮動卡（`NodeCard`）、縮放按鈕移進技能樹並加「⌖ 回到中心」、滾輪只縮放不捲頁、拖曳與縮放不經過 React state。關鍵道具按鈕移到戰鬥畫面（`KeyItemBar`），訊息幾秒後自動消失。
+- **測試：** `npm test` 51 個檔案、472 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **合成台驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 10 項全過、無頁面錯誤。元素存量、已學會的魔法清單與一個關鍵道具是直接改本機存檔種進去的；放入、裝備、合成、強化、使用關鍵道具、解鎖被動、拖曳、滾輪都是實際操作。1280x900 下拖曳技能樹同時重複播放合成台特效約 149 fps（單幀最長 75 ms；戰場上只有少數怪，沒有重測 80 隻怪的情況）。驗收中發現泡泡在已學會魔法上高度估錯、會蓋住自己的節點，已修正（`fix(ui): reserve the real height of a learned spell's bubble`）。腳本與截圖在 `.superpowers/`（未進版本庫）。
 - **模擬通關時間（Task 10 修正後，種子 20261021，模擬分鐘，0 次被拒）：** 火 90.4、風 111.8、雷 90.2、土 126.6、水 96.9、混合 93.2；每條純屬性路線落在 60～240 分鐘（R12）。
 - **驗收（headless Chrome，2026-10-22）：** 遊客 → 合出火球 → 升階 → 同元素強化（烈焰爆發）→ 融合（火焰龍捲，出現「新發現！」）→ 自創魔法出現在筆記 → 強化 → 第一個魔王倒下拿到風暴之心 → 使用後迷霧散開 → 解鎖被動 → 綁定帳號後重新整理進度都在，全部通過、無頁面錯誤。元素存量與「差 1 隻到魔王」的擊殺數是直接改本機存檔種進去的（其餘都是實際操作）。截圖在工作區 scratchpad，未進版本庫。
 - **之前的功能：** MVP、試玩回饋修正、第二版 A（帳號綁定，`feat/v2a-accounts`；migration 0003 已在本機套用）都已完成，見各自的帳本。
 
 **尚未完成（下一位接手者的待辦）：**
-0. **使用者在真實瀏覽器試玩核心重做**：成群清場的手感與「一網打盡」、各元素特效、魔導書迷霧散開、卡頓感（自動化量測：1280x900、80 隻怪加滿畫面約 50 fps，無長時間卡頓）、平衡（通關時間是否合適）。再由使用者決定 push 與合併方式（三個 branch 疊在一起）。
+0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。再由使用者決定 push 與合併方式（四個 branch 疊在一起）。
 1. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）。
 2. **第二版 B（稀有魔法發現紀錄）**：要先做設計討論；核心重做的 `synthesisLog` 與自創魔法 id 是它的基礎（帳本 R5：`dormant` 結果不寫進 `synthesisLog`，B 可能想要）。
 3. **部署（暫緩，使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。** 遠端 D1 要依序套用 0001→0003→0004；0004 會重置所有存檔。見 `docs/prelaunch-checklist.md`。
@@ -83,9 +85,10 @@ migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 �
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳／動作／斷線／錯誤）、loop、boot
 src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何；
               element-fx.ts 各元素的粒子語彙；effects.ts 特效視覺；motion.ts 怪物擺動
-src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable、SynthesisPanel／SynthesisMatrix、
+src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable、SynthesisAltar（方形合成台，資料與特效描述在 altar-data）、
               DiscoveryBanner（新發現、一網打盡）、Notebook（魔法筆記）、EmpowerPanel（強化）、
-              GrimoirePanel（SVG，含迷霧與關鍵道具）、Onboarding、OfflineOverlay；
+              GrimoirePanel（SVG 技能樹，含迷霧、泡泡 NodeBubble、浮動詳情卡 NodeCard）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
+              Onboarding、OfflineOverlay；
               useGame.ts 的 useRuntime(selector)；開發用 PerfMeter
 tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）
 tests/d1/     node:sqlite 上的 D1Store 與 migration 測試
@@ -127,7 +130,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - 一個狀態中的怪切換成打不動牠的魔法後，牠身上已有的燃燒仍會跳傷害。
 - 追上進度（卡頓後補算）時，擊殺時間用畫面時間記錄，可能誤報「一網打盡」。
 - 最密／最強等多目標魔法在交戰圈內魔物很少時，目標數可能少於 n。
-- 「迷霧散開了」的提示不會自動消失；魔導書過載沒有橫幅。
+- 魔導書過載沒有橫幅。
 - 兩個魔法名字重複用字（雷鳴、颶風）；「感電之海」的線索提到大地。
 - 降級落空到已會的魔法時，畫面不可寫「全部退還」（實際只退第一個輸入）。
 - 平衡數值的產生器（SCALE 表）不在版本庫；`tests/sim` 約 30 秒，模擬一小時約 3 秒。
@@ -135,7 +138,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - 魔王打不動時，玩家要自己退回前一個地點；HUD 有提示，但沒有自動處理。
 - 同一個 token 開多個分頁時，會互相以 409 覆蓋（不算作弊，資料一致）。
 - 沒有 WebGL 時，Pixi 初始化失敗沒有提示。
-- 魔導書：滾輪縮放可能捲動頁面、不支援雙指縮放。
+- 魔導書：不支援雙指縮放。
+- 合成台改版留下的小問題：手機上點未學會的魔法，上方的線索框高度改變會讓技能樹整個位移，泡泡位置在位移前算好，會偏離節點幾十 px（不會被裁掉）；手機上合成台是方形、把技能樹擠到第一屏之外（規格接受，放入時有提示）；合成台特效沒有針對名魔法各做專屬版本。
 
 ## 9. 下一步路線（規格第 6 節）
 
@@ -149,6 +153,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-23（Claude Code，Sonnet 5.5，Windows）**：以 subagent-driven-development 在 branch `feat/synthesis-altar`（從 `feat/core-rework` 分出）執行合成台介面改版 7 個任務，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。內容：方形合成台取代合成區與嘗試紀錄、魔導書的泡泡／雙擊／浮動詳情卡、縮放按鈕進技能樹與滾輪只縮放、拖曳不經過 React、關鍵道具按鈕移到戰鬥畫面。最後一項任務在 headless Edge 驗收規格第 9 節 10 項全過，並修正一個泡泡高度估錯的問題。停在：全部 commit，尚未 push、尚未合併（`feat/core-rework` 與 `feat/synthesis-altar` 都沒有）。下一步：使用者在真實瀏覽器試玩合成台，再決定 push 與合併；平衡數值使用者明確延後；之後是第二版 B 設計討論。
 
 - **2026-10-22（Claude Code，Opus 5.5 與 Sonnet 5.5，macOS）**：以 subagent-driven-development 在 branch `feat/core-rework` 執行核心重做計畫的 12 個任務（實作者與審查者分開，帳本 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`，Ruling R1～R17）。重要裁定：隨機配方重試要付成本（R14）、關鍵道具不受越級遞減（R13）、範圍魔法只瞄準交戰圈內的魔物（R16）、「Lv.」只代表階級、強化顯示「強化 +N」（R17）。最後一項任務在 headless Chrome 走完整條流程（火球 → 升階 → 同元素強化 → 融合 → 自創 → 強化 → 魔王 → 關鍵道具 → 被動 → 綁定帳號重整），全部通過；元素存量與魔王前的擊殺數是種進本機存檔的。migration 0004 會重置所有存檔，已寫進上線前檢查清單。停在：全部 commit，尚未 push、尚未合併。下一步：使用者在真實瀏覽器試玩核心重做（感受、平衡、卡頓）→ 決定 push 與合併 → 第二版 B 設計討論。
 
