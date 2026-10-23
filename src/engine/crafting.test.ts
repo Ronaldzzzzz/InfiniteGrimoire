@@ -154,6 +154,23 @@ describe('crafting', () => {
     expect(r.state.inventory).toEqual({ 'mat:ember_core': 1 });
   });
 
+  it('a missed rare roll (spell + 高階 element) always spends the element, even on a known fall-through', () => {
+    // 焚世之焰: inferno + el:fire:3, no fusion cost; refunding the only item would make retries free
+    const miss = { next: () => 0.999, int: (min: number) => min };
+    const go = (s: GameState) => synthesize(s, ['inferno', 'el:fire:3'], content, miss, { depthCap: 8 });
+    const crafted = craftedId('fireball', 'inferno');
+    const first = go(mkState({ 'el:fire:3': 2 }, ['mana_bolt', 'inferno']));
+    expect(first.result).toEqual({ kind: 'learned', spellId: crafted, crafted: true });
+    expect(first.state.inventory).toEqual({ 'el:fire:3': 1 });
+    const second = go(first.state);
+    expect(second.result).toEqual({ kind: 'duplicate', spellId: crafted, refunded: [] });
+    expect(second.state.inventory).toEqual({});
+    expect(second.state.learned).toEqual(first.state.learned);
+    const third = go(second.state);
+    expect(third.result).toEqual({ kind: 'rejected', reason: 'insufficient' });
+    expect(third.state).toEqual(second.state);
+  });
+
   it('a random recipe can fall through to the crafted spell', () => {
     const c: Content = {
       ...content,

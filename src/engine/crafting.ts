@@ -151,9 +151,11 @@ export function synthesize(
     if (recipe) {
       // A random recipe's roll fell through to a crafted spell already known: the attempt is spent like a
       // named duplicate (only the first item comes back, the fusion cost stays paid), so retries are not free.
+      // When the first item is all that was spent (spell + one 高階 element, no fusion cost), nothing comes back.
+      const refund = first && spent.length > 1 ? [first] : [];
       return {
-        state: { ...state, inventory: first ? addItems(paid, [first]) : paid, synthesisLog },
-        result: { kind: 'duplicate', spellId: resultId, refunded: first ? [first] : [] },
+        state: { ...state, inventory: addItems(paid, refund), synthesisLog },
+        result: { kind: 'duplicate', spellId: resultId, refunded: refund },
       };
     }
     return {

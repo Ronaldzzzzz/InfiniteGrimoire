@@ -948,6 +948,18 @@ describe('rare discoveries', () => {
     expect(store.discoveryLog).toEqual([]);
   });
 
+  it('a second missed roll is a duplicate that still spends the 高階 element', async () => {
+    const a = await rarePlayer('Ann', [3]);
+    const r1 = await roll(a, 0.99);
+    expect(r1.status).toBe(200);
+    expect(saved(a.playerId).inventory['el:fire:3']).toBe(4);
+    const r2 = await roll({ token: a.token, state: r1.out.state }, 0.99, r1.out.revision);
+    expect(r2.status).toBe(200);
+    expect(r2.out.result).toMatchObject({ kind: 'duplicate', refunded: [] });
+    expect(r2.out.state.inventory['el:fire:3']).toBe(3);
+    expect(saved(a.playerId).inventory['el:fire:3']).toBe(3);
+  });
+
   it('a rejected action writes no discovery', async () => {
     const a = await rarePlayer('Ann', [1]);
     const seeded = { ...a.state, inventory: {} };
