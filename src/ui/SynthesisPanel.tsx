@@ -2,19 +2,11 @@ import { useState } from 'react';
 import { SYNTH_SLOTS } from '../engine/crafting';
 import type { Content, GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
+import { emptySlots, fillSlot, type Slots } from './SynthesisAltar';
 import { SynthesisMatrix } from './SynthesisMatrix';
 import { slotLabel, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 
-/** A slot holds an inventory item (element or material) or a learned spell id. */
-export type Slots = (string | null)[];
-export const emptySlots = (): Slots => Array<string | null>(SYNTH_SLOTS).fill(null);
 const isItem = (id: string): boolean => /^(el|mat):/.test(id);
-
-/** Puts `id` into the first empty slot; unchanged when both are full. */
-export function fillSlot(slots: Slots, id: string): Slots {
-  const i = slots.indexOf(null);
-  return i < 0 ? slots : slots.map((s, j) => (j === i ? id : s));
-}
 
 export function SynthesisPanel({
   game,

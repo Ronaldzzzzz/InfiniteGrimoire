@@ -13,7 +13,8 @@ import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
 import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
-import { emptySlots, fillSlot, SynthesisPanel, type Slots } from './SynthesisPanel';
+import { emptySlots, fillSlot, type Slots } from './SynthesisAltar';
+import { SynthesisPanel } from './SynthesisPanel';
 import { TopBar } from './TopBar';
 import { useConnStatus, useGameState, useRuntime } from './useGame';
 

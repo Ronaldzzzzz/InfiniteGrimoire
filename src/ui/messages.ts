@@ -6,7 +6,7 @@ import { GRADE_NAMES, type ItemId } from '../engine/types';
 import { USERNAME_MAX, USERNAME_MIN, PASSWORD_MAX, PASSWORD_MIN, type UsernameProblem } from '../engine/account-rules';
 import { ApiError, NetworkError, RateLimitedError, type ActionResult } from '../game/api';
 
-const ELEMENT_NAMES: Record<string, string> = { fire: '火', wind: '風', thunder: '雷', earth: '土', water: '水' };
+export const ELEMENT_NAMES: Record<string, string> = { fire: '火', wind: '風', thunder: '雷', earth: '土', water: '水' };
 
 /** Element items by grade and element; materials and key items by their content name. */
 export function itemName(itemId: ItemId, content: Content = defaultContent): string {
