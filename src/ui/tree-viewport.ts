@@ -29,6 +29,9 @@ export function panBy(view: View, dx: number, dy: number): View {
 
 const GAP = 12;
 
+/** Bubble sizes used to place it (measured in a browser: learned spells wrap their buttons to two rows; the longest hint is 94px). */
+export const BUBBLE_SIZE = { locked: { w: 220, h: 96 }, learned: { w: 220, h: 132 } };
+
 /** Where a bubble goes next to a node (pixels inside the stage): above and to the right by default. */
 export function bubblePlacement(
   node: { x: number; y: number },

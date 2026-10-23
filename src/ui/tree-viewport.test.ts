@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bubblePlacement, panBy, viewBoxOf, zoomAt } from './tree-viewport';
+import { BUBBLE_SIZE, bubblePlacement, panBy, viewBoxOf, zoomAt } from './tree-viewport';
 
 describe('tree-viewport', () => {
   it('zoomAt keeps the point under the cursor fixed', () => {
@@ -23,5 +23,9 @@ describe('tree-viewport', () => {
     expect(bubblePlacement({ x: 100, y: 30 }, stage, bubble)).toMatchObject({ side: 'below' });
     const p = bubblePlacement({ x: 395, y: 395 }, stage, bubble);
     expect(p.left).toBeGreaterThanOrEqual(0); expect(p.left + 200).toBeLessThanOrEqual(400);
+  });
+  it('a learned spell bubble reserves room for its wrapped button row (measured 128px in a real browser)', () => {
+    expect(BUBBLE_SIZE.learned.h).toBeGreaterThanOrEqual(128);
+    expect(BUBBLE_SIZE.locked.h).toBeGreaterThanOrEqual(94); // longest hint, measured
   });
 });

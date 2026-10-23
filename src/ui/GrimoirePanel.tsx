@@ -8,7 +8,7 @@ import { COLORS, spellColor } from '../render/palette';
 import { layoutGrimoire, polar, type FogBand } from './grimoire-layout';
 import { NodeBubble } from './NodeBubble';
 import { NodeCard } from './NodeCard';
-import { bubblePlacement, HOME, panBy, viewBoxOf, zoomAt, type View } from './tree-viewport';
+import { BUBBLE_SIZE, bubblePlacement, HOME, panBy, viewBoxOf, zoomAt, type View } from './tree-viewport';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 const SIZE = 600;
@@ -18,7 +18,6 @@ export const FOG_LIFT_MS = 1200;
 /** How long the "put into the altar" toast stays (the altar is out of view on narrow screens). */
 export const PLACED_TOAST_MS = 1500;
 const FLASH_MS = 600;
-const BUBBLE_SIZE = { w: 220, h: 96 };
 
 type Selected = { kind: 'spell' | 'passive'; id: string } | null;
 type Runtime = RuntimeStore & Pick<GameRuntime, 'equip'>;
@@ -164,13 +163,14 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   /** Where the bubble goes: the node's place on screen, relative to the stage. */
   const bubbleAt = (id: string) => {
     const n = pos.get(id);
+    const size = learned.includes(id) ? BUBBLE_SIZE.learned : BUBBLE_SIZE.locked;
     const svg = svgRef.current;
     const stage = stageRef.current;
     const m = svg?.getScreenCTM?.();
     const r = stage?.getBoundingClientRect();
-    if (!n || !m || !r) return bubblePlacement({ x: 0, y: 0 }, { w: r?.width || 600, h: r?.height || 600 }, BUBBLE_SIZE);
+    if (!n || !m || !r) return bubblePlacement({ x: 0, y: 0 }, { w: r?.width || 600, h: r?.height || 600 }, size);
     const p = new DOMPoint(n.x, n.y).matrixTransform(m);
-    return bubblePlacement({ x: p.x - r.left, y: p.y - r.top }, { w: r.width, h: r.height }, BUBBLE_SIZE);
+    return bubblePlacement({ x: p.x - r.left, y: p.y - r.top }, { w: r.width, h: r.height }, size);
   };
   const activate = (kind: 'spell' | 'passive', id: string) => {
     setSelected({ kind, id });
