@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import type { Content } from '../engine/model';
 import { visibleRegions } from '../engine/tree';
 import type { SyncController } from '../game/sync';
@@ -10,7 +10,7 @@ import { useRuntime, type RuntimeStore } from './useGame';
 export const KEY_MESSAGE_MS = 3000;
 
 /** The glowing "use key item" buttons on the battle view. */
-export function KeyItemBar({
+export const KeyItemBar = memo(function KeyItemBar({
   runtime,
   sync,
   content,
@@ -56,4 +56,4 @@ export function KeyItemBar({
       {message && <p className="key-message" role="status">{message}</p>}
     </div>
   );
-}
+});

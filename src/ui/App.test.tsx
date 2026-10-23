@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { memo, type ComponentProps } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
@@ -10,6 +11,28 @@ import { App } from './App';
 import { fakeRuntime } from './test-runtime';
 
 vi.mock('./BattleCanvas', () => ({ BattleCanvas: () => null }));
+// counts a render only when the props changed: the spy sits behind the same shallow comparison the real component has
+const renders = vi.hoisted(() => ({ altar: vi.fn(), keys: vi.fn() }));
+vi.mock('./SynthesisAltar', async (orig) => {
+  const actual = await orig<typeof import('./SynthesisAltar')>();
+  return {
+    ...actual,
+    SynthesisAltar: memo((props: ComponentProps<typeof actual.SynthesisAltar>) => {
+      renders.altar();
+      return <actual.SynthesisAltar {...props} />;
+    }),
+  };
+});
+vi.mock('./KeyItemBar', async (orig) => {
+  const actual = await orig<typeof import('./KeyItemBar')>();
+  return {
+    ...actual,
+    KeyItemBar: memo((props: ComponentProps<typeof actual.KeyItemBar>) => {
+      renders.keys();
+      return <actual.KeyItemBar {...props} />;
+    }),
+  };
+});
 afterEach(cleanup);
 
 function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1': 1 }, learned = ['mana_bolt'], actionResult: ActionResult | null = null) {
@@ -47,6 +70,15 @@ const placeFromTree = (name: string) => {
 };
 
 describe('App layout', () => {
+  it('the altar and the key item bar do not re-render when only unrelated inventory changes', () => {
+    const { runtime } = setup();
+    const altar = renders.altar.mock.calls.length;
+    const keys = renders.keys.mock.calls.length;
+    act(() => (runtime as unknown as ReturnType<typeof fakeRuntime>).set({ game: { inventory: { 'el:fire:1': 3, 'el:wind:1': 1, 'el:earth:1': 5 } } }));
+    expect(renders.altar.mock.calls.length).toBe(altar);
+    expect(renders.keys.mock.calls.length).toBe(keys);
+  });
+
   it('using a key item from the battle view switches back to the tree tab', async () => {
     setup({ 'key:storm_heart': 1 }, ['mana_bolt'], { kind: 'revealed', region: 'outer' });
     fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));

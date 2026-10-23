@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { SYNTH_SLOTS } from '../engine/crafting';
 import type { Content } from '../engine/model';
 import { GRADE_NAMES } from '../engine/types';
@@ -91,7 +91,7 @@ function Side({ id, input, stock, locked, content, onTake }: {
   );
 }
 
-export function SynthesisAltar({
+export const SynthesisAltar = memo(function SynthesisAltar({
   runtime,
   sync,
   content,
@@ -284,4 +284,4 @@ export function SynthesisAltar({
       </div>
     </div>
   );
-}
+});

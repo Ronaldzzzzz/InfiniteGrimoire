@@ -68,14 +68,14 @@ export function App({
     if (runtime.getSnapshot().synthPending) return;
     setSlots((s) => fillSlot(s, id));
   }, [runtime]);
-  const onSynthResult = (result: ActionResult): void => {
+  const onSynthResult = useCallback((result: ActionResult): void => {
     if (result.kind !== 'learned' && result.kind !== 'duplicate') return;
     const spell = resolveSpell(result.spellId, content);
     if (!spell) return;
     // equip only now: the reply has already replaced the state, so it can't undo the equip
     if (result.kind === 'learned') runtime.equip(result.spellId);
     setDiscovery((d) => ({ spell, isNew: result.kind === 'learned', n: (d?.n ?? 0) + 1 }));
-  };
+  }, [content, runtime]);
   // The hint stays until another node is clicked or the spell is learned.
   const hint = hintId && !game.learned.includes(hintId) ? (content.spells[hintId]?.hint ?? null) : null;
 
