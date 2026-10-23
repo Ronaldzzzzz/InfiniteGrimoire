@@ -153,4 +153,16 @@ describe('GrimoirePanel', () => {
     expect(document.querySelector('.tree-stage button[aria-label="放大"]')).toBeTruthy();
     expect(document.querySelector('.tree-stage button[aria-label="回到中心"]')).toBeTruthy();
   });
+
+  it('dragging scales by the shorter side of a non-square stage', () => {
+    setup();
+    const svg = document.querySelector('svg.grimoire-svg')!;
+    svg.getBoundingClientRect = () => ({ width: 800, height: 400, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 400, toJSON: () => ({}) });
+    const [x0, , w] = svg.getAttribute('viewBox')!.split(' ').map(Number) as [number, number, number];
+    fireEvent.pointerDown(svg, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    const x1 = Number(svg.getAttribute('viewBox')!.split(' ')[0]);
+    expect(x0 - x1).toBeCloseTo((40 * w) / 400);
+  });
 });

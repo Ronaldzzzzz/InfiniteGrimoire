@@ -140,8 +140,10 @@ export const GrimoirePanel = memo(function GrimoirePanel({
       // capture only once it is a drag, so a plain click still reaches the node
       svgRef.current?.setPointerCapture?.(d.id);
     }
-    const px = (svgRef.current?.getBoundingClientRect().width ?? SIZE) || SIZE;
-    const k = base / viewRef.current.zoom / px;
+    // the square viewBox is fitted into the (possibly non-square) svg: pixels per unit = min(width, height) / w
+    const rect = svgRef.current?.getBoundingClientRect();
+    const px = (rect ? Math.min(rect.width, rect.height) : 0) || SIZE;
+    const k = baseRef.current / viewRef.current.zoom / px;
     d.x = e.clientX;
     d.y = e.clientY;
     viewRef.current = panBy(viewRef.current, -dx * k, -dy * k);
