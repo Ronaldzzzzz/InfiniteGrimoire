@@ -70,3 +70,14 @@ Task 8: implemented 2e8c7a5 (base 991920e), DONE — browser items 6/7/8 pass (t
 Task 8: review spec ✅, quality Approved.
 Task 8: minor (deferred): AGENTS.md §10 new entry sits above the "最新的放最上面" line; §9 roadmap still lists B as upcoming; §3 todo-2 forward-looking suggestion.
 Task 8: complete (commits 991920e..2e8c7a5, review clean)
+
+## Final review (3f44110..58b2e28, opus): With fixes — Critical 1
+- C1: the new spell+element rare recipes give free retries after the first miss — the fall-through-duplicate branch in crafting.ts refunds the first item, which is the only item consumed (fused = false, no fusion cost); a rare costs ~2 高階 + ~65 requests. Breaks spec §2 per-attempt cost and R14/R14b; also makes the farm-time open question moot until fixed.
+- Must-fix minors: post-commit throw → 500 (try/catch discovery part, fall back to rare.first=false); AGENTS.md §10 ordering and §9 roadmap; docs wording around the farm-time item.
+Ruling: the fix wave also takes the Task 6 hint-readability minor (shorter fade delay, no synthetic italic) and two prelaunch-checklist lines (strip control/bidi chars from display names before launch; a future `players` rebuild must handle the discoveries FK) — cheap and visible to the user's playtest — cost if wrong: a slightly larger fix diff.
+Ruling: other final-review minors stay deferred: feed `after` returns the latest 20 not "all since" (client caps at 20 anyway); RareReveal above OfflineOverlay; DiscoveryBell not memo'd; suspicious-after-the-fact keeps first slot; polling while the tab is hidden — cost if wrong: polish debt recorded here.
+Final fix wave: commits 58b2e28..1d28cc5 (6ffd540 engine: a missed rare roll always spends its element; c9ad6ed discovery write failure no longer fails a committed learn; fd91fca reveal hint readable; 1d28cc5 docs + prelaunch items); scoped re-review: 4/4 addressed, no new breakage.
+Ruling: a roll that lands on an already-known rare spell is a named duplicate that refunds the element — free but grants nothing (no learn, no discovery row), the server picks the outcome, and changing it would alter deterministic spell+element recipes — cost if wrong: pointless re-rolls are slightly cheaper.
+Task 2 numbers remain valid after the fix: they measure the drop-income rate, not the (previously broken) per-attempt charge.
+Controller verified: npm test 53 files passed / 1 skipped, 526 passed / 5 skipped; npm run build exit 0.
+OPEN QUESTION FOR USER still stands (farm time 139–211 sim-min vs 120).
