@@ -1276,6 +1276,35 @@ describe('GM login and tokens', () => {
       expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
     });
 
+    it('marks gmUsed before the commit: a commit conflict after the audit may leave the mark but logs nothing', async () => {
+      const orig = store.commitSave.bind(store);
+      const markedAtCommit: boolean[] = [];
+      let failNext = true;
+      store.commitSave = async (...args: Parameters<typeof orig>) => {
+        markedAtCommit.push(store.players.get(g.playerId)!.gmUsed);
+        if (failNext) {
+          failNext = false;
+          return false;
+        }
+        return orig(...args);
+      };
+      const lost = await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items: { 'el:fire:1': 1 } });
+      expect(lost.status).toBe(409);
+      expect(store.saves.get(g.playerId)!.revision).toBe(0);
+      expect(store.gmActions).toEqual([]);
+      const won = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'unlock_all' });
+      expect(won.status).toBe(200);
+      expect(markedAtCommit).toEqual([true, true]);
+      expect(store.gmActions.map((x) => x.action)).toEqual(['unlock_zones']);
+    });
+
+    it('an empty items object is 400', async () => {
+      const { status } = await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items: {} });
+      expect(status).toBe(400);
+      expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
+      expect(store.gmActions).toEqual([]);
+    });
+
     it('unlock_all opens every zone', async () => {
       const { status, out } = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'unlock_all' });
       expect(status).toBe(200);
@@ -1325,6 +1354,97 @@ describe('GM login and tokens', () => {
         expect(await res.json()).toEqual({ error: 'gm_expired' });
       }
       expect(store.saves.get(g.playerId)!.revision).toBe(0);
+    });
+  });
+
+  describe('GM password reset', () => {
+    let a: ReturnType<typeof createApp>;
+    let g: Awaited<ReturnType<typeof bound>>;
+    let gmToken: string;
+    beforeEach(async () => {
+      a = gmApp('gm_one,gm_two');
+      g = await bound('gm_one');
+      gmToken = await gmTokenOf(await login(a, g.token, 'gm_one'));
+      store.gmActions.length = 0;
+    });
+    const reset = (body: unknown, token = gmToken) => req(a, '/api/gm/reset-password', body, g.token, token);
+    const playerLogin = async (username: string, pw: string) =>
+      a.request('/api/login', json({ username, password: await ph(pw) }));
+
+    it('resets another player: new hash, sessions and GM tokens gone, lock cleared, logged without hashes', async () => {
+      const b = await bound('Player_B');
+      const bLogin = await playerLogin('player_b', 'password1');
+      expect(bLogin.status).toBe(200);
+      const bToken2 = ((await bLogin.json()) as { token: string }).token;
+      await store.createGmToken('stale-gm-token-hash', b.playerId, clock + GM_TOKEN_TTL_MS);
+      for (let i = 0; i < 5; i++) expect((await playerLogin('player_b', 'wrong-pass')).status).toBe(403);
+      expect((await playerLogin('player_b', 'password1')).status).toBe(429);
+      const oldStored = store.credentials.get(b.playerId)!.passwordHash;
+
+      clock += 1000;
+      const res = await reset({ username: 'PLAYER_B', password: await ph('Temp12345678') });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({});
+
+      const newStored = store.credentials.get(b.playerId)!.passwordHash;
+      expect(newStored).not.toBe(oldStored);
+      expect(newStored).not.toBe(await ph('Temp12345678')); // HMAC with the pepper, not the raw client hash
+      expect((await playerLogin('player_b', 'password1')).status).toBe(403);
+      expect((await playerLogin('player_b', 'Temp12345678')).status).toBe(200);
+      for (const t of [b.token, bToken2]) expect((await a.request('/api/save', { headers: { authorization: `Bearer ${t}` } })).status).toBe(401);
+      expect([...store.gmTokens.values()].some((x) => x.playerId === b.playerId)).toBe(false);
+      // the GM's own session and GM token are untouched
+      expect((await req(a, PROBE, {}, g.token, gmToken)).status).toBe(404);
+
+      expect(store.gmActions).toEqual([{ gmPlayerId: g.playerId, at: clock, action: 'reset_password', target: 'Player_B', detail: null }]);
+      const logged = JSON.stringify(store.gmActions);
+      for (const secret of [oldStored, newStored, await ph('password1'), await ph('Temp12345678'), 'Temp12345678']) {
+        expect(logged).not.toContain(secret);
+      }
+    });
+
+    it('cannot reset yourself or another GM account', async () => {
+      const g2 = await bound('gm_two');
+      const before = [store.credentials.get(g.playerId)!.passwordHash, store.credentials.get(g2.playerId)!.passwordHash];
+      for (const username of ['gm_one', 'GM_ONE', 'gm_two']) {
+        const res = await reset({ username, password: await ph('Temp12345678') });
+        expect(res.status, username).toBe(403);
+        expect(await res.json()).toEqual({ error: 'not_allowed' });
+      }
+      expect([store.credentials.get(g.playerId)!.passwordHash, store.credentials.get(g2.playerId)!.passwordHash]).toEqual(before);
+      expect((await a.request('/api/save', { headers: { authorization: `Bearer ${g2.token}` } })).status).toBe(200);
+      expect(store.gmActions).toEqual([]);
+    });
+
+    it('an unknown account is 404 not_found', async () => {
+      const res = await reset({ username: 'nobody_here', password: await ph('Temp12345678') });
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: 'not_found' });
+      expect(store.gmActions).toEqual([]);
+    });
+
+    it('a malformed password hash or username is 400', async () => {
+      await bound('player_b');
+      for (const body of [
+        { username: 'player_b', password: 'Temp12345678' },
+        { username: 'player_b', password: '' },
+        { username: 'player_b' },
+        { username: '', password: await ph('Temp12345678') },
+        { password: await ph('Temp12345678') },
+      ]) {
+        expect((await reset(body)).status, JSON.stringify(body)).toBe(400);
+      }
+      expect(store.gmActions).toEqual([]);
+    });
+
+    it('needs a valid GM token', async () => {
+      const b = await bound('player_b');
+      const before = store.credentials.get(b.playerId)!.passwordHash;
+      const res = await req(a, '/api/gm/reset-password', { username: 'player_b', password: await ph('Temp12345678') }, g.token);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ error: 'gm_expired' });
+      expect(store.credentials.get(b.playerId)!.passwordHash).toBe(before);
+      expect((await req(gmApp(), '/api/gm/reset-password', { username: 'player_b', password: await ph('Temp12345678') }, g.token, gmToken)).status).toBe(404);
     });
   });
 

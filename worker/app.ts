@@ -425,7 +425,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     body: Record<string, unknown>,
     apply: (state: GameState) => { state: GameState; result: R },
     onCommit?: (playerId: string, t: number, result: R) => Promise<R | void>,
-    opts: { resetAnchor?: boolean } = {},
+    opts: { resetAnchor?: boolean; beforeCommit?: (playerId: string) => Promise<void> } = {},
   ): Promise<Response> {
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
@@ -443,6 +443,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const anchor = checked.advanceAnchor || opts.resetAnchor
       ? { state: committed, at: checked.t }
       : { state: serialize(chargeAnchor(checked.anchor, checked.state, state)), at: checked.anchorAt };
+    if (opts.beforeCommit) await opts.beforeCommit(checked.playerId);
     const done = await store.commitSave(checked.playerId, checked.revision, committed, checked.t, anchor);
     if (!done) return conflict(c, checked.playerId);
     const final = (onCommit && (await onCommit(checked.playerId, checked.t, result))) || result;
@@ -515,10 +516,11 @@ export function createApp(deps: AppDeps): Hono<Env> {
       body,
       (state) => ({ state: apply(state), result: { kind: 'gm' as const } }),
       async (playerId, t) => {
-        await store.markGmUsed(playerId);
         await store.recordGmAction({ gmPlayerId: playerId, at: t, action, target: null, detail });
       },
-      { resetAnchor: true },
+      // marked before the commit: a stray mark after a lost CAS is harmless, a committed edit without
+      // the mark would let a GM-edited account claim a first discovery
+      { resetAnchor: true, beforeCommit: (playerId) => store.markGmUsed(playerId) },
     );
 
   const knownItem = (id: string): boolean =>
@@ -529,8 +531,10 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const body = await readJson(c);
     const raw = body.items;
     if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new HttpError(400, 'invalid items');
+    const entries = Object.entries(raw as Record<string, unknown>);
+    if (entries.length === 0) throw new HttpError(400, 'invalid items');
     const items: Record<string, number> = {};
-    for (const [id, n] of Object.entries(raw as Record<string, unknown>)) {
+    for (const [id, n] of entries) {
       if (!knownItem(id)) throw new HttpError(400, 'invalid items');
       if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n > GM_ITEM_MAX) throw new HttpError(400, 'invalid items');
       items[id] = n;
@@ -569,6 +573,28 @@ export function createApp(deps: AppDeps): Hono<Env> {
       }
     };
     return gmEdit(c, body, apply, GM_ZONE_OPS[op as GmZoneOp], null);
+  });
+
+  /**
+   * The only GM action that touches another player: sets a temporary password (the browser hash of
+   * it; the server never sees the password), signs the player out everywhere and lifts their login
+   * lock. Not for yourself (use the account password change) nor for any GM account.
+   */
+  app.post('/api/gm/reset-password', async (c) => {
+    const { username, password } = readCredentials(await readJson(c));
+    const gmPlayer = c.get('gmPlayer');
+    const key = usernameKey(username);
+    const cred = await store.findCredentialsByKey(key);
+    if (!cred) return c.json({ error: 'not_found' }, 404);
+    if (cred.playerId === gmPlayer.id || gmKeys.has(cred.usernameKey)) return c.json({ error: 'not_allowed' }, 403);
+    const t = now();
+    await store.updatePasswordHash(cred.playerId, await hashPassword(password, pepper), t);
+    await store.deleteSessions(cred.playerId);
+    await store.deleteGmTokens(cred.playerId);
+    await store.clearLoginFailures(`u:${cred.usernameKey}`);
+    // the log names the account (its stored, normalizeUsername-ed name) only: never a password or hash
+    await store.recordGmAction({ gmPlayerId: gmPlayer.id, at: t, action: 'reset_password', target: cred.username, detail: null });
+    return c.json({});
   });
 
   return app;
