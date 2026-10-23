@@ -4,9 +4,11 @@ import { ELEMENT_LABEL } from './picker-data';
 
 const GRADES = Array.from({ length: MAX_ELEMENT_GRADE }, (_, i) => i + 1);
 
-export function lowestUpgradableGrade(inv: Inventory, el: ElementId): number | null {
-  for (let g = 1; g < MAX_ELEMENT_GRADE; g++) if ((inv[elementItem(el, g)] ?? 0) >= GRADE_UPGRADE_COST[g - 1]!) return g;
-  return null;
+/** How many upgrades of this grade one click makes: 1 when it holds the cost, or all it can afford with `all` (Shift). */
+export function upgradeCount(inv: Inventory, el: ElementId, grade: number, all: boolean): number {
+  if (grade >= MAX_ELEMENT_GRADE) return 0;
+  const n = Math.floor((inv[elementItem(el, grade)] ?? 0) / GRADE_UPGRADE_COST[grade - 1]!);
+  return all ? n : Math.min(n, 1);
 }
 
 function materialIds(inv: Inventory): ItemId[] {
@@ -15,7 +17,8 @@ function materialIds(inv: Inventory): ItemId[] {
 
 /**
  * One row per element, one column per grade. Empty cells stay in place so the table keeps its shape.
- * Each grade header below the top shows its upgrade cost (3, 10, 30, 100 of it make one of the next).
+ * Each grade header below the top shows its upgrade cost (3, 10, 30, 100 of it make one of the next);
+ * the arrow between two grades upgrades exactly that grade (Shift: as many as it can afford).
  */
 export function ElementTable({
   inventory,
@@ -25,7 +28,7 @@ export function ElementTable({
 }: {
   inventory: Inventory;
   onPick: (id: ItemId) => void;
-  onUpgrade: (element: ElementId, grade: number) => void;
+  onUpgrade: (element: ElementId, grade: number, count: number) => void;
   /** e.g. while a synthesis is in flight, whose reply would undo the upgrade */
   upgradeLocked?: boolean;
 }) {
@@ -45,45 +48,44 @@ export function ElementTable({
               </th>
             );
           })}
-          <th scope="col"><span className="sr-only">升階</span></th>
         </tr>
       </thead>
       <tbody>
-        {ELEMENT_ORDER.map((el) => {
-          const up = lowestUpgradableGrade(inventory, el);
-          return (
+        {ELEMENT_ORDER.map((el) => (
             <tr key={el}>
               <th scope="row" className={`el-name el-${el}`}>{ELEMENT_LABEL[el]}</th>
               {GRADES.map((g) => {
                 const id = elementItem(el, g);
                 const n = inventory[id] ?? 0;
+                const next = elementItem(el, g + 1);
                 return (
-                  <td key={g}>
+                  <td key={g} className="grade-cell">
                     <button type="button" className="cell" disabled={n === 0} aria-label={`${itemName(id)} ×${n}`} onClick={() => onPick(id)}>
                       {n}
                     </button>
+                    {g < MAX_ELEMENT_GRADE && (
+                      <button
+                        type="button"
+                        className="up-arrow"
+                        disabled={upgradeLocked || upgradeCount(inventory, el, g, false) === 0}
+                        aria-label={`${itemName(id)}升成${itemName(next)}`}
+                        title={`${GRADE_UPGRADE_COST[g - 1]} 個${itemName(id)} → 1 個${itemName(next)}（Shift：能升多少就升多少）`}
+                        onClick={(e) => {
+                          const count = upgradeCount(inventory, el, g, e.shiftKey);
+                          if (count > 0) onUpgrade(el, g, count);
+                        }}
+                      >
+                        ›
+                      </button>
+                    )}
                   </td>
                 );
               })}
-              <td>
-                <button
-                  type="button"
-                  className="upgrade"
-                  disabled={up === null || upgradeLocked}
-                  aria-label={`升階${ELEMENT_LABEL[el]}`}
-                  onClick={() => {
-                    if (up !== null) onUpgrade(el, up);
-                  }}
-                >
-                  升階
-                </button>
-              </td>
             </tr>
-          );
-        })}
+        ))}
         <tr className="mat-row">
           <th scope="row">素材</th>
-          <td colSpan={GRADES.length + 1}>
+          <td colSpan={GRADES.length}>
             {materialIds(inventory).length === 0 && <span className="muted">尚無素材</span>}
             {materialIds(inventory).map((id) => {
               const n = inventory[id] ?? 0;

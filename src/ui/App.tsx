@@ -110,7 +110,9 @@ export function App({
             <ElementTable
               inventory={game.inventory}
               onPick={pick}
-              onUpgrade={(el, g) => runtime.upgrade(el, g)}
+              onUpgrade={(el, g, count) => {
+                for (let i = 0; i < count && runtime.upgrade(el, g); i++);
+              }}
               upgradeLocked={synthPending}
             />
           </section>

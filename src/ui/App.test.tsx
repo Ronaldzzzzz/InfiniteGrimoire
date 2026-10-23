@@ -117,7 +117,7 @@ describe('App layout', () => {
   it('keeps the slots when an element is upgraded', () => {
     const { runtime } = setup();
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    fireEvent.click(screen.getByRole('button', { name: '升階火' }));
+    fireEvent.click(screen.getByRole('button', { name: '初階火升成中階火' }));
     expect(runtime.upgrade).toHaveBeenCalledWith('fire', 1);
     expect(slotTexts()).toEqual(['火・初階', '空']);
   });

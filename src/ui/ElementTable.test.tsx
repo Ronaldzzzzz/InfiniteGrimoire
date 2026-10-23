@@ -1,19 +1,21 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ElementTable, lowestUpgradableGrade } from './ElementTable';
+import { ElementTable, upgradeCount } from './ElementTable';
 
 afterEach(cleanup);
 
 const btn = (name: string) => screen.getByRole('button', { name }) as HTMLButtonElement;
 
-describe('lowestUpgradableGrade', () => {
-  it('picks the lowest grade holding its upgrade cost (3, 10, 30, 100), never the top grade', () => {
-    expect(lowestUpgradableGrade({ 'el:fire:1': 3, 'el:fire:2': 5 }, 'fire')).toBe(1);
-    expect(lowestUpgradableGrade({ 'el:fire:1': 2, 'el:fire:2': 10 }, 'fire')).toBe(2);
-    expect(lowestUpgradableGrade({ 'el:fire:1': 2, 'el:fire:2': 9 }, 'fire')).toBeNull();
-    expect(lowestUpgradableGrade({ 'el:fire:5': 999 }, 'fire')).toBeNull();
-    expect(lowestUpgradableGrade({}, 'fire')).toBeNull();
+describe('upgradeCount', () => {
+  it('is 1 when the grade holds its cost (3, 10, 30, 100), or every upgrade it can afford with all; never the top grade', () => {
+    expect(upgradeCount({ 'el:fire:1': 3 }, 'fire', 1, false)).toBe(1);
+    expect(upgradeCount({ 'el:fire:1': 2 }, 'fire', 1, false)).toBe(0);
+    expect(upgradeCount({ 'el:fire:1': 31 }, 'fire', 1, true)).toBe(10);
+    expect(upgradeCount({ 'el:fire:2': 25 }, 'fire', 2, true)).toBe(2);
+    expect(upgradeCount({ 'el:fire:3': 29 }, 'fire', 3, true)).toBe(0);
+    expect(upgradeCount({ 'el:fire:5': 999 }, 'fire', 5, true)).toBe(0);
+    expect(upgradeCount({}, 'fire', 1, false)).toBe(0);
   });
 });
 
@@ -38,19 +40,33 @@ describe('ElementTable', () => {
     expect(onPick).toHaveBeenCalledWith('el:thunder:2');
   });
 
-  it('enables 升階 only when some grade below the top has 3, and upgrades the lowest one', () => {
-    const onUpgrade = vi.fn();
-    render(<ElementTable inventory={{ 'el:fire:1': 3, 'el:fire:2': 3, 'el:wind:1': 2, 'el:water:3': 5 }} onPick={() => {}} onUpgrade={onUpgrade} />);
-    expect(btn('升階風').disabled).toBe(true);
-    expect(btn('升階水').disabled).toBe(true);
-    fireEvent.click(btn('升階火'));
-    expect(onUpgrade).toHaveBeenCalledWith('fire', 1);
+  it('puts an arrow between neighbouring grades, enabled only when the left one holds its cost', () => {
+    render(<ElementTable inventory={{ 'el:fire:1': 3, 'el:fire:2': 9, 'el:water:3': 30 }} onPick={() => {}} onUpgrade={() => {}} />);
+    expect(btn('初階火升成中階火').disabled).toBe(false);
+    expect(btn('中階火升成高階火').disabled).toBe(true);
+    expect(btn('高階水升成極階水').disabled).toBe(false);
+    expect(screen.queryByRole('button', { name: /神階火升成/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^升階/ })).toBeNull(); // the old one-per-row button is gone
   });
 
-  it('can lock 升階 while cells stay pickable', () => {
+  it('upgrades exactly the grade whose arrow is clicked, even when a lower grade could also upgrade', () => {
+    const onUpgrade = vi.fn();
+    render(<ElementTable inventory={{ 'el:fire:1': 3, 'el:fire:2': 10 }} onPick={() => {}} onUpgrade={onUpgrade} />);
+    fireEvent.click(btn('中階火升成高階火'));
+    expect(onUpgrade).toHaveBeenCalledWith('fire', 2, 1);
+  });
+
+  it('Shift-click upgrades as many as the grade can afford', () => {
+    const onUpgrade = vi.fn();
+    render(<ElementTable inventory={{ 'el:earth:1': 31 }} onPick={() => {}} onUpgrade={onUpgrade} />);
+    fireEvent.click(btn('初階土升成中階土'), { shiftKey: true });
+    expect(onUpgrade).toHaveBeenCalledWith('earth', 1, 10);
+  });
+
+  it('can lock the arrows while cells stay pickable', () => {
     const onPick = vi.fn();
     render(<ElementTable inventory={{ 'el:fire:1': 5 }} onPick={onPick} onUpgrade={() => {}} upgradeLocked />);
-    expect(btn('升階火').disabled).toBe(true);
+    expect(btn('初階火升成中階火').disabled).toBe(true);
     fireEvent.click(btn('初階火 ×5'));
     expect(onPick).toHaveBeenCalledWith('el:fire:1');
   });

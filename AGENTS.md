@@ -157,6 +157,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
+- **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者反映元素表每列只有一個「升階」按鈕（固定升最低可升的那階），無法升想要的階級。改成相鄰兩階之間的「›」箭頭：左邊那格夠成本（3／10／30／100）才亮起，點了只升那一階；Shift＋點能升多少就升多少（`upgradeCount`）。每列右邊的「升階」按鈕移除。直接在 `feat/core-rework` commit（小改動，對話中確認做法）；`npm test` 51 個檔案 480 個測試、`npm run build` 通過，headless Edge 實際點擊確認。停在：尚未 push。下一步同上一筆。
+
 - **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者試玩核心重做後的回饋（合成選單不直覺、滾輪與拖拉衝突、嘗試紀錄失去意義；平衡之後再調）經設計討論寫成規格與計畫，以 subagent-driven-development 執行（見下一筆）。最終全 branch 審查：Critical 0、Important 3（帳本未 commit、缺「合成台已滿」提示、滾輪縮放不看捲動量），連同必修的拖曳卡住問題一次修正並複審通過；`npm test` 51 個檔案 478 個測試、`npm run build` 通過。使用者指示把 `feat/synthesis-altar` 合併回 `feat/core-rework`（fast-forward，branch 已刪）。停在：`feat/core-rework` 尚未 push、尚未合併到 `main`。下一步：使用者在真實瀏覽器試玩合成台 → 決定 push 與合併到 `main` → 第二版 B 設計討論。
 
 - **2026-10-23（Claude Code，Sonnet 5.5，Windows）**：以 subagent-driven-development 在 branch `feat/synthesis-altar`（從 `feat/core-rework` 分出）執行合成台介面改版 7 個任務，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。內容：方形合成台取代合成區與嘗試紀錄、魔導書的泡泡／雙擊／浮動詳情卡、縮放按鈕進技能樹與滾輪只縮放、拖曳不經過 React、關鍵道具按鈕移到戰鬥畫面。最後一項任務在 headless Edge 驗收規格第 9 節 10 項全過，並修正一個泡泡高度估錯的問題。停在：全部 commit，`feat/core-rework` 與 `feat/synthesis-altar` 都尚未 push、尚未合併到 `main`（`main` 已含 MVP 與第二版 A）。下一步：使用者在真實瀏覽器試玩合成台，再決定 push 與合併；平衡數值使用者明確延後；之後是第二版 B 設計討論。

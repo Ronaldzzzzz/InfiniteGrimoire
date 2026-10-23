@@ -69,8 +69,9 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .element-table .el-water { color: var(--water); }
 .element-table .cell { width: 100%; min-height: 40px; padding: 4px; font-variant-numeric: tabular-nums; }
 .element-table .cell.mat { width: auto; margin-right: 4px; }
-.element-table .upgrade { width: 100%; padding: 4px; color: var(--gold); border-color: var(--gold); font-size: 13px; }
-.element-table .upgrade:disabled { color: var(--muted); border-color: var(--line); }
+.element-table .grade-cell { position: relative; }
+.element-table .up-arrow { position: absolute; z-index: 1; top: 50%; right: -9px; width: 14px; height: 22px; min-height: 0; padding: 0; transform: translateY(-50%); border-radius: 4px; font-size: 13px; line-height: 1; color: var(--bg); background: var(--gold); border-color: var(--gold); }
+.element-table .up-arrow:disabled { color: var(--muted); background: var(--panel); border-color: var(--line); opacity: 0.5; }
 .element-table .mat-row td { text-align: left; }
 .topbar { background: var(--panel); border-bottom: 1px solid var(--line); }
 .topbar-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 6px 12px; }
