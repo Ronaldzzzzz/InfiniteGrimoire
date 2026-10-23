@@ -1,0 +1,96 @@
+<h2>在技能樹上直接放入合成槽或裝備</h2>
+<p class="subtitle">三種做法都不用離開技能樹。點你覺得最順手的一個（可以多點幾個比較），再到終端機告訴我感覺。</p>
+
+<style>
+  .tree { background:#0d0f14; border-radius:8px; position:relative; height:300px; overflow:hidden; font-family:sans-serif; }
+  .tree svg { width:100%; height:100%; }
+  .bubble { position:absolute; background:#1a1f2b; border:1px solid #8fd16a; border-radius:8px; padding:8px; color:#e6e9ef; font-size:12px; box-shadow:0 4px 12px #0008; }
+  .bubble b { color:#e8b84a; }
+  .bubble .btns { display:flex; gap:6px; margin-top:6px; }
+  .bubble button { background:#22301c; color:#8fd16a; border:1px solid #8fd16a; border-radius:4px; padding:3px 8px; font-size:12px; }
+  .bubble button.eq { background:#33291a; color:#e8b84a; border-color:#e8b84a; }
+  .bubble button.ghost { background:none; color:#9aa3b2; border-color:#3a4252; }
+  .bubble:after { content:''; position:absolute; left:18px; bottom:-7px; width:12px; height:12px; background:#1a1f2b; border-right:1px solid #8fd16a; border-bottom:1px solid #8fd16a; transform:rotate(45deg); }
+  .dock { position:absolute; top:8px; left:8px; right:8px; display:flex; gap:6px; align-items:center; background:#151a24cc; border:1px solid #2a3140; border-radius:8px; padding:6px; color:#e6e9ef; font-size:12px; }
+  .dock .slot { flex:1; border:1px dashed #3a4252; border-radius:6px; padding:4px; text-align:center; color:#6b7385; }
+  .dock .slot.f { border:1px solid #e06b3a; color:#e6e9ef; background:#2a1c16; }
+  .dock .go { background:#8fd16a; color:#0d0f14; border-radius:4px; padding:4px 10px; font-weight:bold; }
+  .tip { position:absolute; bottom:8px; left:8px; right:8px; color:#9aa3b2; font-size:11px; background:#151a24; border-radius:6px; padding:6px; }
+  .ctx { position:absolute; background:#1a1f2b; border:1px solid #3a4252; border-radius:6px; font-size:12px; color:#e6e9ef; min-width:120px; }
+  .ctx div { padding:5px 10px; } .ctx div.h { background:#22301c; color:#8fd16a; }
+  .ctx div.k { color:#6b7385; font-size:10px; float:right; padding:0; }
+</style>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>點一下 → 節點旁冒出小泡泡</h3>
+      <p>單擊已學會的魔法，旁邊浮出泡泡：名字、元素、階級、強化，兩個大按鈕「放入合成」「裝備」。點別處泡泡就消失。完整說明在泡泡裡的「詳情」。</p>
+      <div class="tree">
+        <svg viewBox="0 0 400 300">
+          <line x1="200" y1="150" x2="120" y2="210" stroke="#8fd16a" stroke-width="2"/>
+          <line x1="200" y1="150" x2="290" y2="200" stroke="#8fd16a" stroke-width="2"/>
+          <line x1="120" y1="210" x2="70" y2="270" stroke="#2a3140" stroke-width="2"/>
+          <circle cx="200" cy="150" r="16" fill="#e06b3a" stroke="#e8b84a" stroke-width="4"/><text x="200" y="180" fill="#e6e9ef" font-size="11" text-anchor="middle">火球</text>
+          <circle cx="120" cy="210" r="16" fill="#6bc7e0" stroke="#6bc7e0" stroke-width="2"/><text x="120" y="240" fill="#e6e9ef" font-size="11" text-anchor="middle">風刃</text>
+          <circle cx="290" cy="200" r="16" fill="#e06b3a" stroke="#8fd16a" stroke-width="4"/><text x="290" y="230" fill="#e6e9ef" font-size="11" text-anchor="middle">烈焰爆發</text>
+          <circle cx="70" cy="270" r="16" fill="#0d0f14" stroke="#6bc7e0" stroke-width="2"/>
+        </svg>
+        <div class="bubble" style="left:230px; top:88px;">
+          <b>烈焰爆發</b> 火・Lv.2・強化 +1
+          <div class="btns"><button>放入合成</button><button class="eq">裝備</button><button class="ghost">詳情</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>快捷操作：雙擊放入合成、右鍵選單</h3>
+      <p>雙擊直接放進合成槽（節點閃一下表示放進去了）；右鍵跳出選單：放入合成／裝備／詳情。單擊仍是看詳情。熟了很快，但要記住手勢，手機上沒有右鍵。</p>
+      <div class="tree">
+        <svg viewBox="0 0 400 300">
+          <line x1="200" y1="150" x2="120" y2="210" stroke="#8fd16a" stroke-width="2"/>
+          <line x1="200" y1="150" x2="290" y2="200" stroke="#8fd16a" stroke-width="2"/>
+          <circle cx="200" cy="150" r="16" fill="#e06b3a" stroke="#e8b84a" stroke-width="4"/><text x="200" y="180" fill="#e6e9ef" font-size="11" text-anchor="middle">火球</text>
+          <circle cx="120" cy="210" r="16" fill="#6bc7e0" stroke="#6bc7e0" stroke-width="2"/><text x="120" y="240" fill="#e6e9ef" font-size="11" text-anchor="middle">風刃</text>
+          <circle cx="290" cy="200" r="16" fill="#e06b3a" stroke="#8fd16a" stroke-width="2"/><text x="290" y="230" fill="#e6e9ef" font-size="11" text-anchor="middle">烈焰爆發</text>
+        </svg>
+        <div class="ctx" style="left:300px; top:150px;">
+          <div class="h">放入合成 <span class="k">雙擊</span></div>
+          <div>裝備</div>
+          <div>詳情</div>
+        </div>
+        <div class="tip">單擊：詳情 ・ 雙擊：放入合成 ・ 右鍵：選單</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>A 的泡泡 ＋ 技能樹頂端的合成槽</h3>
+      <p>和 A 一樣點一下冒泡泡，另外把兩個合成槽和「合成」按鈕直接貼在技能樹上方，放進去立刻看得到，在技能樹裡就能按合成。（雙擊快捷也可以一起加。）</p>
+      <div class="tree">
+        <svg viewBox="0 0 400 300">
+          <line x1="200" y1="160" x2="120" y2="220" stroke="#8fd16a" stroke-width="2"/>
+          <line x1="200" y1="160" x2="290" y2="210" stroke="#8fd16a" stroke-width="2"/>
+          <circle cx="200" cy="160" r="16" fill="#e06b3a" stroke="#e8b84a" stroke-width="4"/><text x="200" y="190" fill="#e6e9ef" font-size="11" text-anchor="middle">火球</text>
+          <circle cx="120" cy="220" r="16" fill="#6bc7e0" stroke="#8fd16a" stroke-width="4"/><text x="120" y="250" fill="#e6e9ef" font-size="11" text-anchor="middle">風刃</text>
+          <circle cx="290" cy="210" r="16" fill="#e06b3a" stroke="#e06b3a" stroke-width="2"/><text x="290" y="240" fill="#e6e9ef" font-size="11" text-anchor="middle">烈焰爆發</text>
+        </svg>
+        <div class="dock">
+          <div class="slot f">烈焰爆發 ✕</div><span>＋</span><div class="slot">空</div><span class="go">合成</span>
+        </div>
+        <div class="bubble" style="left:60px; top:110px;">
+          <b>風刃</b> 風・Lv.1
+          <div class="btns"><button>放入合成</button><button class="eq">裝備</button><button class="ghost">詳情</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
