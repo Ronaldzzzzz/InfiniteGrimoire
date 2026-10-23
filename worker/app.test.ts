@@ -8,7 +8,7 @@ import { createInitialState } from '../src/engine/persist';
 import { createRng } from '../src/engine/rng';
 import { craftedId } from '../src/engine/spells';
 import { ELEMENT_ORDER } from '../src/engine/types';
-import { ANCHOR_ADVANCE_MS, createApp, excludedFromRecords, FEED_LIMIT, GM_TOKEN_TTL_MS, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
+import { ANCHOR_ADVANCE_MS, createApp, excludedFromRecords, FEED_LIMIT, GM_ITEM_MAX, GM_TOKEN_TTL_MS, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
 import { hashToken, toBase64Url } from './auth';
 import { MemoryStore, type SaveRow } from './store';
 
@@ -1157,6 +1157,175 @@ describe('GM login and tokens', () => {
     const second = ((await lr.json()) as { token: string }).token;
     expect((await req(a, '/api/logout', {}, g.token)).status).toBe(200);
     expect((await req(a, PROBE, {}, second, t2)).status).toBe(403);
+  });
+
+  it('removing a GM from GM_USERNAMES revokes their GM token at once', async () => {
+    const g = await bound('gm_one');
+    const gmToken = await gmTokenOf(await login(gmApp('gm_one'), g.token, 'gm_one'));
+    expect((await req(gmApp('gm_one'), PROBE, {}, g.token, gmToken)).status).toBe(404);
+    const res = await req(gmApp('someone_else'), PROBE, {}, g.token, gmToken);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'gm_expired' });
+  });
+
+  it('logging out other devices revokes GM tokens', async () => {
+    const a = gmApp('gm_one');
+    const g = await bound('gm_one');
+    const gmToken = await gmTokenOf(await login(a, g.token, 'gm_one'));
+    expect((await req(a, '/api/account/logout-others', {}, g.token)).status).toBe(200);
+    expect((await req(a, PROBE, {}, g.token, gmToken)).status).toBe(403);
+    expect(store.gmTokens.size).toBe(0);
+  });
+
+  describe('GM save edits', () => {
+    let a: ReturnType<typeof createApp>;
+    let g: Awaited<ReturnType<typeof bound>>;
+    let gmToken: string;
+    beforeEach(async () => {
+      a = gmApp('gm_one');
+      g = await bound('gm_one');
+      gmToken = await gmTokenOf(await login(a, g.token, 'gm_one'));
+      store.gmActions.length = 0;
+    });
+    const gm = async (path: string, body: Record<string, unknown>, token = gmToken) => {
+      const res = await req(a, path, body, g.token, token);
+      return { status: res.status, out: (await res.json()) as ActionOut & { error?: string } };
+    };
+
+    it('sets inventory counts, marks gmUsed, logs the action and resets the anchor', async () => {
+      expect(GM_ITEM_MAX).toBe(999_999);
+      clock += 5000;
+      const { status, out } = await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items: { 'el:fire:3': 50, 'key:storm_heart': 1 } });
+      expect(status).toBe(200);
+      expect(out.result).toEqual({ kind: 'gm' });
+      expect(out.revision).toBe(1);
+      expect(out.state.inventory).toEqual({ 'el:fire:3': 50, 'key:storm_heart': 1 });
+      expect(saved(g.playerId).inventory).toEqual({ 'el:fire:3': 50, 'key:storm_heart': 1 });
+      expect(store.players.get(g.playerId)?.gmUsed).toBe(true);
+      expect(store.gmActions).toEqual([
+        { gmPlayerId: g.playerId, at: clock, action: 'inventory', target: null, detail: JSON.stringify({ 'el:fire:3': 50, 'key:storm_heart': 1 }) },
+      ]);
+      const row = store.saves.get(g.playerId)!;
+      expect(row.anchorAt).toBe(clock);
+      expect(JSON.parse(row.anchorState)).toEqual(out.state);
+    });
+
+    it('a 0 count removes the item', async () => {
+      const first = await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items: { 'mat:ember_core': 7, 'el:wind:1': 3 } });
+      expect(first.status).toBe(200);
+      const { status, out } = await gm('/api/gm/inventory', { state: first.out.state, baseRevision: 1, items: { 'mat:ember_core': 0 } });
+      expect(status).toBe(200);
+      expect(out.state.inventory).toEqual({ 'el:wind:1': 3 });
+    });
+
+    it('a later upload builds on the GM-edited state without audit rejections', async () => {
+      const { out } = await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items: { 'el:fire:3': 50, 'key:storm_heart': 1 } });
+      clock += 30_000;
+      const next: GameState = {
+        ...out.state,
+        inventory: { ...out.state.inventory, 'el:wind:1': 2, 'el:water:1': 1 },
+        zoneKills: { [out.state.currentZone]: 3 },
+      };
+      const res = await a.request('/api/save', json({ state: next, baseRevision: 1 }, g.token, 'PUT'));
+      expect(res.status, JSON.stringify(await res.clone().json())).toBe(200);
+      expect(store.rejections).toHaveLength(0);
+    });
+
+    it('keeps legal unsynced drops from the request state and applies the GM change on top', async () => {
+      clock += 30_000;
+      const client: GameState = { ...g.state, inventory: { 'el:wind:1': 2 }, zoneKills: { [g.state.currentZone]: 3 } };
+      const { status, out } = await gm('/api/gm/inventory', { state: client, baseRevision: 0, items: { 'el:fire:3': 50 } });
+      expect(status).toBe(200);
+      expect(out.state.inventory).toEqual({ 'el:wind:1': 2, 'el:fire:3': 50 });
+      expect(out.state.zoneKills).toEqual({ [g.state.currentZone]: 3 });
+    });
+
+    it('rejects unknown ids and bad counts with 400 and writes nothing', async () => {
+      const bad: unknown[] = [
+        { 'el:fire:9': 1 },
+        { 'mat:nope': 1 },
+        { 'key:nope': 1 },
+        { foo: 1 },
+        { 'el:fire:1': -1 },
+        { 'el:fire:1': 1.5 },
+        { 'el:fire:1': GM_ITEM_MAX + 1 },
+        { 'el:fire:1': '5' },
+        [],
+        null,
+        'x',
+      ];
+      for (const items of bad) {
+        const { status } = await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items });
+        expect(status, JSON.stringify(items)).toBe(400);
+      }
+      expect(store.saves.get(g.playerId)!.revision).toBe(0);
+      expect(store.gmActions).toEqual([]);
+      expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
+      expect((await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items: { 'el:fire:1': GM_ITEM_MAX } })).status).toBe(200);
+      expect(store.gmActions).toHaveLength(1);
+    });
+
+    it('a revision conflict is 409 and does not write or mark gmUsed', async () => {
+      const { status } = await gm('/api/gm/inventory', { state: g.state, baseRevision: 5, items: { 'el:fire:1': 1 } });
+      expect(status).toBe(409);
+      expect(store.saves.get(g.playerId)!.revision).toBe(0);
+      expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
+      expect(store.gmActions).toEqual([]);
+      const z = await gm('/api/gm/zones', { state: g.state, baseRevision: 5, op: 'unlock_all' });
+      expect(z.status).toBe(409);
+      expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
+    });
+
+    it('unlock_all opens every zone', async () => {
+      const { status, out } = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'unlock_all' });
+      expect(status).toBe(200);
+      expect(out.result).toEqual({ kind: 'gm' });
+      expect(out.state.unlockedZones).toEqual(content.zones.map((z) => z.id));
+      expect(saved(g.playerId).unlockedZones).toEqual(content.zones.map((z) => z.id));
+      expect(store.players.get(g.playerId)?.gmUsed).toBe(true);
+      expect(store.gmActions).toEqual([{ gmPlayerId: g.playerId, at: clock, action: 'unlock_zones', target: null, detail: null }]);
+      // and moving to a newly opened zone uploads fine
+      clock += 30_000;
+      const moved = { ...out.state, currentZone: content.zones[2]!.id };
+      expect((await a.request('/api/save', json({ state: moved, baseRevision: 1 }, g.token, 'PUT'))).status).toBe(200);
+    });
+
+    it('reveal_all lifts every fog region', async () => {
+      const { status, out } = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'reveal_all' });
+      expect(status).toBe(200);
+      const hidden = content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id);
+      expect(hidden.length).toBeGreaterThan(0);
+      expect(out.state.revealed).toEqual(hidden);
+      expect(saved(g.playerId).revealed).toEqual(hidden);
+      expect(store.gmActions.map((x) => [x.action, x.detail])).toEqual([['reveal_all', null]]);
+      clock += 30_000;
+      expect((await a.request('/api/save', json({ state: out.state, baseRevision: 1 }, g.token, 'PUT'))).status).toBe(200);
+    });
+
+    it('boss_ready puts the current zone one kill short of its boss', async () => {
+      const zone = content.zones[0]!;
+      const { status, out } = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'boss_ready' });
+      expect(status).toBe(200);
+      expect(out.state.zoneKills[zone.id]).toBe(zone.killsForBoss - 1);
+      expect(saved(g.playerId).zoneKills[zone.id]).toBe(zone.killsForBoss - 1);
+      expect(store.gmActions.map((x) => [x.action, x.detail])).toEqual([['boss_ready', null]]);
+    });
+
+    it('rejects an unknown zones op with 400', async () => {
+      for (const op of ['nope', undefined, 1]) {
+        expect((await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op })).status).toBe(400);
+      }
+      expect(store.saves.get(g.playerId)!.revision).toBe(0);
+    });
+
+    it('without a GM token both edits are 403 gm_expired', async () => {
+      for (const path of ['/api/gm/inventory', '/api/gm/zones']) {
+        const res = await req(a, path, { state: g.state, baseRevision: 0, items: { 'el:fire:1': 1 }, op: 'unlock_all' }, g.token);
+        expect(res.status).toBe(403);
+        expect(await res.json()).toEqual({ error: 'gm_expired' });
+      }
+      expect(store.saves.get(g.playerId)!.revision).toBe(0);
+    });
   });
 
   it('excludedFromRecords covers suspicious and GM-used players', () => {

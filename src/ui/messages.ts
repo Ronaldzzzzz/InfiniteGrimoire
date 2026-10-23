@@ -99,6 +99,8 @@ export function synthMessage(result: ActionResult, content: Content, inputs?: st
       return '迷霧散開了';
     case 'unlocked':
       return '被動已解鎖';
+    case 'gm':
+      return '已套用';
     case 'rejected': {
       if (result.reason === 'grade') {
         const g = neededGrade(inputs, content);

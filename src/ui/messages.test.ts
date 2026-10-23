@@ -28,6 +28,7 @@ describe('synthMessage', () => {
     expect(synthMessage({ kind: 'empowered', level: 3 }, content)).toBe('強化成功：強化 +2');
     expect(synthMessage({ kind: 'revealed', region: 'outer' }, content)).toBe('迷霧散開了');
     expect(synthMessage({ kind: 'unlocked' }, content)).toBe('被動已解鎖');
+    expect(synthMessage({ kind: 'gm' }, content)).toBe('已套用');
     expect(synthMessage({ kind: 'rejected', reason: 'maxLevel' }, content)).toBe('已經強化到最高等級');
   });
 });

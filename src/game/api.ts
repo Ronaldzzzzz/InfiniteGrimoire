@@ -10,7 +10,9 @@ import { clientPasswordHash } from './password-hash';
 export type UploadOutcome =
   | { kind: 'ok'; revision: number }
   | { kind: 'conflict' | 'rejected'; state: GameState; revision: number; reasons?: string[] };
-export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult;
+/** 'gm': a GM edit to the GM's own save was applied. */
+export type GmResult = { kind: 'gm' };
+export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult | GmResult;
 /**
  * 'ok': the server applied the action. 'refused': the game rules said no (a 422 with a result); the server
  * wrote nothing and the local state stays. 'conflict' / 'rejected' (a 422 with audit reasons): adopt `state`.

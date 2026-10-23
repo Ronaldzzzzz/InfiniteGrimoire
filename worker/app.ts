@@ -7,8 +7,9 @@ import { createInitialState, parseState, serialize } from '../src/engine/persist
 import type { Rng } from '../src/engine/rng';
 import { CRAFTED_MAX_LEN } from '../src/engine/spells';
 import { depthCap, revealRegion, unlockPassive } from '../src/engine/tree';
+import { ITEM_ID_RE } from '../src/engine/types';
 import { hashToken, newToken } from './auth';
-import type { PlayerRow, Store } from './store';
+import type { GmActionKind, PlayerRow, Store } from './store';
 import { normalizeUsername, usernameKey, usernameProblem } from '../src/engine/account-rules';
 import { CLIENT_HASH_RE, hashPassword, verifyPassword } from './password';
 
@@ -28,6 +29,10 @@ export interface AppDeps {
 
 /** A GM token is valid this long after the GM login. */
 export const GM_TOKEN_TTL_MS = 30 * 60_000;
+/** Most of one item a GM edit may set. */
+export const GM_ITEM_MAX = 999_999;
+const GM_ZONE_OPS = { unlock_all: 'unlock_zones', reveal_all: 'reveal_all', boss_ready: 'boss_ready' } as const;
+type GmZoneOp = keyof typeof GM_ZONE_OPS;
 
 /** Players kept out of the rare-discovery records (and later the rankings). */
 export function excludedFromRecords(player: PlayerRow): boolean {
@@ -252,6 +257,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
   app.post('/api/account/logout-others', async (c) => {
     const player = c.get('player');
     await store.deleteOtherSessions(player.id, c.get('sessionHash'));
+    await store.deleteGmTokens(player.id);
     return c.json({ sessions: await store.countSessions(player.id) });
   });
 
@@ -278,6 +284,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
     // 403, never 401: a 401 would make the client drop its game session (AGENTS.md section 6)
     const owner = raw ? await store.findGmToken(await hashToken(raw), now()) : null;
     if (owner === null || owner !== player.id) return c.json({ error: 'gm_expired' }, 403);
+    // removing a name from GM_USERNAMES takes effect at once, not when the token expires
+    const cred = await store.findCredentialsByPlayer(player.id);
+    if (!cred || !gmKeys.has(cred.usernameKey)) return c.json({ error: 'gm_expired' }, 403);
     c.set('gmPlayer', player);
     await next();
   });
@@ -416,6 +425,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     body: Record<string, unknown>,
     apply: (state: GameState) => { state: GameState; result: R },
     onCommit?: (playerId: string, t: number, result: R) => Promise<R | void>,
+    opts: { resetAnchor?: boolean } = {},
   ): Promise<Response> {
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
@@ -429,7 +439,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
     // what the action spent is also taken out of the anchor (same CAS), so a later upload
     // cannot "restore" the inputs for free and repeat the action.
     const committed = serialize(state);
-    const anchor = checked.advanceAnchor
+    // resetAnchor (GM edits): the edited save is the new baseline, so later uploads are audited from it
+    const anchor = checked.advanceAnchor || opts.resetAnchor
       ? { state: committed, at: checked.t }
       : { state: serialize(chargeAnchor(checked.anchor, checked.state, state)), at: checked.anchorAt };
     const done = await store.commitSave(checked.playerId, checked.revision, committed, checked.t, anchor);
@@ -495,6 +506,69 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const body = await readJson(c);
     const passiveId = idField(body, 'passiveId');
     return serverAction(c, body, (state) => unlockPassive(state, passiveId, content));
+  });
+
+  /** GM edits to the GM's own save: audited like any server action, then the anchor restarts from the result. */
+  const gmEdit = (c: Ctx, body: Record<string, unknown>, apply: (s: GameState) => GameState, action: GmActionKind, detail: string | null) =>
+    serverAction(
+      c,
+      body,
+      (state) => ({ state: apply(state), result: { kind: 'gm' as const } }),
+      async (playerId, t) => {
+        await store.markGmUsed(playerId);
+        await store.recordGmAction({ gmPlayerId: playerId, at: t, action, target: null, detail });
+      },
+      { resetAnchor: true },
+    );
+
+  const knownItem = (id: string): boolean =>
+    ITEM_ID_RE.test(id) &&
+    (id.startsWith('el:') || (id.startsWith('mat:') ? Object.hasOwn(content.materials, id) : Object.hasOwn(content.keyItems, id)));
+
+  app.post('/api/gm/inventory', async (c) => {
+    const body = await readJson(c);
+    const raw = body.items;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new HttpError(400, 'invalid items');
+    const items: Record<string, number> = {};
+    for (const [id, n] of Object.entries(raw as Record<string, unknown>)) {
+      if (!knownItem(id)) throw new HttpError(400, 'invalid items');
+      if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n > GM_ITEM_MAX) throw new HttpError(400, 'invalid items');
+      items[id] = n;
+    }
+    return gmEdit(
+      c,
+      body,
+      (state) => {
+        const inventory = { ...state.inventory };
+        for (const [id, n] of Object.entries(items)) {
+          if (n === 0) delete inventory[id];
+          else inventory[id] = n;
+        }
+        return { ...state, inventory };
+      },
+      'inventory',
+      JSON.stringify(items),
+    );
+  });
+
+  app.post('/api/gm/zones', async (c) => {
+    const body = await readJson(c);
+    const op = body.op;
+    if (typeof op !== 'string' || !Object.hasOwn(GM_ZONE_OPS, op)) throw new HttpError(400, 'invalid op');
+    const apply = (state: GameState): GameState => {
+      switch (op as GmZoneOp) {
+        case 'unlock_all':
+          return { ...state, unlockedZones: content.zones.map((z) => z.id) };
+        case 'reveal_all':
+          return { ...state, revealed: content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id) };
+        case 'boss_ready': {
+          const zone = content.zones.find((z) => z.id === state.currentZone);
+          if (!zone) return state;
+          return { ...state, zoneKills: { ...state.zoneKills, [zone.id]: zone.killsForBoss - 1 } };
+        }
+      }
+    };
+    return gmEdit(c, body, apply, GM_ZONE_OPS[op as GmZoneOp], null);
   });
 
   return app;
