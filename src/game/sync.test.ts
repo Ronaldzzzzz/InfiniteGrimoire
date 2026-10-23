@@ -9,6 +9,7 @@ import { RETRY_MS, SyncController, UPLOAD_INTERVAL_MS } from './sync';
 const server = { ...createInitialState(content), equipped: 'mana_bolt', zoneKills: { x: 5 } };
 function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
   return {
+    recentDiscoveries: vi.fn(),
     createGuest: vi.fn(),
     loadSave: vi.fn(),
     upload: vi.fn(async () => ({ kind: 'ok' as const, revision: 8 })),

@@ -45,7 +45,17 @@ export interface AccountInfo {
   sessions: number;
 }
 
+export interface Discovery {
+  id: number;
+  spellId: string;
+  displayName: string;
+  at: number;
+  first: boolean;
+}
+
 export interface ApiClient {
+  /** The newest rare discoveries (max 20, newest first); with `after`, only rows newer than that id. */
+  recentDiscoveries(after?: number): Promise<Discovery[]>;
   createGuest(displayName: string): Promise<LoginResult>;
   loadSave(): Promise<{ state: GameState; revision: number }>;
   upload(state: GameState, baseRevision: number, opts?: { keepalive?: boolean }): Promise<UploadOutcome>;
@@ -78,7 +88,29 @@ function resultOf(body: Record<string, unknown>): ActionResult {
   if (typeof r !== 'object' || r === null || typeof (r as { kind?: unknown }).kind !== 'string') {
     throw new ApiError('invalid result from server', 0);
   }
+  const res = r as { kind: string; rare?: unknown };
+  if (res.kind === 'learned' && res.rare !== undefined) {
+    const rare = res.rare as { first?: unknown } | null;
+    if (typeof rare !== 'object' || rare === null || typeof rare.first !== 'boolean') {
+      throw new ApiError('invalid result from server', 0);
+    }
+  }
   return r as ActionResult;
+}
+
+function parseDiscoveries(raw: unknown): Discovery[] {
+  if (!Array.isArray(raw)) throw new ApiError('invalid discoveries from server', 0);
+  return raw.map((d) => {
+    const o = d as Record<string, unknown> | null;
+    if (
+      typeof o !== 'object' || o === null ||
+      typeof o.id !== 'number' || typeof o.spellId !== 'string' || typeof o.displayName !== 'string' ||
+      typeof o.at !== 'number' || typeof o.first !== 'boolean'
+    ) {
+      throw new ApiError('invalid discoveries from server', 0);
+    }
+    return { id: o.id, spellId: o.spellId, displayName: o.displayName, at: o.at, first: o.first };
+  });
 }
 
 function revisionOf(body: Record<string, unknown>): number {
@@ -169,6 +201,10 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
         return out;
       }
       return { kind: 'ok', revision: revisionOf(body) };
+    },
+    async recentDiscoveries(after) {
+      const { body } = await request('GET', after === undefined ? '/api/discoveries' : `/api/discoveries?after=${after}`);
+      return parseDiscoveries(body.discoveries);
     },
     synthesize: (state, baseRevision, inputs) => action('/api/synthesize', { state, baseRevision, inputs }),
     empower: (state, baseRevision, spellId) => action('/api/empower', { state, baseRevision, spellId }),

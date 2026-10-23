@@ -77,6 +77,33 @@ describe('account api', () => {
   });
 });
 
+describe('discoveries api', () => {
+  const row = { id: 3, spellId: 'x', displayName: 'Aria', at: 1000, first: false };
+
+  it('fetches the feed, with and without ?after', async () => {
+    const f = fakeFetch(200, { discoveries: [row] });
+    const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
+    expect(await api.recentDiscoveries()).toEqual([row]);
+    await api.recentDiscoveries(7);
+    const calls = f.mock.calls.map((c) => {
+      const [path, init] = c as unknown as [string, RequestInit];
+      return [path, init.method];
+    });
+    expect(calls).toEqual([['/api/discoveries', 'GET'], ['/api/discoveries?after=7', 'GET']]);
+  });
+
+  it('rejects malformed rows and maps 401 to AuthError', async () => {
+    for (const bad of [{ ...row, id: '3' }, { ...row, first: 1 }, { ...row, displayName: null }, { ...row, at: 'x' }, { ...row, spellId: 5 }]) {
+      const api = createApiClient(() => 'tok', fakeFetch(200, { discoveries: [bad] }) as unknown as typeof fetch);
+      await expect(api.recentDiscoveries()).rejects.toBeInstanceOf(ApiError);
+    }
+    const notArray = createApiClient(() => 'tok', fakeFetch(200, { discoveries: {} }) as unknown as typeof fetch);
+    await expect(notArray.recentDiscoveries()).rejects.toBeInstanceOf(ApiError);
+    const unauth = createApiClient(() => 'tok', fakeFetch(401, {}) as unknown as typeof fetch);
+    await expect(unauth.recentDiscoveries()).rejects.toBeInstanceOf(AuthError);
+  });
+});
+
 describe('action api', () => {
   const state = createInitialState(content);
 
@@ -105,6 +132,16 @@ describe('action api', () => {
     expect(await refused.synthesize(state, 4, ['el:fire:1', 'fireball'])).toEqual({ kind: 'refused', result: { kind: 'rejected', reason: 'grade' }, state, revision: 4 });
     const audit = createApiClient(() => 'tok', fakeFetch(422, { reason: 'rejected', reasons: ['too many fire'], state, revision: 6 }) as unknown as typeof fetch);
     expect(await audit.empower(state, 4, 'mana_bolt')).toEqual({ kind: 'rejected', state, revision: 6, reasons: ['too many fire'] });
+  });
+
+  it('keeps the rare flag on a learned result and rejects a malformed one', async () => {
+    const learned = { kind: 'learned', spellId: 'x', rare: { first: true } };
+    const api = createApiClient(() => 'tok', fakeFetch(200, { result: learned, state, revision: 5 }) as unknown as typeof fetch);
+    expect(await api.synthesize(state, 4, ['a', 'b'])).toMatchObject({ kind: 'ok', result: learned });
+    const bad = createApiClient(() => 'tok', fakeFetch(200, { result: { kind: 'learned', spellId: 'x', rare: { first: 'yes' } }, state, revision: 5 }) as unknown as typeof fetch);
+    await expect(bad.synthesize(state, 4, ['a', 'b'])).rejects.toBeInstanceOf(ApiError);
+    const bad2 = createApiClient(() => 'tok', fakeFetch(200, { result: { kind: 'learned', spellId: 'x', rare: true }, state, revision: 5 }) as unknown as typeof fetch);
+    await expect(bad2.synthesize(state, 4, ['a', 'b'])).rejects.toBeInstanceOf(ApiError);
   });
 
   it('maps 409 to a conflict with the server state', async () => {
