@@ -22,7 +22,7 @@ npm run db:migrate:local   # 套用本機 D1 migration
 npm run dev                # 啟動開發伺服器
 ```
 
-帳號功能需要 `.dev.vars`（git 忽略，不要 commit）：`PASSWORD_PEPPER=dev-only-pepper-not-for-production`。要用 GM 工具，再加一行 `GM_USERNAMES=<已綁定的帳號名稱，逗號分隔>`，登入遊戲後按 Ctrl＋Shift＋`（或網址加 `?gm`）叫出 GM 視窗；沒設定 `GM_USERNAMES` 時 GM 功能不存在（`/api/gm/*` 回 404）。
+帳號功能需要 `.dev.vars`（git 忽略，不要 commit）：`PASSWORD_PEPPER=dev-only-pepper-not-for-production`。要用 GM 工具，先在遊戲裡把自己的帳號綁定好，再加一行 `GM_USERNAMES=<已綁定的帳號名稱，逗號分隔>`（**只列已經綁定在你自己名下的帳號名稱**：GM 身分是「誰先綁定這個名稱」，列了但還沒人綁定的名稱，任何人都能搶先綁定而成為 GM；名單裡格式不合法的名稱會被忽略。），重新啟動 `npm run dev`，登入遊戲後按 Ctrl＋Shift＋`（或網址加 `?gm`）叫出 GM 視窗；沒設定 `GM_USERNAMES` 時 GM 功能不存在（`/api/gm/*` 回 404）。
 
 ## 測試
 
@@ -37,8 +37,10 @@ npm run build              # 型別檢查 + 打包
 2. `npx wrangler d1 create infinite-grimoire`
 3. 把輸出的 `database_id` 填進 `wrangler.jsonc` 中 D1 設定的 `database_id`（目前為佔位值）。
 4. `npx wrangler d1 migrations apply DB --remote`（依序套用 0001～0006；0004 會重置所有存檔）
-5. `npx wrangler secret put PASSWORD_PEPPER`、`npx wrangler secret put GM_USERNAMES`
-6. `npm run deploy`
+5. `npx wrangler secret put PASSWORD_PEPPER`
+6. `npm run deploy`（**先不要設定 `GM_USERNAMES`**，這時 GM 功能不存在）
+7. 打開上線的遊戲，用強密碼綁定 GM 要用的帳號。
+8. 綁定完成後才 `npx wrangler secret put GM_USERNAMES`（設定 secret 會自動重新部署）。**只列已經綁定在你自己名下的帳號名稱**：GM 身分是「誰先綁定這個名稱」，列了但還沒人綁定的名稱，任何人都能搶先綁定而成為 GM；名單裡格式不合法的名稱會被忽略。
 
 ## 貼圖替換
 
