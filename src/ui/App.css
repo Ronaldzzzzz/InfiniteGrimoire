@@ -465,3 +465,18 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .bell-item.first { color: #e8b84a; }
 .bell-sub { font-size: 12px; }
 .bell-empty { margin: 4px; }
+
+.gm-window { position: fixed; z-index: 200; width: 340px; max-width: calc(100vw - 16px); background: var(--panel); border: 2px solid #9b6bd6; border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55); }
+.gm-titlebar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #2a1d3d; border-radius: 6px 6px 0 0; cursor: grab; touch-action: none; user-select: none; }
+.gm-title { flex: 1; font-weight: 700; color: #c9a8f0; }
+.gm-body { padding: 10px; max-height: 70vh; overflow-y: auto; }
+.gm-login { display: flex; flex-direction: column; gap: 8px; }
+.gm-login label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.gm-error { margin: 0; color: #e07a7a; font-size: 13px; }
+.gm-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.gm-tabs [aria-selected='true'] { border-color: #9b6bd6; color: #c9a8f0; }
+.gm-pane { font-size: 13px; opacity: 0.8; }
+@media (max-width: 767px) {
+  .gm-window { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-width: none; }
+  .gm-titlebar { cursor: default; }
+}

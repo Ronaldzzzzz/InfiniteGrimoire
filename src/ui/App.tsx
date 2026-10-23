@@ -9,6 +9,7 @@ import { AccountDialog } from './AccountDialog';
 import { BattleCanvas } from './BattleCanvas';
 import { DiscoveryBanner } from './DiscoveryBanner';
 import { ElementTable } from './ElementTable';
+import { GmWindow } from './GmWindow';
 import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
 import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
@@ -163,6 +164,7 @@ export function App({
       {rareQueue[0] && (
         <RareReveal key={rareQueue[0].n} spell={rareQueue[0].spell} first={rareQueue[0].first} onDone={endRareReveal} />
       )}
+      <GmWindow api={api} sync={sync} runtime={runtime} content={content} username={account?.username ?? null} />
       <OfflineOverlay status={status} />
     </div>
   );
