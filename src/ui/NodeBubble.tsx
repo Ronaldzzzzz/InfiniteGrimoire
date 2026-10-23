@@ -55,12 +55,13 @@ export function NodeBubble({
           {level > 1 && <span className="empower-tag">{empowerLabel(level)}</span>}
         </strong>
         <div className="node-actions">
-          <button type="button" disabled={slotsFull} onClick={() => { onPick(spell.id); onClose(); }}>放入合成</button>
+          <button type="button" disabled={slotsFull || pending} onClick={() => { onPick(spell.id); onClose(); }}>放入合成</button>
           <button type="button" disabled={isEquipped || pending} onClick={() => { runtime.equip(spell.id); onClose(); }}>
             {isEquipped ? '裝備中' : '裝備'}
           </button>
           <button type="button" onClick={onDetails}>詳情</button>
         </div>
+        {slotsFull && <p className="muted node-full">合成台已滿</p>}
       </>
     );
   }

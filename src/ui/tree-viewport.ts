@@ -23,6 +23,12 @@ export function zoomAt(view: View, factor: number, p: { x: number; y: number }):
   return { x: p.x + (view.x - p.x) * k, y: p.y + (view.y - p.y) * k, zoom };
 }
 
+/** Zoom factor for one wheel event: proportional to the distance scrolled (a mouse notch of 100px is x1.1), clamped per event. */
+export function wheelFactor(deltaY: number, deltaMode: number, pageHeight: number): number {
+  const px = deltaMode === 1 ? deltaY * 16 : deltaMode === 2 ? deltaY * pageHeight : deltaY;
+  return Math.min(1.25, Math.max(1 / 1.25, Math.exp((-px * Math.log(1.1)) / 100)));
+}
+
 export function panBy(view: View, dx: number, dy: number): View {
   return { ...view, x: view.x + dx, y: view.y + dy };
 }

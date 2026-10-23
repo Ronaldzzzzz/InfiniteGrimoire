@@ -62,11 +62,12 @@ export function NodeCard({
           </h4>
           <p><AffinityTag affinity={spell.affinity} /> {spell.desc}</p>
           <div className="node-actions">
-            <button type="button" disabled={slotsFull} onClick={() => onPick(spell.id)}>放入合成</button>
+            <button type="button" disabled={slotsFull || pending} onClick={() => onPick(spell.id)}>放入合成</button>
             <button type="button" disabled={isEquipped || pending} onClick={() => runtime.equip(spell.id)}>
               {isEquipped ? '裝備中' : '裝備'}
             </button>
           </div>
+          {slotsFull && <p className="muted node-full">合成台已滿</p>}
           <EmpowerPanel spellId={spell.id} runtime={runtime} sync={sync} content={content} />
         </>
       );

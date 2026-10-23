@@ -8,7 +8,7 @@ import { COLORS, spellColor } from '../render/palette';
 import { layoutGrimoire, polar, type FogBand } from './grimoire-layout';
 import { NodeBubble } from './NodeBubble';
 import { NodeCard } from './NodeCard';
-import { BUBBLE_SIZE, bubblePlacement, HOME, panBy, viewBoxOf, zoomAt, type View } from './tree-viewport';
+import { BUBBLE_SIZE, bubblePlacement, HOME, panBy, viewBoxOf, wheelFactor, zoomAt, type View } from './tree-viewport';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 const SIZE = 600;
@@ -63,7 +63,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const revealed = useRuntime(runtime, (s) => s.game.revealed);
   const passives = useRuntime(runtime, (s) => s.game.passives);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
-  // while a synthesis is in flight nothing may be placed (and no toast or flash may suggest it was)
+  // while a synthesis is in flight nothing may be placed either (and no toast or flash may suggest it was)
   const noPlace = slotsFull || synthPending;
   const visible = useMemo(() => visibleRegions({ revealed }, content), [content, revealed]);
   const layout = useMemo(
@@ -115,17 +115,20 @@ export const GrimoirePanel = memo(function GrimoirePanel({
     applyView();
   };
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+    const stage = stageRef.current;
+    if (!stage) return;
     const h = (e: globalThis.WheelEvent) => {
+      // the floating card scrolls on its own
+      if ((e.target as Element | null)?.closest?.('.node-card')) return;
       e.preventDefault();
+      if (e.deltaY === 0) return;
       onGesture();
-      const m = svg.getScreenCTM?.()?.inverse();
+      const m = svgRef.current?.getScreenCTM?.()?.inverse();
       const p = m ? new DOMPoint(e.clientX, e.clientY).matrixTransform(m) : undefined;
-      zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, p && { x: p.x, y: p.y });
+      zoomBy(wheelFactor(e.deltaY, e.deltaMode, stage.clientHeight || SIZE), p && { x: p.x, y: p.y });
     };
-    svg.addEventListener('wheel', h, { passive: false });
-    return () => svg.removeEventListener('wheel', h);
+    stage.addEventListener('wheel', h, { passive: false });
+    return () => stage.removeEventListener('wheel', h);
   });
 
   const onDown = (e: PointerEvent) => {
@@ -135,6 +138,11 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const onMove = (e: PointerEvent) => {
     const d = drag.current;
     if (!d) return;
+    // the button was released outside the svg, so no pointerup reached us
+    if (e.buttons === 0) {
+      drag.current = null;
+      return;
+    }
     const dx = e.clientX - d.x;
     const dy = e.clientY - d.y;
     if (!d.moved) {
@@ -195,6 +203,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const closeAll = () => {
     setBubble(null);
     setCardOpen(false);
+    setSelected(null);
   };
 
   const liftBand = lifting ? allBands.find((b) => b.region === lifting) : undefined;
@@ -294,7 +303,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
           selected={selected}
           runtime={runtime}
           content={content}
-          slotsFull={noPlace}
+          slotsFull={slotsFull}
           position={bubble}
           onPick={place}
           onDetails={() => { setBubble(null); setCardOpen(true); }}
@@ -302,7 +311,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
         />
       )}
       {cardOpen && (
-        <NodeCard selected={selected} runtime={runtime} sync={sync} content={content} slotsFull={noPlace} onPick={place} onClose={() => setCardOpen(false)} />
+        <NodeCard selected={selected} runtime={runtime} sync={sync} content={content} slotsFull={slotsFull} onPick={place} onClose={() => setCardOpen(false)} />
       )}
       {toast && <p className="tree-toast only-narrow" role="status">{toast}</p>}
       </div>

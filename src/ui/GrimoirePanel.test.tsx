@@ -135,7 +135,7 @@ describe('GrimoirePanel', () => {
     const { onPick } = setup({ learned: ['mana_bolt', 'fireball'] });
     const n = node(content.spells.fireball!.name);
     fireEvent.pointerDown(n, { clientX: 0, clientY: 0, pointerId: 1 });
-    fireEvent.pointerMove(n, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(n, { clientX: 40, clientY: 0, pointerId: 1, buttons: 1 });
     fireEvent.pointerUp(n, { clientX: 40, clientY: 0, pointerId: 1 });
     fireEvent.click(n);
     expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
@@ -165,7 +165,7 @@ describe('GrimoirePanel', () => {
     noneOpen();
     openBoth();
     fireEvent.pointerDown(svg, { clientX: 0, clientY: 0, pointerId: 1 });
-    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1, buttons: 1 });
     fireEvent.pointerUp(svg, { clientX: 40, clientY: 0, pointerId: 1 });
     expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
     expect(screen.getByRole('region', { name: '節點詳情' })).toBeTruthy();
@@ -258,7 +258,7 @@ describe('GrimoirePanel', () => {
     const initial = svg.getAttribute('viewBox');
     const renders = onRender.mock.calls.length;
     fireEvent.pointerDown(svg, { clientX: 0, clientY: 0, pointerId: 1 });
-    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1, buttons: 1 });
     fireEvent.pointerUp(svg, { clientX: 40, clientY: 0, pointerId: 1 });
     expect(svg.getAttribute('viewBox')).not.toBe(initial);
     expect(onRender.mock.calls.length).toBe(renders);
@@ -278,9 +278,75 @@ describe('GrimoirePanel', () => {
     svg.getBoundingClientRect = () => ({ width: 800, height: 400, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 400, toJSON: () => ({}) });
     const [x0, , w] = svg.getAttribute('viewBox')!.split(' ').map(Number) as [number, number, number];
     fireEvent.pointerDown(svg, { clientX: 0, clientY: 0, pointerId: 1 });
-    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1, buttons: 1 });
     fireEvent.pointerUp(svg, { clientX: 40, clientY: 0, pointerId: 1 });
     const x1 = Number(svg.getAttribute('viewBox')!.split(' ')[0]);
     expect(x0 - x1).toBeCloseTo((40 * w) / 400);
+  });
+  it('the altar-full hint shows (bubble and card) only when the altar is actually full', () => {
+    setup({ learned: ['mana_bolt', 'fireball'] }, false, undefined, true);
+    fireEvent.click(node(content.spells.fireball!.name));
+    expect(within(screen.getByRole('group', { name: '魔法操作' })).getByText('合成台已滿')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    expect(within(screen.getByLabelText('節點詳情')).getByText('合成台已滿')).toBeTruthy();
+    cleanup();
+    setup({ learned: ['mana_bolt', 'fireball'] }, true); // pending, altar not full
+    fireEvent.click(node(content.spells.fireball!.name));
+    expect(screen.queryByText('合成台已滿')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    expect(screen.queryByText('合成台已滿')).toBeNull();
+  });
+
+  it('wheel: zero delta changes nothing, a small delta zooms a little, a notch is x1.1', () => {
+    setup();
+    const svg = document.querySelector('svg.grimoire-svg')!;
+    const w = () => svg.getAttribute('viewBox')!.split(' ').map(Number)[2]!;
+    const w0 = w();
+    expect(fireEvent.wheel(svg, { deltaY: 0 })).toBe(false);
+    expect(w()).toBe(w0);
+    fireEvent.wheel(svg, { deltaY: -4 });
+    const w1 = w();
+    expect(w1).toBeLessThan(w0);
+    expect(w0 / w1).toBeLessThan(1.01);
+    fireEvent.wheel(svg, { deltaY: -100 });
+    expect(w1 / w()).toBeCloseTo(1.1, 2);
+    fireEvent.wheel(svg, { deltaY: -100000 }); // a huge delta is clamped per event
+    expect(w()).toBeGreaterThan(0);
+  });
+
+  it('wheel over the bubble zooms; over the card it scrolls the card instead', () => {
+    setup({ learned: ['mana_bolt', 'fireball'] });
+    const svg = document.querySelector('svg.grimoire-svg')!;
+    const w = () => svg.getAttribute('viewBox')!.split(' ').map(Number)[2]!;
+    fireEvent.click(node(content.spells.fireball!.name));
+    const w0 = w();
+    expect(fireEvent.wheel(screen.getByRole('group', { name: '魔法操作' }), { deltaY: -100 })).toBe(false);
+    expect(w()).toBeLessThan(w0);
+    expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull(); // moving the tree closes the bubble
+    fireEvent.click(node(content.spells.fireball!.name));
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    const w1 = w();
+    expect(fireEvent.wheel(screen.getByLabelText('節點詳情'), { deltaY: -100 })).toBe(true);
+    expect(w()).toBe(w1);
+  });
+
+  it('a drag abandoned before 4px and released outside does not pan on the next move', () => {
+    setup();
+    const svg = document.querySelector('svg.grimoire-svg')!;
+    const initial = svg.getAttribute('viewBox');
+    fireEvent.pointerDown(svg, { clientX: 0, clientY: 0, pointerId: 1, buttons: 1 });
+    fireEvent.pointerMove(svg, { clientX: 1, clientY: 0, pointerId: 1, buttons: 1 });
+    // released outside the svg: no pointerup arrives; the pointer comes back with no button
+    fireEvent.pointerMove(svg, { clientX: 60, clientY: 0, pointerId: 1, buttons: 0 });
+    expect(svg.getAttribute('viewBox')).toBe(initial);
+  });
+
+  it('a blank click also clears the selection ring', () => {
+    setup({ learned: ['mana_bolt', 'fireball'] });
+    const n = node(content.spells.fireball!.name);
+    fireEvent.click(n);
+    expect(n.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(document.querySelector('svg.grimoire-svg')!);
+    expect(n.getAttribute('aria-pressed')).toBe('false');
   });
 });
