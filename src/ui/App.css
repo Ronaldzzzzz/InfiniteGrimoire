@@ -492,7 +492,8 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .gm-recipe-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .gm-recipe-table th, .gm-recipe-table td { padding: 3px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); text-align: left; vertical-align: top; }
 .gm-rare { margin-left: 4px; padding: 0 4px; border-radius: 3px; background: #e8b84a; color: #0d0f14; font-size: 11px; }
-.gm-temp { margin-top: 10px; }
+.gm-temp, .gm-confirm { margin-top: 10px; }
+.gm-confirm p { margin: 0 0 6px; color: #e8b84a; }
 .gm-temp p { margin: 0 0 4px; }
 .gm-temp-row { display: flex; align-items: center; gap: 6px; }
 .gm-temp-row code { font-size: 15px; letter-spacing: 1px; padding: 2px 6px; background: #1a1d26; border-radius: 4px; user-select: all; }

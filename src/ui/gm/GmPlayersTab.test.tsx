@@ -15,9 +15,13 @@ function setup() {
   render(<GmPlayersTab ctx={{ token: 'g1', onExpired }} api={api as unknown as Pick<ApiClient, 'gmResetPassword'>} />);
   return { api, onExpired };
 }
-const reset = (name: string) => {
+const ask = (name: string) => {
   fireEvent.change(screen.getByLabelText('玩家帳號名稱'), { target: { value: name } });
   fireEvent.click(screen.getByRole('button', { name: '重設密碼' }));
+};
+const reset = (name: string) => {
+  ask(name);
+  fireEvent.click(screen.getByRole('button', { name: '確定' }));
 };
 
 describe('GmPlayersTab', () => {
@@ -28,6 +32,32 @@ describe('GmPlayersTab', () => {
     expect(out.textContent).toMatch(/^[A-Za-z2-9]{12}$/);
     expect(api.gmResetPassword).toHaveBeenCalledWith('g1', 'bob', out.textContent);
     expect(screen.getByRole('button', { name: '複製' })).toBeTruthy();
+  });
+
+  it('asks to confirm with the normalized name first; only 確定 calls the api', async () => {
+    const { api } = setup();
+    ask('  ＢＯＢ_1 ');
+    expect(screen.getByText('確定要重設 BOB_1 的密碼？對方所有裝置會被登出')).toBeTruthy();
+    expect(api.gmResetPassword).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    expect(screen.queryByText(/確定要重設/)).toBeNull();
+    expect(screen.queryByRole('button', { name: '確定' })).toBeNull();
+    expect(api.gmResetPassword).not.toHaveBeenCalled();
+
+    ask('  ＢＯＢ_1 ');
+    fireEvent.click(screen.getByRole('button', { name: '確定' }));
+    const out = await screen.findByTestId('gm-temp-password');
+    expect(api.gmResetPassword).toHaveBeenCalledTimes(1);
+    expect(api.gmResetPassword).toHaveBeenCalledWith('g1', 'BOB_1', out.textContent);
+    expect(screen.queryByText(/確定要重設/)).toBeNull();
+  });
+
+  it('editing the name drops a pending confirmation', () => {
+    const { api } = setup();
+    ask('bob');
+    fireEvent.change(screen.getByLabelText('玩家帳號名稱'), { target: { value: 'carol' } });
+    expect(screen.queryByRole('button', { name: '確定' })).toBeNull();
+    expect(api.gmResetPassword).not.toHaveBeenCalled();
   });
 
   it('copies with the clipboard and selects the text when that fails', async () => {
