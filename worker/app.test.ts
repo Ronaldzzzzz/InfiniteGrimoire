@@ -1316,12 +1316,12 @@ describe('GM login and tokens', () => {
       expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
     });
 
-    it('marks gmUsed before the commit: a commit conflict after the audit may leave the mark but logs nothing', async () => {
+    it('marks gmUsed and logs the action before the commit: a committed edit is never unlogged', async () => {
       const orig = store.commitSave.bind(store);
-      const markedAtCommit: boolean[] = [];
+      const atCommit: { marked: boolean; logged: string[] }[] = [];
       let failNext = true;
       store.commitSave = async (...args: Parameters<typeof orig>) => {
-        markedAtCommit.push(store.players.get(g.playerId)!.gmUsed);
+        atCommit.push({ marked: store.players.get(g.playerId)!.gmUsed, logged: store.gmActions.map((x) => x.action) });
         if (failNext) {
           failNext = false;
           return false;
@@ -1331,11 +1331,14 @@ describe('GM login and tokens', () => {
       const lost = await gm('/api/gm/inventory', { state: g.state, baseRevision: 0, items: { 'el:fire:1': 1 } });
       expect(lost.status).toBe(409);
       expect(store.saves.get(g.playerId)!.revision).toBe(0);
-      expect(store.gmActions).toEqual([]);
       const won = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'unlock_all' });
       expect(won.status).toBe(200);
-      expect(markedAtCommit).toEqual([true, true]);
-      expect(store.gmActions.map((x) => x.action)).toEqual(['unlock_zones']);
+      // a lost CAS may leave a logged attempt; the winning edit was logged before it committed
+      expect(atCommit).toEqual([
+        { marked: true, logged: ['inventory'] },
+        { marked: true, logged: ['inventory', 'unlock_zones'] },
+      ]);
+      expect(store.gmActions.map((x) => x.action)).toEqual(['inventory', 'unlock_zones']);
     });
 
     it('an empty items object is 400', async () => {
@@ -1441,6 +1444,20 @@ describe('GM login and tokens', () => {
       for (const secret of [oldStored, newStored, await ph('password1'), await ph('Temp12345678'), 'Temp12345678']) {
         expect(logged).not.toContain(secret);
       }
+    });
+
+    it('logs the reset before changing the password hash', async () => {
+      const b = await bound('player_b');
+      const orig = store.updatePasswordHash.bind(store);
+      const loggedAtUpdate: string[][] = [];
+      store.updatePasswordHash = async (...args: Parameters<typeof orig>) => {
+        loggedAtUpdate.push(store.gmActions.map((x) => `${x.action}:${x.target}`));
+        return orig(...args);
+      };
+      const res = await reset({ username: 'player_b', password: await ph('Temp12345678') });
+      expect(res.status).toBe(200);
+      expect(loggedAtUpdate).toEqual([['reset_password:player_b']]);
+      expect(store.credentials.get(b.playerId)).toBeDefined();
     });
 
     it('cannot reset yourself or another GM account', async () => {

@@ -427,7 +427,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     body: Record<string, unknown>,
     apply: (state: GameState) => { state: GameState; result: R },
     onCommit?: (playerId: string, t: number, result: R) => Promise<R | void>,
-    opts: { resetAnchor?: boolean; beforeCommit?: (playerId: string) => Promise<void> } = {},
+    opts: { resetAnchor?: boolean; beforeCommit?: (playerId: string, t: number) => Promise<void> } = {},
   ): Promise<Response> {
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
@@ -445,7 +445,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const anchor = checked.advanceAnchor || opts.resetAnchor
       ? { state: committed, at: checked.t }
       : { state: serialize(chargeAnchor(checked.anchor, checked.state, state)), at: checked.anchorAt };
-    if (opts.beforeCommit) await opts.beforeCommit(checked.playerId);
+    if (opts.beforeCommit) await opts.beforeCommit(checked.playerId, checked.t);
     const done = await store.commitSave(checked.playerId, checked.revision, committed, checked.t, anchor);
     if (!done) return conflict(c, checked.playerId);
     const final = (onCommit && (await onCommit(checked.playerId, checked.t, result))) || result;
@@ -517,12 +517,17 @@ export function createApp(deps: AppDeps): Hono<Env> {
       c,
       body,
       (state) => ({ state: apply(state), result: { kind: 'gm' as const } }),
-      async (playerId, t) => {
-        await store.recordGmAction({ gmPlayerId: playerId, at: t, action, target: null, detail });
+      undefined,
+      // marked and logged before the commit: a stray mark or logged attempt after a lost CAS is
+      // harmless, while a committed edit without the mark would let a GM-edited account claim a
+      // first discovery, and one without the log row would be an unaudited GM action
+      {
+        resetAnchor: true,
+        beforeCommit: async (playerId, t) => {
+          await store.markGmUsed(playerId);
+          await store.recordGmAction({ gmPlayerId: playerId, at: t, action, target: null, detail });
+        },
       },
-      // marked before the commit: a stray mark after a lost CAS is harmless, a committed edit without
-      // the mark would let a GM-edited account claim a first discovery
-      { resetAnchor: true, beforeCommit: (playerId) => store.markGmUsed(playerId) },
     );
 
   const knownItem = (id: string): boolean =>
@@ -590,12 +595,14 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (!cred) return c.json({ error: 'not_found' }, 404);
     if (cred.playerId === gmPlayer.id || gmKeys.has(cred.usernameKey)) return c.json({ error: 'not_allowed' }, 403);
     const t = now();
-    await store.updatePasswordHash(cred.playerId, await hashPassword(password, pepper), t);
+    const hash = await hashPassword(password, pepper);
+    // logged first, so a reset that took effect is never unlogged (a logged attempt that then fails is fine);
+    // the log names the account (its stored, normalizeUsername-ed name) only: never a password or hash
+    await store.recordGmAction({ gmPlayerId: gmPlayer.id, at: t, action: 'reset_password', target: cred.username, detail: null });
+    await store.updatePasswordHash(cred.playerId, hash, t);
     await store.deleteSessions(cred.playerId);
     await store.deleteGmTokens(cred.playerId);
     await store.clearLoginFailures(`u:${cred.usernameKey}`);
-    // the log names the account (its stored, normalizeUsername-ed name) only: never a password or hash
-    await store.recordGmAction({ gmPlayerId: gmPlayer.id, at: t, action: 'reset_password', target: cred.username, detail: null });
     return c.json({});
   });
 
