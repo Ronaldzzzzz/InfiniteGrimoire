@@ -135,3 +135,18 @@ export function accountErrorMessage(e: unknown): string {
   if (e instanceof NetworkError) return '連線異常，請稍後再試';
   return '發生錯誤，請稍後再試';
 }
+
+/** "just now", "N minutes ago" ... for the discovery feed. */
+export function timeAgo(ms: number): string {
+  const s = Math.max(0, ms) / 1000;
+  if (s < 60) return '剛剛';
+  if (s < 3600) return `${Math.floor(s / 60)} 分鐘前`;
+  if (s < 86400) return `${Math.floor(s / 3600)} 小時前`;
+  return `${Math.floor(s / 86400)} 天前`;
+}
+
+/** The headline of one feed entry; it names the spell and never its recipe. */
+export function discoveryLine(d: { displayName: string; spellId: string; first: boolean }, content: Content): string {
+  const name = resolveSpell(d.spellId, content)?.name ?? d.spellId;
+  return d.first ? `✦ 全服首次發現　${d.displayName} 合出了「${name}」` : `${d.displayName} 也合出了「${name}」`;
+}

@@ -132,7 +132,8 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 }
 .link-button { background: none; border: none; color: var(--rune); text-decoration: underline; min-height: 32px; padding: 4px; }
 .onboarding label { align-self: center; }
-.account-button { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.topbar-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.account-button { display: inline-flex; align-items: center; gap: 6px; }
 .dialog-backdrop { position: fixed; inset: 0; z-index: 150; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .dialog { width: min(420px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; outline: none; display: flex; flex-direction: column; gap: 10px; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; }
@@ -452,3 +453,13 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
   .rare-reveal *, .rare-reveal *::before { animation: none !important; }
   .rr-p, .rr-mote, .rr-stage > .rr-ember { display: none; }
 }
+
+.bell { position: relative; }
+.bell-button { position: relative; padding: 6px 10px; }
+.bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #e8b84a; color: #0d0f14; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.bell-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 120; width: min(340px, calc(100vw - 32px)); max-height: 60vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.bell-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.bell-item { font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.bell-item.first { color: #e8b84a; }
+.bell-sub { font-size: 12px; }
+.bell-empty { margin: 4px; }

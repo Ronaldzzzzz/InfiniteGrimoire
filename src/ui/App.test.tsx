@@ -48,6 +48,7 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
   } as unknown as SyncController;
   const api = {
     getAccount: vi.fn(async () => ({ displayName: 'Aria', username: null, sessions: 1 })),
+    recentDiscoveries: vi.fn(async () => []),
     bind: vi.fn(),
     changePassword: vi.fn(),
     logoutOthers: vi.fn(),

@@ -16,6 +16,7 @@ import { OfflineOverlay } from './OfflineOverlay';
 import { RareReveal } from './RareReveal';
 import { emptySlots, fillSlot, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { TopBar } from './TopBar';
+import { useDiscoveryFeed } from './useDiscoveryFeed';
 import { useConnStatus, useGameState, useRuntime } from './useGame';
 
 export function App({
@@ -56,8 +57,8 @@ export function App({
     setTab('tree'); // so the fog lifting is in view
   }, []);
   const endDiscovery = useCallback(() => setDiscovery(null), []);
-  // Task 7 plugs the discovery feed's refresh in here, so the bell shows the new rare discovery after the reveal
-  const refreshFeed = useCallback((): void => {}, []);
+  // the bell shows the new rare discovery as soon as the reveal ends
+  const { entries: feed, refresh: refreshFeed } = useDiscoveryFeed(api, status === 'online');
   const endRareReveal = useCallback((): void => {
     setRareQueue((q) => q.slice(1));
     refreshFeed();
@@ -102,6 +103,8 @@ export function App({
         status={status}
         bound={account ? account.username !== null : null}
         onOpenAccount={() => setAccountOpen(true)}
+        feed={feed}
+        ownName={account?.displayName ?? ''}
       />
       <main className="main">
         <div className="battle">

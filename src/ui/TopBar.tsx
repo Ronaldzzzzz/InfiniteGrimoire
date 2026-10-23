@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { canDamage, overlevelEfficiency } from '../engine/combat-rules';
 import type { Content } from '../engine/model';
+import type { Discovery } from '../game/api';
 import type { GameRuntime } from '../game/runtime';
 import type { ConnStatus } from '../game/sync';
+import { DiscoveryBell } from './DiscoveryBell';
 import { BOSS_HINT } from './messages';
 import { fightingSpell, zoneRegularTier, type SpellSort } from './picker-data';
 import { readSpellSort, SpellPicker, writeSpellSort, ZonePicker } from './pickers';
@@ -15,12 +17,16 @@ export function TopBar({
   status,
   bound,
   onOpenAccount,
+  feed = [],
+  ownName = '',
 }: {
   runtime: RuntimeStore & Pick<GameRuntime, 'equip' | 'travel'>;
   content: Content;
   status: ConnStatus;
   bound: boolean | null;
   onOpenAccount: () => void;
+  feed?: Discovery[];
+  ownName?: string;
 }) {
   const game = useGameState(runtime);
   const bossOnField = useRuntime(runtime, (s) => bossAlive(s, content));
@@ -54,9 +60,12 @@ export function TopBar({
         </div>
         {efficiency < 1 && <span className="hud-note">越級：掉落效益 {Math.round(efficiency * 100)}%</span>}
         {stuck && <span className="hud-note warn">{BOSS_HINT}</span>}
-        <button type="button" className="account-button" onClick={onOpenAccount}>
-          帳號{bound === false && <span className="tag warn">未綁定</span>}
-        </button>
+        <div className="topbar-right">
+          <DiscoveryBell entries={feed} content={content} ownName={ownName} />
+          <button type="button" className="account-button" onClick={onOpenAccount}>
+            帳號{bound === false && <span className="tag warn">未綁定</span>}
+          </button>
+        </div>
       </div>
       <SaveErrorBanner status={status} />
     </header>
