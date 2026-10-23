@@ -420,7 +420,7 @@ describe('empower, reveal and passive', () => {
 });
 
 describe('MemoryStore.commitSave', () => {
-  const player = { id: 'p', displayName: 'x', createdAt: 0, suspicious: false };
+  const player = { id: 'p', displayName: 'x', createdAt: 0, suspicious: false, gmUsed: false };
   it('stale baseRevision returns false and leaves the save unchanged', async () => {
     const s = new MemoryStore();
     await s.createPlayer(player, 'h', 'A', 0);

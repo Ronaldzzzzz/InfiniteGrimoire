@@ -22,9 +22,11 @@ describe('migration 0003', () => {
     applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0003' && f < '0004'));
 
     const store = new D1Store(d1);
-    expect(await store.findPlayerBySession('h-old')).toEqual({
-      player: { id: 'p1', displayName: 'Old', createdAt: 1234, suspicious: false },
-      lastSeenAt: 1234,
+    // the store reads players.gm_used (added by 0006), so check the 0003 result with plain SQL
+    expect(raw.prepare('SELECT s.last_seen_at, p.display_name, p.created_at FROM sessions s JOIN players p ON p.id = s.player_id WHERE s.token_hash = ?').get('h-old')).toEqual({
+      last_seen_at: 1234,
+      display_name: 'Old',
+      created_at: 1234,
     });
     expect((await store.getSave('p1'))?.revision).toBe(3);
     const cols = raw.prepare("SELECT name FROM pragma_table_info('players')").all().map((r) => (r as { name: string }).name);
@@ -72,12 +74,33 @@ describe('migration 0005', () => {
   });
 });
 
+describe('migration 0006', () => {
+  it('keeps saves and players, defaults gm_used to 0 and adds the GM tables', async () => {
+    const { d1, raw } = createD1();
+    applyMigrations(raw, MIGRATIONS.filter((f) => f < '0006'));
+    raw.prepare('INSERT INTO players (id, display_name, created_at, suspicious) VALUES (?, ?, ?, 0)').run('p1', 'Old', 1234);
+    raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 7, 5000, ?, 4000)').run('p1', '{"v":1}', '{"v":1}');
+
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0006'));
+
+    const store = new D1Store(d1);
+    expect((await store.getSave('p1'))?.state).toBe('{"v":1}');
+    expect((await store.getSave('p1'))?.revision).toBe(7);
+    expect((await store.getPlayer('p1'))?.gmUsed).toBe(false);
+    expect((raw.prepare('SELECT gm_used FROM players WHERE id = ?').get('p1') as { gm_used: number }).gm_used).toBe(0);
+    for (const t of ['gm_tokens', 'gm_actions'])
+      expect(raw.prepare('SELECT name FROM sqlite_master WHERE name = ?').all(t)).toHaveLength(1);
+    await store.recordGmAction({ gmPlayerId: 'p1', at: 1, action: 'login', target: null, detail: null });
+    expect((raw.prepare('SELECT COUNT(*) AS n FROM gm_actions').get() as { n: number }).n).toBe(1);
+  });
+});
+
 describe('D1Store discoveries race', () => {
   it('inserts as non-first when a first already exists, leaving one first row', async () => {
     const { d1, raw } = createD1();
     applyMigrations(raw);
     const store = new D1Store(d1);
-    await store.createPlayer({ id: 'p1', displayName: 'A', createdAt: 1, suspicious: false }, 'h1', '{}', 1);
+    await store.createPlayer({ id: 'p1', displayName: 'A', createdAt: 1, suspicious: false, gmUsed: false }, 'h1', '{}', 1);
     raw.prepare('INSERT INTO discoveries (spell_id, player_id, display_name, at, first) VALUES (?, ?, ?, ?, 1)').run('holy', 'p1', 'A', 5);
     expect(await store.recordDiscovery({ spellId: 'holy', playerId: 'p1', displayName: 'A', at: 6 })).toEqual({ first: false });
     const rows = raw.prepare('SELECT first FROM discoveries WHERE spell_id = ?').all('holy') as { first: number }[];

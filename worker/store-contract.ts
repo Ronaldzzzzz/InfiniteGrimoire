@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CredentialsRow, PlayerRow, Store } from './store';
 
 const DAY = 24 * 60 * 60 * 1000;
-const player = (id: string): PlayerRow => ({ id, displayName: `name-${id}`, createdAt: 1000, suspicious: false });
+const player = (id: string): PlayerRow => ({ id, displayName: `name-${id}`, createdAt: 1000, suspicious: false, gmUsed: false });
 const cred = (playerId: string, key: string): CredentialsRow => ({
   playerId,
   username: key.toUpperCase(),
@@ -96,6 +96,36 @@ export function describeStoreContract(name: string, make: () => Promise<Store>):
       expect((await s.recentDiscoveries(all[2].id, 20)).map((r) => r.id)).toEqual([all[0].id, all[1].id]);
       expect(await s.recentDiscoveries(all[0].id, 20)).toEqual([]);
       expect((await s.recentDiscoveries(null, 2)).map((r) => r.id)).toEqual([all[0].id, all[1].id]);
+    });
+    it('tracks gm_used, GM tokens, session wipes, failure clears and GM actions', async () => {
+      const s = await make();
+      await s.createPlayer(player('p1'), 'h1', '{}', 1000);
+      await s.createPlayer(player('p2'), 'h2', '{}', 1000);
+      expect((await s.getPlayer('p1'))?.gmUsed).toBe(false);
+      await s.markGmUsed('p1');
+      expect((await s.getPlayer('p1'))?.gmUsed).toBe(true);
+      expect((await s.getPlayer('p2'))?.gmUsed).toBe(false);
+      expect((await s.findPlayerBySession('h1'))?.player.gmUsed).toBe(true);
+
+      await s.createGmToken('t1', 'p1', 5000);
+      expect(await s.findGmToken('t1', 4999)).toBe('p1');
+      expect(await s.findGmToken('t1', 5000)).toBeNull();
+      expect(await s.findGmToken('nope', 0)).toBeNull();
+      await s.deleteGmTokens('p1');
+      expect(await s.findGmToken('t1', 0)).toBeNull();
+
+      await s.createSession('h1b', 'p1', 1500);
+      await s.deleteSessions('p1');
+      expect(await s.countSessions('p1')).toBe(0);
+      expect(await s.countSessions('p2')).toBe(1);
+
+      await s.recordLoginFailure(['u:x', 'ip:1.1.1.1'], 1000);
+      await s.clearLoginFailures('u:x');
+      expect(await s.loginFailures('u:x', 0)).toEqual({ count: 0, oldest: null });
+      expect(await s.loginFailures('ip:1.1.1.1', 0).then((w) => w.count)).toBe(1);
+
+      await s.recordGmAction({ gmPlayerId: 'p1', at: 10, action: 'login', target: null, detail: null });
+      await s.recordGmAction({ gmPlayerId: 'p1', at: 11, action: 'reset_password', target: 'mage', detail: '{"a":1}' });
     });
   });
 }

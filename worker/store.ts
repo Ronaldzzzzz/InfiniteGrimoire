@@ -3,6 +3,8 @@ export interface PlayerRow {
   displayName: string;
   createdAt: number;
   suspicious: boolean;
+  /** the GM tool touched this player's save */
+  gmUsed: boolean;
 }
 
 export interface SaveRow {
@@ -48,6 +50,16 @@ export interface DiscoveryRow {
   first: boolean;
 }
 
+export type GmActionKind = 'login' | 'inventory' | 'unlock_zones' | 'reveal_all' | 'boss_ready' | 'reset_password';
+
+export interface GmActionWrite {
+  gmPlayerId: string;
+  at: number;
+  action: GmActionKind;
+  target: string | null;
+  detail: string | null;
+}
+
 export interface Store {
   /** Creates the player, its first session and its initial save. */
   createPlayer(p: PlayerRow, sessionHash: string, initialState: string, now: number): Promise<void>;
@@ -58,6 +70,15 @@ export interface Store {
   deleteSession(hash: string): Promise<void>;
   deleteOtherSessions(playerId: string, keepHash: string): Promise<void>;
   countSessions(playerId: string): Promise<number>;
+  /** Deletes every session of the player. */
+  deleteSessions(playerId: string): Promise<void>;
+  markGmUsed(playerId: string): Promise<void>;
+  createGmToken(hash: string, playerId: string, expiresAt: number): Promise<void>;
+  /** The player id, or null when unknown or expired (expiresAt <= now). */
+  findGmToken(hash: string, now: number): Promise<string | null>;
+  deleteGmTokens(playerId: string): Promise<void>;
+  clearLoginFailures(key: string): Promise<void>;
+  recordGmAction(a: GmActionWrite): Promise<void>;
   findCredentialsByKey(usernameKey: string): Promise<CredentialsRow | null>;
   findCredentialsByPlayer(playerId: string): Promise<CredentialsRow | null>;
   /** 'taken' when another player has the username key; 'already_bound' when this player has credentials. */
@@ -97,6 +118,9 @@ export class MemoryStore implements Store {
   saves = new Map<string, SaveRow>();
   rejections: { playerId: string; at: number; reasons: string[] }[] = [];
   synthEvents: { playerId: string; at: number; combo: string; result: string }[] = [];
+
+  gmActions: GmActionWrite[] = [];
+  gmTokens = new Map<string, { playerId: string; expiresAt: number }>();
 
   discoveryLog: (DiscoveryRow & { playerId: string })[] = [];
 
@@ -150,6 +174,36 @@ export class MemoryStore implements Store {
 
   async countSessions(playerId: string): Promise<number> {
     return [...this.sessions.values()].filter((s) => s.playerId === playerId).length;
+  }
+
+  async deleteSessions(playerId: string): Promise<void> {
+    for (const [h, s] of this.sessions) if (s.playerId === playerId) this.sessions.delete(h);
+  }
+
+  async markGmUsed(playerId: string): Promise<void> {
+    const p = this.players.get(playerId);
+    if (p) p.gmUsed = true;
+  }
+
+  async createGmToken(hash: string, playerId: string, expiresAt: number): Promise<void> {
+    this.gmTokens.set(hash, { playerId, expiresAt });
+  }
+
+  async findGmToken(hash: string, now: number): Promise<string | null> {
+    const t = this.gmTokens.get(hash);
+    return t && t.expiresAt > now ? t.playerId : null;
+  }
+
+  async deleteGmTokens(playerId: string): Promise<void> {
+    for (const [h, t] of this.gmTokens) if (t.playerId === playerId) this.gmTokens.delete(h);
+  }
+
+  async clearLoginFailures(key: string): Promise<void> {
+    this.loginFailureLog = this.loginFailureLog.filter((f) => f.key !== key);
+  }
+
+  async recordGmAction(a: GmActionWrite): Promise<void> {
+    this.gmActions.push({ ...a });
   }
 
   async findCredentialsByKey(usernameKey: string): Promise<CredentialsRow | null> {

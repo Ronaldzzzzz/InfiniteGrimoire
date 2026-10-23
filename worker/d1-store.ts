@@ -1,4 +1,4 @@
-import type { AnchorWrite, BindResult, CredentialsRow, DiscoveryRow, PlayerRow, RateWindow, SaveRow, Store } from './store';
+import type { AnchorWrite, BindResult, CredentialsRow, DiscoveryRow, GmActionWrite, PlayerRow, RateWindow, SaveRow, Store } from './store';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -7,6 +7,7 @@ interface PlayerDb {
   display_name: string;
   created_at: number;
   suspicious: number;
+  gm_used: number;
 }
 interface CredentialsDb {
   player_id: string;
@@ -22,6 +23,7 @@ const toPlayer = (r: PlayerDb): PlayerRow => ({
   displayName: r.display_name,
   createdAt: r.created_at,
   suspicious: r.suspicious === 1,
+  gmUsed: r.gm_used === 1,
 });
 
 const toCredentials = (r: CredentialsDb): CredentialsRow => ({
@@ -69,7 +71,7 @@ export class D1Store implements Store {
   async findPlayerBySession(hash: string): Promise<{ player: PlayerRow; lastSeenAt: number } | null> {
     const r = await this.db
       .prepare(
-        'SELECT p.id, p.display_name, p.created_at, p.suspicious, s.last_seen_at FROM sessions s JOIN players p ON p.id = s.player_id WHERE s.token_hash = ?',
+        'SELECT p.id, p.display_name, p.created_at, p.suspicious, p.gm_used, s.last_seen_at FROM sessions s JOIN players p ON p.id = s.player_id WHERE s.token_hash = ?',
       )
       .bind(hash)
       .first<PlayerDb & { last_seen_at: number }>();
@@ -98,6 +100,44 @@ export class D1Store implements Store {
   async countSessions(playerId: string): Promise<number> {
     const r = await this.db.prepare('SELECT COUNT(*) AS n FROM sessions WHERE player_id = ?').bind(playerId).first<{ n: number }>();
     return r?.n ?? 0;
+  }
+
+  async deleteSessions(playerId: string): Promise<void> {
+    await this.db.prepare('DELETE FROM sessions WHERE player_id = ?').bind(playerId).run();
+  }
+
+  async markGmUsed(playerId: string): Promise<void> {
+    await this.db.prepare('UPDATE players SET gm_used = 1 WHERE id = ?').bind(playerId).run();
+  }
+
+  async createGmToken(hash: string, playerId: string, expiresAt: number): Promise<void> {
+    await this.db
+      .prepare('INSERT INTO gm_tokens (token_hash, player_id, expires_at) VALUES (?, ?, ?)')
+      .bind(hash, playerId, expiresAt)
+      .run();
+  }
+
+  async findGmToken(hash: string, now: number): Promise<string | null> {
+    const r = await this.db
+      .prepare('SELECT player_id FROM gm_tokens WHERE token_hash = ? AND expires_at > ?')
+      .bind(hash, now)
+      .first<{ player_id: string }>();
+    return r?.player_id ?? null;
+  }
+
+  async deleteGmTokens(playerId: string): Promise<void> {
+    await this.db.prepare('DELETE FROM gm_tokens WHERE player_id = ?').bind(playerId).run();
+  }
+
+  async clearLoginFailures(key: string): Promise<void> {
+    await this.db.prepare('DELETE FROM login_failures WHERE key = ?').bind(key).run();
+  }
+
+  async recordGmAction(a: GmActionWrite): Promise<void> {
+    await this.db
+      .prepare('INSERT INTO gm_actions (gm_player_id, at, action, target, detail) VALUES (?, ?, ?, ?, ?)')
+      .bind(a.gmPlayerId, a.at, a.action, a.target, a.detail)
+      .run();
   }
 
   async findCredentialsByKey(usernameKey: string): Promise<CredentialsRow | null> {

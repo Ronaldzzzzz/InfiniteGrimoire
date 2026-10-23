@@ -124,7 +124,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
 
     const token = newToken();
     const t = now();
-    const player: PlayerRow = { id: crypto.randomUUID(), displayName: name, createdAt: t, suspicious: false };
+    const player: PlayerRow = { id: crypto.randomUUID(), displayName: name, createdAt: t, suspicious: false, gmUsed: false };
     const state = createInitialState(content);
     await store.createPlayer(player, await hashToken(token), serialize(state), t);
     await store.recordGuestCreation(ip, t);
