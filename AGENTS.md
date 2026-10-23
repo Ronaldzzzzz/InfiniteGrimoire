@@ -23,6 +23,9 @@
 | `docs/superpowers/specs/2026-10-22-core-rework-design.md` | **核心重做設計規格（目前玩法的最高依據）**：成群魔物、元素五階、名魔法與自創魔法、相性、強化、迷霧與關鍵道具、被動節點 |
 | `docs/superpowers/plans/2026-10-22-core-rework.md` | 核心重做的 12 個任務實作計畫（已執行完成） |
 | `docs/superpowers/sdd/2026-10-22-core-rework/progress.md` | 核心重做的帳本：Ruling R1～R17、各任務審查結果、模擬通關時間、延後的小問題 |
+| `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md` | **合成台介面改版設計規格（目前介面的最高依據）**：合成台、魔法泡泡與浮動詳情卡、技能樹縮放與拖曳 |
+| `docs/superpowers/plans/2026-10-23-synthesis-altar.md` | 合成台介面改版的實作計畫（已執行完成） |
+| `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md` | 合成台介面改版的帳本：各任務審查結果、Ruling、延後的小問題 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼的管理員重設流程、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
@@ -32,7 +35,7 @@
 
 ## 3. 目前狀態（2026-10-23）
 
-- **Branch：** `feat/synthesis-altar`（疊在 `feat/core-rework` 之上，`feat/core-rework` 又從 `main` 分出）。`main` 已經包含 MVP 與第二版 A（`feat/mvp-core-loop`、`feat/v2a-accounts` 都是 `main` 的祖先）和文件；**還沒合併的只有 `feat/core-rework`（比 `main` 多 22 個 commit）與 `feat/synthesis-altar`（再多 13 個）**，兩者都**尚未 push**（遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`）。本機 `main` 比 `origin/main` 多 8 個 commit（都是文件）尚未 push；`main` 另有 2 個文件 commit 不在 `feat/core-rework` 上。
+- **Branch：** `feat/synthesis-altar`（疊在 `feat/core-rework` 之上，`feat/core-rework` 又從 `main` 分出）。`main` 已經包含 MVP 與第二版 A（`feat/mvp-core-loop`、`feat/v2a-accounts` 都是 `main` 的祖先）和文件；**還沒合併的只有 `feat/core-rework`（比 `main` 多 22 個 commit）與 `feat/synthesis-altar`**，兩者都**尚未 push**（遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`）。本機 `main` 比 `origin/main` 多 8 個 commit（都是文件）尚未 push；`main` 另有 2 個文件 commit 不在 `feat/core-rework` 上。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -41,7 +44,7 @@
   - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
 - **核心重做：** 12 個任務全部完成，每個任務都經過獨立審查，帳本在 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`。玩法改成：魔物成群出現、元素五階（升階成本 3／10／30／100）、名魔法＋自創魔法（任兩個輸入合成、有相性）、同元素強化與融合、魔法強化（`levels`）、魔導書迷霧＋關鍵道具（`revealed`）、被動節點（`passives`）。migration `0004_core_rework.sql` 本機已套用，**會重置所有存檔**；遠端未套用。
 - **合成台介面改版（2026-10-23，`feat/synthesis-altar`）：** 規格 `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md`，計畫 `docs/superpowers/plans/2026-10-23-synthesis-altar.md`，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。右欄改成方形合成台（`SynthesisAltar`：左右各放一個輸入、各依元素與魔法有不同特效、中間「合成」、按下後融合特效再揭曉結果；被拒絕時不播完整動畫、兩邊保留並顯示原因）；原本的合成區下拉選單與「嘗試紀錄」組合表已移除（伺服器的 `synthesisLog` 保留給第二版 B）。魔導書：單擊魔法冒出泡泡（放入合成／裝備／詳情）、雙擊直接放入合成台、詳情與強化合成一張浮動卡（`NodeCard`）、縮放按鈕移進技能樹並加「⌖ 回到中心」、滾輪只縮放不捲頁、拖曳與縮放不經過 React state。關鍵道具按鈕移到戰鬥畫面（`KeyItemBar`），訊息幾秒後自動消失。
-- **測試：** `npm test` 51 個檔案、472 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 51 個檔案、478 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **合成台驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 10 項全過、無頁面錯誤。元素存量、已學會的魔法清單與一個關鍵道具是直接改本機存檔種進去的；放入、裝備、合成、強化、使用關鍵道具、解鎖被動、拖曳、滾輪都是實際操作。1280x900 下拖曳技能樹同時重複播放合成台特效約 149 fps（單幀最長 75 ms；戰場上只有少數怪，沒有重測 80 隻怪的情況）。驗收中發現泡泡在已學會魔法上高度估錯、會蓋住自己的節點，已修正（`fix(ui): reserve the real height of a learned spell's bubble`）。腳本與截圖在 `.superpowers/`（未進版本庫）。
 - **模擬通關時間（Task 10 修正後，種子 20261021，模擬分鐘，0 次被拒）：** 火 90.4、風 111.8、雷 90.2、土 126.6、水 96.9、混合 93.2；每條純屬性路線落在 60～240 分鐘（R12）。
 - **驗收（headless Chrome，2026-10-22）：** 遊客 → 合出火球 → 升階 → 同元素強化（烈焰爆發）→ 融合（火焰龍捲，出現「新發現！」）→ 自創魔法出現在筆記 → 強化 → 第一個魔王倒下拿到風暴之心 → 使用後迷霧散開 → 解鎖被動 → 綁定帳號後重新整理進度都在，全部通過、無頁面錯誤。元素存量與「差 1 隻到魔王」的擊殺數是直接改本機存檔種進去的（其餘都是實際操作）。截圖在工作區 scratchpad，未進版本庫。
