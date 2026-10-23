@@ -26,6 +26,9 @@
 | `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md` | **合成台介面改版設計規格（目前介面的最高依據）**：合成台、魔法泡泡與浮動詳情卡、技能樹縮放與拖曳 |
 | `docs/superpowers/plans/2026-10-23-synthesis-altar.md` | 合成台介面改版的實作計畫（已執行完成） |
 | `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md` | 合成台介面改版的帳本：各任務審查結果、Ruling、延後的小問題 |
+| `docs/superpowers/specs/2026-10-23-v2b-rare-discoveries-design.md` | **第二版 B 設計規格：稀有魔法與發現紀錄**：5 個新稀有魔法、全螢幕揭曉動畫、頂端鈴鐺與動態清單、`discoveries` 資料表、首位發現者 |
+| `docs/superpowers/plans/2026-10-23-v2b-rare-discoveries.md` | 第二版 B 的 8 個任務實作計畫（已執行完成） |
+| `docs/superpowers/sdd/2026-10-23-v2b-rare-discoveries/progress.md` | 第二版 B 的帳本：各任務審查結果、Ruling、稀有魔法刷取時間量測、延後的小問題 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼的管理員重設流程、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
@@ -35,7 +38,7 @@
 
 ## 3. 目前狀態（2026-10-23）
 
-- **Branch：** `feat/core-rework`（從 `main` 分出）。合成台改版的 `feat/synthesis-altar` 已於 2026-10-23 依使用者指示 fast-forward 合併回 `feat/core-rework` 並刪除。`main` 已經包含 MVP 與第二版 A（`feat/mvp-core-loop`、`feat/v2a-accounts` 都是 `main` 的祖先）和文件；**還沒合併到 `main` 的只有 `feat/core-rework`**，**尚未 push**（遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`）。本機 `main` 有文件 commit 尚未 push。
+- **Branch：** `feat/v2b-rare-discoveries`（從 `feat/core-rework` 分出；第二版 B 的 8 個任務都在這裡），**尚未 push、尚未合併**。`feat/core-rework`（含已併入的合成台改版）也還沒合併到 `main`，所以兩個 branch 是疊在一起的。`main` 已經包含 MVP 與第二版 A 和文件；遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`。本機 `main` 有文件 commit 尚未 push。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -44,17 +47,20 @@
   - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
 - **核心重做：** 12 個任務全部完成，每個任務都經過獨立審查，帳本在 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`。玩法改成：魔物成群出現、元素五階（升階成本 3／10／30／100）、名魔法＋自創魔法（任兩個輸入合成、有相性）、同元素強化與融合、魔法強化（`levels`）、魔導書迷霧＋關鍵道具（`revealed`）、被動節點（`passives`）。migration `0004_core_rework.sql` 本機已套用，**會重置所有存檔**；遠端未套用。
 - **合成台介面改版（2026-10-23，`feat/synthesis-altar`）：** 規格 `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md`，計畫 `docs/superpowers/plans/2026-10-23-synthesis-altar.md`，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。右欄改成方形合成台（`SynthesisAltar`：左右各放一個輸入、各依元素與魔法有不同特效、中間「合成」、按下後融合特效再揭曉結果；被拒絕時不播完整動畫、兩邊保留並顯示原因）；原本的合成區下拉選單與「嘗試紀錄」組合表已移除（伺服器的 `synthesisLog` 保留給第二版 B）。魔導書：單擊魔法冒出泡泡（放入合成／裝備／詳情）、雙擊直接放入合成台、詳情與強化合成一張浮動卡（`NodeCard`）、縮放按鈕移進技能樹並加「⌖ 回到中心」、滾輪只縮放不捲頁、拖曳與縮放不經過 React state。關鍵道具按鈕移到戰鬥畫面（`KeyItemBar`），訊息幾秒後自動消失。
-- **測試：** `npm test` 51 個檔案、481 個測試通過；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 53 個檔案通過（另 1 個檔案跳過）、523 個測試通過、5 個跳過（`tests/sim/rare-cost.test.ts` 的 5 個 `it.skip`，見待辦 0）；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **合成台驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 10 項全過、無頁面錯誤。元素存量、已學會的魔法清單與一個關鍵道具是直接改本機存檔種進去的；放入、裝備、合成、強化、使用關鍵道具、解鎖被動、拖曳、滾輪都是實際操作。1280x900 下拖曳技能樹同時重複播放合成台特效約 149 fps（單幀最長 75 ms；戰場上只有少數怪，沒有重測 80 隻怪的情況）。驗收中發現泡泡在已學會魔法上高度估錯、會蓋住自己的節點，已修正（`fix(ui): reserve the real height of a learned spell's bubble`）。腳本與截圖在 `.superpowers/`（未進版本庫）。
+- **第二版 B：稀有魔法與發現紀錄（2026-10-23，`feat/v2b-rare-discoveries`）：** 規格、計畫、帳本見第 2 節。5 個新稀有魔法（焚世之焰、蒼穹之息、九天雷獄、泰坦之握、滄溟月潮，Lv.8，每種屬性一個），都是「該屬性 Lv.5 魔法＋高階元素」的機率配方（稀有 1 : 落空 64，約 1/65）；聖光審判、深淵吞噬也標為稀有（`spells.json` 的 `rare: true`，數值與配方不變）。合出稀有魔法時，發現者看到全螢幕揭曉動畫（`RareReveal`，首位「✦ 全服首次發現 ✦」、其餘「✦ 稀有魔法！✦」，點一下跳過），其他玩家在頂端鈴鐺（`DiscoveryBell`）看到動態（名稱、殘卷線索、發現者顯示名稱、時間；**沒有配方**），用戶端每 60 秒輪詢 `GET /api/discoveries`。migration `0005_discoveries.sql` 新增 `discoveries` 表，**不會重置存檔**（本機已套用，套用前後 `saves` 都是 26 筆）；首位由部分唯一索引保證只有一位，可疑帳號不寫入。**遠端未套用。**
+- **第二版 B 驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 兩個獨立的瀏覽器 context 當兩位玩家。玩家 1 合出焚世之焰：看到「✦ 全服首次發現 ✦」、點一下跳過、魔法已裝備；玩家 2 的鈴鐺約 50 秒後亮起未讀 1、清單有名稱、殘卷線索、「艾莉亞」與時間、沒有配方，打開後未讀歸零；玩家 2 自己合出時看到「✦ 稀有魔法！✦」；玩家 1 自己的發現不算未讀；`discoveries` 兩筆（`first` 1 與 0）；無頁面錯誤。**種進去的：** 兩位玩家的存檔（已學會煉獄、12 個高階火、迷霧區域已散開）直接改本機 D1；**擲骰方法：** 驗收期間把 `recipes.json` 的焚世之焰權重暫時改成 1000 : 1（只在驗收用的本機 dev server，已還原、沒有 commit），所以「合出稀有魔法」不是真的 1/65 機率；機率本身由 `worker/` 的單元測試以注入的亂數涵蓋。截圖與腳本在 `.superpowers/sdd/2026-10-23-v2b-rare-discoveries/accept/`（未進版本庫）。
 - **模擬通關時間（Task 10 修正後，種子 20261021，模擬分鐘，0 次被拒）：** 火 90.4、風 111.8、雷 90.2、土 126.6、水 96.9、混合 93.2；每條純屬性路線落在 60～240 分鐘（R12）。
 - **驗收（headless Chrome，2026-10-22）：** 遊客 → 合出火球 → 升階 → 同元素強化（烈焰爆發）→ 融合（火焰龍捲，出現「新發現！」）→ 自創魔法出現在筆記 → 強化 → 第一個魔王倒下拿到風暴之心 → 使用後迷霧散開 → 解鎖被動 → 綁定帳號後重新整理進度都在，全部通過、無頁面錯誤。元素存量與「差 1 隻到魔王」的擊殺數是直接改本機存檔種進去的（其餘都是實際操作）。截圖在工作區 scratchpad，未進版本庫。
 - **之前的功能：** MVP、試玩回饋修正、第二版 A（帳號綁定，`feat/v2a-accounts`；migration 0003 已在本機套用）都已完成，見各自的帳本。
 
 **尚未完成（下一位接手者的待辦）：**
+0a. **【待使用者決定】稀有魔法的刷取時間超過設計上限：** 規格第 2.1 節要求平均刷取時間不超過 120 模擬分鐘，否則先記下來讓使用者決定。`tests/sim` 量到（學會該屬性 Lv.5 魔法後，刷到平均 65 次高階元素才合得出稀有魔法）：火 139、風 167、雷 158、土 211、水 183 模擬分鐘，全部超過 120。`tests/sim/rare-cost.test.ts` 的 5 個測試目前是 `it.skip`，等使用者決定：(a) 接受現狀（把上限放寬後取消 skip）、(b) 提高稀有魔法的權重（例如 1 : 40）、(c) 降低每次嘗試的成本。**未經使用者同意不要自行改權重或成本。**
 0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。再由使用者決定 push 與合併到 `main` 的方式（只剩 `feat/core-rework`，已包含合成台改版）。
 1. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）。
-2. **第二版 B（稀有魔法發現紀錄）**：要先做設計討論；核心重做的 `synthesisLog` 與自創魔法 id 是它的基礎（帳本 R5：`dormant` 結果不寫進 `synthesisLog`，B 可能想要）。
-3. **部署（暫緩，使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。** 遠端 D1 要依序套用 0001→0003→0004；0004 會重置所有存檔。見 `docs/prelaunch-checklist.md`。
+2. **第二版 B 收尾**：使用者在真實瀏覽器試玩稀有魔法（全螢幕動畫的節奏與各屬性顏色、鈴鐺的位置與清單樣式、手機寬度）；上面的待辦 0a；遠端 D1 套用 0005（見上線前檢查清單）。第二版 C+D（排行榜）可以直接讀 `discoveries` 中 `first = 1` 的列。
+3. **部署（暫緩，使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。** 遠端 D1 要依序套用 0001→0003→0004→0005；0004 會重置所有存檔，0005 不會。見 `docs/prelaunch-checklist.md`。
 
 ## 4. 本機啟動
 
@@ -83,8 +89,8 @@ src/data/content/  魔法 spells、配方 recipes、魔物 monsters、地點 zon
               被動 passives、魔導書區域 regions（*.json；內容與數值都在這裡）
 worker/       Cloudflare Worker（Hono）：遊客與帳號（sessions／credentials、password.ts 對瀏覽器雜湊做 HMAC＋pepper）、
               存檔上傳、伺服器擲骰合成、強化、使用關鍵道具、解鎖被動；
-              store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）
-migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔）
+              store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）；`discoveries`（稀有魔法的發現紀錄：`recordDiscovery`／`recentDiscoveries`、部分唯一索引保證每個魔法只有一位首位、可疑帳號不寫入）與 `GET /api/discoveries?after=<id>`（最多 20 筆、不回傳 player_id）
+migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔、0005 發現紀錄 `discoveries`：不動存檔）
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳／動作／斷線／錯誤）、loop、boot
 src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何；
               element-fx.ts 各元素的粒子語彙；effects.ts 特效視覺；motion.ts 怪物擺動
@@ -93,6 +99,7 @@ src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable
               GrimoirePanel（SVG 技能樹，含迷霧、泡泡 NodeBubble、浮動詳情卡 NodeCard）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
               Onboarding、OfflineOverlay；
               useGame.ts 的 useRuntime(selector)；開發用 PerfMeter
+              RareReveal（稀有魔法的全螢幕揭曉動畫，React＋CSS，不算戰鬥特效）、DiscoveryBell（頂端鈴鐺與動態清單）、useDiscoveryFeed（60 秒輪詢；未讀記在 localStorage `ig.feedSeen`）
 tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）
 tests/d1/     node:sqlite 上的 D1Store 與 migration 測試
 ```
@@ -117,6 +124,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - **遊客 token 只在 401 時清除**，其他錯誤一律保留 token 並讓玩家重試。
 - **不收集 email**；介面文字用繁體中文，資料名稱附 `nameEn`。
 - 配色：背景 `#0d0f14`、符文綠 `#8fd16a`、琥珀金 `#e8b84a`；元素色見 `src/render/palette.ts`。
+- **稀有魔法只能機率取得**（`spells.json` 的 `rare: true`，`content.ts` 檢查每個稀有魔法都只出現在有 `spellId: null` 落空結果的配方裡）；**動態清單與發現紀錄不公布配方**，只有魔法名稱、殘卷線索、發現者顯示名稱（不是登入名稱）；**可疑帳號不寫入 `discoveries`**（不上清單、不當首位），`rare.first` 以資料庫是否成功寫入 `first = 1` 為準；`discoveries` 在存檔寫入成功之後才寫（409／422 什麼都不寫）。
 
 ## 7. 工作方式與慣例
 
@@ -143,6 +151,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - 沒有 WebGL 時，Pixi 初始化失敗沒有提示。
 - 魔導書：不支援雙指縮放。
 - 合成台改版留下的小問題：手機上點未學會的魔法，上方的線索框高度改變會讓技能樹整個位移，泡泡位置在位移前算好，會偏離節點幾十 px（不會被裁掉）；手機上合成台是方形、把技能樹擠到第一屏之外（規格接受，放入時有提示）；合成台特效沒有針對名魔法各做專屬版本。
+- 第二版 B 留下的小問題（見帳本 `docs/superpowers/sdd/2026-10-23-v2b-rare-discoveries/progress.md`）：存檔寫入成功後、用戶端沒收到回應（斷線）時不補播全螢幕動畫（資訊欄仍有紀錄）；`discoveries` 在存檔寫入之後才寫、不是同一個交易，伺服器剛好在中間當掉最多少記一筆；已經會聖光審判／深淵吞噬的舊存檔不回填 `discoveries`；動態清單的「自己的發現不算未讀」以顯示名稱比對，兩位玩家同名時對方的發現也會被當成自己的；鈴鐺一次只顯示最近 20 則，沒有「更多」；稀有魔法的戰鬥特效與全螢幕動畫只在 headless Edge 看過，沒有在真實瀏覽器與手機上看過；刷取時間超標見待辦 0a。
 
 ## 9. 下一步路線（規格第 6 節）
 
@@ -155,6 +164,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 ## 10. 交接紀錄
 
+- **2026-10-23（Claude Code，Sonnet 5.5，Windows）**：以 subagent-driven-development 在 branch `feat/v2b-rare-discoveries`（從 `feat/core-rework` 分出）執行第二版 B 的 8 個任務（帳本 `docs/superpowers/sdd/2026-10-23-v2b-rare-discoveries/progress.md`）：5 個稀有魔法與配方、`discoveries` 表（migration 0005，不重置存檔）、伺服器記錄與 `GET /api/discoveries`、全螢幕揭曉動畫、頂端鈴鐺與清單。最後一項在 headless Edge 以兩個獨立 context 驗收通過（擲骰是暫時調高本機權重，沒有 commit）。**重要未決事項：** 稀有魔法的刷取時間量測為 火 139／風 167／雷 158／土 211／水 183 模擬分鐘，超過規格要求的 120，5 個相關測試先 `it.skip`，等使用者決定（接受／提高權重／降低成本）。停在：全部 commit，`feat/v2b-rare-discoveries` 與 `feat/core-rework` 都尚未 push、尚未合併；`npm test` 53 個檔案 523 個測試（5 個跳過）、`npm run build` 通過。下一步：使用者決定刷取時間 → 在真實瀏覽器試玩 → 決定 push 與合併 → 第二版 C+D 設計討論（開始前先決定「大魔導士稱號」與「內容太少會同分」兩個問題）。
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
 - **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者反映元素表每列只有一個「升階」按鈕（固定升最低可升的那階），無法升想要的階級。改成相鄰兩階之間的「›」箭頭（獨立一欄、與格子同高，避免誤觸數量格子）：左邊那格夠成本（3／10／30／100）才亮起，點了只升那一階；Shift＋點能升多少就升多少（`upgradeCount`）。每列右邊的「升階」按鈕移除。直接在 `feat/core-rework` commit（小改動，對話中確認做法）；`npm test` 51 個檔案 481 個測試、`npm run build` 通過，headless Edge 實際點擊確認。停在：尚未 push。下一步同上一筆。
