@@ -64,6 +64,11 @@ describe('revealOf', () => {
     expect(revealOf({ kind: 'overload', spellId: OVERLOAD_SPELL }, content, [])).toMatchObject({ tone: 'overload', kicker: '魔力過載！' });
   });
 
+  it('leaves a rare result to the full-screen reveal (null), first finder or not', () => {
+    expect(revealOf({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } }, content, [])).toBeNull();
+    expect(revealOf({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } }, content, [])).toBeNull();
+  });
+
   it('returns null for non-synthesis results', () => {
     expect(revealOf({ kind: 'revealed', region: 'x' }, content, [])).toBeNull();
   });

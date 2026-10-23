@@ -350,3 +350,105 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
   .altar-reveal.tone-overload::before { opacity: 0; }
   .altar-side.filled .altar-orb { transition: none; }
 }
+
+/* rare spell: a full-screen reveal over everything (CSS transforms and opacity only, so the battle canvas keeps its frame rate) */
+.rare-reveal {
+  --c: var(--gold); --c2: var(--c);
+  position: fixed; inset: 0; z-index: 180; overflow: hidden; cursor: pointer; outline: none;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.rr-dim {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--c) 14%, transparent), transparent 60%), radial-gradient(circle at 50% 45%, rgba(6, 7, 11, 0.86), rgba(0, 0, 0, 0.97) 75%);
+  animation: rr-fade-in 0.45s ease-out both;
+}
+.rr-stage { position: absolute; inset: 0; pointer-events: none; }
+.rr-stage > span { position: absolute; left: 50%; top: 45%; pointer-events: none; }
+.rr-skip { position: absolute; right: 16px; top: 12px; font-size: 13px; color: var(--muted); letter-spacing: 0.1em; animation: rr-fade-in 0.6s 0.4s ease-out both; }
+
+/* 1 gather: the altar's orb flies to the centre while motes are drawn in and a ring tightens around it */
+.rr-orb {
+  width: 56px; height: 56px; margin: -28px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 18%, color-mix(in srgb, var(--c) 70%, #fff) 34%, var(--c) 58%, transparent 72%);
+  box-shadow: 0 0 40px var(--c), 0 0 90px color-mix(in srgb, var(--c) 60%, transparent);
+  animation: rr-orb-fly 0.7s cubic-bezier(0.4, 0, 0.2, 1) both, rr-throb 0.28s 0.7s ease-in-out infinite alternate;
+}
+.rr-ring {
+  width: 150px; height: 150px; margin: -75px; border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--c) 45%, #ffe3a0);
+  box-shadow: 0 0 34px var(--c), inset 0 0 26px var(--c), 0 0 4px #fff;
+  animation: rr-ring-in 1s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+.rr-ring::before {
+  content: ""; position: absolute; inset: -14px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 20%, var(--c2) 25%, transparent 32% 70%, var(--c) 75%, transparent 82%);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 62% 70%, transparent 72%);
+  mask: radial-gradient(circle, transparent 60%, #000 62% 70%, transparent 72%);
+  animation: rr-spin 0.6s linear infinite;
+}
+.rr-mote { width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); opacity: 0;
+  animation: rr-mote-in 0.85s calc(var(--i) * 18ms) cubic-bezier(0.6, 0, 0.9, 0.5) both; }
+
+/* 2 burst: a white flash, the ring blows outward, rays spin and element particles fly to the edges; the screen shakes a little */
+.phase-burst .rr-stage { animation: rr-shake 0.5s ease-out; }
+.rr-flash { width: 40vmax; height: 40vmax; margin: -20vmax; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 8%, color-mix(in srgb, var(--c) 50%, #fff) 20%, color-mix(in srgb, var(--c) 60%, transparent) 40%, transparent 68%);
+  animation: rr-flash 0.75s ease-out both; }
+.rr-ring-out { animation: rr-ring-out 0.7s cubic-bezier(0.1, 0.7, 0.3, 1) both; }
+.rr-ring-out::before { display: none; }
+.rr-rays { width: 160vmax; height: 160vmax; margin: -80vmax; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--c) 40%, transparent) 0 5deg, transparent 5deg 16deg);
+  -webkit-mask: radial-gradient(circle, #000 0, #0009 25%, transparent 60%);
+  mask: radial-gradient(circle, #000 0, #0009 25%, transparent 60%);
+  animation: rr-rays 1s ease-out both; }
+.rr-p { margin: -3px; background: var(--c); box-shadow: 0 0 10px var(--c); opacity: 0;
+  animation: rr-fly 1s var(--delay) cubic-bezier(0.15, 0.8, 0.35, 1) both, rr-drift 1s var(--delay) ease-in both; }
+
+/* particle shapes from the element-fx language (fire spark, wind streak, thunder bolt, earth shard, water drop) */
+.rare-reveal .p-spark { width: 8px; height: 8px; border-radius: 50%; }
+.rare-reveal .p-streak { width: 26px; height: 3px; border-radius: 3px; }
+.rare-reveal .p-bolt { width: 9px; height: 22px; border-radius: 0; box-shadow: none; clip-path: polygon(60% 0, 0 55%, 45% 55%, 25% 100%, 100% 40%, 55% 40%); }
+.rare-reveal .p-shard { width: 10px; height: 10px; border-radius: 2px; }
+.rare-reveal .p-drop { width: 7px; height: 10px; border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%; }
+.rr-p.p-streak { width: 44px; }
+
+/* 3 title: the name rises out of a soft glow, a few embers keep drifting */
+.rr-glow { width: 70vmin; height: 70vmin; margin: -35vmin; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 34%, transparent), color-mix(in srgb, var(--c2) 12%, transparent) 45%, transparent 70%);
+  animation: rr-fade-in 0.5s ease-out both, rr-breathe 2.4s 0.5s ease-in-out infinite; }
+.rr-stage > .rr-ember { left: var(--x); top: var(--y); opacity: 0; box-shadow: 0 0 8px var(--c); background: var(--c);
+  animation: rr-ember 2.2s var(--delay) ease-out infinite; }
+.rr-title { position: absolute; left: 16px; right: 16px; top: 45%; transform: translateY(-50%); text-align: center; color: var(--text); pointer-events: none; }
+.rr-kicker { color: var(--gold); font-size: clamp(15px, 2.6vw, 22px); font-weight: 700; letter-spacing: 0.35em; text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 70%, transparent);
+  animation: rr-kick 0.5s cubic-bezier(0.3, 1.5, 0.6, 1) both; }
+.rare-reveal.first .rr-kicker { font-size: clamp(17px, 3vw, 26px); text-shadow: 0 0 10px #fff3, 0 0 22px var(--gold), 0 0 44px color-mix(in srgb, var(--gold) 60%, transparent); }
+.rr-name { margin-top: 10px; font-size: clamp(34px, 7vw, 64px); font-weight: 800; letter-spacing: 0.08em; overflow-wrap: anywhere;
+  display: flex; align-items: center; justify-content: center; gap: 0.3em;
+  text-shadow: 0 0 18px var(--c), 0 0 42px color-mix(in srgb, var(--c) 60%, transparent);
+  animation: rr-rise 0.6s 0.12s cubic-bezier(0.2, 1.2, 0.4, 1) both; }
+.rr-name .dots { gap: 5px; }
+.rr-name .dots i { width: 0.36em; height: 0.36em; }
+.rr-meta { margin-top: 6px; color: #c3c9d4; font-size: clamp(13px, 1.8vw, 16px); letter-spacing: 0.15em; animation: rr-rise 0.5s 0.3s ease-out both; }
+.rr-hint { margin: 18px auto 0; max-width: 34em; color: var(--gold); font-size: clamp(13px, 1.7vw, 15px); font-style: italic; line-height: 1.6; opacity: 0.9; animation: rr-rise 0.6s 0.55s ease-out both; }
+
+@keyframes rr-fade-in { from { opacity: 0; } }
+@keyframes rr-spin { to { transform: rotate(1turn); } }
+@keyframes rr-orb-fly { from { transform: translate(var(--ox), var(--oy)) scale(0.35); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@keyframes rr-throb { from { transform: scale(0.9); } to { transform: scale(1.12); } }
+@keyframes rr-ring-in { from { transform: scale(3.2); opacity: 0; } 40% { opacity: 0.8; } to { transform: scale(0.62); opacity: 1; } }
+@keyframes rr-mote-in { 0% { opacity: 0; transform: rotate(var(--a)) translateX(46vmax) scale(1.6); } 25% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(0) scale(0.3); } }
+@keyframes rr-flash { from { transform: scale(0.15); opacity: 1; } 30% { opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+@keyframes rr-ring-out { from { transform: scale(0.62); opacity: 1; } to { transform: scale(7); opacity: 0; } }
+@keyframes rr-rays { from { transform: rotate(0) scale(0.3); opacity: 0; } 20% { opacity: 1; } to { transform: rotate(40deg) scale(1); opacity: 0; } }
+@keyframes rr-fly { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(var(--s)); } 75% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) scale(calc(var(--s) * 0.5)); } }
+@keyframes rr-drift { from { translate: 0 0; } to { translate: 0 var(--vy); } }
+@keyframes rr-shake { 0%, 100% { transform: none; } 15% { transform: translate(-7px, 3px); } 30% { transform: translate(6px, -4px); } 45% { transform: translate(-4px, 2px); } 60% { transform: translate(3px, -2px); } 80% { transform: translate(-1px, 1px); } }
+@keyframes rr-breathe { 0%, 100% { transform: scale(0.94); opacity: 0.85; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes rr-ember { 0% { opacity: 0; transform: translateY(0) scale(1); } 20% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(var(--vy)) scale(0.4); } }
+@keyframes rr-kick { from { opacity: 0; transform: scale(1.6); } }
+@keyframes rr-rise { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rare-reveal *, .rare-reveal *::before { animation: none !important; }
+  .rr-p, .rr-mote, .rr-stage > .rr-ember { display: none; }
+}

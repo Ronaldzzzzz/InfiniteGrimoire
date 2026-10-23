@@ -88,6 +88,22 @@ describe('SynthesisAltar', () => {
     expect(message()).toBe('習得新魔法：火球');
   });
 
+  it('a rare result clears both sides and reports it after MIN_FUSE_MS, without an altar reveal', async () => {
+    vi.useFakeTimers();
+    const rare: ActionResult = { kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } };
+    const a = setup({ inventory: { 'el:fire:1': 1, 'el:wind:1': 1 } }, ['el:fire:1', 'el:wind:1'], async () => rare);
+    fireEvent.click(go());
+    await flush();
+    act(() => vi.advanceTimersByTime(MIN_FUSE_MS - 1));
+    expect(a.onResult).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(a.onSlotsChange).toHaveBeenCalledWith([null, null]);
+    expect(a.onResult).toHaveBeenCalledWith(rare);
+    expect(altar().className).not.toContain('fusing');
+    expect(altar().className).not.toContain('revealing');
+    expect(reveal()).toBeNull();
+  });
+
   it('keeps fusing while the reply is slower than MIN_FUSE_MS, then reveals at once', async () => {
     vi.useFakeTimers();
     let reply: (r: Reply) => void = () => {};

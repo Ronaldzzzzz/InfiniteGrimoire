@@ -162,6 +162,41 @@ describe('App layout', () => {
     expect(runtime.equip).not.toHaveBeenCalled();
   });
 
+  it('a rare result plays the full-screen reveal instead of the banner, and queues a second rare one', async () => {
+    const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt']);
+    const fire = () => screen.getByRole('button', { name: '初階火 ×3' });
+    fireEvent.click(fire());
+    fireEvent.click(fire());
+    fireEvent.click(screen.getByRole('button', { name: '合成' }));
+    reply({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
+    const first = await screen.findByRole('dialog', { name: '稀有魔法' }, { timeout: 3000 });
+    expect(runtime.equip).toHaveBeenCalledTimes(1);
+    expect(runtime.equip).toHaveBeenCalledWith('worldfire');
+    expect(screen.queryByRole('status', { name: '新發現' })).toBeNull();
+    expect(screen.queryByRole('status', { name: '合成結果' })).toBeNull();
+    expect(slotTexts()).toEqual(['空', '空']);
+
+    // a second rare result arrives while the first is still playing
+    fireEvent.click(fire());
+    fireEvent.click(fire());
+    fireEvent.click(screen.getByRole('button', { name: '合成' }));
+    reply({ kind: 'learned', spellId: 'moontide', crafted: false, rare: { first: false } });
+    await waitFor(() => expect(runtime.equip).toHaveBeenCalledTimes(2), { timeout: 3000 });
+    expect(screen.getAllByRole('dialog', { name: '稀有魔法' })).toHaveLength(1);
+    fireEvent.click(first); // to the title
+    expect(first.textContent).toContain('焚世之焰');
+    expect(first.textContent).toContain('全服首次發現');
+    fireEvent.click(first); // closes it
+    const second = screen.getByRole('dialog', { name: '稀有魔法' });
+    fireEvent.click(second);
+    expect(second.textContent).toContain('滄溟月潮');
+    expect(second.textContent).toContain('✦ 稀有魔法！✦');
+    fireEvent.click(second);
+    expect(screen.queryByRole('dialog', { name: '稀有魔法' })).toBeNull();
+    expect(screen.queryByRole('status', { name: '新發現' })).toBeNull();
+    expect(slotTexts()).toEqual(['空', '空']);
+  });
+
   it('while the synthesis is pending nothing can be placed; after the reveal both sides are empty', async () => {
     const { runtime, sync, reply, pending } = setup({ 'el:fire:1': 3, 'el:wind:1': 1 }, ['mana_bolt', 'fireball', 'wind_blade']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));

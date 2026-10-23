@@ -66,11 +66,13 @@ export interface Reveal {
   detail: string;
 }
 
-/** Maps a synthesis result to its reveal; refusals (and non-synthesis results) map to null. */
+/** Maps a synthesis result to its reveal; refusals, rare spells and non-synthesis results map to null. */
 export function revealOf(result: ActionResult, content: Content, inputs: string[]): Reveal | null {
   const detail = (): string => synthMessage(result, content, inputs);
   switch (result.kind) {
     case 'learned':
+      // a rare spell is revealed full screen (RareReveal), not in the middle of the altar
+      if (result.rare) return null;
       return result.crafted
         ? { tone: 'crafted', kicker: '自創魔法！', spellId: result.spellId, detail: detail() }
         : { tone: 'new', kicker: '新發現！', spellId: result.spellId, detail: detail() };

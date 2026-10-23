@@ -13,6 +13,7 @@ import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
 import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
+import { RareReveal } from './RareReveal';
 import { emptySlots, fillSlot, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { TopBar } from './TopBar';
 import { useConnStatus, useGameState, useRuntime } from './useGame';
@@ -42,6 +43,8 @@ export function App({
   const [tab, setTab] = useState<'tree' | 'notebook'>('tree');
   // `n` restarts the banner when the same spell comes out twice in a row
   const [discovery, setDiscovery] = useState<{ spell: Spell; isNew: boolean; n: number } | null>(null);
+  // rare spells play one full-screen reveal at a time; one arriving mid-reveal waits its turn (`n` keys each one)
+  const [rareQueue, setRareQueue] = useState<{ spell: Spell; first: boolean; n: number }[]>([]);
   const [lifting, setLifting] = useState<string | null>(null);
   useEffect(() => {
     if (!lifting) return;
@@ -53,6 +56,12 @@ export function App({
     setTab('tree'); // so the fog lifting is in view
   }, []);
   const endDiscovery = useCallback(() => setDiscovery(null), []);
+  // Task 7 plugs the discovery feed's refresh in here, so the bell shows the new rare discovery after the reveal
+  const refreshFeed = useCallback((): void => {}, []);
+  const endRareReveal = useCallback((): void => {
+    setRareQueue((q) => q.slice(1));
+    refreshFeed();
+  }, [refreshFeed]);
   useEffect(() => {
     let alive = true;
     api.getAccount().then((info) => alive && setAccount(info)).catch(() => {
@@ -74,6 +83,12 @@ export function App({
     if (!spell) return;
     // equip only now: the reply has already replaced the state, so it can't undo the equip
     if (result.kind === 'learned') runtime.equip(result.spellId);
+    if (result.kind === 'learned' && result.rare) {
+      // the full-screen reveal replaces the 新發現 banner
+      const first = result.rare.first;
+      setRareQueue((q) => [...q, { spell, first, n: (q.at(-1)?.n ?? 0) + 1 }]);
+      return;
+    }
     setDiscovery((d) => ({ spell, isNew: result.kind === 'learned', n: (d?.n ?? 0) + 1 }));
   }, [content, runtime]);
   // The hint stays until another node is clicked or the spell is learned.
@@ -141,6 +156,9 @@ export function App({
           onLoggedOut={onLoggedOut}
           beforeLogout={() => sync.uploadNow()}
         />
+      )}
+      {rareQueue[0] && (
+        <RareReveal key={rareQueue[0].n} spell={rareQueue[0].spell} first={rareQueue[0].first} onDone={endRareReveal} />
       )}
       <OfflineOverlay status={status} />
     </div>
