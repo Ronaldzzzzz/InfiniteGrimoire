@@ -1,0 +1,65 @@
+<h2>其他玩家的「資訊欄」放在哪裡？</h2>
+<p class="subtitle">三種擺法，可以多選（例如 B＋C：跳出提示，同時留下歷史紀錄）。點選後回終端機告訴我。</p>
+
+<style>
+  .scr { background:#0d0f14; border-radius:8px; font-family:sans-serif; color:#e6e9ef; font-size:11px; height:250px; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  .top { height:26px; border-bottom:1px solid #2a3140; display:flex; align-items:center; gap:8px; padding:0 8px; background:#161a22; white-space:nowrap; overflow:hidden; }
+  .top .ttl { color:#e8b84a; font-weight:bold; }
+  .cols { flex:1; display:grid; grid-template-columns:1fr 1.1fr 1fr; gap:4px; padding:4px; }
+  .col { border:1px solid #2a3140; border-radius:4px; position:relative; display:flex; align-items:center; justify-content:center; color:#4a5263; }
+  .ticker { flex:1; color:#e8b84a; overflow:hidden; }
+  .ticker span { display:inline-block; animation: tick 9s linear infinite; }
+  @keyframes tick { from { transform:translateX(100%);} to { transform:translateX(-100%);} }
+  .toast { position:absolute; left:6px; right:6px; top:6px; background:#1a1f2bee; border:1px solid #e8b84a; border-radius:6px; padding:5px 6px; color:#e6e9ef; box-shadow:0 0 10px #e8b84a55; text-align:left; }
+  .toast b { color:#e8b84a; } .toast small { color:#9aa3b2; display:block; margin-top:2px; }
+  .bell { margin-left:auto; color:#e8b84a; position:relative; }
+  .bell i { position:absolute; top:-4px; right:-8px; background:#e06b3a; color:#fff; border-radius:8px; font-style:normal; font-size:9px; padding:0 4px; }
+  .log { position:absolute; right:6px; top:30px; width:58%; background:#1a1f2b; border:1px solid #3a4252; border-radius:6px; padding:6px; z-index:2; text-align:left; }
+  .log div { border-bottom:1px solid #2a3140; padding:4px 0; } .log div:last-child { border:0; }
+  .log b { color:#e8b84a; } .log small { color:#6b7385; }
+</style>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>頂端跑馬燈</h3>
+      <p>頂端列中間一條金色文字橫向捲過。不擋畫面，但容易沒注意到；捲完就沒了。</p>
+      <div class="scr">
+        <div class="top"><span class="ttl">無限魔導書</span><span class="ticker"><span>✦ 全服首次發現！艾莉亞 合出了稀有魔法「焚世之焰」 —— 殘卷：「三重的火⋯⋯」</span></span><span>帳號</span></div>
+        <div class="cols"><div class="col">戰鬥</div><div class="col">技能樹</div><div class="col">合成台</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>戰鬥畫面上方跳出提示</h3>
+      <p>戰鬥畫面頂端浮出一張金框小卡，約 6 秒後淡出。最顯眼，你的視線本來就常在戰鬥畫面上。</p>
+      <div class="scr">
+        <div class="top"><span class="ttl">無限魔導書</span><span style="margin-left:auto">帳號</span></div>
+        <div class="cols">
+          <div class="col"><div class="toast"><b>✦ 全服首次發現！</b><br>艾莉亞 合出了「焚世之焰」<small>殘卷：「三重的火⋯⋯」</small></div>戰鬥</div>
+          <div class="col">技能樹</div><div class="col">合成台</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>頂端「資訊」按鈕＋歷史清單</h3>
+      <p>頂端列有個鈴鐺，有新消息時亮起數字；點開看最近的發現動態。不會錯過，但要自己點開。</p>
+      <div class="scr">
+        <div class="top"><span class="ttl">無限魔導書</span><span class="bell">🔔<i>2</i></span><span>帳號</span></div>
+        <div class="cols"><div class="col">戰鬥</div><div class="col">技能樹</div><div class="col">合成台</div></div>
+        <div class="log">
+          <div><b>✦ 全服首次發現</b> 艾莉亞「焚世之焰」<br><small>殘卷：「三重的火⋯⋯」・2 分鐘前</small></div>
+          <div>布蘭 也合出了「深海之心」<br><small>殘卷：「潮汐的⋯⋯」・1 小時前</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

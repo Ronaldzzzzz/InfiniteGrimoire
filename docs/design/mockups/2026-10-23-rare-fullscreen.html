@@ -1,0 +1,28 @@
+<h2>發現者看到的全螢幕動畫（我的提案）</h2>
+<p class="subtitle">合成台融合特效之後，不在合成台中央揭曉，而是整個畫面接手。三個瞬間，約 4 秒，點一下可以跳過。回終端機告訴我哪裡想改。</p>
+
+<style>
+  .fr { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .f { background:#0d0f14; border-radius:8px; height:220px; position:relative; overflow:hidden; font-family:sans-serif; color:#e6e9ef; }
+  .f p.cap { position:absolute; left:0; right:0; bottom:0; margin:0; padding:6px 8px; font-size:11px; color:#9aa3b2; background:#0d0f14cc; }
+  .dim { position:absolute; inset:0; background: radial-gradient(circle at 50% 45%, #e06b3a22, #000 70%); }
+  .ring { position:absolute; left:50%; top:42%; width:40px; height:40px; margin:-20px; border-radius:50%; border:3px solid #ffd27a; box-shadow:0 0 30px #e06b3a, inset 0 0 20px #e06b3a; }
+  .burst { position:absolute; inset:0; background: radial-gradient(circle at 50% 42%, #fff 0, #ffd27a 6%, #e06b3a 18%, #e06b3a00 45%), repeating-conic-gradient(from 0deg at 50% 42%, #e06b3a33 0 6deg, transparent 6deg 18deg); }
+  .title { position:absolute; left:0; right:0; top:22%; text-align:center; }
+  .title .k { color:#e8b84a; font-size:13px; letter-spacing:4px; }
+  .title .n { font-size:26px; font-weight:bold; text-shadow:0 0 18px #e06b3a; margin-top:6px; }
+  .title .m { color:#9aa3b2; font-size:11px; margin-top:4px; }
+  .title .h { color:#e8b84a; font-size:11px; margin-top:10px; font-style:italic; }
+  .skip { position:absolute; right:8px; top:6px; font-size:10px; color:#6b7385; }
+</style>
+
+<div class="fr">
+  <div class="f"><div class="dim"></div><div class="ring"></div><span class="skip">點一下跳過</span>
+    <p class="cap">① 0～1 秒：畫面變暗，合成台的光球飛到畫面中央，凝聚成該屬性顏色的光環。</p></div>
+  <div class="f"><div class="burst"></div><span class="skip">點一下跳過</span>
+    <p class="cap">② 1～2 秒：光環爆開，整個畫面放射該屬性的粒子（火往上竄、水往下落⋯⋯），輕微震動。</p></div>
+  <div class="f"><div class="dim"></div>
+    <div class="title"><div class="k">✦ 全服首次發現 ✦</div><div class="n">焚世之焰</div><div class="m">● 火・Lv.8・稀有魔法</div><div class="h">殘卷：「三重的火⋯⋯」</div></div>
+    <span class="skip">點一下關閉</span>
+    <p class="cap">③ 2～4 秒：大字揭曉。首次發現寫「全服首次發現」，之後的人寫「稀有魔法！」。自動裝備，點一下或幾秒後回到遊戲。</p></div>
+</div>
