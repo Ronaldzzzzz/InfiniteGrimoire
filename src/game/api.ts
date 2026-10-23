@@ -34,6 +34,13 @@ export class ApiError extends Error {
   }
 }
 
+/** 403 `gm_expired`: the short-lived GM token is gone. Not an AuthError: the player's own session is fine. */
+export class GmExpiredError extends ApiError {
+  constructor() {
+    super('gm token expired', 403, 'gm_expired');
+  }
+}
+
 export class RateLimitedError extends ApiError {
   constructor(readonly retryAfterSec: number) {
     super('rate limited', 429, 'rate_limited');
@@ -72,6 +79,12 @@ export interface ApiClient {
   changePassword(username: string, current: string, next: string): Promise<void>;
   logoutOthers(): Promise<void>;
   logout(): Promise<void>;
+  /** `password` is plaintext; it is hashed here like `login`. */
+  gmLogin(username: string, password: string): Promise<{ gmToken: string; expiresAt: number }>;
+  gmInventory(state: GameState, baseRevision: number, gmToken: string, items: Record<ItemId, number>): Promise<ActionOutcome>;
+  gmZones(state: GameState, baseRevision: number, gmToken: string, op: 'unlock_all' | 'reveal_all' | 'boss_ready'): Promise<ActionOutcome>;
+  /** Hashes `tempPassword` salted with the target `username`. */
+  gmResetPassword(gmToken: string, username: string, tempPassword: string): Promise<void>;
 }
 
 interface Reply {
@@ -125,10 +138,11 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
     method: string,
     path: string,
     body?: unknown,
-    opts?: { keepalive?: boolean },
+    opts?: { keepalive?: boolean; gmToken?: string },
     accept: number[] = [],
   ): Promise<Reply> {
     const headers: Record<string, string> = {};
+    if (opts?.gmToken) headers['X-GM-Token'] = opts.gmToken;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -156,6 +170,7 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
         // no readable body: keep the status only
       }
       if (res.status === 429) throw new RateLimitedError(retryAfterSec);
+      if (res.status === 403 && code === 'gm_expired') throw new GmExpiredError();
       throw new ApiError(`request failed ${res.status}`, res.status, code);
     }
     let parsed: unknown;
@@ -169,8 +184,8 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
   }
 
   /** A server action: 200 applied, 409 conflict, 422 with `result` refused by the rules, 422 with `reasons` audit rejection. */
-  async function action(path: string, body: Record<string, unknown>): Promise<ActionOutcome> {
-    const { status, body: reply } = await request('POST', path, body, undefined, [409, 422]);
+  async function action(path: string, body: Record<string, unknown>, gmToken?: string): Promise<ActionOutcome> {
+    const { status, body: reply } = await request('POST', path, body, gmToken ? { gmToken } : undefined, [409, 422]);
     const state = parseServerState(reply.state);
     const revision = revisionOf(reply);
     if (status === 409) return { kind: 'conflict', state, revision };
@@ -236,6 +251,16 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
     },
     async logout() {
       await request('POST', '/api/logout', {});
+    },
+    async gmLogin(username, password) {
+      const { body } = await request('POST', '/api/gm/login', { username, password: await clientPasswordHash(username, password) });
+      if (typeof body.gmToken !== 'string' || typeof body.expiresAt !== 'number') throw new ApiError('invalid gm login reply', 0);
+      return { gmToken: body.gmToken, expiresAt: body.expiresAt };
+    },
+    gmInventory: (state, baseRevision, gmToken, items) => action('/api/gm/inventory', { state, baseRevision, items }, gmToken),
+    gmZones: (state, baseRevision, gmToken, op) => action('/api/gm/zones', { state, baseRevision, op }, gmToken),
+    async gmResetPassword(gmToken, username, tempPassword) {
+      await request('POST', '/api/gm/reset-password', { username, password: await clientPasswordHash(username, tempPassword) }, { gmToken });
     },
   };
 }

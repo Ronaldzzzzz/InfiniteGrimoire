@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import { createInitialState } from '../engine/persist';
-import { ApiError, AuthError, createApiClient, RateLimitedError } from './api';
+import { ApiError, AuthError, createApiClient, GmExpiredError, RateLimitedError } from './api';
 import { clientPasswordHash } from './password-hash';
 
 // the real 300k-iteration hash takes ~0.2 s per call; the format and salt are the same at 1000
@@ -147,5 +147,53 @@ describe('action api', () => {
   it('maps 409 to a conflict with the server state', async () => {
     const api = createApiClient(() => 'tok', fakeFetch(409, { reason: 'conflict', state, revision: 9 }) as unknown as typeof fetch);
     expect(await api.reveal(state, 4, 'key:storm_heart')).toEqual({ kind: 'conflict', state, revision: 9 });
+  });
+});
+
+describe('gm api', () => {
+  const hdr = (f: ReturnType<typeof vi.fn>) => ((f.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>);
+  it('logs in with the hash, never the password', async () => {
+    const f = fakeFetch(200, { gmToken: 'g1', expiresAt: 99 });
+    const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
+    expect(await api.gmLogin('gm_1', 'password1')).toEqual({ gmToken: 'g1', expiresAt: 99 });
+    expect(f).toHaveBeenCalledWith('/api/gm/login', expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(sentBody(f))).toEqual({ username: 'gm_1', password: await clientPasswordHash('gm_1', 'password1') });
+    expect(sentBody(f)).not.toContain('password1');
+  });
+  it('sends inventory edits with X-GM-Token and parses the outcome', async () => {
+    const state = createInitialState(content);
+    const f = fakeFetch(200, { result: { kind: 'gm' }, state, revision: 6 });
+    const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
+    const out = await api.gmInventory(state, 5, 'g1', { 'el:fire:1': 3 });
+    expect(out).toEqual({ kind: 'ok', result: { kind: 'gm' }, state, revision: 6 });
+    expect(f).toHaveBeenCalledWith('/api/gm/inventory', expect.anything());
+    expect(hdr(f)['X-GM-Token']).toBe('g1');
+    expect(hdr(f).Authorization).toBe('Bearer tok');
+    expect(JSON.parse(sentBody(f))).toEqual({ state, baseRevision: 5, items: { 'el:fire:1': 3 } });
+  });
+  it('sends zone ops and maps 409 to a conflict', async () => {
+    const state = createInitialState(content);
+    const f = fakeFetch(409, { state, revision: 9 });
+    const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
+    expect(await api.gmZones(state, 5, 'g1', 'boss_ready')).toEqual({ kind: 'conflict', state, revision: 9 });
+    expect(f).toHaveBeenCalledWith('/api/gm/zones', expect.anything());
+    expect(hdr(f)['X-GM-Token']).toBe('g1');
+    expect(JSON.parse(sentBody(f)).op).toBe('boss_ready');
+  });
+  it('resets a password with the hash salted by the target username', async () => {
+    const f = fakeFetch(200, {});
+    const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
+    await api.gmResetPassword('g1', 'mage_2', 'temp-pass-1');
+    expect(f).toHaveBeenCalledWith('/api/gm/reset-password', expect.anything());
+    expect(hdr(f)['X-GM-Token']).toBe('g1');
+    expect(JSON.parse(sentBody(f))).toEqual({ username: 'mage_2', password: await clientPasswordHash('mage_2', 'temp-pass-1') });
+    expect(sentBody(f)).not.toContain('temp-pass-1');
+  });
+  it('maps 403 gm_expired to GmExpiredError, not AuthError', async () => {
+    const api = createApiClient(() => 'tok', fakeFetch(403, { error: 'gm_expired' }) as unknown as typeof fetch);
+    const err = await api.gmInventory(createInitialState(content), 0, 'g1', {}).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(GmExpiredError);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).not.toBeInstanceOf(AuthError);
   });
 });

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import { createRng } from '../engine/rng';
 import { createInitialState } from '../engine/persist';
-import { ApiError, AuthError, NetworkError, type ApiClient } from './api';
+import { ApiError, AuthError, GmExpiredError, NetworkError, type ApiClient } from './api';
 import { GameRuntime } from './runtime';
 import { RETRY_MS, SyncController, UPLOAD_INTERVAL_MS } from './sync';
 
@@ -23,6 +23,10 @@ function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
     changePassword: vi.fn(),
     logoutOthers: vi.fn(),
     logout: vi.fn(),
+    gmLogin: vi.fn(),
+    gmInventory: vi.fn(),
+    gmZones: vi.fn(),
+    gmResetPassword: vi.fn(),
     ...over,
   };
 }
@@ -290,5 +294,20 @@ describe('SyncController', () => {
     const rt = mk();
     rt.setRevision(2);
     expect(rt.getSnapshot().revision).toBe(7);
+  });
+  it('gm actions replace the state; an expired GM token is thrown without auth failure', async () => {
+    const rt = mk();
+    const gmInventory = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'gm' as const }, state: server, revision: 10 }));
+    const gmZones = vi.fn(async () => { throw new GmExpiredError(); });
+    const sync = new SyncController(rt, fakeApi({ gmInventory, gmZones }));
+    const onAuth = vi.fn();
+    sync.onAuthError(onAuth);
+    expect(await sync.action('gmInventory', { gmToken: 'g1', items: { 'el:fire:1': 2 } })).toEqual({ kind: 'gm' });
+    expect(gmInventory).toHaveBeenCalledWith(expect.anything(), 7, 'g1', { 'el:fire:1': 2 });
+    expect(rt.getSnapshot().game).toBe(server);
+    await expect(sync.action('gmZones', { gmToken: 'g1', op: 'unlock_all' })).rejects.toBeInstanceOf(GmExpiredError);
+    expect(gmZones).toHaveBeenCalledWith(expect.anything(), 10, 'g1', 'unlock_all');
+    expect(onAuth).not.toHaveBeenCalled();
+    expect(rt.getSnapshot().synthPending).toBe(false);
   });
 });
