@@ -151,6 +151,19 @@ describe('App layout', () => {
     expect(runtime.equip).toHaveBeenCalled();
   });
 
+  it('while pending with an empty side left, element cells and the tree still place nothing', () => {
+    const { pending } = setup({ 'el:fire:1': 3, 'el:wind:1': 1 }, ['mana_bolt', 'fireball']);
+    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
+    pending(true);
+    fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
+    expect(slotTexts()).toEqual(['火・初階', '空']);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
+    expect((within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.doubleClick(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
+    expect(slotTexts()).toEqual(['火・初階', '空']);
+    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+  });
+
   it('has no 放入魔法 combobox and no 嘗試紀錄 heading any more', () => {
     setup();
     expect(screen.queryByRole('combobox', { name: '放入魔法' })).toBeNull();
