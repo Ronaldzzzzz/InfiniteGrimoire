@@ -30,6 +30,8 @@ export interface BotResult {
   clearedAt: Record<string, number>;
   /** simulated ms at which each spell was learned */
   learnedAt: Record<string, number>;
+  /** per element: cumulative grade-1 equivalents gained from drops (spending and upgrades not subtracted), sampled each simulated minute */
+  gained: Record<ElementId, { atMs: number; eq: number }[]>;
   /** requests sent to PUT /api/save and the action endpoints */
   serverCalls: number;
   /** non-200 responses from PUT /api/save and the action endpoints */
@@ -264,15 +266,31 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     }
   };
 
+  const gainedEq = Object.fromEntries(ELEMENT_ORDER.map((e) => [e, 0])) as Record<ElementId, number>;
+  const gained = Object.fromEntries(ELEMENT_ORDER.map((e) => [e, [] as { atMs: number; eq: number }[]])) as BotResult['gained'];
+  let nextSample = 60_000;
   let nextDecision = DECISION_MS;
   let nextUpload = UPLOAD_MS;
   let nextEmpower = EMPOWER_EVERY_MS;
   let lastClearedAt: number | null = null;
   while (simMs < opts.maxSimMs) {
     const r = stepBattle(game, battle, content, battleRng);
+    // nothing is spent inside a battle step, so any rise in an element item is a drop
+    for (const e of ELEMENT_ORDER) {
+      for (let g = 1; g <= GRADE_UPGRADE_COST.length + 1; g++) {
+        const id = elementItem(e, g);
+        const was = Object.hasOwn(game.inventory, id) ? game.inventory[id]! : 0;
+        const now = Object.hasOwn(r.game.inventory, id) ? r.game.inventory[id]! : 0;
+        if (now > was) gainedEq[e] += (now - was) * gradeValue(g);
+      }
+    }
     game = r.game;
     battle = r.battle;
     simMs += STEP_MS;
+    if (simMs >= nextSample) {
+      nextSample += 60_000;
+      for (const e of ELEMENT_ORDER) gained[e].push({ atMs: simMs, eq: gainedEq[e] });
+    }
     for (const z of content.zones) if (!(z.id in clearedAt) && game.defeatedBosses.includes(z.bossId)) clearedAt[z.id] = simMs;
     if (lastClearedAt === null && game.defeatedBosses.includes(lastZone.bossId)) lastClearedAt = simMs;
     if (simMs >= nextDecision) {
@@ -297,6 +315,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     simMs,
     clearedAt,
     learnedAt,
+    gained,
     serverCalls,
     rejectedUploads,
     rejectionReasons,
