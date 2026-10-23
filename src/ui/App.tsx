@@ -64,15 +64,18 @@ export function App({
     setRareQueue((q) => q.slice(1));
     refreshFeed();
   }, [refreshFeed]);
+  // an in-tab account switch starts a new runtime: forget the old account (and with it the GM
+  // window's token) and look the new one up
   useEffect(() => {
     let alive = true;
+    setAccount(null);
     api.getAccount().then((info) => alive && setAccount(info)).catch(() => {
       // the badge just stays hidden; auth errors are handled by sync
     });
     return () => {
       alive = false;
     };
-  }, [api]);
+  }, [api, runtime]);
 
   // a synthesis in flight owns both sides: placing anything now would be wiped by the reveal
   const pick = useCallback((id: string): void => {

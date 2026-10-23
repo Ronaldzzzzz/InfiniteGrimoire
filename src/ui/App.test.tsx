@@ -79,6 +79,36 @@ describe('App layout', () => {
     expect(screen.queryByRole('dialog', { name: 'GM 工具' })).toBeNull();
   });
 
+  it('an in-tab account switch (new runtime) reloads the account and drops the GM token', async () => {
+    const accounts = [
+      { displayName: 'GM', username: 'gm_one', sessions: 1 },
+      { displayName: 'Other', username: 'other_mage', sessions: 1 },
+    ];
+    let current = 0;
+    const api = {
+      getAccount: vi.fn(async () => accounts[current]),
+      recentDiscoveries: vi.fn(async () => []),
+      gmLogin: vi.fn(async () => ({ gmToken: 'g1', expiresAt: Date.now() + 600_000 })),
+      gmResetPassword: vi.fn(async () => {}),
+    } as unknown as ApiClient;
+    const sync = { status: 'online', onStatus: () => () => {}, action: vi.fn(), uploadNow: vi.fn(async () => {}) } as unknown as SyncController;
+    const runtimeA = fakeRuntime() as unknown as GameRuntime;
+    const { rerender } = render(<App runtime={runtimeA} sync={sync} content={content} api={api} onSwitched={vi.fn()} onLoggedOut={vi.fn()} />);
+    fireEvent.keyDown(window, { code: 'Backquote', ctrlKey: true, shiftKey: true });
+    await waitFor(() => expect((screen.getByLabelText('帳號名稱') as HTMLInputElement).value).toBe('gm_one'));
+    fireEvent.change(screen.getByLabelText('密碼'), { target: { value: 'pw' } });
+    fireEvent.click(screen.getByRole('button', { name: '驗證' }));
+    expect(await screen.findByRole('tab', { name: '玩家' })).toBeTruthy();
+
+    current = 1;
+    const runtimeB = fakeRuntime() as unknown as GameRuntime;
+    rerender(<App runtime={runtimeB} sync={sync} content={content} api={api} onSwitched={vi.fn()} onLoggedOut={vi.fn()} />);
+    await waitFor(() => expect((screen.getByLabelText('帳號名稱') as HTMLInputElement).value).toBe('other_mage'));
+    expect(screen.queryByRole('tab', { name: '玩家' })).toBeNull();
+    expect(screen.getByRole('button', { name: '驗證' })).toBeTruthy();
+    expect(api.getAccount).toHaveBeenCalledTimes(2);
+  });
+
   it('the altar and the key item bar do not re-render when only unrelated inventory changes', () => {
     const { runtime } = setup();
     const altar = renders.altar.mock.calls.length;

@@ -185,6 +185,29 @@ describe('GmWindow', () => {
     expect(typeof saved.y).toBe('number');
   });
 
+  it('drops the GM token and tabs when the account changes in this tab', async () => {
+    const api = { gmLogin: vi.fn(async () => ({ gmToken: 'g1', expiresAt: Date.now() + 600_000 })), gmResetPassword: vi.fn(async () => {}) };
+    const props = {
+      api: api as unknown as ApiClient,
+      sync: { action: vi.fn(async () => ({ kind: 'gm' })) } as unknown as SyncController,
+      runtime: fakeRuntime() as unknown as GameRuntime,
+      content,
+    };
+    const { rerender } = render(<GmWindow {...props} username="gm_one" />);
+    await login();
+    fireEvent.click(await screen.findByRole('tab', { name: '玩家' }));
+    rerender(<GmWindow {...props} username={null} />);
+    rerender(<GmWindow {...props} username="other_mage" />);
+    expect(screen.queryByRole('tab', { name: '元素' })).toBeNull();
+    expect(screen.getByRole('button', { name: '驗證' })).toBeTruthy();
+    expect((screen.getByLabelText('帳號名稱') as HTMLInputElement).value).toBe('other_mage');
+    expect((screen.getByLabelText('密碼') as HTMLInputElement).value).toBe('');
+    // a later GM login starts on the first tab again
+    fireEvent.change(screen.getByLabelText('密碼'), { target: { value: 'pw' } });
+    fireEvent.click(screen.getByRole('button', { name: '驗證' }));
+    expect((await screen.findByRole('tab', { name: '元素' })).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('minimises, remembers it, and closes with the close button', () => {
     setup();
     toggle();

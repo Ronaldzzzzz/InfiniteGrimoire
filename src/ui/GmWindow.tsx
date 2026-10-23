@@ -86,9 +86,18 @@ export function GmWindow({ api, sync, runtime, content, username }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // the GM token belongs to the account that verified: when this tab switches accounts, drop it
+  const prevUsername = useRef(username);
   useEffect(() => {
-    if (!username) return;
-    setName((n) => n || username);
+    const prev = prevUsername.current;
+    prevUsername.current = username;
+    if (prev !== null && prev !== username) {
+      setAuth(null);
+      setTab('items');
+      setPassword('');
+      setError(null);
+      setName(username ?? '');
+    } else if (username) setName((n) => n || username);
   }, [username]);
 
   const onExpired = useCallback((): void => {
