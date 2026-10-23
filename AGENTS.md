@@ -38,7 +38,7 @@
 
 ## 3. 目前狀態（2026-10-23）
 
-- **Branch：** `feat/v2b-rare-discoveries`（從 `feat/core-rework` 分出；第二版 B 的 8 個任務都在這裡），**尚未 push、尚未合併**。`feat/core-rework`（含已併入的合成台改版）也還沒合併到 `main`，所以兩個 branch 是疊在一起的。`main` 已經包含 MVP 與第二版 A 和文件；遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`。本機 `main` 有文件 commit 尚未 push。
+- **Branch：** `feat/core-rework`（從 `main` 分出），已包含合成台改版與第二版 B（`feat/synthesis-altar`、`feat/v2b-rare-discoveries` 都已 fast-forward 併入並刪除），**尚未 push、尚未合併到 `main`**。`main` 已經包含 MVP 與第二版 A 和文件；遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`。本機 `main` 有文件 commit 尚未 push。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -165,6 +165,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者指示把 `feat/v2b-rare-discoveries` 合併回 `feat/core-rework`（fast-forward，branch 已刪）；合併後 `npm test` 53 個檔案 533 個測試（5 個跳過）、`npm run build` 通過。停在：`feat/core-rework` 尚未 push、尚未合併到 `main`；稀有魔法刷取時間仍待使用者決定。下一步：GM 工具的設計討論（進行中）。
 
 - **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者問「魔法與魔法合成時為何材料不足」：兩個魔法融合要另外付融合成本（結果每種屬性各 1 個元素，階級依結果深度），合成台原本不知道這筆成本，按鈕會亮但伺服器回 422。新增引擎的 `fusionNeeds`（與 `synthesize` 共用同一套 `plan`／`outcomeCosts`，隨機配方取每種可能結果的最大需求），合成台在兩邊都是魔法時顯示「另外需要：中階火 ×1（持有 0）」、缺的標紅並停用合成。直接在 `feat/v2b-rare-discoveries` commit；`npm test` 53 個檔案 533 個測試（5 個跳過）、`npm run build` 通過；沒有做瀏覽器截圖。停在：尚未 push。下一步同下一筆。
 
