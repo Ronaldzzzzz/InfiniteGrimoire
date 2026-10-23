@@ -166,6 +166,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
+- **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者問「魔法與魔法合成時為何材料不足」：兩個魔法融合要另外付融合成本（結果每種屬性各 1 個元素，階級依結果深度），合成台原本不知道這筆成本，按鈕會亮但伺服器回 422。新增引擎的 `fusionNeeds`（與 `synthesize` 共用同一套 `plan`／`outcomeCosts`，隨機配方取每種可能結果的最大需求），合成台在兩邊都是魔法時顯示「另外需要：中階火 ×1（持有 0）」、缺的標紅並停用合成。直接在 `feat/v2b-rare-discoveries` commit；`npm test` 53 個檔案 533 個測試（5 個跳過）、`npm run build` 通過；沒有做瀏覽器截圖。停在：尚未 push。下一步同下一筆。
+
 - **2026-10-23（Claude Code，Sonnet 5.5，Windows）**：以 subagent-driven-development 在 branch `feat/v2b-rare-discoveries`（從 `feat/core-rework` 分出）執行第二版 B 的 8 個任務（帳本 `docs/superpowers/sdd/2026-10-23-v2b-rare-discoveries/progress.md`）：5 個稀有魔法與配方、`discoveries` 表（migration 0005，不重置存檔）、伺服器記錄與 `GET /api/discoveries`、全螢幕揭曉動畫、頂端鈴鐺與清單。最後一項在 headless Edge 以兩個獨立 context 驗收通過（擲骰是暫時調高本機權重，沒有 commit）。**重要未決事項：** 稀有魔法的刷取時間量測為 火 139／風 167／雷 158／土 211／水 183 模擬分鐘，超過規格要求的 120，5 個相關測試先 `it.skip`，等使用者決定（接受／提高權重／降低成本）。停在：全部 commit，`feat/v2b-rare-discoveries` 與 `feat/core-rework` 都尚未 push、尚未合併；`npm test` 53 個檔案 523 個測試（5 個跳過）、`npm run build` 通過。最終審查修正（落空重試不再免費、發現紀錄寫入失敗不會讓已學會的合成變 500、揭曉動畫的線索更早出現）後為 526 個測試。下一步：使用者決定刷取時間 → 在真實瀏覽器試玩 → 決定 push 與合併 → 第二版 C+D 設計討論（開始前先決定「大魔導士稱號」與「內容太少會同分」兩個問題）。
 
 - **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者反映元素表每列只有一個「升階」按鈕（固定升最低可升的那階），無法升想要的階級。改成相鄰兩階之間的「›」箭頭（獨立一欄、與格子同高，避免誤觸數量格子）：左邊那格夠成本（3／10／30／100）才亮起，點了只升那一階；Shift＋點能升多少就升多少（`upgradeCount`）。每列右邊的「升階」按鈕移除。直接在 `feat/core-rework` commit（小改動，對話中確認做法）；`npm test` 51 個檔案 481 個測試、`npm run build` 通過，headless Edge 實際點擊確認。停在：尚未 push。下一步同上一筆。

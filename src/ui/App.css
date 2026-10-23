@@ -31,6 +31,8 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .hud-note { color: var(--gold); font-size: 14px; }
 .hud-note.warn { color: var(--fire); }
 
+.altar-needs { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.altar-needs .short { color: var(--fire); font-weight: 600; }
 .synth-message { min-height: 1.5em; color: var(--gold); }
 .tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--muted); border-radius: 4px; color: var(--muted); font-size: 12px; }
 

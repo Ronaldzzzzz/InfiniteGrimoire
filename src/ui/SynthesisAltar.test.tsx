@@ -37,6 +37,33 @@ function setup(
 }
 
 describe('SynthesisAltar', () => {
+  describe('fusion cost of two spells', () => {
+    const needs = () => screen.queryByLabelText('融合所需元素');
+    const spells = { learned: ['mana_bolt', 'fireball', 'wind_blade'] };
+
+    it('lists every element the fusion also needs with how many are held, and blocks 合成 while short', () => {
+      const a = setup({ ...spells, inventory: { 'el:fire:1': 1 } }, ['fireball', 'wind_blade']);
+      expect(needs()!.textContent).toBe('另外需要：初階火 ×1（持有 1）、初階風 ×1（持有 0）');
+      expect(needs()!.querySelectorAll('.short')).toHaveLength(1);
+      expect(needs()!.querySelector('.short')!.textContent).toContain('初階風');
+      expect(go().disabled).toBe(true);
+      act(() => a.rt.set({ game: { inventory: { 'el:fire:1': 1, 'el:wind:1': 1 } } }));
+      expect(needs()!.querySelectorAll('.short')).toHaveLength(0);
+      expect(go().disabled).toBe(false);
+    });
+
+    it('shows nothing when no fusion cost applies', () => {
+      setup({ ...spells, learned: [...spells.learned, 'fire_tornado'] }, ['fireball', 'wind_blade']);
+      expect(needs()).toBeNull(); // the named result is known: a duplicate costs no fusion
+      cleanup();
+      setup({ learned: ['mana_bolt', 'fireball'], inventory: { 'el:wind:2': 1 } }, ['fireball', 'el:wind:2']);
+      expect(needs()).toBeNull(); // an element input: no fusion cost
+      cleanup();
+      setup(spells, ['fireball', null]);
+      expect(needs()).toBeNull();
+    });
+  });
+
   it('enables 合成 only with two affordable, known inputs and no pending action', () => {
     const inv = { 'el:fire:1': 1, 'el:wind:1': 1 };
     const a = setup({ inventory: inv }, ['el:fire:1', 'el:wind:1']);

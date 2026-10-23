@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comboKey, requiredGrade, synthesize } from './crafting';
+import { comboKey, fusionNeeds, requiredGrade, synthesize } from './crafting';
 import { content } from './content';
 import { createRng } from './rng';
 import { craftedId, resolveSpell } from './spells';
@@ -225,5 +225,51 @@ describe('crafting', () => {
       }
       expect(seen).toEqual(new Set(['holy_judgment', crafted]));
     });
+  });
+});
+
+describe('fusionNeeds', () => {
+  const needs = (inputs: string[], learned: string[], inventory: Record<string, number> = {}) =>
+    [...fusionNeeds(mkState(inventory, ['mana_bolt', ...learned]), inputs, content)].sort();
+  const without = (inv: Record<string, number>, id: string) => ({ ...inv, [id]: inv[id]! - 1 });
+  const stock = (ids: string[]) => {
+    const inv: Record<string, number> = {};
+    for (const id of ids) inv[id] = (inv[id] ?? 0) + 1;
+    return inv;
+  };
+
+  it('a named fusion of two spells needs one element per element of the result, at the grade its depth demands', () => {
+    expect(needs(['fireball', 'wind_blade'], ['fireball', 'wind_blade'])).toEqual(['el:fire:1', 'el:wind:1']);
+  });
+
+  it('a crafted fusion needs its own fusion cost, and a known named result needs none', () => {
+    expect(needs(['inferno', 'vacuum_blades'], ['inferno', 'vacuum_blades'])).toEqual(['el:fire:3', 'el:wind:3']);
+    expect(needs(['fireball', 'wind_blade'], ['fireball', 'wind_blade', 'fire_tornado'])).toEqual([]);
+  });
+
+  it('needs nothing extra when an element is an input, or when the inputs are not valid', () => {
+    expect(needs(['fireball', 'el:wind:2'], ['fireball'])).toEqual([]);
+    expect(needs(['fireball', 'wind_blade'], ['fireball'])).toEqual([]); // wind_blade not learned
+    expect(needs(['fireball'], ['fireball'])).toEqual([]);
+  });
+
+  it('a random recipe needs what every outcome it could land on would charge', () => {
+    const learned = ['lightning', 'thunder_hammer'];
+    const extra = needs(['thunder_hammer', 'mat:sun_shard'], learned);
+    expect(extra).toEqual(expect.arrayContaining(['el:fire:3', 'el:thunder:3']));
+  });
+
+  it('matches synthesize: exactly the inputs plus these needs is enough, one fewer is not', () => {
+    for (const [inputs, learned] of [
+      [['fireball', 'wind_blade'], ['fireball', 'wind_blade']],
+      [['inferno', 'vacuum_blades'], ['inferno', 'vacuum_blades']],
+      [['thunder_hammer', 'mat:sun_shard'], ['lightning', 'thunder_hammer']],
+    ] as const) {
+      const extra = needs([...inputs], [...learned]);
+      const inv = stock([...inputs.filter((i) => i.includes(':')), ...extra]);
+      const state = (i: Record<string, number>) => mkState(i, ['mana_bolt', ...learned]);
+      expect(run(state(inv), [...inputs]).result.kind).not.toBe('rejected');
+      expect(run(state(without(inv, extra[0]!)), [...inputs]).result).toEqual({ kind: 'rejected', reason: 'insufficient' });
+    }
   });
 });

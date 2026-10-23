@@ -1,12 +1,12 @@
 import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { SYNTH_SLOTS } from '../engine/crafting';
+import { fusionNeeds, SYNTH_SLOTS } from '../engine/crafting';
 import type { Content } from '../engine/model';
 import { GRADE_NAMES } from '../engine/types';
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
 import { describeInput, lookOf, revealOf, type AltarInput, type AltarLook, type Reveal } from './altar-data';
 import { BANNER_MS, ElementDots } from './DiscoveryBanner';
-import { ELEMENT_NAMES, empowerLabel, slotLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
+import { ELEMENT_NAMES, empowerLabel, itemName, slotLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /** A slot holds an inventory item (element or material) or a learned spell id. */
@@ -118,6 +118,21 @@ export const SynthesisAltar = memo(function SynthesisAltar({
   const levelKey = useRuntime(runtime, (s) =>
     slots.map((id) => (id && !isItem(id) && Object.hasOwn(s.game.levels, id) ? s.game.levels[id]! : 1)).join('|'),
   );
+  // the fusion cost of two spells, as `id:need:held` entries (empty unless both sides hold something)
+  const needsKey = useRuntime(runtime, (s) => {
+    if (slots.some((id) => id === null)) return '';
+    const counts = new Map<string, number>();
+    for (const id of fusionNeeds(s.game, slots as string[], content)) counts.set(id, (counts.get(id) ?? 0) + 1);
+    return [...counts]
+      .map(([id, n]) => `${id}:${n}:${Object.hasOwn(s.game.inventory, id) ? s.game.inventory[id]! : 0}`)
+      .join('|');
+  });
+  const extra = needsKey
+    ? needsKey.split('|').map((e) => {
+        const [, id, need, held] = /^(.+):(\d+):(\d+)$/.exec(e)!;
+        return { id: id!, need: Number(need), held: Number(held) };
+      })
+    : [];
   const stock = stockKey.split('|').map(Number);
   const known = knownKey.split('|').map((k) => k === '1');
   const levelOf = levelKey.split('|').map(Number);
@@ -170,7 +185,8 @@ export const SynthesisAltar = memo(function SynthesisAltar({
   for (const id of filled) if (isItem(id)) need.set(id, (need.get(id) ?? 0) + 1);
   const affordable = [...need].every(([id, n]) => (stock[slots.indexOf(id)] ?? 0) >= n);
   const spellsKnown = slots.every((id, i) => id === null || isItem(id) || known[i]);
-  const canSynth = filled.length === SYNTH_SLOTS && affordable && spellsKnown && !synthPending && !fusing;
+  const extraAffordable = extra.every((e) => e.held >= e.need);
+  const canSynth = filled.length === SYNTH_SLOTS && affordable && extraAffordable && spellsKnown && !synthPending && !fusing;
 
   const stop = (text: string): void => {
     setFusing(false);
@@ -278,6 +294,19 @@ export const SynthesisAltar = memo(function SynthesisAltar({
           </div>
         )}
       </section>
+      {extra.length > 0 && (
+        <p className="altar-needs" aria-label="融合所需元素">
+          另外需要：
+          {extra.map((e, i) => (
+            <span key={e.id}>
+              {i > 0 && '、'}
+              <span className={e.held >= e.need ? '' : 'short'}>
+                {itemName(e.id, content)} ×{e.need}（持有 {e.held}）
+              </span>
+            </span>
+          ))}
+        </p>
+      )}
       <p className="synth-message" role="status">{message}</p>
       <div className="synth-hint" aria-label="殘卷線索" aria-live="polite">
         {hint ?? <span className="muted">在魔導書點未學會的魔法，殘卷線索會顯示在這裡</span>}

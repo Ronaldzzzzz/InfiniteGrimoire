@@ -49,23 +49,9 @@ function logAttempt(state: GameState, key: string, resultKey: string, noReaction
 const isItem = (id: string) => ITEM_ID_RE.test(id) && !id.startsWith('key:');
 const isElementItem = (id: string) => id.startsWith('el:');
 
-export function synthesize(
-  state: GameState,
-  inputs: string[],
-  content: Content,
-  rng: Rng,
-  opts: { depthCap: number },
-): { state: GameState; result: SynthResult } {
-  const unchanged = (result: SynthResult) => ({ state, result });
-  if (!Array.isArray(inputs) || inputs.length !== SYNTH_SLOTS) return unchanged({ kind: 'rejected', reason: 'slots' });
-  for (const id of inputs) {
-    if (typeof id !== 'string') return unchanged({ kind: 'rejected', reason: 'unknownInput' });
-    if (!isItem(id) && !state.learned.includes(id)) return unchanged({ kind: 'rejected', reason: 'unknownInput' });
-  }
+/** What a synthesis of these inputs decides before rolling: the fusion cost rules, the crafted fall-through and the recipe. */
+function plan(state: GameState, inputs: string[], content: Content) {
   const items = [...inputs].sort().filter(isItem);
-  const removed = removeItems(state.inventory, items);
-  if (!removed) return unchanged({ kind: 'rejected', reason: 'insufficient' });
-
   const key = comboKey(inputs);
   const first = items[0]; // undefined when both inputs are spells
   const fused = !inputs.some(isElementItem);
@@ -89,28 +75,92 @@ export function synthesize(
   };
 
   const recipe = findRecipe(content, key);
+  const eligible = recipe
+    ? recipe.outcomes
+        .filter((o) => o.spellId === null || (content.spells[o.spellId]?.prerequisites ?? []).every((p) => state.learned.includes(p)))
+        .map((o) => ({ value: o.spellId, weight: o.weight }))
+    : [];
+
+  /** The fusion cost of every outcome the recipe's roll could land on (a named outcome already known costs none). */
+  const outcomeCosts = (): ItemId[][] | { reject: 'unknownInput' | 'grade' } => {
+    const costs: ItemId[][] = [];
+    for (const { value } of eligible) {
+      if (value === null) {
+        const c = craftedOutcome();
+        if ('reject' in c) return c;
+        costs.push(c.cost);
+      } else if (!state.learned.includes(value)) {
+        const named = content.spells[value]!;
+        costs.push(fusionCost(named.elements, named.depth));
+      }
+    }
+    return costs;
+  };
+
+  return { items, key, first, fusionCost, craftedOutcome, recipe, eligible, outcomeCosts };
+}
+
+/** Whether these inputs pass the checks every synthesis makes first (two slots, items or learned spells). */
+function validInputs(state: GameState, inputs: unknown): inputs is string[] {
+  return (
+    Array.isArray(inputs) &&
+    inputs.length === SYNTH_SLOTS &&
+    inputs.every((id) => typeof id === 'string' && (isItem(id) || state.learned.includes(id)))
+  );
+}
+
+/**
+ * Element items a synthesis of these inputs must also hold besides the inputs themselves: the fusion cost of
+ * the result (for a random recipe, enough for every outcome the roll could land on). Empty when nothing extra
+ * is charged or the attempt would be refused for another reason.
+ */
+export function fusionNeeds(state: GameState, inputs: string[], content: Content): ItemId[] {
+  if (!validInputs(state, inputs)) return [];
+  const p = plan(state, inputs, content);
+  let costs: ItemId[][];
+  if (p.recipe) {
+    const c = p.outcomeCosts();
+    if (!Array.isArray(c)) return [];
+    costs = c;
+  } else if (p.items.length === SYNTH_SLOTS) {
+    return [];
+  } else {
+    const c = p.craftedOutcome();
+    if ('reject' in c) return [];
+    costs = [c.cost];
+  }
+  // each outcome is checked on its own, so the need per item is the most any single outcome charges
+  const most = new Map<ItemId, number>();
+  for (const cost of costs) {
+    const n = new Map<ItemId, number>();
+    for (const id of cost) n.set(id, (n.get(id) ?? 0) + 1);
+    for (const [id, k] of n) most.set(id, Math.max(most.get(id) ?? 0, k));
+  }
+  return [...most].flatMap(([id, k]) => new Array<ItemId>(k).fill(id));
+}
+
+export function synthesize(
+  state: GameState,
+  inputs: string[],
+  content: Content,
+  rng: Rng,
+  opts: { depthCap: number },
+): { state: GameState; result: SynthResult } {
+  const unchanged = (result: SynthResult) => ({ state, result });
+  if (!Array.isArray(inputs) || inputs.length !== SYNTH_SLOTS) return unchanged({ kind: 'rejected', reason: 'slots' });
+  if (!validInputs(state, inputs)) return unchanged({ kind: 'rejected', reason: 'unknownInput' });
+  const { items, key, first, fusionCost, craftedOutcome, recipe, eligible, outcomeCosts } = plan(state, inputs, content);
+  const removed = removeItems(state.inventory, items);
+  if (!removed) return unchanged({ kind: 'rejected', reason: 'insufficient' });
+
   let namedId: string | null = null;
   if (recipe) {
-    const eligible = recipe.outcomes
-      .filter((o) => o.spellId === null || (content.spells[o.spellId]?.prerequisites ?? []).every((p) => state.learned.includes(p)))
-      .map((o) => ({ value: o.spellId, weight: o.weight }));
     if (eligible.length === 0) return unchanged({ kind: 'dormant' });
     // Every outcome the roll could land on must be affordable before rolling; otherwise an unaffordable
     // outcome would be rejected for free and the player could retry until the affordable one comes up.
-    for (const { value } of eligible) {
-      let cost: ItemId[];
-      if (value === null) {
-        const c = craftedOutcome();
-        if ('reject' in c) return unchanged({ kind: 'rejected', reason: c.reject });
-        cost = c.cost;
-      } else if (state.learned.includes(value)) {
-        continue; // a named duplicate costs no fusion
-      } else {
-        const named = content.spells[value]!;
-        cost = fusionCost(named.elements, named.depth);
-      }
-      if (!removeItems(removed, cost)) return unchanged({ kind: 'rejected', reason: 'insufficient' });
-    }
+    const costs = outcomeCosts();
+    if (!Array.isArray(costs)) return unchanged({ kind: 'rejected', reason: costs.reject });
+    for (const cost of costs) if (!removeItems(removed, cost)) return unchanged({ kind: 'rejected', reason: 'insufficient' });
     namedId = pickWeighted(rng, eligible);
   } else if (items.length === SYNTH_SLOTS) {
     return {
