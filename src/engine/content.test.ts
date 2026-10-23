@@ -328,13 +328,13 @@ describe('rare spells', () => {
   it('balances each new spell between the Lv.7 pure spell and Holy Judgment', () => {
     const dps = (id: string) => {
       const s = content.spells[id]!;
-      const mult = s.effects.reduce((a, e) => a + ('mult' in e ? e.mult * (e.kind === 'bolt' ? e.count : e.kind === 'blades' ? e.count : e.kind === 'meteor' ? e.count : e.kind === 'chain' ? e.hops : e.kind === 'storm' ? e.ms / e.tickMs / 10 : e.kind === 'zone' ? e.ms / e.tickMs : 1) : 0), 0);
+      const mult = s.effects.reduce((a, e) => a + ('mult' in e ? e.mult * (e.kind === 'bolt' ? e.count : e.kind === 'blades' ? e.count : e.kind === 'meteor' ? e.count : e.kind === 'chain' ? e.hops : e.kind === 'storm' ? e.ms / e.tickMs : e.kind === 'zone' ? e.ms / e.tickMs : 1) : 0), 0);
       return (s.attack * mult) / s.cooldownMs;
     };
     for (const [id, lv7] of [['worldfire', 'sunfall'], ['heavens_breath', 'sky_tempest'], ['ninefold_thunder', 'thunder_god'], ['titans_grip', 'wrath_of_earth'], ['moontide', 'deluge']] as const) {
       const ratio = dps(id) / dps(lv7);
-      expect(ratio, id).toBeGreaterThan(1.1);
-      expect(ratio, id).toBeLessThan(1.3);
+      expect(ratio, id).toBeGreaterThan(1.12);
+      expect(ratio, id).toBeLessThan(1.25);
       expect(dps(id), id).toBeLessThan(dps('holy_judgment'));
     }
   });
