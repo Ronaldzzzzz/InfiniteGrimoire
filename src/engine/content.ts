@@ -65,6 +65,7 @@ const spellSchema = z.object({
   prerequisites: z.array(z.string()),
   node: node.nullable(),
   baseOf: element.optional(),
+  rare: z.boolean().optional(),
 });
 
 const recipeSchema = z.object({
@@ -211,6 +212,15 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
     }
     for (const o of r.outcomes) {
       if (o.spellId !== null && !spellIds.has(o.spellId)) issues.push(`recipe ${r.id}: unknown outcome spell "${o.spellId}"`);
+    }
+  }
+
+  for (const s of spells) {
+    if (!s.rare) continue;
+    const makers = recipes.filter((r) => r.outcomes.some((o) => o.spellId === s.id));
+    if (makers.length === 0) issues.push(`rare spell "${s.id}" has no recipe that produces it`);
+    for (const r of makers) {
+      if (!r.outcomes.some((o) => o.spellId === null)) issues.push(`rare spell "${s.id}" comes from recipe ${r.id}, which has no fall-through (spellId null) outcome`);
     }
   }
 

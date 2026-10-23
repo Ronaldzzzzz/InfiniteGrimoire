@@ -2003,7 +2003,8 @@
       "region": "zenith",
       "ring": 7,
       "angle": 108
-    }
+    },
+    "rare": true
   },
   {
     "id": "abyss_devour",
@@ -2054,6 +2055,269 @@
       "region": "abyss",
       "ring": 6,
       "angle": 288
-    }
+    },
+    "rare": true
+  },
+  {
+    "id": "worldfire",
+    "name": "焚世之焰",
+    "nameEn": "Worldfire",
+    "desc": "整片戰場瞬間起火，接著四顆火球砸落，熔岩久久不散。",
+    "hint": "殘卷：把高階的火餵給煉獄，十之八九只剩灰燼；要試很多很多次，才會有一次整個世界跟著燃燒。",
+    "elements": [
+      "fire"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 3800,
+    "effects": [
+      {
+        "kind": "field",
+        "mult": 1.2,
+        "delayMs": 500,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 6000,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "meteor",
+        "mult": 0.78,
+        "count": 4,
+        "radius": 0.3,
+        "delayMs": 700,
+        "lavaMs": 2500,
+        "target": "densest"
+      }
+    ],
+    "words": {
+      "pre": "焚世",
+      "noun": "劫火",
+      "preEn": "Cataclysmic",
+      "nounEn": "Conflagration"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "inferno"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 6,
+      "angle": 18
+    },
+    "rare": true
+  },
+  {
+    "id": "heavens_breath",
+    "name": "蒼穹之息",
+    "nameEn": "Heaven's Breath",
+    "desc": "天空吐出一口長氣，把怪群拉向中央，無數風刃隨之切過。",
+    "hint": "殘卷：向真空刃吹入高階的風，絕大多數時候只是微風；要反覆嘗試許多次，才能聽見天空呼吸。",
+    "elements": [
+      "wind"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 3800,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.35,
+        "radius": 0.7,
+        "ms": 5000,
+        "tickMs": 250,
+        "target": "center",
+        "pull": 1,
+        "follow": false,
+        "strikes": 0
+      },
+      {
+        "kind": "blades",
+        "mult": 0.85,
+        "count": 9,
+        "push": 0.5
+      }
+    ],
+    "words": {
+      "pre": "蒼穹",
+      "noun": "天息",
+      "preEn": "Celestial",
+      "nounEn": "Breath"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "vacuum_blades"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 6,
+      "angle": 90
+    },
+    "rare": true
+  },
+  {
+    "id": "ninefold_thunder",
+    "name": "九天雷獄",
+    "nameEn": "Ninefold Thunder",
+    "desc": "九重天的雷不停落下，雷光在怪群之間來回跳躍，直到天亮。",
+    "hint": "殘卷：萬雷遇上高階的雷，多半只是響一聲；需要試上許多次，才會有一次九重天同時開口。",
+    "elements": [
+      "thunder"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "storm",
+        "mult": 1.9,
+        "ms": 5000,
+        "tickMs": 50
+      },
+      {
+        "kind": "chain",
+        "mult": 1.9,
+        "hops": 18,
+        "range": 0.35,
+        "explode": 0.12
+      }
+    ],
+    "words": {
+      "pre": "九天",
+      "noun": "雷獄",
+      "preEn": "Ninefold",
+      "nounEn": "Thunderhold"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "myriad_thunder"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 6,
+      "angle": 162
+    },
+    "rare": true
+  },
+  {
+    "id": "titans_grip",
+    "name": "泰坦之握",
+    "nameEn": "Titan's Grip",
+    "desc": "大地伸出巨掌震開四周並使怪物暈眩，隨後一擊重重壓向最強的敵人。",
+    "hint": "殘卷：往山崩裡填入高階的土，大地通常只是翻身；要嘗試很多次，才有一次巨人真的伸出手。",
+    "elements": [
+      "earth"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 2.5,
+        "radius": 1.2,
+        "push": 1,
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 2500
+          }
+        ]
+      },
+      {
+        "kind": "bolt",
+        "mult": 19,
+        "count": 1,
+        "radius": 0.03,
+        "target": "strongest"
+      }
+    ],
+    "words": {
+      "pre": "泰坦",
+      "noun": "巨掌",
+      "preEn": "Titanic",
+      "nounEn": "Grasp"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "landslide"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 6,
+      "angle": 198
+    },
+    "rare": true
+  },
+  {
+    "id": "moontide",
+    "name": "滄溟月潮",
+    "nameEn": "Moontide",
+    "desc": "月光牽動潮汐，緩緩漫過整個戰場，怪物被浸濕而動彈不得。",
+    "hint": "殘卷：大漩渦吞下高階的水，大多數時候只是退潮；要試很多很多次，才會等到月亮拉動整片海。",
+    "elements": [
+      "water"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.6,
+        "radius": 0.5,
+        "ms": 5000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0.5,
+        "follow": true,
+        "strikes": 0
+      },
+      {
+        "kind": "field",
+        "mult": 3.4,
+        "delayMs": 400,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 6000
+          },
+          {
+            "kind": "slow",
+            "ms": 4000,
+            "power": 0.6
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "滄溟",
+      "noun": "月潮",
+      "preEn": "Vast",
+      "nounEn": "Moontide"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "maelstrom"
+    ],
+    "node": {
+      "region": "rift",
+      "ring": 6,
+      "angle": 324
+    },
+    "rare": true
   }
 ]

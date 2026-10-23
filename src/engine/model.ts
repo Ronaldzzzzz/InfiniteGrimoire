@@ -30,6 +30,8 @@ export interface NamedSpellDef extends Spell {
   named: true; hint: string; prerequisites: string[]; node: TreeNode | null;
   /** the element whose "el+el" grade-1 recipe teaches it; crafted inputs use it for that element */
   baseOf?: ElementId;
+  /** only obtainable from a random recipe; a discovery is announced to everyone */
+  rare?: boolean;
 }
 export interface Material { id: ItemId; name: string; nameEn: string; desc: string; elements: ElementId[]; words: Words; effect: Effect }
 export interface KeyItem { id: ItemId; name: string; nameEn: string; desc: string; reveals: string }

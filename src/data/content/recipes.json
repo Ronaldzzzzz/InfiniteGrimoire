@@ -682,5 +682,90 @@
         "weight": 9
       }
     ]
+  },
+  {
+    "id": "worldfire",
+    "inputs": [
+      "inferno",
+      "el:fire:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "worldfire",
+        "weight": 1
+      },
+      {
+        "spellId": null,
+        "weight": 64
+      }
+    ]
+  },
+  {
+    "id": "heavens_breath",
+    "inputs": [
+      "vacuum_blades",
+      "el:wind:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "heavens_breath",
+        "weight": 1
+      },
+      {
+        "spellId": null,
+        "weight": 64
+      }
+    ]
+  },
+  {
+    "id": "ninefold_thunder",
+    "inputs": [
+      "myriad_thunder",
+      "el:thunder:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "ninefold_thunder",
+        "weight": 1
+      },
+      {
+        "spellId": null,
+        "weight": 64
+      }
+    ]
+  },
+  {
+    "id": "titans_grip",
+    "inputs": [
+      "landslide",
+      "el:earth:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "titans_grip",
+        "weight": 1
+      },
+      {
+        "spellId": null,
+        "weight": 64
+      }
+    ]
+  },
+  {
+    "id": "moontide",
+    "inputs": [
+      "maelstrom",
+      "el:water:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "moontide",
+        "weight": 1
+      },
+      {
+        "spellId": null,
+        "weight": 64
+      }
+    ]
   }
 ]
