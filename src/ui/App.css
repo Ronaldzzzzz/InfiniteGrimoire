@@ -58,7 +58,7 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .picker-option.selected { border-color: var(--gold); }
 .picker-option[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.element-table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+.element-table { width: 100%; border-collapse: separate; border-spacing: 9px 6px; table-layout: fixed; }
 .element-table th { font-weight: 600; font-size: 13px; color: var(--muted); }
 .element-table th.el-name { width: 2.5em; font-size: 16px; }
 .element-table .grade-cost { display: block; font-size: 10px; font-weight: 400; opacity: 0.75; }
@@ -74,6 +74,11 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .element-table .up-arrow { display: block; width: 100%; min-height: 40px; padding: 0; border-radius: 6px; font-size: 18px; font-weight: 700; line-height: 1; color: var(--bg); background: var(--gold); border-color: var(--gold); }
 .element-table .up-arrow:disabled { color: var(--muted); background: transparent; border-color: var(--line); opacity: 0.45; }
 .element-table .mat-row td { text-align: left; }
+.element-table thead th { white-space: nowrap; }
+@media (max-width: 767px) {
+  .element-table { border-spacing: 6px 6px; }
+  .element-table thead th { font-size: 12px; }
+}
 .topbar { background: var(--panel); border-bottom: 1px solid var(--line); }
 .topbar-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 6px 12px; }
 .topbar-equipped { white-space: nowrap; }
