@@ -29,7 +29,10 @@
 | `docs/superpowers/specs/2026-10-23-v2b-rare-discoveries-design.md` | **第二版 B 設計規格：稀有魔法與發現紀錄**：5 個新稀有魔法、全螢幕揭曉動畫、頂端鈴鐺與動態清單、`discoveries` 資料表、首位發現者 |
 | `docs/superpowers/plans/2026-10-23-v2b-rare-discoveries.md` | 第二版 B 的 8 個任務實作計畫（已執行完成） |
 | `docs/superpowers/sdd/2026-10-23-v2b-rare-discoveries/progress.md` | 第二版 B 的帳本：各任務審查結果、Ruling、稀有魔法刷取時間量測、延後的小問題 |
-| `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼的管理員重設流程、延後的小問題；上線前逐項決定 |
+| `docs/superpowers/specs/2026-10-23-gm-tool-design.md` | **GM 工具設計規格**：Ctrl＋Shift＋` 叫出的浮動視窗、GM 名單與二次驗證、元素／地圖／配方表／玩家（重設密碼）四個分頁、`gm_used` 與 `gm_actions` |
+| `docs/superpowers/plans/2026-10-23-gm-tool.md` | GM 工具的 8 個任務實作計畫（已執行完成） |
+| `docs/superpowers/sdd/2026-10-23-gm-tool/progress.md` | GM 工具的帳本：各任務審查結果、Ruling、瀏覽器驗收、延後的小問題 |
+| `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼（用 GM 工具重設）、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
 | `README.md` | 啟動、測試、部署步驟 |
@@ -38,7 +41,7 @@
 
 ## 3. 目前狀態（2026-10-23）
 
-- **Branch：** `feat/core-rework`（從 `main` 分出），已包含合成台改版與第二版 B（`feat/synthesis-altar`、`feat/v2b-rare-discoveries` 都已 fast-forward 併入並刪除），**尚未 push、尚未合併到 `main`**。`main` 已經包含 MVP 與第二版 A 和文件；遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`。本機 `main` 有文件 commit 尚未 push。
+- **Branch：** `feat/gm-tool`（從 `feat/core-rework` 分出；`feat/core-rework` 已包含合成台改版與第二版 B，`feat/synthesis-altar`、`feat/v2b-rare-discoveries` 都已 fast-forward 併入並刪除），**兩個 branch 都尚未 push、尚未合併到 `main`**。`main` 已經包含 MVP 與第二版 A 和文件；遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`。本機 `main` 有文件 commit 尚未 push。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -47,7 +50,9 @@
   - 不要兩台電腦同時開這個專案（`.git` 也在同步）；換電腦前確認 Syncthing 顯示「最新」。
 - **核心重做：** 12 個任務全部完成，每個任務都經過獨立審查，帳本在 `docs/superpowers/sdd/2026-10-22-core-rework/progress.md`。玩法改成：魔物成群出現、元素五階（升階成本 3／10／30／100）、名魔法＋自創魔法（任兩個輸入合成、有相性）、同元素強化與融合、魔法強化（`levels`）、魔導書迷霧＋關鍵道具（`revealed`）、被動節點（`passives`）。migration `0004_core_rework.sql` 本機已套用，**會重置所有存檔**；遠端未套用。
 - **合成台介面改版（2026-10-23，`feat/synthesis-altar`）：** 規格 `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md`，計畫 `docs/superpowers/plans/2026-10-23-synthesis-altar.md`，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。右欄改成方形合成台（`SynthesisAltar`：左右各放一個輸入、各依元素與魔法有不同特效、中間「合成」、按下後融合特效再揭曉結果；被拒絕時不播完整動畫、兩邊保留並顯示原因）；原本的合成區下拉選單與「嘗試紀錄」組合表已移除（伺服器的 `synthesisLog` 保留給第二版 B）。魔導書：單擊魔法冒出泡泡（放入合成／裝備／詳情）、雙擊直接放入合成台、詳情與強化合成一張浮動卡（`NodeCard`）、縮放按鈕移進技能樹並加「⌖ 回到中心」、滾輪只縮放不捲頁、拖曳與縮放不經過 React state。關鍵道具按鈕移到戰鬥畫面（`KeyItemBar`），訊息幾秒後自動消失。
-- **測試：** `npm test` 53 個檔案通過（另 1 個檔案跳過）、533 個測試通過、5 個跳過（`tests/sim/rare-cost.test.ts` 的 5 個 `it.skip`，見待辦 0）；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **GM 工具（2026-10-23，`feat/gm-tool`）：** 規格、計畫、帳本見第 2 節。遊戲畫面上**沒有任何 GM 入口**；按 Ctrl＋Shift＋`（或網址加 `?gm`）叫出紫色浮動視窗（`src/ui/GmWindow.tsx`，可拖曳、縮小，位置記在 `localStorage` `ig.gmWindow`），先在視窗內再驗證一次帳號密碼（瀏覽器雜湊，伺服器比對；GM 必須先以已綁定帳號登入），通過後發 30 分鐘的 GM token（只存在記憶體，重新整理要重驗）。四個分頁：元素（5×5 元素、素材、關鍵道具，按「套用」一次送出）、地圖（開放所有地點／散開所有迷霧／目前地點差 1 隻出魔王）、配方表（純用戶端，可搜尋，融合需求以 GM 自己的狀態用 `fusionNeeds` 計算）、玩家（重設其他玩家的密碼，臨時密碼只在視窗顯示一次）。**GM 名單**在伺服器設定 `GM_USERNAMES`（逗號分隔帳號名稱；本機寫進 `.dev.vars`，上線用 `wrangler secret put`）；沒設定時 `/api/gm/*` 一律 404。用過任何改存檔功能的帳號 `players.gm_used = 1`，之後不寫 `discoveries`、不成為首位（`excludedFromRecords`）。migration `0006_gm.sql` 新增 `gm_used`、`gm_tokens`、`gm_actions`，**不會重置存檔**（本機已套用，套用前後 `players` 都是 28 筆）；**遠端未套用，而且新 worker 部署前遠端一定要先套用 0005 與 0006**（每次讀玩家都會讀 `gm_used`）。**已知限制：** 配方表在前端 bundle 裡，GM 視窗隱藏配方表只是介面上的，不是安全邊界。
+- **GM 工具驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 9 項全過、無頁面錯誤。未設定 `GM_USERNAMES` 時所有 `/api/gm/*` 回 404（設定後同一路徑未登入回 401）；快捷鍵與 `?gm` 都能打開；非 GM 帳號用正確帳密得到「帳號或密碼錯誤」；改元素與關鍵道具後元素表立刻更新、掉落不丟、之後 60 秒上傳 200、`rejections` 沒增加、`gm_used = 1`；地圖三個按鈕都生效；配方表 57 筆、搜尋可用、火球＋疾風刃的融合需求與合成台顯示一致；重設玩家密碼（含已被連錯鎖住的帳號）舊密碼失敗、臨時密碼成功、舊裝置被登出、請求與 `gm_actions` 都沒有明文；重設自己回 403、不存在的帳號回 404；`gm_used` 的帳號合出聖光審判時沒有 `discoveries` 列、`rare.first = false`；GM token 過期後視窗回到登入表單、遊戲照常。**種進去的：** 聖光審判那次是把 `thunder_hammer` 直接寫進本機存檔的 `learned`，並用 GM 工具給足元素與日輝碎片；「差 1 隻出魔王」是看存檔的 `zoneKills`（39），沒有再打到魔王；token 過期那次把 `GM_TOKEN_TTL_MS` 暫時改成 15 秒（只在驗收用的本機伺服器，已還原、沒有 commit）。腳本與截圖在 `.superpowers/sdd/2026-10-23-gm-tool/accept/`（未進版本庫）。
+- **測試：** `npm test` 60 個檔案通過（另 1 個檔案跳過）、616 個測試通過、5 個跳過（`tests/sim/rare-cost.test.ts` 的 5 個 `it.skip`，見待辦 0）；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **合成台驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 10 項全過、無頁面錯誤。元素存量、已學會的魔法清單與一個關鍵道具是直接改本機存檔種進去的；放入、裝備、合成、強化、使用關鍵道具、解鎖被動、拖曳、滾輪都是實際操作。1280x900 下拖曳技能樹同時重複播放合成台特效約 149 fps（單幀最長 75 ms；戰場上只有少數怪，沒有重測 80 隻怪的情況）。驗收中發現泡泡在已學會魔法上高度估錯、會蓋住自己的節點，已修正（`fix(ui): reserve the real height of a learned spell's bubble`）。腳本與截圖在 `.superpowers/`（未進版本庫）。
 - **第二版 B：稀有魔法與發現紀錄（2026-10-23，`feat/v2b-rare-discoveries`）：** 規格、計畫、帳本見第 2 節。5 個新稀有魔法（焚世之焰、蒼穹之息、九天雷獄、泰坦之握、滄溟月潮，Lv.8，每種屬性一個），都是「該屬性 Lv.5 魔法＋高階元素」的機率配方（稀有 1 : 落空 64，約 1/65）；聖光審判、深淵吞噬也標為稀有（`spells.json` 的 `rare: true`，數值與配方不變）。合出稀有魔法時，發現者看到全螢幕揭曉動畫（`RareReveal`，首位「✦ 全服首次發現 ✦」、其餘「✦ 稀有魔法！✦」，點一下跳過），其他玩家在頂端鈴鐺（`DiscoveryBell`）看到動態（名稱、殘卷線索、發現者顯示名稱、時間；**沒有配方**），用戶端每 60 秒輪詢 `GET /api/discoveries`。migration `0005_discoveries.sql` 新增 `discoveries` 表，**不會重置存檔**（本機已套用，套用前後 `saves` 都是 26 筆）；首位由部分唯一索引保證只有一位，可疑帳號不寫入。**遠端未套用。**
 - **第二版 B 驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 兩個獨立的瀏覽器 context 當兩位玩家。玩家 1 合出焚世之焰：看到「✦ 全服首次發現 ✦」、點一下跳過、魔法已裝備；玩家 2 的鈴鐺約 50 秒後亮起未讀 1、清單有名稱、殘卷線索、「艾莉亞」與時間、沒有配方，打開後未讀歸零；玩家 2 自己合出時看到「✦ 稀有魔法！✦」；玩家 1 自己的發現不算未讀；`discoveries` 兩筆（`first` 1 與 0）；無頁面錯誤。**種進去的：** 兩位玩家的存檔（已學會煉獄、12 個高階火、迷霧區域已散開）直接改本機 D1；**擲骰方法：** 驗收期間把 `recipes.json` 的焚世之焰權重暫時改成 1000 : 1（只在驗收用的本機 dev server，已還原、沒有 commit），所以「合出稀有魔法」不是真的 1/65 機率；機率本身由 `worker/` 的單元測試以注入的亂數涵蓋。截圖與腳本在 `.superpowers/sdd/2026-10-23-v2b-rare-discoveries/accept/`（未進版本庫）。
@@ -57,10 +62,11 @@
 
 **尚未完成（下一位接手者的待辦）：**
 0a. **【待使用者決定】稀有魔法的刷取時間超過設計上限：** 規格第 2.1 節要求平均刷取時間不超過 120 模擬分鐘，否則先記下來讓使用者決定。`tests/sim` 量到（學會該屬性 Lv.5 魔法後，刷到平均 65 次高階元素才合得出稀有魔法）：火 139、風 167、雷 158、土 211、水 183 模擬分鐘，全部超過 120。這些數字以「每次嘗試真的消耗 1 個高階元素」計算；最終審查發現落空到已會的自創魔法時會退還那個高階元素（重試免費），已修正（`fix(engine): a missed rare roll always spends its element`），修正後這組數字才成立，仍是待使用者決定的事項。`tests/sim/rare-cost.test.ts` 的 5 個測試目前是 `it.skip`，等使用者決定：(a) 接受現狀（把上限放寬後取消 skip）、(b) 提高稀有魔法的權重（例如 1 : 40）、(c) 降低每次嘗試的成本。**未經使用者同意不要自行改權重或成本。**
-0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。再由使用者決定 push 與合併到 `main` 的方式（只剩 `feat/core-rework`，已包含合成台改版）。
+0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。再由使用者決定 push 與合併到 `main` 的方式（`feat/gm-tool` 疊在 `feat/core-rework` 之上，後者已包含合成台改版與第二版 B）。
 1. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）。
 2. **第二版 B 收尾**：使用者在真實瀏覽器試玩稀有魔法（全螢幕動畫的節奏與各屬性顏色、鈴鐺的位置與清單樣式、手機寬度）；上面的待辦 0a；遠端 D1 套用 0005（見上線前檢查清單）。第二版 C+D（排行榜）可以直接讀 `discoveries` 中 `first = 1` 的列。
-3. **部署（暫緩，使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。** 遠端 D1 要依序套用 0001→0003→0004→0005；0004 會重置所有存檔，0005 不會。見 `docs/prelaunch-checklist.md`。
+2a. **GM 工具收尾**：使用者在真實瀏覽器用 GM 視窗（拖曳、縮小、手機寬度排版）；上線前用 GM 工具在本機 D1 測一次重設密碼（上線前檢查清單第 2 節，已驗收過一次）。
+3. **部署（暫緩，使用者指示：遊戲還不是成品，等使用者明確指示才上線，不要主動提議部署）**：需要使用者本人執行 `npx wrangler login`、建立 D1、把 `database_id` 填進 `wrangler.jsonc`（目前是佔位值）、套用 remote migration、`npm run deploy`。**部署前要先取得使用者同意。** 遠端 D1 要依序套用 0001～0006（0001→0002→0003→0004→0005→0006）；0004 會重置所有存檔，0005、0006 不會；新 worker 部署前 0006 一定要先套用。另外要 `wrangler secret put GM_USERNAMES`。見 `docs/prelaunch-checklist.md`。
 
 ## 4. 本機啟動
 
@@ -68,6 +74,7 @@
 npm i
 npm run db:migrate:local   # 本機 D1（wrangler 模擬，存在 .wrangler/，不需要 Cloudflare 帳號）
 echo 'PASSWORD_PEPPER=dev-only-pepper-not-for-production' > .dev.vars   # 第一次；沒有它帳號功能回 500
+echo 'GM_USERNAMES=<你的帳號名稱>' >> .dev.vars   # 選用：GM 工具的帳號名單（逗號分隔，必須是已綁定的帳號）；不設定則 /api/gm/* 回 404
 npm run dev                # http://localhost:5173 （網頁與 /api 一起跑）
 npm test
 npm run build
@@ -89,8 +96,8 @@ src/data/content/  魔法 spells、配方 recipes、魔物 monsters、地點 zon
               被動 passives、魔導書區域 regions（*.json；內容與數值都在這裡）
 worker/       Cloudflare Worker（Hono）：遊客與帳號（sessions／credentials、password.ts 對瀏覽器雜湊做 HMAC＋pepper）、
               存檔上傳、伺服器擲骰合成、強化、使用關鍵道具、解鎖被動；
-              store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）；`discoveries`（稀有魔法的發現紀錄：`recordDiscovery`／`recentDiscoveries`、部分唯一索引保證每個魔法只有一位首位、可疑帳號不寫入）與 `GET /api/discoveries?after=<id>`（最多 20 筆、不回傳 player_id）
-migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔、0005 發現紀錄 `discoveries`：不動存檔）
+              store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）；`discoveries`（稀有魔法的發現紀錄：`recordDiscovery`／`recentDiscoveries`、部分唯一索引保證每個魔法只有一位首位、可疑帳號不寫入）與 `GET /api/discoveries?after=<id>`（最多 20 筆、不回傳 player_id）；GM 端點 `POST /api/gm/login`、`/api/gm/inventory`、`/api/gm/zones`、`/api/gm/reset-password`（`GM_USERNAMES` 未設定時全部 404，檢查在 session 驗證之前；GM token 以 `X-GM-Token` 傳，雜湊後存 `gm_tokens`；`gm_actions` 只寫入、不含密碼）、`excludedFromRecords(player)`（`suspicious || gmUsed`）
+migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔、0005 發現紀錄 `discoveries`：不動存檔、0006 GM 工具 `gm_used`／`gm_tokens`／`gm_actions`：不動存檔）
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳／動作／斷線／錯誤）、loop、boot
 src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何；
               element-fx.ts 各元素的粒子語彙；effects.ts 特效視覺；motion.ts 怪物擺動
@@ -99,6 +106,7 @@ src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable
               GrimoirePanel（SVG 技能樹，含迷霧、泡泡 NodeBubble、浮動詳情卡 NodeCard）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
               Onboarding、OfflineOverlay；
               useGame.ts 的 useRuntime(selector)；開發用 PerfMeter
+              GmWindow 與 gm/（GM 浮動視窗與四個分頁：GmInventoryTab、GmMapTab、GmRecipesTab＋recipe-table、GmPlayersTab＋temp-password、run-gm）、
               RareReveal（稀有魔法的全螢幕揭曉動畫，React＋CSS，不算戰鬥特效）、DiscoveryBell（頂端鈴鐺與動態清單）、useDiscoveryFeed（60 秒輪詢；未讀記在 localStorage `ig.feedSeen`）
 tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）
 tests/d1/     node:sqlite 上的 D1Store 與 migration 測試
@@ -124,6 +132,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - **遊客 token 只在 401 時清除**，其他錯誤一律保留 token 並讓玩家重試。
 - **不收集 email**；介面文字用繁體中文，資料名稱附 `nameEn`。
 - 配色：背景 `#0d0f14`、符文綠 `#8fd16a`、琥珀金 `#e8b84a`；元素色見 `src/render/palette.ts`。
+- **GM 端點與 `gm_used`**：`GM_USERNAMES` 未設定時 `/api/gm/*` 一律 404，而且檢查在 session 驗證之前；改存檔的 GM 動作都是伺服器動作，把變更套在稽核過的用戶端狀態上，寫回時把防作弊錨點設成新存檔並同時設 `players.gm_used = 1`（`audit.ts` 不改）；紀錄與排行只看 `excludedFromRecords`；GM token 失效回 **403 `{ error: 'gm_expired' }`，絕不能回 401**（401 會讓用戶端清掉遊戲 session）；明文密碼與雜湊不寫進 `gm_actions`；不能重設自己或 GM 名單內的帳號；遊戲畫面上不加任何 GM 入口。
 - **稀有魔法只能機率取得**（`spells.json` 的 `rare: true`，`content.ts` 檢查每個稀有魔法都只出現在有 `spellId: null` 落空結果的配方裡）；**動態清單與發現紀錄不公布配方**，只有魔法名稱、殘卷線索、發現者顯示名稱（不是登入名稱）；**可疑帳號不寫入 `discoveries`**（不上清單、不當首位），`rare.first` 以資料庫是否成功寫入 `first = 1` 為準；`discoveries` 在存檔寫入成功之後才寫（409／422 什麼都不寫）。
 
 ## 7. 工作方式與慣例
@@ -150,6 +159,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - 同一個 token 開多個分頁時，會互相以 409 覆蓋（不算作弊，資料一致）。
 - 沒有 WebGL 時，Pixi 初始化失敗沒有提示。
 - 魔導書：不支援雙指縮放。
+- GM 工具留下的小問題（驗收時發現，都是外觀或提示）：元素分頁的數字欄清空後會變 0，接著輸入 5 會顯示成「05」（數值正確）；玩家分頁輸入不合法的帳號名稱（例如含 `-`）時只顯示「連線失敗，請稍後再試」，沒有說明是名稱格式；其他見帳本 `docs/superpowers/sdd/2026-10-23-gm-tool/progress.md` 的 `minor (deferred)`。
 - 合成台改版留下的小問題：手機上點未學會的魔法，上方的線索框高度改變會讓技能樹整個位移，泡泡位置在位移前算好，會偏離節點幾十 px（不會被裁掉）；手機上合成台是方形、把技能樹擠到第一屏之外（規格接受，放入時有提示）；合成台特效沒有針對名魔法各做專屬版本。
 - 第二版 B 留下的小問題（見帳本 `docs/superpowers/sdd/2026-10-23-v2b-rare-discoveries/progress.md`）：存檔寫入成功後、用戶端沒收到回應（斷線）時不補播全螢幕動畫（資訊欄仍有紀錄）；`discoveries` 在存檔寫入之後才寫、不是同一個交易，伺服器剛好在中間當掉最多少記一筆；已經會聖光審判／深淵吞噬的舊存檔不回填 `discoveries`；動態清單的「自己的發現不算未讀」以顯示名稱比對，兩位玩家同名時對方的發現也會被當成自己的；鈴鐺一次只顯示最近 20 則，沒有「更多」；稀有魔法的戰鬥特效與全螢幕動畫只在 headless Edge 看過，沒有在真實瀏覽器與手機上看過；刷取時間超標見待辦 0a。
 
@@ -165,6 +175,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-23（Claude Code，Sonnet 5.5，Windows）**：以 subagent-driven-development 在 branch `feat/gm-tool`（從 `feat/core-rework` 分出）執行 GM 工具的 8 個任務（規格 `docs/superpowers/specs/2026-10-23-gm-tool-design.md`，帳本 `docs/superpowers/sdd/2026-10-23-gm-tool/progress.md`）。最後一項任務在 headless Edge 驗收規格第 9 節全部 9 項（兩個 context：GM 帳號與一般玩家），未設定 `GM_USERNAMES` 的 404 也另外驗過；驗收沒有發現需要修的 bug，只有兩個外觀小問題記在第 8 節。文件同步：上線前檢查清單把手動重設流程與「管理員重設密碼工具」改成「用 GM 工具」，加入 `GM_USERNAMES` secret 與遠端 D1 套用 0005、0006。停在：全部 commit，尚未 push、尚未合併。下一步：使用者在真實瀏覽器試用 GM 視窗與試玩合成台／核心重做；待辦 0a（稀有魔法刷取時間 139／167／158／211／183 對 120 模擬分鐘）仍待使用者決定；之後第二版 C+D。
 
 - **2026-10-23（Claude Code，Opus 5.5，Windows）**：使用者指示把 `feat/v2b-rare-discoveries` 合併回 `feat/core-rework`（fast-forward，branch 已刪）；合併後 `npm test` 53 個檔案 533 個測試（5 個跳過）、`npm run build` 通過。停在：`feat/core-rework` 尚未 push、尚未合併到 `main`；稀有魔法刷取時間仍待使用者決定。下一步：GM 工具的設計討論（進行中）。
 
