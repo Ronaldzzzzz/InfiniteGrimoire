@@ -59,3 +59,13 @@ Task 8: implemented 9b3670a (base a0518bd), DONE — spec §9 9/9 pass in headle
 Task 8: review spec ✅, quality Approved. Controller stopped two leftover vite dev servers (ports 5173/5174) from the acceptance run.
 Task 8: minor (deferred): AGENTS.md §5 GM line splits the UI list; checklist "所有請求都會 500" overclaims (only player-reading requests).
 Task 8: complete (commits a0518bd..9b3670a, review clean)
+
+## Final review (13b5b4c..96adb66, opus, security): With fixes — Critical 0, Important 1
+- I1: GM identity is a first-come username — the documented deploy order sets GM_USERNAMES before the GM account can be bound, so anyone binding a listed-but-unbound name becomes GM (then can reset non-GM passwords → account takeover). Fix: docs/process (deploy without the secret, bind the GM account with a strong password, then set the secret; "only already-bound names") + code hardening (ignore/log listed names that fail usernameProblem).
+Ruling: the fix wave also takes M2 (GM window keyed on username so an in-tab account switch drops the old token/tabs), M3 (write the gm_actions row before the commit/reset so a committed GM action is never unlogged), M5 (confirm step before a password reset showing the normalized name), M7 (checklist wording), plus the two recommended tests (GM route-variant regression; deleteGmTokens/findGmToken cross-player isolation) — all cheap and security-adjacent — cost if wrong: a slightly larger fix diff.
+Ruling: M4 (a non-GM typing their own correct password into the GM form counts toward their lockout — the deliberate price of no oracle) is documented, not changed; M6 (expired gm_tokens never pruned) deferred — cost if wrong: a self-lockout surprise; negligible table growth.
+Final fix wave: commits 96adb66..8d386cf (2e4dfb8 invalid GM names ignored; 55f96aa docs deploy order + checklist wording + lockout note; fa37a4f gm_actions written before the change; 176ac5c route-variant and store isolation tests; d8377b3 account switch drops the GM token; 8d386cf confirm before reset); scoped re-review: 6/6 addressed, no new Critical/Important.
+Ruling: controller amended the binding spec (gm_actions written before the action; GM_USERNAMES set last, only already-bound names) and the checklist's local-test line to match the fix wave — the spec must describe what ships — cost if wrong: none (docs only).
+Final: minor (deferred): an invalid GM list logs one warning per request (app built per request); account badge/ownName briefly empty during the post-switch refetch.
+Controller verified: npm test 60 files passed / 1 skipped, 625 passed / 5 skipped; npm run build exit 0.
+Branch complete — awaiting the user's merge decision. Still open from 第二版 B: the rare-spell farm-time decision.

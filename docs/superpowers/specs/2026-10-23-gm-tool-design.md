@@ -119,7 +119,7 @@ CREATE TABLE gm_actions (
 - 寫回時**防作弊錨點直接設成新存檔、錨點時間設為現在**（不是一般動作的「扣掉花費」），讓之後的上傳以 GM 改過的狀態為基準，不會因為增益過大或 `key:` 道具不是打魔王來的（R8）而被拒；`audit.ts` 本身不需要改。同時把 `players.gm_used` 設為 1。
 - `items` 裡不認得的道具 id（不符合 `ITEM_ID_RE`、或內容裡沒有的素材／關鍵道具）回 400；數量必須是 0～999999 的整數，否則 400。
 - 合成稀有魔法時（第二版 B 的 onCommit），`gm_used = 1` 的玩家比照可疑帳號：照常學會、不寫 `discoveries`、`rare.first = false`。`gm_used` 刻意和 `suspicious` 分開：`suspicious` 是防作弊判定的「可能作弊」，`gm_used` 是「GM 自己動過存檔」，意義不同、之後也可能要分開處理；伺服器加一個共用判斷（例如 `excludedFromRecords(player) = suspicious || gmUsed`），發現紀錄與之後的排行榜都只看它。
-- 每個 GM 端點成功後寫一筆 `gm_actions`；登入失敗不寫（已由登入失敗限制記錄）。
+- 每個 GM 動作寫一筆 `gm_actions`，而且在動作生效**之前**寫（改存檔：與標記 `gm_used` 一起在寫回存檔前；重設密碼：在更新雜湊前），確保生效的 GM 動作一定有紀錄；寫了紀錄但動作失敗（例如版本衝突）是可以接受的。登入失敗不寫（已由登入失敗限制記錄）。（2026-10-23 最終審查修正）
 - `Store` 介面加對應方法，`MemoryStore` 與 `D1Store` 都實作，加進 `store-contract.ts` 契約測試；`tests/d1` 加 migration 0006 測試（套用後舊存檔與玩家都在、`gm_used` 預設 0）。
 
 ## 7. 不能違反的規則（摘自 `AGENTS.md` 第 6 節，與本次相關）
@@ -128,7 +128,7 @@ CREATE TABLE gm_actions (
 - **防作弊錨點**：GM 改存檔後錨點要跟著前進（第 6 節），`tests/sim` 各路線仍 0 次被拒、worker 對抗測試全部通過。
 - **遊客 token 只在 401 時清除**：GM token 過期回 401 時只清 GM token，不能清掉一般 session（用不同的錯誤碼，例如 `{ error: 'gm_expired' }` 403，避免觸發一般 session 的 401 流程）。
 - **不收集 email**；介面文字繁體中文；「Lv.」只代表階級。
-- **部署前要先取得使用者同意**；`GM_USERNAMES` 與 pepper 一樣是上線前要設定的 secret，寫進上線前檢查清單。
+- **部署前要先取得使用者同意**；`GM_USERNAMES` 與 pepper 一樣是上線前要設定的 secret，寫進上線前檢查清單。**順序必須是：先在沒有 `GM_USERNAMES` 的狀態部署、用強密碼綁定 GM 帳號，最後才設定 `GM_USERNAMES`**；名單只能列已經綁定在自己名下的帳號名稱，否則任何人都能搶先綁定那個名稱而成為 GM。不合法的名稱會被忽略。（2026-10-23 最終審查修正）
 
 ## 8. 留給接手者決定
 
