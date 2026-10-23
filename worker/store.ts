@@ -40,6 +40,14 @@ export interface RateWindow {
   oldest: number | null;
 }
 
+export interface DiscoveryRow {
+  id: number;
+  spellId: string;
+  displayName: string;
+  at: number;
+  first: boolean;
+}
+
 export interface Store {
   /** Creates the player, its first session and its initial save. */
   createPlayer(p: PlayerRow, sessionHash: string, initialState: string, now: number): Promise<void>;
@@ -71,6 +79,10 @@ export interface Store {
   recordRejection(playerId: string, now: number, reasons: string[]): Promise<number>;
   markSuspicious(playerId: string): Promise<void>;
   recordSynthesis(playerId: string, now: number, combo: string, result: string): Promise<void>;
+  /** Inserts a discovery, as the first one for this spell when no first exists yet (the partial unique index decides races). */
+  recordDiscovery(d: { spellId: string; playerId: string; displayName: string; at: number }): Promise<{ first: boolean }>;
+  /** Newest first, at most `limit`; with `after`, only rows whose id is greater. Never exposes the player id. */
+  recentDiscoveries(after: number | null, limit: number): Promise<DiscoveryRow[]>;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -85,6 +97,8 @@ export class MemoryStore implements Store {
   saves = new Map<string, SaveRow>();
   rejections: { playerId: string; at: number; reasons: string[] }[] = [];
   synthEvents: { playerId: string; at: number; combo: string; result: string }[] = [];
+
+  discoveryLog: (DiscoveryRow & { playerId: string })[] = [];
 
   sessions = new Map<string, { playerId: string; createdAt: number; lastSeenAt: number }>();
   credentials = new Map<string, CredentialsRow>(); // by playerId
@@ -211,5 +225,20 @@ export class MemoryStore implements Store {
 
   async recordSynthesis(playerId: string, now: number, combo: string, result: string): Promise<void> {
     this.synthEvents.push({ playerId, at: now, combo, result });
+  }
+
+  async recordDiscovery(d: { spellId: string; playerId: string; displayName: string; at: number }): Promise<{ first: boolean }> {
+    const first = !this.discoveryLog.some((r) => r.spellId === d.spellId && r.first);
+    const id = this.discoveryLog.length === 0 ? 1 : this.discoveryLog[this.discoveryLog.length - 1].id + 1;
+    this.discoveryLog.push({ id, spellId: d.spellId, playerId: d.playerId, displayName: d.displayName, at: d.at, first });
+    return { first };
+  }
+
+  async recentDiscoveries(after: number | null, limit: number): Promise<DiscoveryRow[]> {
+    return this.discoveryLog
+      .filter((r) => after === null || r.id > after)
+      .sort((a, b) => b.id - a.id)
+      .slice(0, limit)
+      .map((r) => ({ id: r.id, spellId: r.spellId, displayName: r.displayName, at: r.at, first: r.first }));
   }
 }

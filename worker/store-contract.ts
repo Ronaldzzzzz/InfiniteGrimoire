@@ -75,5 +75,27 @@ export function describeStoreContract(name: string, make: () => Promise<Store>):
       await s.recordGuestCreation('9.9.9.9', 2000 + DAY + 1);
       expect(await s.guestCreations('1.2.3.4', 0)).toEqual({ count: 0, oldest: null });
     });
+
+    it('records discoveries with a single first per spell and lists them newest first', async () => {
+      const s = await make();
+      await s.createPlayer(player('p1'), 'h1', '{}', 1000);
+      await s.createPlayer(player('p2'), 'h2', '{}', 1000);
+      const d = (spellId: string, playerId: string, at: number) => ({ spellId, playerId, displayName: `name-${playerId}`, at });
+      expect(await s.recordDiscovery(d('holy', 'p1', 10))).toEqual({ first: true });
+      expect(await s.recordDiscovery(d('holy', 'p2', 20))).toEqual({ first: false });
+      expect(await s.recordDiscovery(d('abyss', 'p2', 30))).toEqual({ first: true });
+      const all = await s.recentDiscoveries(null, 20);
+      expect(all.map((r) => [r.spellId, r.displayName, r.at, r.first])).toEqual([
+        ['abyss', 'name-p2', 30, true],
+        ['holy', 'name-p2', 20, false],
+        ['holy', 'name-p1', 10, true],
+      ]);
+      expect(all[0].id).toBeGreaterThan(all[1].id);
+      expect(all[1].id).toBeGreaterThan(all[2].id);
+      for (const r of all) expect(Object.keys(r).sort()).toEqual(['at', 'displayName', 'first', 'id', 'spellId']);
+      expect((await s.recentDiscoveries(all[2].id, 20)).map((r) => r.id)).toEqual([all[0].id, all[1].id]);
+      expect(await s.recentDiscoveries(all[0].id, 20)).toEqual([]);
+      expect((await s.recentDiscoveries(null, 2)).map((r) => r.id)).toEqual([all[0].id, all[1].id]);
+    });
   });
 }

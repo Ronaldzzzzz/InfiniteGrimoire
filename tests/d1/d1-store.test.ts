@@ -55,3 +55,33 @@ describe('migration 0004', () => {
     expect((await new D1Store(d1).findPlayerBySession('h1'))?.player.id).toBe('p1');
   });
 });
+
+describe('migration 0005', () => {
+  it('keeps existing saves and adds the discoveries table', async () => {
+    const { d1, raw } = createD1();
+    applyMigrations(raw, MIGRATIONS.filter((f) => f < '0005'));
+    raw.prepare('INSERT INTO players (id, display_name, created_at, suspicious) VALUES (?, ?, ?, 0)').run('p1', 'Old', 1234);
+    raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 7, 5000, ?, 4000)').run('p1', '{"v":1}', '{"v":1}');
+
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0005'));
+
+    const save = (await new D1Store(d1).getSave('p1'))!;
+    expect(save.state).toBe('{"v":1}');
+    expect(save.revision).toBe(7);
+    expect(raw.prepare("SELECT name FROM sqlite_master WHERE name = 'discoveries'").all()).toHaveLength(1);
+  });
+});
+
+describe('D1Store discoveries race', () => {
+  it('inserts as non-first when a first already exists, leaving one first row', async () => {
+    const { d1, raw } = createD1();
+    applyMigrations(raw);
+    const store = new D1Store(d1);
+    await store.createPlayer({ id: 'p1', displayName: 'A', createdAt: 1, suspicious: false }, 'h1', '{}', 1);
+    raw.prepare('INSERT INTO discoveries (spell_id, player_id, display_name, at, first) VALUES (?, ?, ?, ?, 1)').run('holy', 'p1', 'A', 5);
+    expect(await store.recordDiscovery({ spellId: 'holy', playerId: 'p1', displayName: 'A', at: 6 })).toEqual({ first: false });
+    const rows = raw.prepare('SELECT first FROM discoveries WHERE spell_id = ?').all('holy') as { first: number }[];
+    expect(rows).toHaveLength(2);
+    expect(rows.filter((r) => r.first === 1)).toHaveLength(1);
+  });
+});

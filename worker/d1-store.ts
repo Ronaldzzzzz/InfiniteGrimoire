@@ -1,4 +1,4 @@
-import type { AnchorWrite, BindResult, CredentialsRow, PlayerRow, RateWindow, SaveRow, Store } from './store';
+import type { AnchorWrite, BindResult, CredentialsRow, DiscoveryRow, PlayerRow, RateWindow, SaveRow, Store } from './store';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -221,5 +221,28 @@ export class D1Store implements Store {
       .prepare('INSERT INTO synth_events (player_id, at, combo, result) VALUES (?, ?, ?, ?)')
       .bind(playerId, now, combo, result)
       .run();
+  }
+
+  async recordDiscovery(d: { spellId: string; playerId: string; displayName: string; at: number }): Promise<{ first: boolean }> {
+    const sql = 'INSERT INTO discoveries (spell_id, player_id, display_name, at, first) VALUES (?, ?, ?, ?, ?)';
+    try {
+      await this.db.prepare(sql).bind(d.spellId, d.playerId, d.displayName, d.at, 1).run();
+      return { first: true };
+    } catch (e) {
+      // the partial unique index says someone is already first: only a constraint error is handled here
+      if (!/constraint|unique/i.test(e instanceof Error ? e.message : String(e))) throw e;
+    }
+    await this.db.prepare(sql).bind(d.spellId, d.playerId, d.displayName, d.at, 0).run();
+    return { first: false };
+  }
+
+  async recentDiscoveries(after: number | null, limit: number): Promise<DiscoveryRow[]> {
+    const base = 'SELECT id, spell_id, display_name, at, first FROM discoveries';
+    const stmt =
+      after === null
+        ? this.db.prepare(`${base} ORDER BY id DESC LIMIT ?`).bind(limit)
+        : this.db.prepare(`${base} WHERE id > ? ORDER BY id DESC LIMIT ?`).bind(after, limit);
+    const { results } = await stmt.all<{ id: number; spell_id: string; display_name: string; at: number; first: number }>();
+    return results.map((r) => ({ id: r.id, spellId: r.spell_id, displayName: r.display_name, at: r.at, first: r.first === 1 }));
   }
 }
