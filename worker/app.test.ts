@@ -8,7 +8,7 @@ import { createInitialState } from '../src/engine/persist';
 import { createRng } from '../src/engine/rng';
 import { craftedId } from '../src/engine/spells';
 import { ELEMENT_ORDER } from '../src/engine/types';
-import { ANCHOR_ADVANCE_MS, createApp, FEED_LIMIT, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
+import { ANCHOR_ADVANCE_MS, createApp, excludedFromRecords, FEED_LIMIT, GM_TOKEN_TTL_MS, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
 import { hashToken, toBase64Url } from './auth';
 import { MemoryStore, type SaveRow } from './store';
 
@@ -994,6 +994,16 @@ describe('rare discoveries', () => {
     expect(store.discoveryLog).toEqual([]);
   });
 
+  it('a GM-used player learns the spell but is not recorded', async () => {
+    const a = await rarePlayer('Ann');
+    await store.markGmUsed(a.playerId);
+    const r = await roll(a, 0.001);
+    expect(r.status).toBe(200);
+    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    expect(saved(a.playerId).learned).toContain('worldfire');
+    expect(store.discoveryLog).toEqual([]);
+  });
+
   it('GET /api/discoveries needs a session and a valid after', async () => {
     expect((await app.request('/api/discoveries')).status).toBe(401);
     const a = await rarePlayer('Ann');
@@ -1007,5 +1017,152 @@ describe('rare discoveries', () => {
     const a = await guest('Ann');
     for (let i = 0; i < FEED_LIMIT + 5; i++) await store.recordDiscovery({ spellId: 'worldfire', playerId: a.body.playerId, displayName: 'Ann', at: i });
     expect((await feed(a.body.token)).body.discoveries).toHaveLength(FEED_LIMIT);
+  });
+});
+
+describe('GM login and tokens', () => {
+  const gmApp = (gmUsernames?: string) =>
+    createApp({ store, now: () => clock, rng: () => createRng(1), content, pepper: 'test-pepper', gmUsernames });
+  const req = (a: ReturnType<typeof createApp>, path: string, body: unknown, token?: string, gmToken?: string) =>
+    a.request(path, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(gmToken ? { 'x-gm-token': gmToken } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  /** A guest bound to `username` with password 'password1'. */
+  async function bound(username: string) {
+    const { body: g } = await guest(username);
+    const res = await app.request('/api/account/bind', json({ username, password: await ph('password1') }, g.token));
+    expect(res.status).toBe(200);
+    return g;
+  }
+  const PROBE = '/api/gm/__probe'; // passes the guard, then no route: 404
+  const login = async (a: ReturnType<typeof createApp>, token: string | undefined, username: string, pw = 'password1') =>
+    req(a, '/api/gm/login', { username, password: await ph(pw) }, token);
+  const gmTokenOf = async (res: Response) => ((await res.json()) as { gmToken: string }).gmToken;
+
+  it('every GM path is 404 when GM_USERNAMES is unset or blank, even without a session', async () => {
+    const g = await bound('gm_one');
+    for (const a of [gmApp(), gmApp(''), gmApp(' , ')]) {
+      expect((await login(a, undefined, 'gm_one')).status).toBe(404);
+      expect((await login(a, g.token, 'gm_one')).status).toBe(404);
+      expect((await req(a, '/api/gm/inventory', {})).status).toBe(404);
+      expect((await req(a, '/api/gm/inventory', {}, g.token)).status).toBe(404);
+    }
+    expect(store.gmTokens.size).toBe(0);
+  });
+
+  it('with GM_USERNAMES set, a missing session is 401', async () => {
+    const a = gmApp('gm_one');
+    expect((await login(a, undefined, 'gm_one')).status).toBe(401);
+    expect((await req(a, '/api/gm/inventory', {})).status).toBe(401);
+  });
+
+  it('a non-GM account with the right password gets the same 403 as a wrong password', async () => {
+    const a = gmApp('gm_one');
+    const p = await bound('plain_1');
+    const res = await login(a, p.token, 'plain_1');
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'invalid_credentials' });
+    expect(store.gmTokens.size).toBe(0);
+    expect(store.gmActions).toEqual([]);
+  });
+
+  it('a wrong GM password is 403 and counts toward the login limits', async () => {
+    const a = gmApp('gm_one');
+    const g = await bound('gm_one');
+    for (let i = 0; i < 5; i++) {
+      const res = await login(a, g.token, 'gm_one', 'nope-nope');
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ error: 'invalid_credentials' });
+    }
+    expect((await login(a, g.token, 'gm_one')).status).toBe(429);
+    expect((await app.request('/api/login', json({ username: 'gm_one', password: await ph('password1') }))).status).toBe(429);
+  });
+
+  it('a non-GM or wrong-session attempt also counts toward the login limits', async () => {
+    const a = gmApp('gm_one');
+    const p = await bound('plain_1');
+    for (let i = 0; i < 5; i++) expect((await login(a, p.token, 'plain_1')).status).toBe(403);
+    expect((await login(a, p.token, 'plain_1')).status).toBe(429);
+  });
+
+  it('a GM account logged in from another player session is 403', async () => {
+    const a = gmApp('gm_one');
+    await bound('gm_one');
+    const other = await bound('plain_1');
+    const res = await login(a, other.token, 'gm_one');
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'invalid_credentials' });
+    expect(store.gmTokens.size).toBe(0);
+  });
+
+  it('logs in a GM (name compared like logins), storing only the token hash and a login action', async () => {
+    const a = gmApp(' Other , ＧＭ_One ');
+    const g = await bound('gm_one');
+    const res = await login(a, g.token, 'GM_ONE');
+    expect(res.status).toBe(200);
+    const out = (await res.json()) as { gmToken: string; expiresAt: number };
+    expect(out.expiresAt).toBe(clock + GM_TOKEN_TTL_MS);
+    expect(GM_TOKEN_TTL_MS).toBe(30 * 60_000);
+    expect(out.gmToken.length).toBeGreaterThanOrEqual(43);
+    expect([...store.gmTokens.keys()]).toEqual([await hashToken(out.gmToken)]);
+    expect(store.gmActions).toEqual([{ gmPlayerId: g.playerId, at: clock, action: 'login', target: null, detail: null }]);
+    expect(store.players.get(g.playerId)?.gmUsed).toBe(false);
+  });
+
+  it('guarded GM paths need a valid X-GM-Token for the session player', async () => {
+    const a = gmApp('gm_one,gm_two');
+    const g = await bound('gm_one');
+    const g2 = await bound('gm_two');
+    const gmToken = await gmTokenOf(await login(a, g.token, 'gm_one'));
+    const expired = async (res: Response) => {
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ error: 'gm_expired' });
+    };
+    await expired(await req(a, PROBE, {}, g.token));
+    await expired(await req(a, PROBE, {}, g.token, 'wrong-token'));
+    await expired(await req(a, PROBE, {}, g2.token, gmToken)); // another player's session
+    expect((await req(a, PROBE, {}, g.token, gmToken)).status).toBe(404);
+    expect((await req(a, PROBE, {}, undefined, gmToken)).status).toBe(401);
+  });
+
+  it('a GM token expires after 30 minutes without touching the session', async () => {
+    const a = gmApp('gm_one');
+    const g = await bound('gm_one');
+    const gmToken = await gmTokenOf(await login(a, g.token, 'gm_one'));
+    clock += GM_TOKEN_TTL_MS - 1;
+    expect((await req(a, PROBE, {}, g.token, gmToken)).status).toBe(404);
+    clock += 2;
+    const res = await req(a, PROBE, {}, g.token, gmToken);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'gm_expired' });
+    expect((await a.request('/api/save', { headers: { authorization: `Bearer ${g.token}` } })).status).toBe(200);
+  });
+
+  it('changing the password or logging out revokes GM tokens', async () => {
+    const a = gmApp('gm_one');
+    const g = await bound('gm_one');
+    const t1 = await gmTokenOf(await login(a, g.token, 'gm_one'));
+    const pw = await req(a, '/api/account/password', { current: await ph('password1'), next: await ph('password2') }, g.token);
+    expect(pw.status).toBe(200);
+    expect((await req(a, PROBE, {}, g.token, t1)).status).toBe(403);
+    const t2 = await gmTokenOf(await login(a, g.token, 'gm_one', 'password2'));
+    expect((await req(a, PROBE, {}, g.token, t2)).status).toBe(404);
+    const lr = await a.request('/api/login', json({ username: 'gm_one', password: await ph('password2') }));
+    const second = ((await lr.json()) as { token: string }).token;
+    expect((await req(a, '/api/logout', {}, g.token)).status).toBe(200);
+    expect((await req(a, PROBE, {}, second, t2)).status).toBe(403);
+  });
+
+  it('excludedFromRecords covers suspicious and GM-used players', () => {
+    const p = { id: 'p', displayName: 'x', createdAt: 0, suspicious: false, gmUsed: false };
+    expect(excludedFromRecords(p)).toBe(false);
+    expect(excludedFromRecords({ ...p, suspicious: true })).toBe(true);
+    expect(excludedFromRecords({ ...p, gmUsed: true })).toBe(true);
   });
 });

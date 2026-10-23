@@ -8,6 +8,8 @@ export interface Env {
   ASSETS: Fetcher;
   /** `wrangler secret put PASSWORD_PEPPER`; `.dev.vars` locally. Never change it after launch. */
   PASSWORD_PEPPER?: string;
+  /** Comma-separated GM account names: `wrangler secret put GM_USERNAMES`; `.dev.vars` locally. Unset disables the GM tool. */
+  GM_USERNAMES?: string;
 }
 
 export default {
@@ -19,6 +21,7 @@ export default {
         rng: createCryptoRng,
         content,
         pepper: env.PASSWORD_PEPPER ?? '',
+        gmUsernames: env.GM_USERNAMES,
       });
       return app.fetch(request);
     }

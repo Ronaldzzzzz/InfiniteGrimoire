@@ -19,6 +19,19 @@ export interface AppDeps {
   content: Content;
   /** Secret HMAC key for password hashes (Cloudflare secret PASSWORD_PEPPER). Empty means accounts return 500. */
   pepper: string;
+  /**
+   * Comma-separated GM account names (Cloudflare secret GM_USERNAMES), compared by usernameKey.
+   * Unset or blank means every /api/gm/* path is 404.
+   */
+  gmUsernames?: string;
+}
+
+/** A GM token is valid this long after the GM login. */
+export const GM_TOKEN_TTL_MS = 30 * 60_000;
+
+/** Players kept out of the rare-discovery records (and later the rankings). */
+export function excludedFromRecords(player: PlayerRow): boolean {
+  return player.suspicious || player.gmUsed;
 }
 
 export const SUSPICIOUS_REJECTIONS_24H = 5;
@@ -73,7 +86,7 @@ export function chargeAnchor(anchor: GameState, before: GameState, after: GameSt
   return { ...anchor, inventory };
 }
 
-type Env = { Variables: { player: PlayerRow; sessionHash: string } };
+type Env = { Variables: { player: PlayerRow; sessionHash: string; gmPlayer: PlayerRow } };
 type Ctx = Context<Env>;
 
 class HttpError extends Error {
@@ -101,6 +114,13 @@ async function readJson(c: Ctx): Promise<Record<string, unknown>> {
 
 export function createApp(deps: AppDeps): Hono<Env> {
   const { store, now, content, pepper } = deps;
+  const gmKeys = new Set(
+    (deps.gmUsernames ?? '')
+      .split(',')
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0)
+      .map(usernameKey),
+  );
   const app = new Hono<Env>();
 
   app.onError((err, c) => {
@@ -225,6 +245,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     }
     await store.updatePasswordHash(player.id, await hashPassword(next, pepper), t);
     await store.deleteOtherSessions(player.id, c.get('sessionHash'));
+    await store.deleteGmTokens(player.id);
     return c.json({});
   });
 
@@ -239,7 +260,48 @@ export function createApp(deps: AppDeps): Hono<Env> {
     // a guest without credentials could never get this progress back
     if (!(await store.findCredentialsByPlayer(player.id))) return c.json({ error: 'not_bound' }, 409);
     await store.deleteSession(c.get('sessionHash'));
+    await store.deleteGmTokens(player.id);
     return c.json({});
+  });
+
+  // GM: the "enabled" check runs before the session check, so an unconfigured server answers
+  // every GM path exactly like an unknown path, signed in or not.
+  app.use('/api/gm/*', async (c, next) => {
+    if (gmKeys.size === 0) return c.notFound();
+    await next();
+  });
+  app.use('/api/gm/*', auth);
+  app.use('/api/gm/*', async (c, next) => {
+    if (c.req.path === '/api/gm/login') return next();
+    const player = c.get('player');
+    const raw = c.req.header('x-gm-token');
+    // 403, never 401: a 401 would make the client drop its game session (AGENTS.md section 6)
+    const owner = raw ? await store.findGmToken(await hashToken(raw), now()) : null;
+    if (owner === null || owner !== player.id) return c.json({ error: 'gm_expired' }, 403);
+    c.set('gmPlayer', player);
+    await next();
+  });
+
+  app.post('/api/gm/login', async (c) => {
+    const { username, password } = readCredentials(await readJson(c));
+    const key = usernameKey(username);
+    const player = c.get('player');
+    const ip = clientIp(c);
+    const t = now();
+    const retry = await loginBlocked([[`u:${key}`, USER_FAIL_LIMIT], [`ip:${ip}`, IP_FAIL_LIMIT]], t);
+    if (retry !== null) return rateLimited(c, retry);
+    const cred = await store.findCredentialsByKey(key);
+    // verify whenever the account exists, so a non-GM account answers exactly like a wrong password
+    const passwordOk = cred !== null && (await verifyPassword(password, cred.passwordHash, pepper));
+    if (!cred || !passwordOk || !gmKeys.has(key) || cred.playerId !== player.id) {
+      await store.recordLoginFailure([`u:${key}`, `ip:${ip}`], t);
+      return c.json({ error: 'invalid_credentials' }, 403);
+    }
+    const gmToken = newToken();
+    const expiresAt = t + GM_TOKEN_TTL_MS;
+    await store.createGmToken(await hashToken(gmToken), player.id, expiresAt);
+    await store.recordGmAction({ gmPlayerId: player.id, at: t, action: 'login', target: null, detail: null });
+    return c.json({ gmToken, expiresAt });
   });
 
   app.use('/api/save', auth);
@@ -402,11 +464,11 @@ export function createApp(deps: AppDeps): Hono<Env> {
         const resultKey = 'spellId' in result ? `${result.kind}:${result.spellId}` : result.kind;
         await store.recordSynthesis(playerId, t, comboKey(list), resultKey);
         if (result.kind !== 'learned' || !content.spells[result.spellId]?.rare) return;
-        // decided by the DB insert, and only after the save committed; suspicious players learn but are not recorded
+        // decided by the DB insert, and only after the save committed; excluded players (suspicious, GM-used) learn but are not recorded
         // the learn is already committed: a failing discovery write must not turn it into a 500
         try {
           const player = await store.getPlayer(playerId);
-          if (!player || player.suspicious) return { ...result, rare: { first: false } };
+          if (!player || excludedFromRecords(player)) return { ...result, rare: { first: false } };
           const { first } = await store.recordDiscovery({ spellId: result.spellId, playerId, displayName: player.displayName, at: t });
           return { ...result, rare: { first } };
         } catch {
