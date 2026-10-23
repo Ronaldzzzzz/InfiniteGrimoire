@@ -49,6 +49,16 @@ describe('ElementTable', () => {
     expect(screen.queryByRole('button', { name: /^升階/ })).toBeNull(); // the old one-per-row button is gone
   });
 
+  it('gives each arrow its own column, apart from the count buttons', () => {
+    const { container } = render(<ElementTable inventory={{ 'el:fire:1': 3 }} onPick={() => {}} onUpgrade={() => {}} />);
+    const arrowCell = btn('初階火升成中階火').closest('td')!;
+    expect(arrowCell.classList.contains('arrow-cell')).toBe(true);
+    expect(arrowCell.querySelector('.cell')).toBeNull();
+    // name + 5 grades + 4 arrow columns, and the materials row spans all but the name
+    expect(container.querySelectorAll('tbody tr')[0]!.children).toHaveLength(10);
+    expect(container.querySelector('.mat-row td')!.getAttribute('colspan')).toBe('9');
+  });
+
   it('upgrades exactly the grade whose arrow is clicked, even when a lower grade could also upgrade', () => {
     const onUpgrade = vi.fn();
     render(<ElementTable inventory={{ 'el:fire:1': 3, 'el:fire:2': 10 }} onPick={() => {}} onUpgrade={onUpgrade} />);

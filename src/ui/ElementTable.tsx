@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { ELEMENT_ORDER, GRADE_NAMES, GRADE_UPGRADE_COST, elementItem, MAX_ELEMENT_GRADE, type ElementId, type Inventory, type ItemId } from '../engine/types';
 import { itemName } from './messages';
 import { ELEMENT_LABEL } from './picker-data';
@@ -40,12 +41,15 @@ export function ElementTable({
           {GRADES.map((g) => {
             const cost = GRADE_UPGRADE_COST[g - 1];
             return (
-              <th key={g} scope="col">
-                {GRADE_NAMES[g - 1]}
-                {cost !== undefined && (
-                  <span className="grade-cost" title={`${cost} 個${GRADE_NAMES[g - 1]}升成 1 個${GRADE_NAMES[g]}`}>{cost}→1</span>
-                )}
-              </th>
+              <Fragment key={g}>
+                <th scope="col">
+                  {GRADE_NAMES[g - 1]}
+                  {cost !== undefined && (
+                    <span className="grade-cost" title={`${cost} 個${GRADE_NAMES[g - 1]}升成 1 個${GRADE_NAMES[g]}`}>{cost}→1</span>
+                  )}
+                </th>
+                {g < MAX_ELEMENT_GRADE && <td className="arrow-col" aria-hidden />}
+              </Fragment>
             );
           })}
         </tr>
@@ -59,33 +63,37 @@ export function ElementTable({
                 const n = inventory[id] ?? 0;
                 const next = elementItem(el, g + 1);
                 return (
-                  <td key={g} className="grade-cell">
-                    <button type="button" className="cell" disabled={n === 0} aria-label={`${itemName(id)} ×${n}`} onClick={() => onPick(id)}>
-                      {n}
-                    </button>
-                    {g < MAX_ELEMENT_GRADE && (
-                      <button
-                        type="button"
-                        className="up-arrow"
-                        disabled={upgradeLocked || upgradeCount(inventory, el, g, false) === 0}
-                        aria-label={`${itemName(id)}升成${itemName(next)}`}
-                        title={`${GRADE_UPGRADE_COST[g - 1]} 個${itemName(id)} → 1 個${itemName(next)}（Shift：能升多少就升多少）`}
-                        onClick={(e) => {
-                          const count = upgradeCount(inventory, el, g, e.shiftKey);
-                          if (count > 0) onUpgrade(el, g, count);
-                        }}
-                      >
-                        ›
+                  <Fragment key={g}>
+                    <td>
+                      <button type="button" className="cell" disabled={n === 0} aria-label={`${itemName(id)} ×${n}`} onClick={() => onPick(id)}>
+                        {n}
                       </button>
+                    </td>
+                    {g < MAX_ELEMENT_GRADE && (
+                      <td className="arrow-cell">
+                        <button
+                          type="button"
+                          className="up-arrow"
+                          disabled={upgradeLocked || upgradeCount(inventory, el, g, false) === 0}
+                          aria-label={`${itemName(id)}升成${itemName(next)}`}
+                          title={`${GRADE_UPGRADE_COST[g - 1]} 個${itemName(id)} → 1 個${itemName(next)}（Shift：能升多少就升多少）`}
+                          onClick={(e) => {
+                            const count = upgradeCount(inventory, el, g, e.shiftKey);
+                            if (count > 0) onUpgrade(el, g, count);
+                          }}
+                        >
+                          ›
+                        </button>
+                      </td>
                     )}
-                  </td>
+                  </Fragment>
                 );
               })}
             </tr>
         ))}
         <tr className="mat-row">
           <th scope="row">素材</th>
-          <td colSpan={GRADES.length}>
+          <td colSpan={2 * GRADES.length - 1}>
             {materialIds(inventory).length === 0 && <span className="muted">尚無素材</span>}
             {materialIds(inventory).map((id) => {
               const n = inventory[id] ?? 0;
