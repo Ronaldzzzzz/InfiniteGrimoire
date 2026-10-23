@@ -10,6 +10,17 @@ import { fakeRuntime } from './test-runtime';
 
 afterEach(cleanup);
 
+class TestPointerEvent extends MouseEvent {
+  pointerId: number;
+  constructor(type: string, init: PointerEventInit = {}) {
+    super(type, init);
+    this.pointerId = init.pointerId ?? 1;
+  }
+}
+if (typeof globalThis.PointerEvent === 'undefined') (globalThis as unknown as { PointerEvent: unknown }).PointerEvent = TestPointerEvent;
+Element.prototype.setPointerCapture = () => {};
+Element.prototype.releasePointerCapture = () => {};
+
 const node = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) });
 
 function setup(game: Partial<GameState> = {}, synthPending = false, action = vi.fn(async (): Promise<ActionResult | null> => null)) {
@@ -107,5 +118,39 @@ describe('GrimoirePanel', () => {
     expect(onRender.mock.calls.length).toBe(before + 1);
     act(() => rt.set({ game: { inventory: { 'el:fire:1': 4, 'key:thunder_eye': 1 } } }));
     expect(screen.getByRole('button', { name: '使用大鵬之眼' })).toBeTruthy();
+  });
+
+  it('the wheel zooms the tree and never scrolls the page', () => {
+    setup();
+    const svg = document.querySelector('svg.grimoire-svg')!;
+    const before = svg.getAttribute('viewBox')!.split(' ').map(Number)[2]!;
+    expect(fireEvent.wheel(svg, { deltaY: -100 })).toBe(false); // preventDefault was called
+    expect(svg.getAttribute('viewBox')!.split(' ').map(Number)[2]).toBeCloseTo(before / 1.1);
+  });
+
+  it('dragging pans without re-rendering the tree, and the home button goes back', () => {
+    const rt = fakeRuntime({ learned: ['mana_bolt'] });
+    const onRender = vi.fn();
+    render(
+      <Profiler id="grimoire" onRender={onRender}>
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} content={content} />
+      </Profiler>,
+    );
+    const svg = document.querySelector('svg.grimoire-svg')!;
+    const initial = svg.getAttribute('viewBox');
+    const renders = onRender.mock.calls.length;
+    fireEvent.pointerDown(svg, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    expect(svg.getAttribute('viewBox')).not.toBe(initial);
+    expect(onRender.mock.calls.length).toBe(renders);
+    fireEvent.click(screen.getByRole('button', { name: '回到中心' }));
+    expect(svg.getAttribute('viewBox')).toBe(initial);
+  });
+
+  it('the zoom buttons live inside the tree stage', () => {
+    setup();
+    expect(document.querySelector('.tree-stage button[aria-label="放大"]')).toBeTruthy();
+    expect(document.querySelector('.tree-stage button[aria-label="回到中心"]')).toBeTruthy();
   });
 });
