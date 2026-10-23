@@ -1,0 +1,80 @@
+<h2>GM 工具：不加在原本的畫面上，邊玩邊調整</h2>
+<p class="subtitle">三種做法都不在遊戲介面上加任何按鈕，用快捷鍵叫出來。點你覺得對的那個，再回終端機告訴我。</p>
+
+<style>
+  .scr { background:#0d0f14; border-radius:8px; font-family:sans-serif; color:#e6e9ef; font-size:11px; height:260px; position:relative; overflow:hidden; }
+  .top { height:24px; border-bottom:1px solid #2a3140; display:flex; align-items:center; padding:0 8px; background:#161a22; color:#e8b84a; font-weight:bold; }
+  .cols { position:absolute; top:28px; bottom:4px; left:4px; right:4px; display:grid; grid-template-columns:1fr 1.1fr 1fr; gap:4px; }
+  .col { border:1px solid #2a3140; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#4a5263; }
+  .gm { position:absolute; background:#1b1424f2; border:1px solid #c084fc; border-radius:8px; box-shadow:0 6px 24px #000a; padding:8px; color:#e6e9ef; }
+  .gm h5 { margin:0 0 6px; color:#c084fc; font-size:12px; display:flex; justify-content:space-between; }
+  .gm .tabs { display:flex; gap:4px; margin-bottom:6px; } .gm .tabs span { border:1px solid #4b3a63; border-radius:4px; padding:1px 5px; font-size:10px; } .gm .tabs span.on { border-color:#c084fc; color:#c084fc; }
+  .gm .row { display:flex; gap:4px; align-items:center; margin:3px 0; font-size:10px; } .gm .row b { width:28px; color:#9aa3b2; font-weight:normal; }
+  .gm .row i { font-style:normal; border:1px solid #3a4252; border-radius:3px; padding:0 4px; min-width:16px; text-align:center; }
+  .key { position:absolute; bottom:6px; left:8px; font-size:10px; color:#9aa3b2; background:#161a22; border:1px solid #2a3140; border-radius:4px; padding:2px 6px; }
+  .win { position:absolute; inset:8px; display:grid; grid-template-columns:1.6fr 1fr; gap:8px; }
+  .win .browser { border:1px solid #3a4252; border-radius:6px; overflow:hidden; position:relative; background:#0d0f14; }
+  .win .bar { height:14px; background:#22262f; font-size:9px; color:#9aa3b2; padding:0 6px; line-height:14px; }
+</style>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>浮動視窗（可拖曳）</h3>
+      <p>按快捷鍵叫出一個紫框小視窗，浮在遊戲上面，可以拖到不擋視線的角落、縮小、關掉。遊戲照常進行，改了立刻看到效果。</p>
+      <div class="scr">
+        <div class="top">無限魔導書</div>
+        <div class="cols"><div class="col">戰鬥</div><div class="col">技能樹</div><div class="col">合成台</div></div>
+        <div class="gm" style="right:14px; top:40px; width:170px;">
+          <h5>GM 工具 <span>— ✕</span></h5>
+          <div class="tabs"><span class="on">元素</span><span>地圖</span><span>配方表</span><span>玩家</span></div>
+          <div class="row"><b>火</b><i>12</i><i>4</i><i>0</i><i>0</i><i>0</i></div>
+          <div class="row"><b>風</b><i>8</i><i>2</i><i>0</i><i>0</i><i>0</i></div>
+          <div class="row"><b>雷</b><i>5</i><i>0</i><i>0</i><i>0</i><i>0</i></div>
+        </div>
+        <span class="key">Ctrl＋Shift＋G 開關</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>右側滑出的抽屜</h3>
+      <p>按快捷鍵從畫面右側滑出一條半透明抽屜，蓋住部分合成台；再按一次收回。比較寬，配方表好讀，但會擋住右欄。</p>
+      <div class="scr">
+        <div class="top">無限魔導書</div>
+        <div class="cols"><div class="col">戰鬥</div><div class="col">技能樹</div><div class="col">合成台</div></div>
+        <div class="gm" style="right:0; top:24px; bottom:0; width:42%; border-radius:8px 0 0 8px;">
+          <h5>GM 工具 <span>›</span></h5>
+          <div class="tabs"><span>元素</span><span>地圖</span><span class="on">配方表</span><span>玩家</span></div>
+          <div class="row">煉獄＋高階火 → 焚世之焰 1.5%</div>
+          <div class="row">火球＋風刃 → 火焰龍捲</div>
+          <div class="row">雷神之錘＋日輝碎片 → 聖光審判 10%</div>
+        </div>
+        <span class="key">Ctrl＋Shift＋G 開關</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>另開一個小視窗，遙控遊戲</h3>
+      <p>按快捷鍵另開一個瀏覽器小視窗，放在螢幕旁邊；遊戲畫面完全不被擋到，在小視窗改的東西即時反映到遊戲分頁。需要兩個視窗並排。</p>
+      <div class="scr">
+        <div class="win">
+          <div class="browser"><div class="bar">遊戲分頁</div><div style="position:absolute;inset:16px 4px 4px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><div class="col">戰鬥</div><div class="col">樹</div><div class="col">合成</div></div></div>
+          <div class="browser"><div class="bar">GM 工具（另一個視窗）</div>
+            <div class="gm" style="position:static;margin:4px;border:none;box-shadow:none;background:none">
+              <div class="tabs"><span class="on">元素</span><span>地圖</span><span>配方</span></div>
+              <div class="row"><b>火</b><i>12</i><i>4</i><i>0</i></div>
+              <div class="row"><b>風</b><i>8</i><i>2</i><i>0</i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
