@@ -2,12 +2,10 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type Point
 import { content as defaultContent } from '../engine/content';
 import type { Content } from '../engine/model';
 import { visibleRegions } from '../engine/tree';
-import type { ActionResult } from '../game/api';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import { COLORS, spellColor } from '../render/palette';
 import { layoutGrimoire, polar, type FogBand } from './grimoire-layout';
-import { itemName, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { NodeBubble } from './NodeBubble';
 import { NodeCard } from './NodeCard';
 import { bubblePlacement, HOME, panBy, viewBoxOf, zoomAt, type View } from './tree-viewport';
@@ -15,7 +13,7 @@ import { useRuntime, type RuntimeStore } from './useGame';
 
 const SIZE = 600;
 const NODE_R = 16;
-/** How long the fog of a region just revealed takes to clear (matches the CSS animation). */
+/** How long the fog of a region just revealed takes to clear (matches the CSS animation); the app clears `lifting` after it. */
 export const FOG_LIFT_MS = 1200;
 /** How long the "put into the altar" toast stays (the altar is out of view on narrow screens). */
 export const PLACED_TOAST_MS = 1500;
@@ -25,16 +23,6 @@ const BUBBLE_SIZE = { w: 220, h: 96 };
 type Selected = { kind: 'spell' | 'passive'; id: string } | null;
 type Runtime = RuntimeStore & Pick<GameRuntime, 'equip'>;
 type Sync = Pick<SyncController, 'action'>;
-
-/** Runs a server action and turns its outcome into the line shown under the buttons. */
-async function runAction(run: () => Promise<ActionResult | null>, content: Content): Promise<{ result: ActionResult | null; message: string }> {
-  try {
-    const result = await run();
-    return { result, message: result ? synthMessage(result, content) : SYNTH_RETRY_MESSAGE };
-  } catch {
-    return { result: null, message: SYNTH_ERROR_MESSAGE };
-  }
-}
 
 /** The ring band of a fogged region, with question marks around it. */
 function Fog({ band, lifting = false }: { band: FogBand; lifting?: boolean }) {
@@ -59,6 +47,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   onHint,
   onPick,
   slotsFull,
+  lifting,
   content = defaultContent,
 }: {
   runtime: Runtime;
@@ -66,13 +55,14 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   onHint: (spellId: string | null) => void;
   onPick: (spellId: string) => void;
   slotsFull: boolean;
+  /** The region whose fog is lifting right now (set by the app after a key item is used). */
+  lifting: string | null;
   content?: Content;
 }) {
   const learned = useRuntime(runtime, (s) => s.game.learned);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const revealed = useRuntime(runtime, (s) => s.game.revealed);
   const passives = useRuntime(runtime, (s) => s.game.passives);
-  const synthPending = useRuntime(runtime, (s) => s.synthPending);
   const visible = useMemo(() => visibleRegions({ revealed }, content), [content, revealed]);
   const layout = useMemo(
     () => layoutGrimoire(Object.values(content.spells), visible, Object.values(content.passives), content.regions),
@@ -89,18 +79,10 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const [cardOpen, setCardOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [flash, setFlash] = useState<string | null>(null);
-  const [lifting, setLifting] = useState<string | null>(null);
-  const [keyMessage, setKeyMessage] = useState('');
   const drag = useRef<{ x: number; y: number; moved: boolean; id: number } | null>(null);
   const wasDrag = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!lifting) return;
-    const t = setTimeout(() => setLifting(null), FOG_LIFT_MS);
-    return () => clearTimeout(t);
-  }, [lifting]);
 
   useEffect(() => {
     if (!toast) return;
@@ -211,33 +193,10 @@ export const GrimoirePanel = memo(function GrimoirePanel({
     setCardOpen(false);
   };
 
-  // a joined string, so drops that don't add a usable key item don't re-render the tree
-  const keyList = useRuntime(runtime, (s) => {
-    const inv = s.game.inventory;
-    return Object.keys(inv)
-      .filter((id) => inv[id]! > 0 && Object.hasOwn(content.keyItems, id) && !visible.has(content.keyItems[id]!.reveals))
-      .join(',');
-  });
-  const keys = keyList ? keyList.split(',') : [];
-  const useKey = async (keyItem: string): Promise<void> => {
-    const { result, message } = await runAction(() => sync.action('reveal', { keyItem }), content);
-    setKeyMessage(message);
-    if (result?.kind === 'revealed') setLifting(result.region);
-  };
   const liftBand = lifting ? allBands.find((b) => b.region === lifting) : undefined;
 
   return (
     <div className="grimoire" onKeyDown={(e) => { if (e.key === 'Escape') closeAll(); }}>
-      {keys.length > 0 && (
-        <div className="key-items">
-          {keys.map((id) => (
-            <button key={id} type="button" className="key-use" title={content.keyItems[id]!.desc} disabled={synthPending} onClick={() => void useKey(id)}>
-              使用{itemName(id, content)}
-            </button>
-          ))}
-        </div>
-      )}
-      {keyMessage && <p className="synth-message" role="status">{keyMessage}</p>}
       <div className="tree-stage" ref={stageRef}>
       <div className="grimoire-controls">
         <button type="button" aria-label="放大" onClick={() => { onGesture(); zoomBy(1.25); }}>＋</button>

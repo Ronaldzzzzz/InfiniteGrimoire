@@ -33,8 +33,11 @@ function setup(
   const onHint = vi.fn();
   const onPick = vi.fn();
   const sync = { action };
-  render(<GrimoirePanel runtime={rt} sync={sync} onHint={onHint} onPick={onPick} slotsFull={slotsFull} content={content} />);
-  return { rt, onHint, onPick, sync };
+  const ui = (lifting: string | null) => (
+    <GrimoirePanel runtime={rt} sync={sync} onHint={onHint} onPick={onPick} slotsFull={slotsFull} lifting={lifting} content={content} />
+  );
+  const { rerender } = render(ui(null));
+  return { rt, onHint, onPick, sync, rerender: (lifting: string | null) => rerender(ui(lifting)) };
 }
 
 describe('GrimoirePanel', () => {
@@ -166,24 +169,18 @@ describe('GrimoirePanel', () => {
     expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(content.spells.mana_bolt!.name);
   });
 
-  it('fogged regions show no nodes and a key item reveals them', async () => {
+  it('fogged regions show no nodes; once revealed the fog lifts and the nodes appear', () => {
     const inferno = content.spells.inferno!.name;
-    let rt: ReturnType<typeof fakeRuntime>;
-    const action = vi.fn(async (): Promise<ActionResult | null> => {
-      rt.set({ game: { revealed: ['outer'], inventory: {} } });
-      return { kind: 'revealed', region: 'outer' };
-    });
-    ({ rt } = setup({ inventory: { 'key:storm_heart': 1 } }, false, action));
+    const { rt, rerender } = setup({ inventory: {} });
     expect(screen.queryByRole('button', { name: new RegExp(inferno) })).toBeNull();
     expect(screen.queryByRole('button', { name: new RegExp(content.passives.ember_affinity!.name) })).toBeNull();
     expect(screen.getAllByLabelText('迷霧').length).toBe(4);
-    fireEvent.click(screen.getByRole('button', { name: '使用風暴之心' }));
-    expect(action).toHaveBeenCalledWith('reveal', { keyItem: 'key:storm_heart' });
-    await waitFor(() => expect(screen.getByRole('button', { name: new RegExp(inferno) })).toBeTruthy());
+    expect(screen.queryByRole('button', { name: /使用風暴之心/ })).toBeNull();
+    act(() => rt.set({ game: { revealed: ['outer'] } }));
+    rerender('outer');
+    expect(screen.getByRole('button', { name: new RegExp(inferno) })).toBeTruthy();
     expect(screen.getAllByLabelText('迷霧').length).toBe(3);
     expect(document.querySelector('.fog.lifting')).toBeTruthy();
-    expect(screen.getByText('迷霧散開了')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '使用風暴之心' })).toBeNull();
   });
 
   it('passive unlock button only when the requirement is met', async () => {
@@ -209,7 +206,7 @@ describe('GrimoirePanel', () => {
     const onRender = vi.fn();
     render(
       <Profiler id="grimoire" onRender={onRender}>
-        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} content={content} />
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} lifting={null} content={content} />
       </Profiler>,
     );
     fireEvent.click(node(content.spells.fireball!.name));
@@ -226,8 +223,6 @@ describe('GrimoirePanel', () => {
     // ...but a drop the panel shows does
     act(() => rt.set({ game: { inventory: { 'el:fire:1': 4 } } }));
     expect(onRender.mock.calls.length).toBe(before + 1);
-    act(() => rt.set({ game: { inventory: { 'el:fire:1': 4, 'key:thunder_eye': 1 } } }));
-    expect(screen.getByRole('button', { name: '使用大鵬之眼' })).toBeTruthy();
   });
 
   it('the wheel zooms the tree and never scrolls the page', () => {
@@ -243,7 +238,7 @@ describe('GrimoirePanel', () => {
     const onRender = vi.fn();
     render(
       <Profiler id="grimoire" onRender={onRender}>
-        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} content={content} />
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} lifting={null} content={content} />
       </Profiler>,
     );
     const svg = document.querySelector('svg.grimoire-svg')!;

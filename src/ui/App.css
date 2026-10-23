@@ -184,9 +184,12 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .grimoire-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
 .grimoire-tabs button { flex: 1; min-height: 36px; padding: 4px 8px; }
 .grimoire-tabs button[aria-selected='true'] { border-color: var(--rune); color: var(--rune); }
-.key-items { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.key-use { border-color: var(--gold); color: var(--gold); animation: key-glow 1.6s ease-in-out infinite alternate; }
-@keyframes key-glow { from { box-shadow: 0 0 0 rgba(232, 184, 74, 0); } to { box-shadow: 0 0 10px rgba(232, 184, 74, 0.55); } }
+.key-bar { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 4; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100% - 16px); }
+.key-use { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 14px; font-size: 14px; font-weight: 700; color: #1a1305; border: 1px solid var(--gold); background: linear-gradient(180deg, #f3cf72, #c8962a); animation: key-glow 1.6s ease-in-out infinite alternate; }
+.key-use:disabled { opacity: 0.5; animation: none; }
+.key-desc { font-size: 10px; font-weight: 400; max-width: 180px; line-height: 1.2; }
+.key-message { flex-basis: 100%; margin: 0; text-align: center; font-size: 12px; color: var(--gold); text-shadow: 0 1px 3px #000; }
+@keyframes key-glow { from { box-shadow: 0 0 0 rgba(232, 184, 74, 0); } to { box-shadow: 0 0 14px rgba(232, 184, 74, 0.8); } }
 .fog-band { fill: rgba(139, 147, 165, 0.22); stroke: #3a4254; stroke-width: 1.5; stroke-dasharray: 6 6; }
 .fog-mark { fill: var(--muted); font-size: 18px; opacity: 0.6; }
 .fog.lifting { animation: fog-lift 1.2s ease-out forwards; transform-origin: 0 0; pointer-events: none; }

@@ -13,7 +13,7 @@ import { App } from './App';
 vi.mock('./BattleCanvas', () => ({ BattleCanvas: () => null }));
 afterEach(cleanup);
 
-function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1': 1 }, learned = ['mana_bolt']) {
+function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1': 1 }, learned = ['mana_bolt'], actionResult: ActionResult | null = null) {
   const game = { ...createInitialState(content), inventory, learned };
   const snapshot: Snapshot = { game, battle: createBattle(game.currentZone), revision: 1, paused: false, synthPending: false };
   const runtime = {
@@ -28,7 +28,7 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
     status: 'online',
     onStatus: () => () => {},
     synthesize: vi.fn(() => new Promise<ActionResult | null>((r) => (reply = r))),
-    action: vi.fn(async () => null),
+    action: vi.fn(async () => actionResult),
     uploadNow: vi.fn(async () => {}),
   } as unknown as SyncController;
   const api = {
@@ -47,6 +47,14 @@ const slotTexts = () =>
   screen.getAllByRole('button').filter((b) => b.classList.contains('slot')).map((b) => b.textContent);
 
 describe('App layout', () => {
+  it('using a key item from the battle view switches back to the tree tab', async () => {
+    setup({ 'key:storm_heart': 1 }, ['mana_bolt'], { kind: 'revealed', region: 'outer' });
+    fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
+    expect(screen.getByRole('tab', { name: '魔法筆記' }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /使用風暴之心/ }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: '技能樹' }).getAttribute('aria-selected')).toBe('true'));
+  });
+
   it('opens the account dialog from the top bar', async () => {
     setup();
     // the first full App render plus the mocked account lookup can pass 1 s when the suite runs under load

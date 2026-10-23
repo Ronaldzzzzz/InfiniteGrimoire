@@ -9,7 +9,8 @@ import { AccountDialog } from './AccountDialog';
 import { BattleCanvas } from './BattleCanvas';
 import { DiscoveryBanner } from './DiscoveryBanner';
 import { ElementTable } from './ElementTable';
-import { GrimoirePanel } from './GrimoirePanel';
+import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
+import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
 import { emptySlots, fillSlot, SynthesisPanel, type Slots } from './SynthesisPanel';
@@ -41,6 +42,16 @@ export function App({
   const [tab, setTab] = useState<'tree' | 'notebook'>('tree');
   // `n` restarts the banner when the same spell comes out twice in a row
   const [discovery, setDiscovery] = useState<{ spell: Spell; isNew: boolean; n: number } | null>(null);
+  const [lifting, setLifting] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lifting) return;
+    const t = setTimeout(() => setLifting(null), FOG_LIFT_MS);
+    return () => clearTimeout(t);
+  }, [lifting]);
+  const onRevealed = useCallback((region: string): void => {
+    setLifting(region);
+    setTab('tree'); // so the fog lifting is in view
+  }, []);
   const endDiscovery = useCallback(() => setDiscovery(null), []);
   useEffect(() => {
     let alive = true;
@@ -79,6 +90,7 @@ export function App({
           {discovery && (
             <DiscoveryBanner key={discovery.n} spell={discovery.spell} isNew={discovery.isNew} onDone={endDiscovery} />
           )}
+          <KeyItemBar runtime={runtime} sync={sync} content={content} onRevealed={onRevealed} />
         </div>
         <div className="side">
           <section className="workbench" aria-label="元素與合成">
@@ -106,7 +118,7 @@ export function App({
             </div>
             {/* <768px the slots are scrolled out of view above the grimoire; the node bubble repeats the hint */}
             {tab === 'tree' ? (
-              <GrimoirePanel runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={!slots.includes(null)} content={content} />
+              <GrimoirePanel runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={!slots.includes(null)} lifting={lifting} content={content} />
             ) : (
               <Notebook runtime={runtime} sync={sync} content={content} onPick={pick} />
             )}

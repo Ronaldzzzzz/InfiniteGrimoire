@@ -2,24 +2,14 @@ import { useEffect, useState } from 'react';
 import type { Content } from '../engine/model';
 import { spellAtLevel } from '../engine/spells';
 import { passiveRequirementMet } from '../engine/tree';
-import type { ActionResult } from '../game/api';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import { AffinityTag, ElementDots } from './DiscoveryBanner';
 import { EmpowerPanel } from './EmpowerPanel';
 import type { BubbleSelected } from './NodeBubble';
-import { empowerLabel, passiveRequirementLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
+import { empowerLabel, passiveRequirementLabel } from './messages';
+import { runAction } from './run-action';
 import { useRuntime, type RuntimeStore } from './useGame';
-
-/** Runs a server action and turns its outcome into the line shown under the buttons. */
-async function runAction(run: () => Promise<ActionResult | null>, content: Content): Promise<string> {
-  try {
-    const result = await run();
-    return result ? synthMessage(result, content) : SYNTH_RETRY_MESSAGE;
-  } catch {
-    return SYNTH_ERROR_MESSAGE;
-  }
-}
 
 /** The floating details card: what a node is, its actions, and (for a learned spell) the empower section. */
 export function NodeCard({
@@ -85,7 +75,7 @@ export function NodeCard({
     const p = content.passives[selected.id]!;
     const unlocked = passives.includes(p.id);
     const unlock = async (): Promise<void> => {
-      setMessage(await runAction(() => sync.action('passive', { passiveId: p.id }), content));
+      setMessage((await runAction(() => sync.action('passive', { passiveId: p.id }), content)).message);
     };
     body = (
       <>
