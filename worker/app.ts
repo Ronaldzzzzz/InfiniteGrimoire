@@ -403,10 +403,16 @@ export function createApp(deps: AppDeps): Hono<Env> {
         await store.recordSynthesis(playerId, t, comboKey(list), resultKey);
         if (result.kind !== 'learned' || !content.spells[result.spellId]?.rare) return;
         // decided by the DB insert, and only after the save committed; suspicious players learn but are not recorded
-        const player = await store.getPlayer(playerId);
-        if (!player || player.suspicious) return { ...result, rare: { first: false } };
-        const { first } = await store.recordDiscovery({ spellId: result.spellId, playerId, displayName: player.displayName, at: t });
-        return { ...result, rare: { first } };
+        // the learn is already committed: a failing discovery write must not turn it into a 500
+        try {
+          const player = await store.getPlayer(playerId);
+          if (!player || player.suspicious) return { ...result, rare: { first: false } };
+          const { first } = await store.recordDiscovery({ spellId: result.spellId, playerId, displayName: player.displayName, at: t });
+          return { ...result, rare: { first } };
+        } catch {
+          console.error('discovery write failed');
+          return { ...result, rare: { first: false } };
+        }
       },
     );
   });

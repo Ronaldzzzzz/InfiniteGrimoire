@@ -960,6 +960,15 @@ describe('rare discoveries', () => {
     expect(saved(a.playerId).inventory['el:fire:3']).toBe(3);
   });
 
+  it('a committed rare learn survives a failing discovery write', async () => {
+    const a = await rarePlayer('Ann');
+    store.recordDiscovery = async () => { throw new Error('db down'); };
+    const r = await roll(a, 0.001);
+    expect(r.status).toBe(200);
+    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    expect(saved(a.playerId).learned).toContain('worldfire');
+  });
+
   it('a rejected action writes no discovery', async () => {
     const a = await rarePlayer('Ann', [1]);
     const seeded = { ...a.state, inventory: {} };
