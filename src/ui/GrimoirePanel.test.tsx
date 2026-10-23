@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { Profiler } from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
-import { GrimoirePanel } from './GrimoirePanel';
+import { GrimoirePanel, PLACED_TOAST_MS } from './GrimoirePanel';
 import { fakeRuntime } from './test-runtime';
 
 afterEach(cleanup);
@@ -23,43 +23,147 @@ Element.prototype.releasePointerCapture = () => {};
 
 const node = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) });
 
-function setup(game: Partial<GameState> = {}, synthPending = false, action = vi.fn(async (): Promise<ActionResult | null> => null)) {
+function setup(
+  game: Partial<GameState> = {},
+  synthPending = false,
+  action = vi.fn(async (): Promise<ActionResult | null> => null),
+  slotsFull = false,
+) {
   const rt = fakeRuntime(game, synthPending);
   const onHint = vi.fn();
   const onPick = vi.fn();
   const sync = { action };
-  render(<GrimoirePanel runtime={rt} sync={sync} onHint={onHint} onPick={onPick} content={content} />);
+  render(<GrimoirePanel runtime={rt} sync={sync} onHint={onHint} onPick={onPick} slotsFull={slotsFull} content={content} />);
   return { rt, onHint, onPick, sync };
 }
 
 describe('GrimoirePanel', () => {
-  it('a learned spell opens its details: put into the slots, equip, empower', () => {
+  it('clicking a learned spell opens a bubble: put into the altar, equip, details', () => {
     const { rt, onHint, onPick } = setup({ learned: ['mana_bolt', 'fireball'], levels: { fireball: 4 } });
     fireEvent.click(node(content.spells.fireball!.name));
     expect(onHint).toHaveBeenCalledWith(null);
-    const detail = screen.getByRole('region', { name: '節點詳情' });
-    expect(detail.textContent).toContain('強化 +3');
-    expect(detail.textContent).toContain(content.spells.fireball!.desc);
-    fireEvent.click(screen.getByRole('button', { name: '放進合成槽' }));
+    const bubble = screen.getByRole('group', { name: '魔法操作' });
+    expect(bubble.textContent).toContain('強化 +3');
+    fireEvent.click(within(bubble).getByRole('button', { name: '放入合成' }));
     expect(onPick).toHaveBeenCalledWith('fireball');
+    expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
+    fireEvent.click(node(content.spells.fireball!.name));
     fireEvent.click(screen.getByRole('button', { name: '裝備' }));
     expect(rt.equip).toHaveBeenCalledWith('fireball');
-    expect(screen.getByRole('region', { name: '強化' })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
   });
 
-  it('a locked spell shows its name and hint without equipping', () => {
+  it('詳情 opens the floating card with the empower section inside it', () => {
+    setup({ learned: ['mana_bolt', 'fireball'], levels: { fireball: 4 } });
+    fireEvent.click(node(content.spells.fireball!.name));
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
+    const card = screen.getByRole('region', { name: '節點詳情' });
+    expect(card.closest('.tree-stage')).toBeTruthy();
+    expect(card.textContent).toContain(content.spells.fireball!.desc);
+    expect(within(card).getByRole('region', { name: '強化' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '關閉詳情' }));
+    expect(screen.queryByRole('region', { name: '節點詳情' })).toBeNull();
+  });
+
+  it('a locked spell bubble shows the hint and no buttons', () => {
     const { rt, onHint } = setup();
     fireEvent.click(node(`${content.spells.fireball!.name}（未學會）`));
     expect(onHint).toHaveBeenCalledWith('fireball');
-    expect(screen.getByRole('region', { name: '節點詳情' }).textContent).toContain(content.spells.fireball!.hint);
-    expect(screen.queryByRole('button', { name: '裝備' })).toBeNull();
+    const bubble = screen.getByRole('group', { name: '魔法操作' });
+    expect(bubble.textContent).toContain(content.spells.fireball!.hint);
+    expect(within(bubble).queryByRole('button')).toBeNull();
     expect(rt.equip).not.toHaveBeenCalled();
+  });
+
+  it('放入合成 is disabled when the altar is full', () => {
+    setup({ learned: ['mana_bolt', 'fireball'] }, false, undefined, true);
+    fireEvent.click(node(content.spells.fireball!.name));
+    expect((screen.getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('does not equip while an action is in flight', () => {
     setup({ learned: ['mana_bolt', 'fireball'] }, true);
     fireEvent.click(node(content.spells.fireball!.name));
     expect((screen.getByRole('button', { name: '裝備' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('double-click puts a learned spell into the altar without a bubble, and the toast fades', () => {
+    vi.useFakeTimers();
+    try {
+      const { onPick } = setup({ learned: ['mana_bolt', 'fireball'] });
+      fireEvent.doubleClick(node(content.spells.fireball!.name));
+      expect(onPick).toHaveBeenCalledWith('fireball');
+      expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
+      expect(screen.getByRole('status').textContent).toBe(`已放入合成台：${content.spells.fireball!.name}`);
+      act(() => void vi.advanceTimersByTime(PLACED_TOAST_MS + 10));
+      expect(screen.queryByText(/已放入合成台/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('double-click does nothing on a locked spell or when the altar is full', () => {
+    const a = setup();
+    fireEvent.doubleClick(node(`${content.spells.fireball!.name}（未學會）`));
+    expect(a.onPick).not.toHaveBeenCalled();
+    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+    cleanup();
+    const b = setup({ learned: ['mana_bolt', 'fireball'] }, false, undefined, true);
+    fireEvent.doubleClick(node(content.spells.fireball!.name));
+    expect(b.onPick).not.toHaveBeenCalled();
+    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+  });
+
+  it('a drag that ends on a node opens nothing', () => {
+    const { onPick } = setup({ learned: ['mana_bolt', 'fireball'] });
+    const n = node(content.spells.fireball!.name);
+    fireEvent.pointerDown(n, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(n, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(n, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.click(n);
+    expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
+    fireEvent.doubleClick(n);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it('a blank click or Esc closes bubble and card; a drag closes only the bubble', () => {
+    setup({ learned: ['mana_bolt', 'fireball'] });
+    const svg = document.querySelector('svg.grimoire-svg')!;
+    const openBoth = () => {
+      fireEvent.click(node(content.spells.fireball!.name));
+      fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+      fireEvent.click(node(content.spells.mana_bolt!.name));
+      expect(screen.getByRole('group', { name: '魔法操作' })).toBeTruthy();
+      expect(screen.getByRole('region', { name: '節點詳情' })).toBeTruthy();
+    };
+    const noneOpen = () => {
+      expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
+      expect(screen.queryByRole('region', { name: '節點詳情' })).toBeNull();
+    };
+    openBoth();
+    fireEvent.click(svg);
+    noneOpen();
+    openBoth();
+    fireEvent.keyDown(document.querySelector('.grimoire')!, { key: 'Escape' });
+    noneOpen();
+    openBoth();
+    fireEvent.pointerDown(svg, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(svg, { clientX: 40, clientY: 0, pointerId: 1 });
+    expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
+    expect(screen.getByRole('region', { name: '節點詳情' })).toBeTruthy();
+    fireEvent.click(svg); // the click that ends a drag is not a blank click
+    expect(screen.getByRole('region', { name: '節點詳情' })).toBeTruthy();
+  });
+
+  it('with the card open, clicking another spell switches the card and opens its bubble', () => {
+    setup({ learned: ['mana_bolt', 'fireball'] });
+    fireEvent.click(node(content.spells.fireball!.name));
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    fireEvent.click(node(content.spells.mana_bolt!.name));
+    expect(screen.getByRole('region', { name: '節點詳情' }).textContent).toContain(content.spells.mana_bolt!.desc);
+    expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(content.spells.mana_bolt!.name);
   });
 
   it('fogged regions show no nodes and a key item reveals them', async () => {
@@ -87,6 +191,7 @@ describe('GrimoirePanel', () => {
     const action = vi.fn(async (): Promise<ActionResult | null> => ({ kind: 'unlocked' }));
     const { rt } = setup({ revealed: ['outer'], inventory: { 'mat:ember_core': 4 } }, false, action);
     fireEvent.click(node(name));
+    expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
     const detail = screen.getByRole('region', { name: '節點詳情' });
     expect(detail.textContent).toContain('需要 餘燼核心 ×5');
     expect(screen.queryByRole('button', { name: '解鎖' })).toBeNull();
@@ -99,15 +204,20 @@ describe('GrimoirePanel', () => {
     expect(screen.getByRole('region', { name: '節點詳情' }).textContent).toContain('已解鎖');
   });
 
-  it('the tree and its open details do not re-render when only the inventory changes', () => {
+  it('the tree, bubble and card do not re-render when only the inventory changes', () => {
     const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], revealed: ['outer'], inventory: { 'el:fire:1': 1 } });
     const onRender = vi.fn();
     render(
       <Profiler id="grimoire" onRender={onRender}>
-        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} content={content} />
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} content={content} />
       </Profiler>,
     );
-    fireEvent.click(node(content.spells.fireball!.name)); // details + empower panel open
+    fireEvent.click(node(content.spells.fireball!.name));
+    fireEvent.click(screen.getByRole('button', { name: '詳情' })); // card + empower panel open
+    fireEvent.click(node(content.spells.mana_bolt!.name)); // bubble open as well
+    expect(screen.getByRole('group', { name: '魔法操作' })).toBeTruthy();
+    fireEvent.click(node(content.spells.fireball!.name)); // bubble + card on fireball
+    expect(screen.getByRole('region', { name: '強化' })).toBeTruthy();
     const before = onRender.mock.calls.length;
     // drops that touch neither a key item nor the empower cost (fireball 1->2 costs 4 初階火)
     act(() => rt.set({ game: { inventory: { 'el:fire:1': 1, 'el:wind:1': 7, 'mat:mist_dew': 2 } } }));
@@ -133,7 +243,7 @@ describe('GrimoirePanel', () => {
     const onRender = vi.fn();
     render(
       <Profiler id="grimoire" onRender={onRender}>
-        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} content={content} />
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} content={content} />
       </Profiler>,
     );
     const svg = document.querySelector('svg.grimoire-svg')!;

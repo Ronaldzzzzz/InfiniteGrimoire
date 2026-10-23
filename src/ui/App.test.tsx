@@ -95,8 +95,7 @@ describe('App layout', () => {
     setup();
     const hint = content.spells.fireball!.hint;
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`${content.spells.fireball!.name}（未學會）`) }));
-    const grimoire = screen.getByRole('region', { name: '魔導書' });
-    expect(grimoire.querySelector('.node-detail')?.textContent).toContain(hint);
+    expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(hint);
   });
 
   it('a new synthesis result is equipped after the reply', async () => {

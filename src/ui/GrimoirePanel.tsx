@@ -1,23 +1,26 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { content as defaultContent } from '../engine/content';
 import type { Content } from '../engine/model';
-import { spellAtLevel } from '../engine/spells';
-import { passiveRequirementMet, visibleRegions } from '../engine/tree';
+import { visibleRegions } from '../engine/tree';
 import type { ActionResult } from '../game/api';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import { COLORS, spellColor } from '../render/palette';
-import { AffinityTag, ElementDots } from './DiscoveryBanner';
-import { EmpowerPanel } from './EmpowerPanel';
 import { layoutGrimoire, polar, type FogBand } from './grimoire-layout';
-import { empowerLabel, itemName, passiveRequirementLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
-import { HOME, panBy, viewBoxOf, zoomAt, type View } from './tree-viewport';
+import { itemName, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
+import { NodeBubble } from './NodeBubble';
+import { NodeCard } from './NodeCard';
+import { bubblePlacement, HOME, panBy, viewBoxOf, zoomAt, type View } from './tree-viewport';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 const SIZE = 600;
 const NODE_R = 16;
 /** How long the fog of a region just revealed takes to clear (matches the CSS animation). */
 export const FOG_LIFT_MS = 1200;
+/** How long the "put into the altar" toast stays (the altar is out of view on narrow screens). */
+export const PLACED_TOAST_MS = 1500;
+const FLASH_MS = 600;
+const BUBBLE_SIZE = { w: 220, h: 96 };
 
 type Selected = { kind: 'spell' | 'passive'; id: string } | null;
 type Runtime = RuntimeStore & Pick<GameRuntime, 'equip'>;
@@ -55,12 +58,14 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   sync,
   onHint,
   onPick,
+  slotsFull,
   content = defaultContent,
 }: {
   runtime: Runtime;
   sync: Sync;
   onHint: (spellId: string | null) => void;
   onPick: (spellId: string) => void;
+  slotsFull: boolean;
   content?: Content;
 }) {
   const learned = useRuntime(runtime, (s) => s.game.learned);
@@ -80,17 +85,33 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   );
   const pos = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n])), [layout]);
   const [selected, setSelected] = useState<Selected>(null);
+  const [bubble, setBubble] = useState<{ left: number; top: number } | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [toast, setToast] = useState('');
+  const [flash, setFlash] = useState<string | null>(null);
   const [lifting, setLifting] = useState<string | null>(null);
   const [keyMessage, setKeyMessage] = useState('');
   const drag = useRef<{ x: number; y: number; moved: boolean; id: number } | null>(null);
   const wasDrag = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!lifting) return;
     const t = setTimeout(() => setLifting(null), FOG_LIFT_MS);
     return () => clearTimeout(t);
   }, [lifting]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(''), PLACED_TOAST_MS);
+    return () => clearTimeout(t);
+  }, [toast]);
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), FLASH_MS);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   // the view grows with the tree so revealed rings fit without zooming out
   const maxR = layout.nodes.reduce((m, n) => Math.max(m, Math.hypot(n.x, n.y)), 0);
@@ -101,8 +122,8 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   baseRef.current = base;
   const applyView = () => svgRef.current?.setAttribute('viewBox', viewBoxOf(viewRef.current, baseRef.current));
   useLayoutEffect(applyView, [base]);
-  /** Hook for closing floating UI when the player moves the tree. */
-  const onGesture = () => {};
+  /** Moving the tree detaches the bubble from its node, so it closes (the card stays). */
+  const onGesture = () => setBubble(null);
 
   const zoomBy = (factor: number, p?: { x: number; y: number }) => {
     const v = viewRef.current;
@@ -155,9 +176,39 @@ export const GrimoirePanel = memo(function GrimoirePanel({
     if (d?.moved) svgRef.current?.releasePointerCapture?.(d.id);
   };
 
+  /** Where the bubble goes: the node's place on screen, relative to the stage. */
+  const bubbleAt = (id: string) => {
+    const n = pos.get(id);
+    const svg = svgRef.current;
+    const stage = stageRef.current;
+    const m = svg?.getScreenCTM?.();
+    const r = stage?.getBoundingClientRect();
+    if (!n || !m || !r) return bubblePlacement({ x: 0, y: 0 }, { w: r?.width || 600, h: r?.height || 600 }, BUBBLE_SIZE);
+    const p = new DOMPoint(n.x, n.y).matrixTransform(m);
+    return bubblePlacement({ x: p.x - r.left, y: p.y - r.top }, { w: r.width, h: r.height }, BUBBLE_SIZE);
+  };
   const activate = (kind: 'spell' | 'passive', id: string) => {
     setSelected({ kind, id });
     onHint(kind === 'spell' && !learned.includes(id) ? id : null);
+    if (kind === 'spell') setBubble(bubbleAt(id));
+    else {
+      setBubble(null);
+      setCardOpen(true);
+    }
+  };
+  const place = (id: string) => {
+    onPick(id);
+    setToast(`已放入合成台：${content.spells[id]?.name ?? id}`);
+  };
+  const doubleActivate = (id: string) => {
+    if (wasDrag.current || slotsFull || !learned.includes(id)) return;
+    place(id);
+    setBubble(null);
+    setFlash(id);
+  };
+  const closeAll = () => {
+    setBubble(null);
+    setCardOpen(false);
   };
 
   // a joined string, so drops that don't add a usable key item don't re-render the tree
@@ -176,7 +227,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   const liftBand = lifting ? allBands.find((b) => b.region === lifting) : undefined;
 
   return (
-    <div className="grimoire">
+    <div className="grimoire" onKeyDown={(e) => { if (e.key === 'Escape') closeAll(); }}>
       {keys.length > 0 && (
         <div className="key-items">
           {keys.map((id) => (
@@ -187,7 +238,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
         </div>
       )}
       {keyMessage && <p className="synth-message" role="status">{keyMessage}</p>}
-      <div className="tree-stage">
+      <div className="tree-stage" ref={stageRef}>
       <div className="grimoire-controls">
         <button type="button" aria-label="放大" onClick={() => { onGesture(); zoomBy(1.25); }}>＋</button>
         <button type="button" aria-label="縮小" onClick={() => { onGesture(); zoomBy(1 / 1.25); }}>－</button>
@@ -200,6 +251,9 @@ export const GrimoirePanel = memo(function GrimoirePanel({
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
+        onClick={(e) => {
+          if (!wasDrag.current && !(e.target as Element).closest('.grimoire-node')) closeAll();
+        }}
       >
         <circle cx={0} cy={0} r={100} fill={COLORS.rune} opacity={0.08} />
         {layout.fog.map((b) => (
@@ -230,9 +284,12 @@ export const GrimoirePanel = memo(function GrimoirePanel({
               tabIndex={0}
               aria-label={label}
               aria-pressed={isSelected}
-              className={`grimoire-node ${n.region === lifting ? 'node-appear' : ''}`}
+              className={`grimoire-node ${n.region === lifting ? 'node-appear' : ''} ${flash === n.id ? 'node-flash' : ''}`}
               onClick={() => {
                 if (!wasDrag.current) activate(n.kind, n.id);
+              }}
+              onDoubleClick={() => {
+                if (isSpell) doubleActivate(n.id);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -269,92 +326,23 @@ export const GrimoirePanel = memo(function GrimoirePanel({
           );
         })}
       </svg>
+      {bubble && (
+        <NodeBubble
+          selected={selected}
+          runtime={runtime}
+          content={content}
+          slotsFull={slotsFull}
+          position={bubble}
+          onPick={place}
+          onDetails={() => { setBubble(null); setCardOpen(true); }}
+          onClose={() => setBubble(null)}
+        />
+      )}
+      {cardOpen && (
+        <NodeCard selected={selected} runtime={runtime} sync={sync} content={content} slotsFull={slotsFull} onPick={place} onClose={() => setCardOpen(false)} />
+      )}
+      {toast && <p className="tree-toast only-narrow" role="status">{toast}</p>}
       </div>
-      <NodeDetail selected={selected} runtime={runtime} sync={sync} content={content} onPick={onPick} />
     </div>
   );
 });
-
-function NodeDetail({
-  selected,
-  runtime,
-  sync,
-  content,
-  onPick,
-}: {
-  selected: Selected;
-  runtime: Runtime;
-  sync: Sync;
-  content: Content;
-  onPick: (spellId: string) => void;
-}) {
-  // narrow selectors: kills and drops change the game state several times a second
-  const learned = useRuntime(runtime, (s) => s.game.learned);
-  const levels = useRuntime(runtime, (s) => s.game.levels);
-  const equipped = useRuntime(runtime, (s) => s.game.equipped);
-  const passives = useRuntime(runtime, (s) => s.game.passives);
-  const met = useRuntime(runtime, (s) => selected?.kind === 'passive' && passiveRequirementMet(s.game, selected.id, content));
-  const pending = useRuntime(runtime, (s) => s.synthPending);
-  const [message, setMessage] = useState('');
-  useEffect(() => setMessage(''), [selected?.id]);
-
-  let body;
-  if (!selected) body = <p className="muted">點技能樹上的節點查看詳情；未學會的魔法會顯示殘卷線索。</p>;
-  else if (selected.kind === 'spell') {
-    const spell = content.spells[selected.id]!;
-    if (!learned.includes(spell.id)) {
-      body = (
-        <>
-          <h4>{spell.name}<span className="muted">（未學會）</span></h4>
-          <p className="node-hint">殘卷：{spell.hint}</p>
-        </>
-      );
-    } else {
-      const level = Object.hasOwn(levels, spell.id) ? levels[spell.id]! : 1;
-      const isEquipped = equipped === spell.id;
-      body = (
-        <>
-          <h4>
-            <ElementDots elements={spell.elements} /> {spell.name}{' '}
-            <span className="spell-row-tier">Lv.{spellAtLevel(spell, level).tier}</span>
-            {level > 1 && <span className="empower-tag">{empowerLabel(level)}</span>}
-          </h4>
-          <p><AffinityTag affinity={spell.affinity} /> {spell.desc}</p>
-          <div className="node-actions">
-            <button type="button" onClick={() => onPick(spell.id)}>放進合成槽</button>
-            <button type="button" disabled={isEquipped || pending} onClick={() => runtime.equip(spell.id)}>
-              {isEquipped ? '裝備中' : '裝備'}
-            </button>
-          </div>
-          <EmpowerPanel spellId={spell.id} runtime={runtime} sync={sync} content={content} />
-        </>
-      );
-    }
-  } else {
-    const p = content.passives[selected.id]!;
-    const unlocked = passives.includes(p.id);
-    const unlock = async (): Promise<void> => {
-      setMessage((await runAction(() => sync.action('passive', { passiveId: p.id }), content)).message);
-    };
-    body = (
-      <>
-        <h4>{p.name}<span className="muted">（被動）</span></h4>
-        <p>{p.desc}</p>
-        <p className="muted">條件：{passiveRequirementLabel(p, content)}</p>
-        {unlocked ? (
-          <p className="node-done">已解鎖</p>
-        ) : met ? (
-          <button type="button" className="primary" disabled={pending} onClick={() => void unlock()}>解鎖</button>
-        ) : (
-          <p className="muted">尚未達成條件</p>
-        )}
-        {message && <p className="synth-message" role="status">{message}</p>}
-      </>
-    );
-  }
-  return (
-    <section className="node-detail" aria-label="節點詳情">
-      {body}
-    </section>
-  );
-}

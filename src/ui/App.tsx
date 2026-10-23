@@ -104,9 +104,9 @@ export function App({
               <button type="button" role="tab" aria-selected={tab === 'tree'} onClick={() => setTab('tree')}>技能樹</button>
               <button type="button" role="tab" aria-selected={tab === 'notebook'} onClick={() => setTab('notebook')}>魔法筆記</button>
             </div>
-            {/* <768px the slots are scrolled out of view above the grimoire; the node details repeat the hint */}
+            {/* <768px the slots are scrolled out of view above the grimoire; the node bubble repeats the hint */}
             {tab === 'tree' ? (
-              <GrimoirePanel runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} content={content} />
+              <GrimoirePanel runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={!slots.includes(null)} content={content} />
             ) : (
               <Notebook runtime={runtime} sync={sync} content={content} onPick={pick} />
             )}
