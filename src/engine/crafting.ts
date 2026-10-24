@@ -139,6 +139,17 @@ export function fusionNeeds(state: GameState, inputs: string[], content: Content
   return [...most].flatMap(([id, k]) => new Array<ItemId>(k).fill(id));
 }
 
+/**
+ * Whether these inputs roll a random recipe that can still land on a named spell the player hasn't learned:
+ * the altar then hints that trying again may turn out differently (without naming the result).
+ */
+export function rareStillHidden(state: GameState, inputs: string[], content: Content): boolean {
+  if (!validInputs(state, inputs)) return false;
+  const { recipe, eligible } = plan(state, inputs, content);
+  if (!recipe || !eligible.some((o) => o.value === null)) return false;
+  return eligible.some((o) => o.value !== null && !state.learned.includes(o.value));
+}
+
 export function synthesize(
   state: GameState,
   inputs: string[],

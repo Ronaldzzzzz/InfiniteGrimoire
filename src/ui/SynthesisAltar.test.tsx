@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
-import { MIN_FUSE_MS, REVEAL_MS, SynthesisAltar, type Slots } from './SynthesisAltar';
+import { MIN_FUSE_MS, RETRY_HINT, REVEAL_MS, SynthesisAltar, type Slots } from './SynthesisAltar';
+import { craftedId } from '../engine/spells';
 import { fakeRuntime } from './test-runtime';
 
 afterEach(() => {
@@ -81,6 +82,37 @@ describe('SynthesisAltar', () => {
     expect(go().textContent).toBe('嬗變中…');
     act(() => a.rt.set({ synthPending: false, game: { inventory: {} } }));
     expect(go().disabled).toBe(true);
+  });
+
+  describe('a miss on a random recipe', () => {
+    const retry = () => document.querySelector('.synth-retry')?.textContent ?? null;
+    const missed = craftedId('el:fire:3', 'inferno');
+    const play = async (learned: string[], reply: ActionResult) => {
+      vi.useFakeTimers();
+      setup({ learned: ['mana_bolt', ...learned], inventory: { 'el:fire:3': 1 } }, ['inferno', 'el:fire:3'], async () => reply);
+      fireEvent.click(go());
+      await flush();
+      act(() => vi.advanceTimersByTime(MIN_FUSE_MS));
+    };
+
+    it('hints that trying again may turn out differently, without naming the result', async () => {
+      await play(['inferno'], { kind: 'learned', spellId: missed, crafted: true });
+      expect(retry()).toBe(RETRY_HINT);
+      expect(retry()).not.toContain('焚世');
+    });
+
+    it('also hints after a duplicate miss', async () => {
+      await play(['inferno', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
+      expect(retry()).toBe(RETRY_HINT);
+    });
+
+    it('stays quiet when the roll hits, or when the hidden result is already learned', async () => {
+      await play(['inferno'], { kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
+      expect(retry()).toBeNull();
+      cleanup();
+      await play(['inferno', 'worldfire', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
+      expect(retry()).toBeNull();
+    });
   });
 
   it('synthesizes sorted inputs and reveals only after the reply and MIN_FUSE_MS', async () => {

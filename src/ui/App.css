@@ -33,6 +33,7 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 
 .altar-needs { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
 .altar-needs .short { color: var(--fire); font-weight: 600; }
+.synth-retry { margin: 2px 0 0; font-size: 13px; font-style: normal; color: var(--rune); }
 .synth-message { min-height: 1.5em; color: var(--gold); }
 .tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--muted); border-radius: 4px; color: var(--muted); font-size: 12px; }
 

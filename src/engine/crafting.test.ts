@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comboKey, fusionNeeds, requiredGrade, synthesize } from './crafting';
+import { comboKey, fusionNeeds, rareStillHidden, requiredGrade, synthesize } from './crafting';
 import { content } from './content';
 import { createRng } from './rng';
 import { craftedId, resolveSpell } from './spells';
@@ -271,5 +271,25 @@ describe('fusionNeeds', () => {
       expect(run(state(inv), [...inputs]).result.kind).not.toBe('rejected');
       expect(run(state(without(inv, extra[0]!)), [...inputs]).result).toEqual({ kind: 'rejected', reason: 'insufficient' });
     }
+  });
+});
+
+describe('rareStillHidden', () => {
+  const hidden = (inputs: string[], learned: string[]) => rareStillHidden(mkState({}, ['mana_bolt', ...learned]), inputs, content);
+
+  it('is true when the inputs roll a random recipe whose named outcome is reachable but not learned yet', () => {
+    expect(hidden(['inferno', 'el:fire:3'], ['inferno'])).toBe(true);
+  });
+
+  it('is false once that outcome is learned, for fixed recipes, and for combos with no recipe', () => {
+    expect(hidden(['inferno', 'el:fire:3'], ['inferno', 'worldfire'])).toBe(false);
+    expect(hidden(['fireball', 'wind_blade'], ['fireball', 'wind_blade'])).toBe(false);
+    expect(hidden(['el:fire:1', 'el:wind:1'], [])).toBe(false);
+  });
+
+  it('is false when the named outcome needs a prerequisite the player lacks (the roll cannot land on it)', () => {
+    expect(hidden(['thunder_hammer', 'mat:sun_shard'], ['thunder_hammer'])).toBe(true);
+    const gated = { ...content, spells: { ...content.spells, holy_judgment: { ...content.spells.holy_judgment!, prerequisites: ['nope'] } } };
+    expect(rareStillHidden(mkState({}, ['mana_bolt', 'thunder_hammer']), ['thunder_hammer', 'mat:sun_shard'], gated)).toBe(false);
   });
 });

@@ -296,7 +296,7 @@ describe('rare spells', () => {
       expect(s).toMatchObject({ elements: [el], tier: 8, named: true, affinity: 'self', rare: true, prerequisites: [baseSpell] });
       const r = content.recipes.find((x) => x.id === id)!;
       expect([...r.inputs].sort()).toEqual([baseSpell, `el:${el}:3`].sort());
-      expect(r.outcomes).toEqual([{ spellId: id, weight: 1 }, { spellId: null, weight: 64 }]);
+      expect(r.outcomes).toEqual([{ spellId: id, weight: 1 }, { spellId: null, weight: 49 }]);
     }
   });
 

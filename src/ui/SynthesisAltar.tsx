@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { fusionNeeds, SYNTH_SLOTS } from '../engine/crafting';
+import { fusionNeeds, rareStillHidden, SYNTH_SLOTS } from '../engine/crafting';
 import type { Content } from '../engine/model';
 import { GRADE_NAMES } from '../engine/types';
 import type { ActionResult } from '../game/api';
@@ -25,6 +25,8 @@ export const MIN_FUSE_MS = 800;
 /** How long the result stays in the middle of the altar. */
 export const REVEAL_MS = BANNER_MS;
 const BOUNCE_MS = 400;
+/** After a miss on a random recipe that can still give something unlearned: a nudge, never the answer. */
+export const RETRY_HINT = '這個組合似乎還藏著別的可能……多試幾次，也許會有不一樣的結果。';
 
 type Reply = ActionResult | null;
 type Synth = { synthesize(inputs: string[]): Promise<Reply> };
@@ -141,6 +143,7 @@ export const SynthesisAltar = memo(function SynthesisAltar({
   const [bounce, setBounce] = useState(false);
   const [shown, setShown] = useState<Shown | null>(null);
   const [message, setMessage] = useState('');
+  const [retry, setRetry] = useState(false);
 
   // placing something new ends the reveal and clears the old message (a take-out or the reveal's own clear does not)
   const [prevSlots, setPrevSlots] = useState(slots);
@@ -149,6 +152,7 @@ export const SynthesisAltar = memo(function SynthesisAltar({
     if (slots.some((s, i) => s !== null && s !== prevSlots[i])) {
       setShown(null);
       setMessage('');
+      setRetry(false);
     }
   }
 
@@ -198,6 +202,9 @@ export const SynthesisAltar = memo(function SynthesisAltar({
   const run = async (): Promise<void> => {
     if (!canSynth) return;
     const sorted = [...filled].sort();
+    // decided before the roll: whether a miss here could still have landed on something unlearned
+    const hidden = rareStillHidden(runtime.getSnapshot().game, sorted, content);
+    setRetry(false);
     setFusing(true);
     setBounce(false);
     setShown(null);
@@ -235,6 +242,7 @@ export const SynthesisAltar = memo(function SynthesisAltar({
       latest.current.onSlotsChange(emptySlots());
       latest.current.onResult?.(applied);
       setMessage(reveal?.detail ?? synthMessage(applied, content, sorted));
+      setRetry(hidden && (applied.kind === 'duplicate' || (applied.kind === 'learned' && applied.crafted)));
       if (reveal) {
         const n = ++seq.current;
         setShown({ seq: n, reveal, spell, look: spell ? lookOf(spell) : null });
@@ -308,6 +316,7 @@ export const SynthesisAltar = memo(function SynthesisAltar({
         </p>
       )}
       <p className="synth-message" role="status">{message}</p>
+      {retry && <p className="synth-retry">{RETRY_HINT}</p>}
       <div className="synth-hint" aria-label="殘卷線索" aria-live="polite">
         {hint ?? <span className="muted">在魔導書點未學會的魔法，殘卷線索會顯示在這裡</span>}
       </div>

@@ -21,8 +21,8 @@ describe('GmRecipesTab', () => {
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '焚世' } });
     expect(rows()).toHaveLength(1);
     expect(rows()[0]!.textContent).toContain('焚世之焰 Lv.8');
-    expect(rows()[0]!.textContent).toContain('1.5%');
-    expect(rows()[0]!.textContent).toContain('98.5%');
+    expect(rows()[0]!.textContent).toContain('2%');
+    expect(rows()[0]!.textContent).toContain('98%');
   });
 
   it('filters by element name and by input name', () => {
