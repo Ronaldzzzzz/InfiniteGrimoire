@@ -463,7 +463,8 @@ describe('window cap', () => {
   });
 });
 
-describe('anchor window', () => {
+// these tests make many sequential requests and can pass 5 s when the whole suite runs in parallel
+describe('anchor window', { timeout: 15_000 }, () => {
   /** The honest bound for `ms` of play from the initial state, per element. */
   const honestLimit = (ms: number) => {
     const b = maxGain(initial(), ms, content);
