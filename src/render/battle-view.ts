@@ -12,6 +12,7 @@ import type { ElementId } from '../engine/types';
 import type { Snapshot } from '../game/runtime';
 import { floatTextStart, makeArena, toScreen, type Arena } from './arena';
 import { ellipseArc, floatingText, jaggedPath, type Pt } from './effects';
+import { DpsMeter, formatDps } from './dps';
 import { blendForSpell, MULTI_KILL_WINDOW_MS, multiKillLabel, particleStyle, shakeFor, type ParticleShape, type ParticleStyle } from './element-fx';
 import { interpolate } from './motion';
 import { COLORS } from './palette';
@@ -23,6 +24,8 @@ const HERO_H = 38;
 const TEXT_MS = 600;
 const IMMUNE_FONT_PX = 16; // fixed, readable at any arena size (spec 4.3)
 const TEXT_MARGIN = 24;
+/** The DPS text is rebuilt this often (Pixi re-renders a Text on every change). */
+const DPS_REFRESH_MS = 250;
 /** Floating damage numbers alive at once; a crowd fight would otherwise spawn hundreds. */
 const MAX_FLOAT_TEXTS = 40;
 /** 「無效」 has its own budget so damage numbers can never crowd the immune feedback out. */
@@ -157,6 +160,10 @@ export class BattleView {
   /** banner width at scale 1, measured when its text changes */
   private bannerW = 1;
   private castLabel: Text | null = null;
+  /** top-left readout: average damage per second over the last 10 s (hits plus summed burn) */
+  private dpsLabel: Text | null = null;
+  private readonly dps = new DpsMeter(0);
+  private dpsRefreshAt = 0;
   private castAge = CAST_LABEL_MS;
   private readonly killTimes: number[] = [];
   private shake = 0;
@@ -211,7 +218,12 @@ export class BattleView {
     });
     this.castLabel.anchor.set(0.5, 1);
     this.castLabel.visible = false;
-    this.uiLayer.addChild(this.banner, this.castLabel);
+    this.dpsLabel = new Text({
+      text: formatDps(0),
+      style: { fill: COLORS.amber, fontSize: 13, fontWeight: 'bold', fontFamily: 'system-ui, sans-serif', stroke: { color: '#000000', width: 3 } },
+    });
+    this.dpsLabel.position.set(8, 6);
+    this.uiLayer.addChild(this.banner, this.castLabel, this.dpsLabel);
     ensureDamageFont();
     this.ready_ = true;
     this.app.ticker.add((t) => this.tick(t.deltaMS));
@@ -343,6 +355,7 @@ export class BattleView {
         for (const f of last.foes) this.prevPos.set(f.uid, { x: f.x, y: f.y });
       } else {
         this.seenFx.clear();
+        this.dps.reset(this.time);
       }
       this.lastBattle = battle;
       this.byUid = new Map(battle.foes.map((f) => [f.uid, f]));
@@ -846,12 +859,16 @@ export class BattleView {
     for (const e of events) {
       switch (e.type) {
         case 'hit': {
+          if (!e.immune) this.dps.add(this.time, e.damage);
           const v = this.foes.get(e.uid);
           if (!v) break;
           const ft = floatingText(e);
           this.floatText(ft.text, ft.color, v.pos.x, v.pos.y - v.r, e.immune);
           break;
         }
+        case 'dot':
+          this.dps.add(this.time, e.damage);
+          break;
         case 'kill': {
           this.killTimes.push(this.time);
           const el = this.monster(e.defId)?.element;
@@ -1127,6 +1144,10 @@ export class BattleView {
     }
     this.updateParticles(this.frameDt);
     this.updateBanner(dtMs);
+    if (this.dpsLabel && this.time >= this.dpsRefreshAt) {
+      this.dpsLabel.text = formatDps(this.dps.value(this.time));
+      this.dpsRefreshAt = this.time + DPS_REFRESH_MS;
+    }
     this.updateShake(dtMs);
   }
 
