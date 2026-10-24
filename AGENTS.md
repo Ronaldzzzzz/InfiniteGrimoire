@@ -41,7 +41,7 @@
 
 ## 3. 目前狀態（2026-10-23）
 
-- **Branch：** `feat/core-rework`（從 `main` 分出），已包含合成台改版、第二版 B 與 GM 工具（`feat/synthesis-altar`、`feat/v2b-rare-discoveries`、`feat/gm-tool` 都已 fast-forward 併入並刪除），**尚未 push、尚未合併到 `main`**。`main` 已經包含 MVP 與第二版 A 和文件；遠端只有 `origin/main` 與 `origin/feat/mvp-core-loop`。本機 `main` 有文件 commit 尚未 push。
+- **Branch：** 只剩 `main`。2026-10-24 依使用者指示整合一個版本：`feat/core-rework`（含核心重做、合成台改版、第二版 B、GM 工具、DPS 顯示）fast-forward 合併進 `main`，其餘本機 branch（`feat/core-rework`、`feat/v2a-accounts`、`feat/mvp-core-loop`、`docs/initial-design`）都已併入並刪除。本機 `main` 比 `origin/main` 多 98 個 commit，**尚未 push**（使用者自己 push）；遠端還有舊的 `origin/feat/mvp-core-loop`（已併入，要刪除需使用者自己 `git push origin --delete feat/mvp-core-loop`）。新功能照慣例從 `main` 開 branch。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -62,7 +62,7 @@
 
 **尚未完成（下一位接手者的待辦）：**
 0a. **【待使用者決定】稀有魔法的刷取時間超過設計上限：** 規格第 2.1 節要求平均刷取時間不超過 120 模擬分鐘，否則先記下來讓使用者決定。`tests/sim` 量到（學會該屬性 Lv.5 魔法後，刷到平均 65 次高階元素才合得出稀有魔法）：火 139、風 167、雷 158、土 211、水 183 模擬分鐘，全部超過 120。這些數字以「每次嘗試真的消耗 1 個高階元素」計算；最終審查發現落空到已會的自創魔法時會退還那個高階元素（重試免費），已修正（`fix(engine): a missed rare roll always spends its element`），修正後這組數字才成立，仍是待使用者決定的事項。`tests/sim/rare-cost.test.ts` 的 5 個測試目前是 `it.skip`，等使用者決定：(a) 接受現狀（把上限放寬後取消 skip）、(b) 提高稀有魔法的權重（例如 1 : 40）、(c) 降低每次嘗試的成本。**未經使用者同意不要自行改權重或成本。**
-0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。再由使用者決定 push 與合併到 `main` 的方式（只剩 `feat/core-rework`，已包含合成台改版、第二版 B 與 GM 工具）。
+0. **使用者在真實瀏覽器試玩合成台**：合成台特效的手感與辨識度（元素與魔法看得出差別）、融合與揭曉的節奏、泡泡與浮動詳情卡的操作、拖曳與縮放順不順、關鍵道具按鈕在戰鬥畫面上的位置、手機版面。核心重做的試玩（成群清場手感、各元素特效、迷霧散開、卡頓、平衡）也還沒做；**平衡數值使用者明確表示之後再調**。已整合進 `main`，由使用者自己 push。
 1. **第二版 A 收尾**：使用者在真實瀏覽器試用帳號功能（兩個視窗同時登入、改密碼後另一邊被登出）。
 2. **第二版 B 收尾**：使用者在真實瀏覽器試玩稀有魔法（全螢幕動畫的節奏與各屬性顏色、鈴鐺的位置與清單樣式、手機寬度）；上面的待辦 0a；遠端 D1 套用 0005（見上線前檢查清單）。第二版 C+D（排行榜）可以直接讀 `discoveries` 中 `first = 1` 的列。
 2a. **GM 工具收尾**：使用者在真實瀏覽器用 GM 視窗（拖曳、縮小、手機寬度排版）；上線前用 GM 工具在本機 D1 測一次重設密碼（上線前檢查清單第 2 節，已驗收過一次）。
@@ -176,6 +176,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-24（Claude Code，Opus 5.5，Windows）**：`worker/app.test.ts` 的 anchor window 測試在完整套件負載高時偶爾超過 5 秒，整組時限放寬到 15 秒（連跑三次全過）。依使用者指示整合一個版本：`feat/core-rework` fast-forward 合併進 `main`，刪除所有已併入的本機 branch，只剩 `main`；`main` 上 `npm test` 61 個檔案 635 個測試（5 個跳過）、`npm run build` 通過。停在：`main` 比 `origin/main` 多 98 個 commit，尚未 push（使用者自己 push）。下一步：使用者 push、試玩；待辦 0a（稀有魔法刷取時間）仍待決定；之後第二版 C+D。
 
 - **2026-10-24（Claude Code，Opus 5.5，Windows）**：戰鬥畫面左上角加 DPS 數字（使用者選「最近 10 秒的平均」）：`src/render/dps.ts` 的 `DpsMeter`（`DPS_WINDOW_MS = 10_000`；視窗未滿時除以已經過的時間、至少 1 秒；換地點或重新載入時歸零）與 `formatDps`（沒有傷害顯示「DPS —」，10 萬以上顯示 k）；`BattleView` 把非無效的 `hit` 與 `dot` 事件傷害加進去，每 250 ms 更新一次文字。之後依使用者要求改成「實際打掉的血量」：`hit` 事件新增 `dealt`（實際扣掉的血，不含溢出；`damage` 仍是飄字顯示的全額），DPS 用 `dealt`；換裝魔法時 DPS 歸零，讓數字只代表目前裝備的魔法。直接在 `feat/core-rework` commit；`npm test` 61 個檔案 635 個測試（5 個跳過）、`npm run build` 通過；headless Edge 截圖確認顯示正常、無頁面錯誤（換裝歸零沒有在瀏覽器實測）。另外 `worker/app.test.ts` 的「high-frequency synthesize calls…」在完整套件負載高時偶爾超過 5 秒逾時（單獨跑都過），與本次修改無關。停在：尚未 push。
 
