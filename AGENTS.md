@@ -41,7 +41,7 @@
 
 ## 3. 目前狀態（2026-10-23）
 
-- **Branch：** 只剩 `main`。2026-10-24 依使用者指示整合一個版本：`feat/core-rework`（含核心重做、合成台改版、第二版 B、GM 工具、DPS 顯示）fast-forward 合併進 `main`，其餘本機 branch（`feat/core-rework`、`feat/v2a-accounts`、`feat/mvp-core-loop`、`docs/initial-design`）都已併入並刪除。本機 `main` 比 `origin/main` 多 98 個 commit，**尚未 push**（使用者自己 push）；遠端還有舊的 `origin/feat/mvp-core-loop`（已併入，要刪除需使用者自己 `git push origin --delete feat/mvp-core-loop`）。新功能照慣例從 `main` 開 branch。
+- **Branch：** 只剩 `main`。2026-10-24 依使用者指示整合一個版本：`feat/core-rework`（含核心重做、合成台改版、第二版 B、GM 工具、DPS 顯示）fast-forward 合併進 `main`，其餘本機 branch（`feat/core-rework`、`feat/v2a-accounts`、`feat/mvp-core-loop`、`docs/initial-design`）都已併入並刪除。版本號 `0.2.0`（`package.json`，git 標籤 `v0.2.0`）。本機 `main` 與標籤**尚未 push**（使用者自己 push：`git push` 與 `git push origin v0.2.0`）；遠端還有舊的 `origin/feat/mvp-core-loop`（已併入，要刪除需使用者自己 `git push origin --delete feat/mvp-core-loop`）。新功能照慣例從 `main` 開 branch。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。

@@ -1,6 +1,6 @@
 {
   "name": "infinite-grimoire",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Minimalist pixel idle alchemy web game: auto-battling mage, element synthesis, server-validated progress.",
   "scripts": {
     "dev": "vite",
