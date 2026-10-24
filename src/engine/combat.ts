@@ -12,6 +12,8 @@ import type { ElementId, ItemId } from './types';
  * for a while (projectile flight, expanding ring, lingering zone...). Deterministic for a given Rng.
  */
 export const STEP_MS = 50;
+/** Burn and other damage over time is summed and reported as one 'dot' event this often (for the DPS readout). */
+export const DOT_REPORT_MS = 1000;
 export const STOP_R = 0.15;
 export const MAX_ACTIVE_FX = 24;
 /**
@@ -54,11 +56,17 @@ export interface Foe { uid: number; defId: string; x: number; y: number; hp: num
  */
 export interface ActiveFx { uid: number; spellId: string; elements: ElementId[]; effect: Effect; x: number; y: number; ageMs: number; hits: number[] }
 export interface Mage { cooldownMs: number; hasteMs: number; hasteFactor: number; stunMs: number }
-export interface BattleState { zoneId: string; foes: Foe[]; fx: ActiveFx[]; mage: Mage; spawnTimerMs: number; packTimerMs: number; bossActive: boolean; nextUid: number }
+export interface BattleState {
+  zoneId: string; foes: Foe[]; fx: ActiveFx[]; mage: Mage; spawnTimerMs: number; packTimerMs: number; bossActive: boolean; nextUid: number;
+  /** damage over time not yet reported, and how long it has been collecting */
+  dotDamage: number; dotMs: number;
+}
 export type BattleEvent =
   | { type: 'spawn'; uid: number; boss: boolean }
   | { type: 'cast'; spellId: string }
   | { type: 'hit'; uid: number; damage: number; immune: boolean; element: ElementId | null }
+  /** burn damage dealt over the last DOT_REPORT_MS, all foes together (hit events do not include it) */
+  | { type: 'dot'; damage: number }
   | { type: 'status'; uid: number; kind: StatusKind }
   | { type: 'kill'; uid: number; defId: string; drops: ItemId[]; x: number; y: number }
   | { type: 'burst'; x: number; y: number; r: number; elements: ElementId[] }
@@ -70,7 +78,7 @@ export type BattleEvent =
 export function createBattle(zoneId: string): BattleState {
   return {
     zoneId, foes: [], fx: [], mage: { cooldownMs: 0, hasteMs: 0, hasteFactor: 1, stunMs: 0 },
-    spawnTimerMs: 0, packTimerMs: 0, bossActive: false, nextUid: 1,
+    spawnTimerMs: 0, packTimerMs: 0, bossActive: false, nextUid: 1, dotDamage: 0, dotMs: 0,
   };
 }
 
@@ -105,6 +113,8 @@ const alive = (f: Foe): boolean => f.hp > 0;
 interface Ctx {
   game: GameState; content: Content; rng: Rng; events: BattleEvent[];
   foes: Foe[]; byUid: Map<number, Foe>; newFx: ActiveFx[]; nextUid: number;
+  /** burn damage dealt this step */
+  dot: number;
   spells: Map<string, Spell | null>; bonus: ReturnType<typeof passiveBonuses> | null;
   densest: Foe | null | undefined; counts: Map<number, number> | null; engaged: Foe[] | null;
 }
@@ -449,7 +459,10 @@ function advance(ctx: Ctx, fx: ActiveFx): boolean {
 /** Burn, regen, knockback and walking for one foe. */
 function moveFoe(ctx: Ctx, f: Foe, def: Monster): void {
   for (const s of f.statuses) {
-    if (s.kind === 'burn' && s.power) f.hp -= s.power * DT;
+    if (s.kind === 'burn' && s.power) {
+      if (f.hp > 0) ctx.dot += Math.min(f.hp, s.power * DT);
+      f.hp -= s.power * DT;
+    }
     else if (s.kind === 'regen') f.hp += f.maxHp * (s.power ?? REGEN_DEFAULT) * DT;
   }
   if (f.hp > 0) f.hp = Math.min(f.maxHp, f.hp + def.regenPerSec * DT);
@@ -495,7 +508,7 @@ export function stepBattle(
   const foes: Foe[] = battle.foes.map((f) => ({ ...f, statuses: f.statuses.map((s) => ({ ...s })) }));
   const ctx: Ctx = {
     game, content, rng, events, foes, byUid: new Map(foes.map((f) => [f.uid, f])), newFx: [],
-    nextUid: battle.nextUid, spells: new Map(), bonus: null, densest: undefined, counts: null, engaged: null,
+    nextUid: battle.nextUid, spells: new Map(), bonus: null, densest: undefined, counts: null, engaged: null, dot: 0,
   };
   const mage: Mage = { ...battle.mage };
   let spawnTimerMs = battle.spawnTimerMs + STEP_MS;
@@ -638,13 +651,21 @@ export function stepBattle(
     }
   }
 
+  let dotDamage = battle.dotDamage + ctx.dot;
+  let dotMs = battle.dotMs + STEP_MS;
+  if (dotMs >= DOT_REPORT_MS) {
+    if (dotDamage > 0) events.push({ type: 'dot', damage: dotDamage });
+    dotDamage = 0;
+    dotMs -= DOT_REPORT_MS;
+  }
+
   const changed = inventory !== game.inventory || defeatedBosses !== game.defeatedBosses ||
     unlockedZones !== game.unlockedZones || zoneKills !== game.zoneKills;
   return {
     game: changed ? { ...game, inventory, defeatedBosses, unlockedZones, zoneKills } : game,
     battle: {
       zoneId: battle.zoneId, foes: dead.length > 0 ? foes.filter(alive) : foes, fx, mage,
-      spawnTimerMs, packTimerMs, bossActive, nextUid: ctx.nextUid,
+      spawnTimerMs, packTimerMs, bossActive, nextUid: ctx.nextUid, dotDamage, dotMs,
     },
     events,
   };

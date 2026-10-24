@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import {
-  ENGAGE_R, MAX_ACTIVE_FX, STEP_MS, STOP_R, createBattle, stepBattle,
+  DOT_REPORT_MS, ENGAGE_R, MAX_ACTIVE_FX, STEP_MS, STOP_R, createBattle, stepBattle,
   type ActiveStatus, type BattleEvent, type BattleState, type Foe,
 } from './combat';
 import { createRng, type Rng } from './rng';
@@ -294,6 +294,38 @@ describe('stepBattle: effects', () => {
     expect(r.events.some((e) => e.type === 'cast' || e.type === 'hit')).toBe(false);
     // stunned 2 s each time, so far fewer attempts than the 500 ms cooldown allows
     expect(r.events.filter((e) => e.type === 'backfire').length).toBeLessThanOrEqual(5);
+  });
+
+  describe('damage over time', () => {
+    const dots = (events: BattleEvent[]) => events.filter((e): e is Extract<BattleEvent, { type: 'dot' }> => e.type === 'dot');
+    const stepsPerReport = DOT_REPORT_MS / STEP_MS;
+
+    it('reports burn damage once per DOT_REPORT_MS, summed over every foe', () => {
+      const c = withTest();
+      const b = staged([
+        foe(1, 'dummy', 0.5, 0, c, [{ kind: 'burn', remainingMs: 5000, power: 10 }]),
+        foe(2, 'dummy', -0.5, 0, c, [{ kind: 'burn', remainingMs: 5000, power: 30 }]),
+      ]);
+      const r = run(mkGame({ equipped: '' }), b, c, stepsPerReport * 2);
+      expect(r.perStep.slice(0, stepsPerReport - 1).flatMap(dots)).toEqual([]);
+      const reports = dots(r.events);
+      expect(reports).toHaveLength(2);
+      expect(reports[0]!.damage).toBeCloseTo(40, 6); // (10 + 30) per second
+      expect(dots(r.perStep[stepsPerReport - 1]!)).toHaveLength(1);
+    });
+
+    it('counts only the hit points a burn actually removes', () => {
+      const c = withTest();
+      const b = staged([foe(1, 'weak', 0.5, 0, c, [{ kind: 'burn', remainingMs: 5000, power: 1e3 }])]);
+      const r = run(mkGame({ equipped: '' }), b, c, stepsPerReport);
+      expect(dots(r.events)).toEqual([{ type: 'dot', damage: 10 }]); // weak has 10 hp
+    });
+
+    it('reports nothing when nothing burns', () => {
+      const c = withTest();
+      const r = run(mkGame({ equipped: '' }), staged([foe(1, 'dummy', 0.5, 0, c)]), c, stepsPerReport * 3);
+      expect(dots(r.events)).toEqual([]);
+    });
   });
 
   it('burning foes spread fire when they die', () => {
