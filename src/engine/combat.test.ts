@@ -296,6 +296,18 @@ describe('stepBattle: effects', () => {
     expect(r.events.filter((e) => e.type === 'backfire').length).toBeLessThanOrEqual(5);
   });
 
+  it('a hit reports the hit points it actually removed next to its full damage', () => {
+    const big = testSpell('t_big', [{ kind: 'field', mult: 1, delayMs: 0 }], { attack: 50, cooldownMs: 1e6 });
+    const c = withTest([big]);
+    const b = staged([foe(1, 'weak', 0.5, 0, c), foe(2, 'dummy', -0.5, 0, c)]);
+    const r = run(mkGame({ equipped: 't_big', learned: ['mana_bolt', 't_big'] }), b, c, 5);
+    const [onWeak] = hitsOn(r.events, 1);
+    const [onDummy] = hitsOn(r.events, 2);
+    expect(onWeak!.damage).toBeGreaterThan(10);
+    expect(onWeak!.dealt).toBe(10); // weak has 10 hp: the rest is overkill
+    expect(onDummy!.dealt).toBe(onDummy!.damage);
+  });
+
   describe('damage over time', () => {
     const dots = (events: BattleEvent[]) => events.filter((e): e is Extract<BattleEvent, { type: 'dot' }> => e.type === 'dot');
     const stepsPerReport = DOT_REPORT_MS / STEP_MS;

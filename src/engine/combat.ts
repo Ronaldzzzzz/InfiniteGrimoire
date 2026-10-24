@@ -64,7 +64,8 @@ export interface BattleState {
 export type BattleEvent =
   | { type: 'spawn'; uid: number; boss: boolean }
   | { type: 'cast'; spellId: string }
-  | { type: 'hit'; uid: number; damage: number; immune: boolean; element: ElementId | null }
+  /** `damage` is the full hit (shown as the floating number); `dealt` is the hit points it actually removed (no overkill) */
+  | { type: 'hit'; uid: number; damage: number; dealt: number; immune: boolean; element: ElementId | null }
   /** burn damage dealt over the last DOT_REPORT_MS, all foes together (hit events do not include it) */
   | { type: 'dot'; damage: number }
   | { type: 'status'; uid: number; kind: StatusKind }
@@ -162,7 +163,7 @@ function hit(ctx: Ctx, fx: ActiveFx, spell: Spell, f: Foe, mult: number, status:
   if (!def) return;
   const element = elementOf(fx.effect.kind, fx.elements);
   if (!canDamage(spell, def)) {
-    if (mult > 0) ctx.events.push({ type: 'hit', uid: f.uid, damage: 0, immune: true, element });
+    if (mult > 0) ctx.events.push({ type: 'hit', uid: f.uid, damage: 0, dealt: 0, immune: true, element });
     return;
   }
   let damage = 0;
@@ -170,8 +171,9 @@ function hit(ctx: Ctx, fx: ActiveFx, spell: Spell, f: Foe, mult: number, status:
     damage = computeDamage(spell.attack * mult, spell, def, {
       frozen: hasStatus(f, 'freeze'), wetThunder: thunder && hasStatus(f, 'wet'), bonusPct: bonusPct(ctx, spell),
     });
+    const dealt = Math.min(f.hp, damage); // alive above, so f.hp > 0
     f.hp -= damage;
-    ctx.events.push({ type: 'hit', uid: f.uid, damage, immune: false, element });
+    ctx.events.push({ type: 'hit', uid: f.uid, damage, dealt, immune: false, element });
   }
   if (alive(f)) applyStatuses(ctx, f, status, damage);
 }

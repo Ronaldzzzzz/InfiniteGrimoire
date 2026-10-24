@@ -160,10 +160,11 @@ export class BattleView {
   /** banner width at scale 1, measured when its text changes */
   private bannerW = 1;
   private castLabel: Text | null = null;
-  /** top-left readout: average damage per second over the last 10 s (hits plus summed burn) */
+  /** top-left readout: hit points removed per second over the last 10 s (hits plus summed burn), for the equipped spell only */
   private dpsLabel: Text | null = null;
   private readonly dps = new DpsMeter(0);
   private dpsRefreshAt = 0;
+  private dpsSpell: string | null = null;
   private castAge = CAST_LABEL_MS;
   private readonly killTimes: number[] = [];
   private shake = 0;
@@ -347,6 +348,11 @@ export class BattleView {
   sync(snapshot: Snapshot, alpha = 1): void {
     if (!this.ready_ || this.destroyed) return;
     const battle = snapshot.battle;
+    // swapping spells restarts the average, so the number always belongs to the spell in hand
+    if (snapshot.game.equipped !== this.dpsSpell) {
+      if (this.dpsSpell !== null) this.dps.reset(this.time);
+      this.dpsSpell = snapshot.game.equipped;
+    }
     if (battle !== this.lastBattle) {
       const last = this.lastBattle;
       this.prevPos.clear();
@@ -859,7 +865,7 @@ export class BattleView {
     for (const e of events) {
       switch (e.type) {
         case 'hit': {
-          if (!e.immune) this.dps.add(this.time, e.damage);
+          this.dps.add(this.time, e.dealt); // hit points actually removed, so overkill on weak foes doesn't inflate it
           const v = this.foes.get(e.uid);
           if (!v) break;
           const ft = floatingText(e);
