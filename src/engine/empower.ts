@@ -4,10 +4,16 @@ import { removeItems } from './inventory';
 import { MAX_SPELL_LEVEL, resolveSpell } from './spells';
 import type { Content, GameState, Spell } from './model';
 
-/** Cost of raising a spell from `level` to level+1: 4..22 units of the grade that matches the level band, per element. */
+/** Element grade of an empower step: the level band, capped by what the spell's tier calls for (1..5). */
+export function empowerGrade(tier: number, level: number): number {
+  const cap = Math.min(5, Math.max(1, Math.ceil((tier - 1) / 2)));
+  return Math.min(1 + Math.floor((level - 1) / 10), cap);
+}
+
+/** Cost of raising a spell from `level` to level+1: 2..10 units of that grade, per element. */
 export function empowerCost(spell: Spell, level: number): ItemId[] {
-  const grade = 1 + Math.floor((level - 1) / 10);
-  const n = 4 + 2 * ((level - 1) % 10);
+  const grade = empowerGrade(spell.tier, level);
+  const n = 2 + Math.floor(((level - 1) % 10) / 2);
   const out: ItemId[] = [];
   for (const e of spell.elements) for (let i = 0; i < n; i++) out.push(elementItem(e, grade));
   return out;

@@ -376,10 +376,10 @@ describe('empower, reveal and passive', () => {
     expect(status, JSON.stringify(out)).toBe(200);
     expect(out.result).toEqual({ kind: 'empowered', level: 2 });
     expect(out.state.levels).toEqual({ fireball: 2 });
-    expect(out.state.inventory).toEqual({ 'el:fire:1': 1 });
+    expect(out.state.inventory).toEqual({ 'el:fire:1': 3 });
     expect(saved(g.playerId).levels).toEqual({ fireball: 2 });
     // the spent elements are charged to the anchor (the synthesis result, 5 fire): restoring them is a gain to explain
-    expect(JSON.parse(store.saves.get(g.playerId)!.anchorState).inventory['el:fire:1']).toBe(1);
+    expect(JSON.parse(store.saves.get(g.playerId)!.anchorState).inventory['el:fire:1']).toBe(3);
     // mana_bolt has no element to empower with
     const none = await action('/api/empower', { state: out.state, baseRevision: 2, spellId: 'mana_bolt' }, g.token);
     expect(none.status).toBe(422);

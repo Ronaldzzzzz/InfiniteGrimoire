@@ -12,19 +12,19 @@ const button = () => screen.getByRole('button', { name: /強化/ }) as HTMLButto
 
 describe('EmpowerPanel', () => {
   it('EmpowerPanel shows the next cost and locks while pending', async () => {
-    // fireball level 2 -> 3 costs 6 grade-1 fire (empowerCost)
-    const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], levels: { fireball: 2 }, inventory: { 'el:fire:1': 5 } });
+    // fireball level 2 -> 3 costs 2 grade-1 fire (empowerCost)
+    const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], levels: { fireball: 2 }, inventory: { 'el:fire:1': 1 } });
     let resolve: (r: ActionResult) => void = () => {};
     const sync = { action: vi.fn(() => new Promise<ActionResult | null>((r) => (resolve = r))) };
     const { rerender } = render(<EmpowerPanel spellId="fireball" runtime={rt} sync={sync} content={content} />);
     const panel = screen.getByRole('region', { name: '強化' });
     expect(panel.textContent).toContain('強化 +1');
     expect(panel.textContent).toContain('下一級：強化 +2');
-    expect(panel.textContent).toContain('初階火 ×6');
-    expect(panel.textContent).toContain('持有 5');
+    expect(panel.textContent).toContain('初階火 ×2');
+    expect(panel.textContent).toContain('持有 1');
     expect(button().disabled).toBe(true);
 
-    rt.set({ game: { inventory: { 'el:fire:1': 6 } } });
+    rt.set({ game: { inventory: { 'el:fire:1': 2 } } });
     rerender(<EmpowerPanel spellId="fireball" runtime={rt} sync={sync} content={content} />);
     expect(button().disabled).toBe(false);
     fireEvent.click(button());
@@ -43,7 +43,7 @@ describe('EmpowerPanel', () => {
     const { rerender } = render(<EmpowerPanel spellId="fireball" runtime={rt} sync={sync} content={content} />);
     const panel = screen.getByRole('region', { name: '強化' });
     expect(panel.textContent).toContain('尚未強化');
-    expect(panel.textContent).toContain('初階火 ×4');
+    expect(panel.textContent).toContain('初階火 ×2');
     rt.set({ game: { levels: { fireball: 50 } } });
     rerender(<EmpowerPanel spellId="fireball" runtime={rt} sync={sync} content={content} />);
     expect(screen.getByRole('region', { name: '強化' }).textContent).toContain('已經強化到最高等級');

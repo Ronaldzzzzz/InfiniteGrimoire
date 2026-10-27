@@ -7,8 +7,11 @@ export const HARD_MAX_DEPTH = 8;
 export const MAX_EFFECTS = 4;
 export const MAX_SPELL_LEVEL = 50;
 export const CEILING_FACTOR = 1.25;
+/** Attack multiplier of a fully empowered spell (level 50) over level 1. Tunable 1.5-2.0. */
+export const TIER_STEP = 1.7;
+/** Crafted spells never exceed this tier; tier 10 is reserved for rare named spells. */
+export const MAX_CRAFTED_TIER = 9;
 
-const MAX_TIER = 20;
 const MAX_COOLDOWN_MS = 6000;
 
 /** Crafted spell id: the two input tokens in sorted order, so the id does not depend on slot order. */
@@ -45,7 +48,7 @@ export function affinityOf(a: ElementId[], b: ElementId[]): 'good' | 'odd' | 'ba
 /** Crafted attack may not exceed this for its tier: a bit above the strongest named spell of that tier or lower. */
 export function attackCeiling(tier: number, content: Content): number {
   let max = 0;
-  for (const s of Object.values(content.spells)) if (s.tier <= tier && s.attack > max) max = s.attack;
+  for (const s of Object.values(content.spells)) if (!s.rare && s.tier <= tier && s.attack > max) max = s.attack;
   return CEILING_FACTOR * max;
 }
 
@@ -106,7 +109,7 @@ function derive(id: string, content: Content): Spell | null {
   const elements = ELEMENT_ORDER.filter((e) => A.elements.includes(e) || B.elements.includes(e));
   const affinity = affinityOf(A.elements, B.elements);
   const good = affinity === 'good', bad = affinity === 'bad';
-  const tier = Math.min(MAX_TIER, Math.max(A.tier, B.tier) + (good ? 1 : 0));
+  const tier = Math.min(MAX_CRAFTED_TIER, Math.max(A.tier, B.tier) + (good ? 1 : 0));
   const gain = good ? 1 + 0.35 * 0.7 ** (depth - 1) : bad ? 0.6 : 1;
   const attack = Math.min(attackCeiling(tier, content), Math.round(Math.max(A.attack, B.attack) * gain));
   const cooldownMs = a.material ? B.cooldownMs
@@ -144,20 +147,9 @@ export function resolveSpell(id: string, content: Content): Spell | null {
   return result;
 }
 
-const bump = (level: number) => Math.floor((level - 1) / 10);
-
-/** Level scaling: attack, tier, projectile counts and radii grow with the spell level (1-50). */
+/** Level scaling: only attack grows, from x1 at level 1 to x TIER_STEP at MAX_SPELL_LEVEL. Tier and effects stay. */
 export function spellAtLevel(spell: Spell, level: number): Spell {
   const L = Math.min(MAX_SPELL_LEVEL, Math.max(1, Math.floor(Number.isFinite(level) ? level : 1)));
   if (L === 1) return spell;
-  const extra = bump(L), rad = 1 + 0.02 * (L - 1);
-  const effects = spell.effects.map((e): Effect => {
-    const out: Effect = { ...e };
-    if (out.kind === 'bolt' || out.kind === 'blades' || out.kind === 'meteor') out.count += extra;
-    if (out.kind === 'chain') out.hops += extra;
-    if (out.kind === 'zone' && out.strikes > 0) out.strikes += extra;
-    if ('radius' in out) out.radius *= rad;
-    return out;
-  });
-  return { ...spell, attack: spell.attack * (1 + 0.08 * (L - 1)), tier: Math.min(MAX_TIER, spell.tier + extra), effects };
+  return { ...spell, attack: spell.attack * (1 + (TIER_STEP - 1) * (L - 1) / (MAX_SPELL_LEVEL - 1)) };
 }

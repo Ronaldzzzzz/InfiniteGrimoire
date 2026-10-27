@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import {
-  CRAFTED_MAX_LEN, HARD_MAX_DEPTH, MAX_EFFECTS, MAX_SPELL_LEVEL,
+  CRAFTED_MAX_LEN, HARD_MAX_DEPTH, MAX_CRAFTED_TIER, MAX_EFFECTS, MAX_SPELL_LEVEL, TIER_STEP,
   affinityOf, attackCeiling, craftedId, inputToken, resolveSpell, spellAtLevel,
 } from './spells';
 
@@ -85,17 +85,32 @@ describe('crafted spells', () => {
     expect(beatNamed).toBe(true);
   });
 
-  it('spellAtLevel scales damage, counts, radius and tier', () => {
+  it('spellAtLevel scales attack only, by TIER_STEP over the 50 levels', () => {
     const base = content.spells.fireball!;
     expect(spellAtLevel(base, 1)).toBe(base);
-    const s = spellAtLevel(base, 11);
-    expect(s.attack).toBeCloseTo(base.attack * 1.8);
-    expect(s.tier).toBe(base.tier + 1);
-    const b0 = base.effects[0] as Extract<typeof base.effects[number], { kind: 'bolt' }>;
-    const b1 = s.effects[0] as typeof b0;
-    expect(b1.count).toBe(b0.count + 1);
-    expect(b1.radius).toBeCloseTo(b0.radius * 1.2);
-    expect(spellAtLevel(base, 99).attack).toBeCloseTo(base.attack * (1 + 0.08 * (MAX_SPELL_LEVEL - 1)));
-    expect(spellAtLevel(base, 99).tier).toBe(Math.min(20, base.tier + 4));
+    expect(spellAtLevel(base, 50).attack).toBeCloseTo(base.attack * TIER_STEP);
+    expect(spellAtLevel(base, 99).attack).toBeCloseTo(base.attack * TIER_STEP);
+    expect(spellAtLevel(base, 26).attack).toBeCloseTo(base.attack * (1 + 0.7 * 25 / 49));
+    for (const L of [2, 11, 26, 50]) {
+      const s = spellAtLevel(base, L);
+      expect(s.tier).toBe(base.tier);
+      expect(s.effects).toEqual(base.effects);
+      expect(s.depth).toBe(base.depth);
+    }
+  });
+
+  it('crafted tier caps at MAX_CRAFTED_TIER', () => {
+    expect(MAX_CRAFTED_TIER).toBe(9);
+    const mk = (id: string, elements: ('fire' | 'wind')[]) => ({ ...content.spells.fireball!, id, elements, tier: 9, depth: 1 });
+    const c = { ...content, spells: { ...content.spells, hi_fire: mk('hi_fire', ['fire']), hi_wind: mk('hi_wind', ['wind']) } };
+    const s = resolveSpell(craftedId('hi_fire', 'hi_wind'), c)!;
+    expect(s.affinity).toBe('good');
+    expect(s.tier).toBe(9);
+  });
+
+  it('attackCeiling ignores rare spells', () => {
+    const rare = { ...content.spells.fireball!, id: 'rare_x', tier: 10, attack: 1e9, rare: true };
+    const c = { ...content, spells: { ...content.spells, rare_x: rare } };
+    expect(attackCeiling(10, c)).toBe(attackCeiling(10, content));
   });
 });

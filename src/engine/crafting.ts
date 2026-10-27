@@ -54,7 +54,9 @@ function plan(state: GameState, inputs: string[], content: Content) {
   const items = [...inputs].sort().filter(isItem);
   const key = comboKey(inputs);
   const first = items[0]; // undefined when both inputs are spells
-  const fused = !inputs.some(isElementItem);
+  const recipe = findRecipe(content, key);
+  // R1: a recipe whose input is a material (rare spells) costs that material only, no fusion cost.
+  const fused = !inputs.some(isElementItem) && !(recipe && inputs.some((i) => i.startsWith('mat:')));
 
   /** Fusion cost of a result spell: one element item per element, at the grade its depth demands. */
   const fusionCost = (elements: string[], depth: number): ItemId[] =>
@@ -74,7 +76,6 @@ function plan(state: GameState, inputs: string[], content: Content) {
     return { id, spell, cost: fusionCost(spell.elements, spell.depth) };
   };
 
-  const recipe = findRecipe(content, key);
   const eligible = recipe
     ? recipe.outcomes
         .filter((o) => o.spellId === null || (content.spells[o.spellId]?.prerequisites ?? []).every((p) => state.learned.includes(p)))

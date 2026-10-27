@@ -239,13 +239,13 @@ describe('validateUpload', () => {
     expect(fail(validateUpload(prev, next, 600_000, data)).join()).toContain('b2');
   });
 
-  it('boss hit check uses spell levels', () => {
-    // mana_bolt tier 1 cannot hurt the tier-3 bL; at level 11 it is tier 2
+  it('boss hit check: spell levels raise attack, not tier', () => {
+    // mana_bolt tier 1 cannot hurt the tier-3 bL, and empowering only raises its attack, never its tier
     const prev = { ...base(), unlockedZones: ['zL'], currentZone: 'zL' };
     const next = { ...prev, defeatedBosses: ['bL'] };
     expect(fail(validateUpload(prev, next, 600_000, data)).join()).toContain('cannot be damaged');
     const leveled = { mana_bolt: 11 };
-    expect(validateUpload({ ...prev, levels: leveled }, { ...next, levels: leveled }, 600_000, data)).toEqual({ ok: true });
+    expect(fail(validateUpload({ ...prev, levels: leveled }, { ...next, levels: leveled }, 600_000, data)).join()).toContain('cannot be damaged');
   });
 
   it('zone unlocked without boss rejected', () => {

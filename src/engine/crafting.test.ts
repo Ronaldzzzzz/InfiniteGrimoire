@@ -144,14 +144,13 @@ describe('crafting', () => {
     expect(second.state.synthesisLog['el:fire:1+el:water:1']!.attempts).toBe(2);
   });
 
-  it('a failed retry with one item input still pays the fusion cost', () => {
-    // spell + material (like 聖光審判): refunding the only item would make the retry free, so the fusion cost stays spent
+  it('a failed retry of spell + material refunds nothing and charges no fusion cost (R1)', () => {
     const c = fallThrough(['thunder_hammer', 'mat:ember_core']);
     const crafted = craftedId('mat:ember_core', 'thunder_hammer');
     const s = mkState({ 'mat:ember_core': 1, 'el:fire:2': 1, 'el:thunder:2': 1 }, ['mana_bolt', 'thunder_hammer', crafted]);
     const r = run(s, ['thunder_hammer', 'mat:ember_core'], 8, c);
-    expect(r.result).toEqual({ kind: 'duplicate', spellId: crafted, refunded: ['mat:ember_core'] });
-    expect(r.state.inventory).toEqual({ 'mat:ember_core': 1 });
+    expect(r.result).toEqual({ kind: 'duplicate', spellId: crafted, refunded: [] });
+    expect(r.state.inventory).toEqual({ 'el:fire:2': 1, 'el:thunder:2': 1 });
   });
 
   it('a missed rare roll (spell + 高階 element) always spends the element, even on a known fall-through', () => {
@@ -189,41 +188,83 @@ describe('crafting', () => {
     expect([...kinds].some((k) => k.startsWith('c('))).toBe(true);
   });
 
+  describe('rare recipe: spell + material costs the material only (R1)', () => {
+    const rareC: Content = {
+      ...content,
+      spells: { ...content.spells, hi9: { ...content.spells.thunder_hammer!, id: 'hi9', tier: 9 } },
+      recipes: [...content.recipes, { id: 'r_rare', inputs: ['hi9', 'mat:ember_core'], outcomes: [{ spellId: 'holy_judgment', weight: 1 }, { spellId: null, weight: 49 }] }],
+    };
+    const inputs = ['hi9', 'mat:ember_core'];
+    const miss = { next: () => 0.999, int: (min: number) => min };
+    const hit = { next: () => 0, int: (min: number) => min };
+    const learned = ['mana_bolt', 'hi9', 'thunder_hammer'];
+    const crafted = craftedId('hi9', 'mat:ember_core');
+
+    it('a miss spends one material and no element, and a repeat miss refunds nothing', () => {
+      const go = (s: GameState) => synthesize(s, inputs, rareC, miss, { depthCap: 8 });
+      const first = go(mkState({ 'mat:ember_core': 2 }, learned));
+      expect(first.result).toEqual({ kind: 'learned', spellId: crafted, crafted: true });
+      expect(first.state.inventory).toEqual({ 'mat:ember_core': 1 });
+      const second = go(first.state);
+      expect(second.result).toEqual({ kind: 'duplicate', spellId: crafted, refunded: [] });
+      expect(second.state.inventory).toEqual({});
+    });
+
+    it('a hit learns the rare spell and spends only the material', () => {
+      const r = synthesize(mkState({ 'mat:ember_core': 1 }, learned), inputs, rareC, hit, { depthCap: 8 });
+      expect(r.result).toEqual({ kind: 'learned', spellId: 'holy_judgment', crafted: false });
+      expect(r.state.inventory).toEqual({});
+    });
+
+    it('fusionNeeds is empty', () => {
+      expect(fusionNeeds(mkState({ 'mat:ember_core': 1 }, learned), inputs, rareC)).toEqual([]);
+    });
+
+    it('a spell + material with no recipe still pays the fusion cost', () => {
+      expect(fusionNeeds(mkState({ 'mat:ember_core': 1 }, ['mana_bolt', 'thunder_hammer']), ['thunder_hammer', 'mat:ember_core'],
+        { ...content, recipes: content.recipes.filter((r) => !r.inputs.includes('mat:ember_core')) }).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('a random recipe needs every outcome affordable before the roll', () => {
-    const inputs = ['thunder_hammer', 'mat:sun_shard'];
-    const learned = ['mana_bolt', 'lightning', 'thunder_hammer'];
-    const crafted = craftedId('mat:sun_shard', 'thunder_hammer');
+    const inputs = ['inferno', 'vacuum_blades'];
+    const learned = ['mana_bolt', 'fireball', 'wind_blade', 'inferno', 'vacuum_blades'];
+    const c: Content = {
+      ...content,
+      recipes: [...content.recipes, { id: 'r_two', inputs: ['inferno', 'vacuum_blades'], outcomes: [{ spellId: 'fire_tornado', weight: 1 }, { spellId: null, weight: 1 }] }],
+    };
+    const crafted = craftedId('inferno', 'vacuum_blades');
     it('the outcomes really cost different amounts', () => {
-      expect(content.spells.holy_judgment!.depth).toBe(3);
-      expect(resolveSpell(crafted, content)!.depth).toBe(2);
+      expect(content.spells.fire_tornado!.depth).toBe(1);
+      expect(resolveSpell(crafted, content)!.depth).toBe(3);
     });
     for (const [label, stock] of [
-      ['only the crafted fall-through', { 'el:fire:2': 1, 'el:thunder:2': 1 }],
-      ['only the named outcome', { 'el:fire:3': 1, 'el:thunder:3': 1 }],
+      ['only the crafted fall-through', { 'el:fire:3': 1, 'el:wind:3': 1 }],
+      ['only the named outcome', { 'el:fire:1': 1, 'el:wind:1': 1 }],
     ] as const) {
       it(`stock covering ${label} is rejected on every seed, spending nothing`, () => {
-        const s = mkState({ 'mat:sun_shard': 1, ...stock }, learned);
+        const s = mkState({ ...stock }, learned);
         for (let seed = 1; seed <= 40; seed++) {
-          const r = run(s, inputs, 8, content, seed);
+          const r = run(s, inputs, 8, c, seed);
           expect(r.result).toEqual({ kind: 'rejected', reason: 'insufficient' });
           expect(r.state).toEqual(s);
         }
       });
     }
     it('stock covering every outcome rolls and pays as before', () => {
-      const s = mkState({ 'mat:sun_shard': 1, 'el:fire:2': 1, 'el:thunder:2': 1, 'el:fire:3': 1, 'el:thunder:3': 1 }, learned);
+      const s = mkState({ 'el:fire:1': 1, 'el:wind:1': 1, 'el:fire:3': 1, 'el:wind:3': 1 }, learned);
       const seen = new Set<string>();
       for (let seed = 1; seed <= 60; seed++) {
-        const r = run(s, inputs, 8, content, seed);
+        const r = run(s, inputs, 8, c, seed);
         expect(r.result.kind).toBe('learned');
         if (r.result.kind !== 'learned') continue;
         seen.add(r.result.spellId);
         expect(r.state.learned).toContain(r.result.spellId);
-        expect(r.state.inventory).toEqual(r.result.spellId === 'holy_judgment'
-          ? { 'el:fire:2': 1, 'el:thunder:2': 1 }
-          : { 'el:fire:3': 1, 'el:thunder:3': 1 });
+        expect(r.state.inventory).toEqual(r.result.spellId === 'fire_tornado'
+          ? { 'el:fire:3': 1, 'el:wind:3': 1 }
+          : { 'el:fire:1': 1, 'el:wind:1': 1 });
       }
-      expect(seen).toEqual(new Set(['holy_judgment', crafted]));
+      expect(seen).toEqual(new Set(['fire_tornado', crafted]));
     });
   });
 });
@@ -254,16 +295,18 @@ describe('fusionNeeds', () => {
   });
 
   it('a random recipe needs what every outcome it could land on would charge', () => {
-    const learned = ['lightning', 'thunder_hammer'];
-    const extra = needs(['thunder_hammer', 'mat:sun_shard'], learned);
-    expect(extra).toEqual(expect.arrayContaining(['el:fire:3', 'el:thunder:3']));
+    const c: Content = {
+      ...content,
+      recipes: [...content.recipes, { id: 'r_two', inputs: ['inferno', 'vacuum_blades'], outcomes: [{ spellId: 'fire_tornado', weight: 1 }, { spellId: null, weight: 1 }] }],
+    };
+    const extra = fusionNeeds(mkState({}, ['mana_bolt', 'fireball', 'wind_blade', 'inferno', 'vacuum_blades']), ['inferno', 'vacuum_blades'], c);
+    expect([...extra].sort()).toEqual(['el:fire:1', 'el:fire:3', 'el:wind:1', 'el:wind:3']);
   });
 
   it('matches synthesize: exactly the inputs plus these needs is enough, one fewer is not', () => {
     for (const [inputs, learned] of [
       [['fireball', 'wind_blade'], ['fireball', 'wind_blade']],
       [['inferno', 'vacuum_blades'], ['inferno', 'vacuum_blades']],
-      [['thunder_hammer', 'mat:sun_shard'], ['lightning', 'thunder_hammer']],
     ] as const) {
       const extra = needs([...inputs], [...learned]);
       const inv = stock([...inputs.filter((i) => i.includes(':')), ...extra]);

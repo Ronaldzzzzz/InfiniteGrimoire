@@ -24,7 +24,7 @@ describe('describeInput', () => {
   it('uses the spell level for the tier and defaults the level to 1', () => {
     expect(describeInput('fireball', content, {})).toMatchObject({ kind: 'spell', level: 1 });
     const base = content.spells['fireball']!;
-    expect(describeInput('fireball', content, { fireball: 11 })).toMatchObject({ tier: base.tier + 1 });
+    expect(describeInput('fireball', content, { fireball: 11 })).toMatchObject({ tier: base.tier });
   });
 });
 
