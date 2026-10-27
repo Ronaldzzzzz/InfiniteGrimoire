@@ -41,3 +41,13 @@
 - Task 1: minor (deferred): `fusionNeeds` 與 `synthesize` 一致性測試少了素材配方案例。
 - Task 1: minor (deferred): EmpowerPanel 低等級顯示「攻擊 12 → 12」（四捨五入）；交給 Task 8 處理。
 - Task 1: complete (commits 216e161..cb009f6, review clean)
+- Task 2: dispatched (BASE b27ce3a, implementer af6b74b58bab5a473, sonnet)
+- Task 2: minor (deferred): content.test「existing spells and recipes are unchanged」對稀有整筆跳過（只該跳 tier）。
+- Task 2: minor (deferred): content.test 部分錯誤斷言用寬鬆子字串（'fireball'、'passive'）。
+- Task 2: note: pure-paths 暫時排除 astral 區域，Task 4 必須移除。4 個改名的英文 words 是實作者自取（Tempest/Canopy、Voltaic/Surge、Devouring/Sands、Thunderfire/Maelstrom）。
+- Task 2: complete (commits b27ce3a..5906fe0, review clean)
+- Task 3: dispatched (BASE 5906fe0, implementer a4587ea29aa6711d7, sonnet)
+- Ruling T3a: 沒有深度被動時，稀有落空（Lv.9 深度 3 ＋ 素材 → 自創深度 4）會變成魔力過載，仍只扣 1 個素材 — 規則照舊（過載本來就是深度超限的結果），R1 讓成本只有素材 — 若錯：玩家刷稀有時會頻繁看到過載訊息，Task 11/驗收時再看是否要改訊息。
+- Ruling T3b: 新魔法攻擊暫用與舊資料連續的值（Lv.4 40、Lv.6 55、Lv.8 80、Lv.9 90），不用 TIER_STEP 粗估 — 粗估值會打破 attack ceiling 測試，Task 7 本來就重調 — 若錯：Task 7 前量測報告數字不具意義。
+- Task 3: minor (deferred): baseline「unchanged」測試跳過 _pure_2/3 與 Lv.5/7 前置（由鏈測試補）；check 3 只看單屬非稀有；abyssal_crush 說明「最後」與實際不同時（Task 7 重寫 desc 時一起修）。
+- Task 3: complete (commits 5906fe0..c1826cd, review clean)
