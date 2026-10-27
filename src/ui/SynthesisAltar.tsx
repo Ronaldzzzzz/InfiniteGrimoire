@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { fusionNeeds, rareStillHidden, SYNTH_SLOTS } from '../engine/crafting';
-import type { Content } from '../engine/model';
+import { fusionNeeds, rareStillHidden, rollsRare, SYNTH_SLOTS } from '../engine/crafting';
+import { OVERLOAD_SPELL, type Content } from '../engine/model';
 import { GRADE_NAMES } from '../engine/types';
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
@@ -28,6 +28,8 @@ export const REVEAL_MS = BANNER_MS;
 const BOUNCE_MS = 400;
 /** After a miss on a random recipe that can still give something unlearned: a nudge, never the answer. */
 export const RETRY_HINT = '這個組合似乎還藏著別的可能……多試幾次，也許會有不一樣的結果。';
+/** A miss on a rare recipe that fell through to 魔力過載 (no depth passive yet) reads as a plain miss (Ruling F2). */
+export const RARE_MISS_MESSAGE = '這次沒有成功，素材已消耗。';
 
 type Reply = ActionResult | null;
 type Synth = { synthesize(inputs: string[]): Promise<Reply> };
@@ -211,6 +213,7 @@ export const SynthesisAltar = memo(function SynthesisAltar({
     setLastCombo([slots[0]!, slots[1]!]);
     // decided before the roll: whether a miss here could still have landed on something unlearned
     const hidden = rareStillHidden(runtime.getSnapshot().game, sorted, content);
+    const rareCombo = rollsRare(sorted, content);
     setRetry(false);
     setFusing(true);
     setBounce(false);
@@ -241,8 +244,17 @@ export const SynthesisAltar = memo(function SynthesisAltar({
     }
 
     const applied = result;
+    const rareMiss = rareCombo && (applied.kind === 'overload' || (applied.kind === 'duplicate' && applied.spellId === OVERLOAD_SPELL));
     const show = (): void => {
       if (!alive.current) return;
+      if (rareMiss) {
+        // the server result is unchanged; only the wording is: no 魔力過載 reveal, and no banner (onResult is skipped)
+        setFusing(false);
+        latest.current.onSlotsChange(emptySlots());
+        setMessage(RARE_MISS_MESSAGE);
+        setRetry(hidden);
+        return;
+      }
       const reveal = revealOf(applied, content, sorted);
       const spell = reveal?.spellId ? describeInput(reveal.spellId, content, runtime.getSnapshot().game.levels) : null;
       setFusing(false);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comboKey, fusionNeeds, rareStillHidden, requiredGrade, synthesize } from './crafting';
+import { comboKey, fusionNeeds, rareStillHidden, requiredGrade, rollsRare, synthesize } from './crafting';
 import { content } from './content';
 import { createRng } from './rng';
 import { craftedId, resolveSpell } from './spells';
@@ -365,5 +365,14 @@ describe('rareStillHidden', () => {
     expect(hidden(['astral_fulmination', 'mat:sun_shard'], ['astral_fulmination'])).toBe(true);
     const gated = { ...content, spells: { ...content.spells, holy_judgment: { ...content.spells.holy_judgment!, prerequisites: ['nope'] } } };
     expect(rareStillHidden(mkState({}, ['mana_bolt', 'astral_fulmination']), ['astral_fulmination', 'mat:sun_shard'], gated)).toBe(false);
+  });
+});
+
+describe('rollsRare', () => {
+  it('is true only for recipes with a rare outcome, in any input order', () => {
+    expect(rollsRare(['corona_scorch', 'mat:ember_core'], content)).toBe(true);
+    expect(rollsRare(['mat:ember_core', 'corona_scorch'], content)).toBe(true);
+    expect(rollsRare(['fireball', 'wind_blade'], content)).toBe(false);
+    expect(rollsRare(['el:fire:1', 'el:fire:1'], content)).toBe(false);
   });
 });

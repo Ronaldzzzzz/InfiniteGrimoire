@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
-import { MIN_FUSE_MS, RETRY_HINT, REVEAL_MS, SynthesisAltar, type Slots } from './SynthesisAltar';
+import { MIN_FUSE_MS, RARE_MISS_MESSAGE, RETRY_HINT, REVEAL_MS, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { craftedId } from '../engine/spells';
 import { fakeRuntime } from './test-runtime';
 import * as lastCombo from './last-combo';
@@ -90,11 +90,43 @@ describe('SynthesisAltar', () => {
     const missed = craftedId('corona_scorch', 'mat:ember_core');
     const play = async (learned: string[], reply: ActionResult) => {
       vi.useFakeTimers();
-      setup({ learned: ['mana_bolt', ...learned], inventory: { 'mat:ember_core': 1 } }, ['corona_scorch', 'mat:ember_core'], async () => reply);
+      const a = setup({ learned: ['mana_bolt', ...learned], inventory: { 'mat:ember_core': 1 } }, ['corona_scorch', 'mat:ember_core'], async () => reply);
       fireEvent.click(go());
       await flush();
       act(() => vi.advanceTimersByTime(MIN_FUSE_MS));
+      return a;
     };
+
+    it('a rare-recipe miss that overloads reads as a plain miss, not 魔力過載 (F2)', async () => {
+      for (const reply of [
+        { kind: 'overload', spellId: 'mana_overload' },
+        { kind: 'duplicate', spellId: 'mana_overload', refunded: [] },
+      ] as ActionResult[]) {
+        const a = await play(['corona_scorch'], reply);
+        expect(message()).toBe(RARE_MISS_MESSAGE);
+        expect(message()).not.toContain('過載');
+        expect(reveal()).toBeNull();
+        expect(retry()).toBe(RETRY_HINT);
+        expect(a.onResult).not.toHaveBeenCalled(); // so no 魔力過載 banner either
+        expect(a.onSlotsChange).toHaveBeenCalledWith([null, null]);
+        cleanup();
+      }
+      // once the rare is learned the miss stays neutral, just without the hint
+      await play(['corona_scorch', 'worldfire'], { kind: 'overload', spellId: 'mana_overload' });
+      expect(message()).toBe(RARE_MISS_MESSAGE);
+      expect(retry()).toBeNull();
+    });
+
+    it('an overload outside a rare recipe still says 魔力過載', async () => {
+      vi.useFakeTimers();
+      const a = setup({ learned: ['mana_bolt', 'fireball', 'wind_blade'], inventory: { 'el:fire:1': 1, 'el:wind:1': 1 } }, ['fireball', 'wind_blade'],
+        async () => ({ kind: 'overload', spellId: 'mana_overload' }));
+      fireEvent.click(go());
+      await flush();
+      act(() => vi.advanceTimersByTime(MIN_FUSE_MS));
+      expect(within(reveal()!).getByText('魔力過載！')).toBeTruthy();
+      expect(a.onResult).toHaveBeenCalled();
+    });
 
     it('hints that trying again may turn out differently, without naming the result', async () => {
       await play(['corona_scorch'], { kind: 'learned', spellId: missed, crafted: true });

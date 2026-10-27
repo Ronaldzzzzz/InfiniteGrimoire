@@ -151,6 +151,12 @@ export function rareStillHidden(state: GameState, inputs: string[], content: Con
   return eligible.some((o) => o.value !== null && !state.learned.includes(o.value));
 }
 
+/** Whether these inputs are a recipe that can roll a rare spell (the altar words its misses as a plain miss). */
+export function rollsRare(inputs: string[], content: Content): boolean {
+  const recipe = findRecipe(content, comboKey(inputs));
+  return !!recipe && recipe.outcomes.some((o) => o.spellId !== null && !!content.spells[o.spellId]?.rare);
+}
+
 export function synthesize(
   state: GameState,
   inputs: string[],
