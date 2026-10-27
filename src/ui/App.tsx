@@ -134,7 +134,7 @@ export function App({
         <div className="battle">
           <BattleCanvas runtime={runtime} />
           <BossCounter runtime={runtime} content={content} />
-          <EquipToasts toasts={toasts} onEquip={equipToast} onExpire={dropToast} />
+          <EquipToasts toasts={toasts} paused={rareQueue.length > 0} onEquip={equipToast} onExpire={dropToast} />
           {discovery && (
             <DiscoveryBanner key={discovery.n} spell={discovery.spell} isNew={discovery.isNew} onDone={endDiscovery} />
           )}

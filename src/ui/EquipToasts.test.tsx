@@ -45,4 +45,30 @@ describe('EquipToasts', () => {
     fireEvent.click(screen.getByRole('button', { name: '裝備' }));
     expect(onEquip).toHaveBeenCalledWith(1);
   });
+  it('does not run while paused (rare reveal showing), then gets its full 3 s', () => {
+    vi.useFakeTimers();
+    const onExpire = vi.fn();
+    const { rerender } = render(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={onExpire} paused />);
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(onExpire).not.toHaveBeenCalled();
+    rerender(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={onExpire} paused={false} />);
+    act(() => vi.advanceTimersByTime(2999));
+    expect(onExpire).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onExpire).toHaveBeenCalledWith(1);
+  });
+  it('a pause mid-way keeps the remaining time', () => {
+    vi.useFakeTimers();
+    const onExpire = vi.fn();
+    const { rerender } = render(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={onExpire} />);
+    act(() => vi.advanceTimersByTime(2000));
+    rerender(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={onExpire} paused />);
+    act(() => vi.advanceTimersByTime(5000));
+    expect(onExpire).not.toHaveBeenCalled();
+    rerender(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={onExpire} paused={false} />);
+    act(() => vi.advanceTimersByTime(999));
+    expect(onExpire).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onExpire).toHaveBeenCalledWith(1);
+  });
 });
