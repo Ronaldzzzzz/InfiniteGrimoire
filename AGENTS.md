@@ -55,7 +55,7 @@
 
 ### 3.0 接手先看這裡（2026-10-27 更新）
 
-**現在停在哪：** branch `feat/spell-tiers`（從 `feat/rare-tuning` 分出，**兩個 branch 都未 push、未合併**；`feat/spell-tiers` 比 `feat/rare-tuning` 多約 20 個 commit）。`npm test` 68 個檔案 730 個測試全過、`npm run build` 通過（2026-10-27 量測）。瀏覽器驗收已做完（見下）。
+**現在停在哪：** branch `feat/rare-tuning`（**未 push、未合併到 `main`**）。`feat/spell-tiers` 已在 2026-10-27 依使用者指示 fast-forward 合併回 `feat/rare-tuning`，branch 已刪除。`npm test` 68 個檔案 730 個測試全過、`npm run build` 通過（2026-10-27 量測）。瀏覽器驗收已做完（見下）。
 
 **這個 branch 做了什麼（規格 `docs/superpowers/specs/2026-10-27-tier-curve-and-map-expansion-design.md`、計畫 `docs/superpowers/plans/2026-10-27-spell-tiers.md`、帳本 `docs/superpowers/sdd/2026-10-27-spell-tiers/progress.md`，12 個任務）：**
 - **強度曲線：** 名魔法重排成 Lv.1～9（一般 60 招）＋稀有一律 Lv.10（7 招）；新增 20 招、改名 11 招，總共 67 招。每高一階約 **×1.57～×1.79**（幾何平均約 1.67；可調參數 `TIER_STEP` 預設 1.7，放在 `src/engine/spells.ts`，**最終值還沒請使用者確認**）；同階 ×0.82～×1.14；Lv.10 稀有對 Lv.9 中位數 ×1.61～×1.81；強化 +50 約等於高一階剛合成。DPS 表在 `docs/superpowers/specs/2026-10-27-dps-after.md`，量測工具 `scripts/measure-dps.ts`，測試把關 `tests/sim/tier-curve.test.ts`。
@@ -72,7 +72,7 @@
 
 | 順序 | 項目 | 狀態 | 去哪裡看 |
 |---|---|---|---|
-| 0 | 合併 `feat/rare-tuning` 與 `feat/spell-tiers` 到 `main` | **等使用者在真實瀏覽器試玩後決定**（合併、push 都要先問；push 只能由使用者 `! git push`）；順序：先 `feat/rare-tuning`，再 `feat/spell-tiers`（後者是從前者分出來的） | 本節 |
+| 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers`）到 `main` | **等使用者在真實瀏覽器試玩後決定**（合併、push 都要先問；push 只能由使用者 `! git push`）；順序：先 `feat/rare-tuning`，再 `feat/spell-tiers`（後者是從前者分出來的） | 本節 |
 | 0.5 | 魔法深度拓展（名稱、類型、定義）剩下的部分 | 第一批（20 招、強度曲線、地圖）**已在 `feat/spell-tiers` 完成**；Phase 1～3 文案的其餘招式、新施法形態、異變詞綴、Overdrive、禁忌殘頁等**都還沒做**，之後再討論 | `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md`、`2026-10-27-spell-expansion-green-items-review.md` |
 | 1 | 魔法階級強度曲線（含距離魔王還差幾隻、放回上次組合） | **已完成於 `feat/spell-tiers`**（待使用者試玩與確認 `TIER_STEP` 最終值） | 本節、規格與帳本 |
 | **1b（下一個要討論）** | 稀有魔法落空的保底／補償 | **使用者試玩決定合併後，主動提出來和使用者討論**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
@@ -84,9 +84,9 @@
 
 **下一步（給接手者）：** (1) 使用者在真實瀏覽器試玩（手感、各階換魔法的差距、通知、光暗分頁、手機版面）並確認 `TIER_STEP` 與魔王時間；(2) 問使用者要不要合併；(3) 主動提出待辦 0b（稀有落空保底）的討論。**遠端 D1 不需要新的 migration**（這個 branch 沒有改資料表；舊存檔若含 Lv.8 舊稀有或自創魔法，`parseState` 與深度檢查已有測試）。
 
-**接手者務必遵守（摘要，全文見第 6、7 節與記憶）：** 用繁體中文溝通；**不部署、不主動提部署**；**push、合併、部署前都要先問**；只改文件可以直接在 `main` commit（但目前文件都跟著 `feat/spell-tiers`，合併後就會到 `main`）；不要 commit `.dev.vars`；平衡數值現在是進行中的工作，但倍率、機率等數字的最終值要給使用者確認；結束前更新本節與第 10 節交接紀錄。
+**接手者務必遵守（摘要，全文見第 6、7 節與記憶）：** 用繁體中文溝通；**不部署、不主動提部署**；**push、合併、部署前都要先問**；只改文件可以直接在 `main` commit（但目前文件都跟著 `feat/rare-tuning`，合併後就會到 `main`）；不要 commit `.dev.vars`；平衡數值現在是進行中的工作，但倍率、機率等數字的最終值要給使用者確認；結束前更新本節與第 10 節交接紀錄。
 
-- **Branch：** `main` 已整合 v0.2.0 並由使用者 push（遠端舊 branch 也已刪除）。目前在 `feat/spell-tiers`（從 `feat/rare-tuning` 分出，`feat/rare-tuning` 從 `main` 分出），兩個 branch 都尚未 push、尚未合併。新功能照慣例從 `main` 開 branch。
+- **Branch：** `main` 已整合 v0.2.0 並由使用者 push（遠端舊 branch 也已刪除）。目前在 `feat/rare-tuning`（從 `main` 分出；`feat/spell-tiers` 已合併進來並刪除），尚未 push、尚未合併。新功能照慣例從 `main` 開 branch。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -97,7 +97,7 @@
 - **合成台介面改版（2026-10-23，`feat/synthesis-altar`）：** 規格 `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md`，計畫 `docs/superpowers/plans/2026-10-23-synthesis-altar.md`，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。右欄改成方形合成台（`SynthesisAltar`：左右各放一個輸入、各依元素與魔法有不同特效、中間「合成」、按下後融合特效再揭曉結果；被拒絕時不播完整動畫、兩邊保留並顯示原因）；原本的合成區下拉選單與「嘗試紀錄」組合表已移除（伺服器的 `synthesisLog` 保留給第二版 B）。魔導書：單擊魔法冒出泡泡（放入合成／裝備／詳情）、雙擊直接放入合成台、詳情與強化合成一張浮動卡（`NodeCard`）、縮放按鈕移進技能樹並加「⌖ 回到中心」、滾輪只縮放不捲頁、拖曳與縮放不經過 React state。關鍵道具按鈕移到戰鬥畫面（`KeyItemBar`），訊息幾秒後自動消失。
 - **GM 工具（2026-10-23，`feat/gm-tool`）：** 規格、計畫、帳本見第 2 節。遊戲畫面上**沒有任何 GM 入口**；按 Ctrl＋Shift＋`（或網址加 `?gm`）叫出紫色浮動視窗（`src/ui/GmWindow.tsx`，可拖曳、縮小，位置記在 `localStorage` `ig.gmWindow`），先在視窗內再驗證一次帳號密碼（瀏覽器雜湊，伺服器比對；GM 必須先以已綁定帳號登入），通過後發 30 分鐘的 GM token（只存在記憶體，重新整理要重驗）。四個分頁：元素（5×5 元素、素材、關鍵道具，按「套用」一次送出）、地圖（開放所有地點／散開所有迷霧／目前地點差 1 隻出魔王）、配方表（純用戶端，可搜尋，融合需求以 GM 自己的狀態用 `fusionNeeds` 計算）、玩家（重設其他玩家的密碼，臨時密碼只在視窗顯示一次）。**GM 名單**在伺服器設定 `GM_USERNAMES`（逗號分隔帳號名稱；本機寫進 `.dev.vars`，上線用 `wrangler secret put`）；沒設定時 `/api/gm/*` 一律 404。**只列已經綁定在你自己名下的帳號名稱**：GM 身分是「誰先綁定這個名稱」，列了但還沒人綁定的名稱，任何人都能搶先綁定而成為 GM；名單裡格式不合法的名稱會被忽略。上線時先不設名單部署、用強密碼綁定 GM 帳號，之後才設定名單。用過任何改存檔功能的帳號 `players.gm_used = 1`，之後不寫 `discoveries`、不成為首位（`excludedFromRecords`）。migration `0006_gm.sql` 新增 `gm_used`、`gm_tokens`、`gm_actions`，**不會重置存檔**（本機已套用，套用前後 `players` 都是 28 筆）；**遠端未套用，而且新 worker 部署前遠端一定要先套用 0005 與 0006**（每次讀玩家都會讀 `gm_used`）。**已知限制：** 配方表在前端 bundle 裡，GM 視窗隱藏配方表只是介面上的，不是安全邊界。
 - **GM 工具驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 9 項全過、無頁面錯誤。未設定 `GM_USERNAMES` 時所有 `/api/gm/*` 回 404（設定後同一路徑未登入回 401）；快捷鍵與 `?gm` 都能打開；非 GM 帳號用正確帳密得到「帳號或密碼錯誤」；改元素與關鍵道具後元素表立刻更新、掉落不丟、之後 60 秒上傳 200、`rejections` 沒增加、`gm_used = 1`；地圖三個按鈕都生效；配方表 57 筆、搜尋可用、火球＋疾風刃的融合需求與合成台顯示一致；重設玩家密碼（含已被連錯鎖住的帳號）舊密碼失敗、臨時密碼成功、舊裝置被登出、請求與 `gm_actions` 都沒有明文；重設自己回 403、不存在的帳號回 404；`gm_used` 的帳號合出聖光審判時沒有 `discoveries` 列、`rare.first = false`；GM token 過期後視窗回到登入表單、遊戲照常。**種進去的：** 聖光審判那次是把 `thunder_hammer` 直接寫進本機存檔的 `learned`，並用 GM 工具給足元素與日輝碎片；「差 1 隻出魔王」是看存檔的 `zoneKills`（39），沒有再打到魔王；token 過期那次把 `GM_TOKEN_TTL_MS` 暫時改成 15 秒（只在驗收用的本機伺服器，已還原、沒有 commit）。腳本與截圖在 `.superpowers/sdd/2026-10-23-gm-tool/accept/`（未進版本庫）。
-- **測試：** `npm test` 68 個檔案、730 個測試全部通過（`feat/spell-tiers`，2026-10-27；含 `tests/sim` 路線模擬、曲線檢查與稀有刷取成本）；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 68 個檔案、737 個測試全部通過（合併後的 `feat/rare-tuning`，2026-10-27；含 `tests/sim` 路線模擬、曲線檢查與稀有刷取成本）；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **合成台驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 10 項全過、無頁面錯誤。元素存量、已學會的魔法清單與一個關鍵道具是直接改本機存檔種進去的；放入、裝備、合成、強化、使用關鍵道具、解鎖被動、拖曳、滾輪都是實際操作。1280x900 下拖曳技能樹同時重複播放合成台特效約 149 fps（單幀最長 75 ms；戰場上只有少數怪，沒有重測 80 隻怪的情況）。驗收中發現泡泡在已學會魔法上高度估錯、會蓋住自己的節點，已修正（`fix(ui): reserve the real height of a learned spell's bubble`）。腳本與截圖在 `.superpowers/`（未進版本庫）。
 - **第二版 B：稀有魔法與發現紀錄（2026-10-23，`feat/v2b-rare-discoveries`）：** 規格、計畫、帳本見第 2 節。5 個新稀有魔法（焚世之焰、蒼穹之息、九天雷獄、泰坦之握、滄溟月潮，當時 Lv.8，每種屬性一個；**`feat/spell-tiers` 之後已改成 Lv.10，配方是「該屬性 Lv.9 名魔法＋素材」，1 : 49**），當時是「該屬性 Lv.5 魔法＋高階元素」的機率配方（稀有 1 : 落空 64，約 1/65；**後來改成 1 : 49**，見待辦 0a；**階級已在 `feat/spell-tiers` 改成 Lv.10**，見 3.0）；聖光審判、深淵吞噬也標為稀有（`spells.json` 的 `rare: true`，數值與配方不變）。合出稀有魔法時，發現者看到全螢幕揭曉動畫（`RareReveal`，首位「✦ 全服首次發現 ✦」、其餘「✦ 稀有魔法！✦」，點一下跳過），其他玩家在頂端鈴鐺（`DiscoveryBell`）看到動態（名稱、殘卷線索、發現者顯示名稱、時間；**沒有配方**），用戶端每 60 秒輪詢 `GET /api/discoveries`。migration `0005_discoveries.sql` 新增 `discoveries` 表，**不會重置存檔**（本機已套用，套用前後 `saves` 都是 26 筆）；首位由部分唯一索引保證只有一位，可疑帳號不寫入。**遠端未套用。**
 - **第二版 B 驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 兩個獨立的瀏覽器 context 當兩位玩家。玩家 1 合出焚世之焰：看到「✦ 全服首次發現 ✦」、點一下跳過、魔法已裝備；玩家 2 的鈴鐺約 50 秒後亮起未讀 1、清單有名稱、殘卷線索、「艾莉亞」與時間、沒有配方，打開後未讀歸零；玩家 2 自己合出時看到「✦ 稀有魔法！✦」；玩家 1 自己的發現不算未讀；`discoveries` 兩筆（`first` 1 與 0）；無頁面錯誤。**種進去的：** 兩位玩家的存檔（已學會煉獄、12 個高階火、迷霧區域已散開）直接改本機 D1；**擲骰方法：** 驗收期間把 `recipes.json` 的焚世之焰權重暫時改成 1000 : 1（只在驗收用的本機 dev server，已還原、沒有 commit），所以「合出稀有魔法」不是真的 1/65 機率；機率本身由 `worker/` 的單元測試以注入的亂數涵蓋。截圖與腳本在 `.superpowers/sdd/2026-10-23-v2b-rare-discoveries/accept/`（未進版本庫）。
@@ -239,6 +239,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-27（Claude Code，Opus 5.5，macOS，合併）**：依使用者選擇，把 `feat/spell-tiers` fast-forward 合併回 `feat/rare-tuning`，刪除 `feat/spell-tiers`；合併後 `npm test` 68 個檔案 737 個測試全過。停在：`feat/rare-tuning` 未 push、未合併到 `main`。待使用者決定：(1) 自創魔法的效果配合（66 組 Lv.9＋稀有自創中 22 組超過上限，檢查目前只印報告）——使用者提議之後用「雙重詠唱／先後施放」承接元素反應、再降低自創的係數，排進下一次設計討論；(2) `TIER_STEP` 1.7 是否定案。
 
 - **2026-10-27（Claude Code，Opus 5.5，macOS，最終審查修正）**：`feat/spell-tiers` 最終審查的修正一輪。Ruling F1：自創魔法每一邊的效果改成保留該輸入自己的攻擊（`spells.ts` 的 `scaleEffect`），較弱的一邊不再被拉到較強一邊的攻擊；`curveReport` 加上 Lv.9／稀有兩兩自創的檢查，但**目前只印報告、沒有強制**（66 組裡仍有 22 組超過上限，原因是效果之間的連動：拉怪的領域把魔物聚到環擊與隕石底下、濕潤讓雷系 ×2，不是攻擊被放大；需要使用者或設計者決定要不要限制）。另外：學會新魔法的通知移到戰鬥畫面右上角、稀有揭曉時暫停；刷稀有落空成魔力過載時合成台只說「這次沒有成功，素材已消耗。」（Ruling F2，只改介面）；技能樹幾個節點角度微調讓標籤不重疊。停在：已 commit，未 push、未合併。下一步：決定自創連動的處理方式，其餘同下一筆。
 
