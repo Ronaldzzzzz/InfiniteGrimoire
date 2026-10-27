@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import { empower, empowerCost, empowerGrade } from './empower';
-import { attackCeiling, craftedId, MAX_SPELL_LEVEL, resolveSpell, spellAtLevel, TIER_STEP } from './spells';
+import { attackCeiling, craftedId, MAX_SPELL_LEVEL, resolveSpell, spellAtLevel, EMPOWER_MAX } from './spells';
 import type { GameState } from './model';
 
 const mkState = (inventory: Record<string, number>, learned: string[], levels: Record<string, number> = {}): GameState => ({
@@ -88,7 +88,7 @@ describe('empower', () => {
     expect(deep).not.toBeNull();
     expect(deep!.depth).toBe(8);
     const max = spellAtLevel(deep!, MAX_SPELL_LEVEL);
-    expect(max.attack).toBeLessThanOrEqual(attackCeiling(deep!.tier, content) * TIER_STEP);
+    expect(max.attack).toBeLessThanOrEqual(attackCeiling(deep!.tier, content) * EMPOWER_MAX);
     expect(max.tier).toBeLessThanOrEqual(9);
   });
 });

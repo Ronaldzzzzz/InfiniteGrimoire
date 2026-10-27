@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import {
-  CRAFTED_MAX_LEN, HARD_MAX_DEPTH, MAX_CRAFTED_TIER, MAX_EFFECTS, MAX_SPELL_LEVEL, TIER_STEP,
+  CRAFTED_MAX_LEN, HARD_MAX_DEPTH, MAX_CRAFTED_TIER, MAX_EFFECTS, MAX_SPELL_LEVEL, EMPOWER_MAX,
   affinityOf, attackCeiling, craftedId, inputToken, resolveSpell, spellAtLevel,
 } from './spells';
 
@@ -106,12 +106,13 @@ describe('crafted spells', () => {
     expect(beatNamed).toBe(true);
   });
 
-  it('spellAtLevel scales attack only, by TIER_STEP over the 50 levels', () => {
+  it('spellAtLevel scales attack only, by EMPOWER_MAX over the 50 levels', () => {
     const base = content.spells.fireball!;
     expect(spellAtLevel(base, 1)).toBe(base);
-    expect(spellAtLevel(base, 50).attack).toBeCloseTo(base.attack * TIER_STEP);
-    expect(spellAtLevel(base, 99).attack).toBeCloseTo(base.attack * TIER_STEP);
-    expect(spellAtLevel(base, 26).attack).toBeCloseTo(base.attack * (1 + 0.7 * 25 / 49));
+    expect(EMPOWER_MAX).toBe(1.4);
+    expect(spellAtLevel(base, 50).attack).toBeCloseTo(base.attack * EMPOWER_MAX);
+    expect(spellAtLevel(base, 99).attack).toBeCloseTo(base.attack * EMPOWER_MAX);
+    expect(spellAtLevel(base, 26).attack).toBeCloseTo(base.attack * (1 + 0.4 * 25 / 49));
     for (const L of [2, 11, 26, 50]) {
       const s = spellAtLevel(base, L);
       expect(s.tier).toBe(base.tier);

@@ -7,8 +7,10 @@ export const HARD_MAX_DEPTH = 8;
 export const MAX_EFFECTS = 4;
 export const MAX_SPELL_LEVEL = 50;
 export const CEILING_FACTOR = 1.25;
-/** Attack multiplier of a fully empowered spell (level 50) over level 1. Tunable 1.5-2.0. */
-export const TIER_STEP = 1.7;
+/** Target ratio between the median DPS of neighbouring spell tiers (spec 7.1/15; the curve check allows +-0.2). */
+export const TIER_STEP = 1.8;
+/** Attack multiplier of a fully empowered spell (level 50) over level 1 (spec 15): progress within a tier, short of the next. */
+export const EMPOWER_MAX = 1.4;
 /** Crafted spells never exceed this tier; tier 10 is reserved for rare named spells. */
 export const MAX_CRAFTED_TIER = 9;
 
@@ -161,9 +163,9 @@ export function resolveSpell(id: string, content: Content): Spell | null {
   return result;
 }
 
-/** Level scaling: only attack grows, from x1 at level 1 to x TIER_STEP at MAX_SPELL_LEVEL. Tier and effects stay. */
+/** Level scaling: only attack grows, from x1 at level 1 to x EMPOWER_MAX at MAX_SPELL_LEVEL. Tier and effects stay. */
 export function spellAtLevel(spell: Spell, level: number): Spell {
   const L = Math.min(MAX_SPELL_LEVEL, Math.max(1, Math.floor(Number.isFinite(level) ? level : 1)));
   if (L === 1) return spell;
-  return { ...spell, attack: spell.attack * (1 + (TIER_STEP - 1) * (L - 1) / (MAX_SPELL_LEVEL - 1)) };
+  return { ...spell, attack: spell.attack * (1 + (EMPOWER_MAX - 1) * (L - 1) / (MAX_SPELL_LEVEL - 1)) };
 }

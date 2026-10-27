@@ -35,7 +35,8 @@ describe('spellPickerGroups', () => {
 
   it('shows learned spells at their empower level', () => {
     const rows = spellPickerGroups(game({ levels: { fireball: 11 } }), content, 'tier')[0]!.rows;
-    expect(rows.find((r) => r.id === 'fireball')!).toMatchObject({ tier: 2, attack: 14 });
+    // 12 x (1 + (EMPOWER_MAX - 1) x 10 / 49) = 12.98
+    expect(rows.find((r) => r.id === 'fireball')!).toMatchObject({ tier: 2, attack: 13 });
   });
 
   it('lists crafted spells by their derived name', () => {

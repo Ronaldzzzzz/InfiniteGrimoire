@@ -152,7 +152,8 @@ export function curveReport(opts: { seeds: number[]; soloMs: number; crowdMs: nu
     for (const [key, label] of [['soloAt', '單挑魔王'], ['crowdAt', '群怪']] as const) {
       const lo = med(n, z, key), hi = med(n + 1, z, key);
       const r = lo > 0 ? hi / lo : 0;
-      const bad = r < 1.5 || r > 2.0 || Math.abs(r - TIER_STEP) > 0.2;
+      // [1.6, 2.0]: TIER_STEP +- 0.2, and within 1.5-2.0 (spec 15)
+      const bad = r < 1.5 || r > 2.0 || Math.abs(r - TIER_STEP) > 0.2 + 1e-9;
       if (bad) failures.push(`Lv.${n}→Lv.${n + 1}（在 ${z}，${label}）：中位數 ${f1(lo)} → ${f1(hi)}，倍率 ×${r.toFixed(2)}，應在 1.5～2.0 且為 ${TIER_STEP}±0.2。`);
     }
   }
@@ -184,15 +185,18 @@ export function curveReport(opts: { seeds: number[]; soloMs: number; crowdMs: nu
     }
   }
 
-  // 4: fully empowered tier N versus tier N+1.
+  // 4: jumping a tier must be felt (spec 15): at tier N's home zone, every fully empowered tier-N spell stays at or below the
+  // tier N+1 median, and the tier's empowered median stays at or below the tier N+1 median / 1.2.
   for (let n = 1; n <= 9; n++) {
     const z = HOME_ZONE[n]!;
-    const next = tierRows(n + 1).map((p) => geo(p.soloAt[z] ?? 0, p.crowdAt[z] ?? 0));
-    const lo = next.length ? Math.min(...next) : 0, hi = medGeo(n + 1, z) * 1.1;
+    const next = medGeo(n + 1, z);
+    const emp = tierRows(n).map((p) => p.empoweredGeoAt[z]!);
     for (const p of tierRows(n)) {
       const e = p.empoweredGeoAt[z]!;
-      if (!(e > 0) || e < lo || e > hi) failures.push(`${nameOf(p.id)}（Lv.${n}）強化 +${MAX_SPELL_LEVEL - 1} 的幾何平均 ${f1(e)}，應落在 Lv.${n + 1} 的最低值 ${f1(lo)} 與中位數×1.1 ${f1(hi)} 之間。`);
+      if (!(e > 0) || e > next) failures.push(`${nameOf(p.id)}（Lv.${n}）強化 +${MAX_SPELL_LEVEL - 1} 的幾何平均 ${f1(e)}，超過 Lv.${n + 1} 中位數 ${f1(next)}（×${next > 0 ? (e / next).toFixed(2) : '∞'}）。`);
     }
+    const me = median(emp);
+    if (!(me > 0) || me > next / 1.2) failures.push(`Lv.${n} 強化 +${MAX_SPELL_LEVEL - 1} 的中位數 ${f1(me)}，超過 Lv.${n + 1} 中位數 ${f1(next)} ÷ 1.2 = ${f1(next / 1.2)}（×${next > 0 ? (me / next).toFixed(2) : '∞'}）。`);
   }
   // 5: crafted spells made from the strongest inputs (tier-9 named spells and the rares) must not beat them by more than the
   // affinity gain (Ruling F1): crafted geo <= max(input geo) x gain bound x 1.10.
