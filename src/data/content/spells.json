@@ -2163,7 +2163,7 @@
     "node": {
       "region": "abyss",
       "ring": 7,
-      "angle": 0
+      "angle": 6
     },
     "chant": "赤焰為牆，獄火為梯——圍城者，焚！",
     "school": "cataclysm"
@@ -2371,7 +2371,7 @@
     "node": {
       "region": "abyss",
       "ring": 7,
-      "angle": 72
+      "angle": 78
     },
     "chant": "蒼天之嵐，裂界之刃——此處，不容越線！",
     "school": "conjuration"
@@ -2534,7 +2534,7 @@
     "node": {
       "region": "outer",
       "ring": 5,
-      "angle": 144
+      "angle": 138
     },
     "school": "evocation"
   },
@@ -2587,7 +2587,7 @@
     "node": {
       "region": "abyss",
       "ring": 7,
-      "angle": 144
+      "angle": 150
     },
     "chant": "雲為階，雷為冕——王座已立，萬雷朝拜！",
     "school": "cataclysm"
@@ -2743,7 +2743,7 @@
     "node": {
       "region": "outer",
       "ring": 5,
-      "angle": 216
+      "angle": 210
     },
     "school": "conjuration"
   },
@@ -2797,7 +2797,7 @@
     "node": {
       "region": "abyss",
       "ring": 7,
-      "angle": 216
+      "angle": 222
     },
     "chant": "群峰低首，山脈傾頹——天地之間，再無山巒！",
     "school": "cataclysm"
@@ -3033,7 +3033,7 @@
     "node": {
       "region": "abyss",
       "ring": 7,
-      "angle": 288
+      "angle": 294
     },
     "chant": "滄海之淵，鎖我敵魂——入水者，永世不得出！",
     "school": "conjuration"

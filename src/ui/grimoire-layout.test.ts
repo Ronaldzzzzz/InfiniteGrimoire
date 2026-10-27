@@ -113,4 +113,26 @@ describe('light/dark tree and ten rings', () => {
     }
     for (let r = 1; r < 10; r++) expect(ringRadius(r) - ringRadius(r - 1)).toBeGreaterThanOrEqual(2 * NODE_R);
   });
+  it('no node label overlaps another label or node (Minor 4)', () => {
+    // GrimoirePanel draws each name centred at y + NODE_R + 12 in 11 px text; a CJK glyph is about one em wide,
+    // so the label box is (chars x 11) wide and spans the baseline - 11 .. baseline + 2.
+    const FS = 11;
+    const l = layoutGrimoire(spells, all, allPassives, content.regions);
+    const nameOf = (id: string) => content.spells[id]?.name ?? content.passives[id]!.name;
+    type Box = { x0: number; x1: number; y0: number; y1: number };
+    const label = (n: { id: string; x: number; y: number }): Box => {
+      const w = [...nameOf(n.id)].length * FS, base = n.y + NODE_R + 12;
+      return { x0: n.x - w / 2, x1: n.x + w / 2, y0: base - FS, y1: base + 2 };
+    };
+    const disc = (n: { x: number; y: number }): Box => ({ x0: n.x - NODE_R, x1: n.x + NODE_R, y0: n.y - NODE_R, y1: n.y + NODE_R });
+    const hit = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+    const clashes: string[] = [];
+    for (const a of l.nodes) for (const b of l.nodes) {
+      if (a.id === b.id) continue;
+      if (a.id < b.id && hit(label(a), label(b))) clashes.push(`${nameOf(a.id)} / ${nameOf(b.id)} labels`);
+      if (hit(label(a), disc(b))) clashes.push(`${nameOf(a.id)} label on ${nameOf(b.id)}`);
+    }
+    expect(clashes).toEqual([]);
+  });
 });
+

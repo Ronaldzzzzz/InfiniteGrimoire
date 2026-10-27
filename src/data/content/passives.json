@@ -156,7 +156,7 @@
     "node": {
       "region": "abyss",
       "ring": 7,
-      "angle": 36
+      "angle": 42
     },
     "bonus": {
       "kind": "cooldown",
