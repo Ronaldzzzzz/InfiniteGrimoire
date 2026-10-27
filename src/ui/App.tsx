@@ -11,6 +11,7 @@ import { DiscoveryBanner } from './DiscoveryBanner';
 import { ElementTable } from './ElementTable';
 import { GmWindow } from './GmWindow';
 import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
+import { BossCounter } from './BossCounter';
 import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
@@ -113,6 +114,7 @@ export function App({
       <main className="main">
         <div className="battle">
           <BattleCanvas runtime={runtime} />
+          <BossCounter runtime={runtime} content={content} />
           {discovery && (
             <DiscoveryBanner key={discovery.n} spell={discovery.spell} isNew={discovery.isNew} onDone={endDiscovery} />
           )}

@@ -7,6 +7,7 @@ import { COLORS } from '../render/palette';
 import { describeInput, lookOf, revealOf, type AltarInput, type AltarLook, type Reveal } from './altar-data';
 import { BANNER_MS, ElementDots } from './DiscoveryBanner';
 import { ELEMENT_NAMES, empowerLabel, itemName, slotLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
+import { comboBlocker, loadLastCombo, saveLastCombo } from './last-combo';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /** A slot holds an inventory item (element or material) or a learned spell id. */
@@ -139,6 +140,9 @@ export const SynthesisAltar = memo(function SynthesisAltar({
   const known = knownKey.split('|').map((k) => k === '1');
   const levelOf = levelKey.split('|').map(Number);
 
+  // the last pressed 合成 (slot order); the blocker is a string so drops that don't change it don't re-render
+  const [lastCombo, setLastCombo] = useState(loadLastCombo);
+  const comboWhy = useRuntime(runtime, (s) => comboBlocker(lastCombo, s.game, content));
   const [fusing, setFusing] = useState(false);
   const [bounce, setBounce] = useState(false);
   const [shown, setShown] = useState<Shown | null>(null);
@@ -202,6 +206,9 @@ export const SynthesisAltar = memo(function SynthesisAltar({
   const run = async (): Promise<void> => {
     if (!canSynth) return;
     const sorted = [...filled].sort();
+    // remembered when 合成 is pressed, whatever the outcome (learned, duplicate, miss, refused, even a failed request)
+    saveLastCombo(slots as string[]);
+    setLastCombo([slots[0]!, slots[1]!]);
     // decided before the roll: whether a miss here could still have landed on something unlearned
     const hidden = rareStillHidden(runtime.getSnapshot().game, sorted, content);
     setRetry(false);
@@ -315,6 +322,15 @@ export const SynthesisAltar = memo(function SynthesisAltar({
           ))}
         </p>
       )}
+      <button
+        type="button"
+        className="altar-putback"
+        disabled={comboWhy !== null || synthPending || fusing}
+        title={comboWhy ?? undefined}
+        onClick={() => lastCombo && onSlotsChange([...lastCombo])}
+      >
+        放回上次組合
+      </button>
       <p className="synth-message" role="status">{message}</p>
       {retry && <p className="synth-retry">{RETRY_HINT}</p>}
       <div className="synth-hint" aria-label="殘卷線索" aria-live="polite">

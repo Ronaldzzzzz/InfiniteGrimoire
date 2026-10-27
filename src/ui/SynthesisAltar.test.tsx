@@ -8,6 +8,7 @@ import type { ActionResult } from '../game/api';
 import { MIN_FUSE_MS, RETRY_HINT, REVEAL_MS, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { craftedId } from '../engine/spells';
 import { fakeRuntime } from './test-runtime';
+import * as lastCombo from './last-combo';
 
 afterEach(() => {
   cleanup();
@@ -306,5 +307,57 @@ describe('SynthesisAltar', () => {
     act(() => rt.set({ game: { inventory: { 'el:fire:1': 4 } } }));
     expect(onRender.mock.calls.length).toBe(before + 1);
     expect(screen.getByRole('button', { name: '取出初階火' }).textContent).toContain('×4');
+  });
+
+  describe('put back the last combo', () => {
+    const putBack = () => screen.getByRole('button', { name: '放回上次組合' }) as HTMLButtonElement;
+    const inv = { 'el:fire:1': 1 };
+
+    afterEach(() => {
+      localStorage.clear();
+      vi.restoreAllMocks();
+    });
+
+    it('remembers the pressed combo in slot order, for every outcome', async () => {
+      const replies: Reply[] = [
+        { kind: 'learned', spellId: 'fireball', crafted: false } as ActionResult,
+        { kind: 'duplicate', spellId: 'fireball' } as unknown as ActionResult,
+        { kind: 'rejected', reason: 'insufficient' } as unknown as ActionResult,
+        null,
+      ];
+      for (const reply of replies) {
+        const spy = vi.spyOn(lastCombo, 'saveLastCombo');
+        setup({ inventory: inv }, ['mana_bolt', 'el:fire:1'], async () => reply);
+        fireEvent.click(go());
+        await flush();
+        expect(spy).toHaveBeenCalledWith(['mana_bolt', 'el:fire:1']);
+        cleanup();
+        spy.mockRestore();
+      }
+    });
+
+    it('puts both sides back over what is on the altar', () => {
+      localStorage.setItem(lastCombo.LAST_COMBO_KEY, JSON.stringify(['el:fire:1', 'mana_bolt']));
+      const a = setup({ inventory: inv }, ['mana_bolt', null]);
+      expect(putBack().disabled).toBe(false);
+      fireEvent.click(putBack());
+      expect(a.onSlotsChange).toHaveBeenCalledWith(['el:fire:1', 'mana_bolt']);
+    });
+
+    it('is disabled with the reason as title', () => {
+      setup({}, [null, null]);
+      expect(putBack().disabled).toBe(true);
+      expect(putBack().title).toBe('還沒有合成過');
+      cleanup();
+      localStorage.setItem(lastCombo.LAST_COMBO_KEY, JSON.stringify(['el:fire:1', 'mana_bolt']));
+      setup({ inventory: {} }, [null, null]);
+      expect(putBack().title).toBe('「初階火」不夠');
+    });
+
+    it('is disabled while a synthesis is in flight', () => {
+      localStorage.setItem(lastCombo.LAST_COMBO_KEY, JSON.stringify(['el:fire:1', 'mana_bolt']));
+      setup({ inventory: inv }, [null, null], undefined, true);
+      expect(putBack().disabled).toBe(true);
+    });
   });
 });
