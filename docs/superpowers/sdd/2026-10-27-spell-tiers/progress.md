@@ -80,3 +80,10 @@
 - Task 7: 結果：曲線 0 條未通過（60/30 秒、2 種子）；相鄰倍率 ×1.57～×1.79（幾何平均約 1.67）；同階最大／最小 1.14／0.82；6 條路線全清、0 次被拒；前四魔王 64.1～116.2 分、全部 90.5～203.4 分、每地點 5.5～82.2 分；刷稀有 24～68 分。
 - Task 7: minor (deferred): 模擬餘裕小（水草原 5.5/下限 5、風水前四魔王 64～65/下限 60、雷神殿 82.2/上限 90）；調平腳本不在版本庫（係數表在 task-7 報告，已併入本帳本摘要）。
 - Task 7: complete (commits 4987b10..fd8a66d, review clean after 1 fix round)
+- Task 8: dispatched (BASE 74d97a7, implementer aa2f9bb15b6459308, sonnet)
+- Task 8: minor (deferred): GrimoirePanel.test 的「燃燒」「攻擊」斷言可能被 desc／強化面板滿足，應限定在 .spell-facts；EmpowerPanel 小數測試依賴火球數值。
+- Task 8: complete (commits 74d97a7..6dc45c3, review clean)
+- Task 9: dispatched (BASE 6dc45c3, implementer ae60528aa66b02af8, sonnet)
+- Ruling T9a: 外環間距 65→35（RING_RADIUS 到 550），全部解開時技能樹畫面縮成約 0.72 倍 — 讓 HOME 看得到 10 環；可以縮放 — 若錯：手機上節點偏小，驗收時看。
+- Task 9: minor (deferred): 切換分頁 key={tab} 會重設縮放與選取；光暗迷霧矩形高度寫死 220；外環迷霧帶沒有專門測試。
+- Task 9: complete (commits 6dc45c3..454dc4c, review clean)
