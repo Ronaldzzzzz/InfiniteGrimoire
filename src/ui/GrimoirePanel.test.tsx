@@ -187,12 +187,12 @@ describe('GrimoirePanel', () => {
     const { rt, rerender } = setup({ inventory: {} });
     expect(screen.queryByRole('button', { name: new RegExp(inferno) })).toBeNull();
     expect(screen.queryByRole('button', { name: new RegExp(content.passives.ember_affinity!.name) })).toBeNull();
-    expect(screen.getAllByLabelText('迷霧').length).toBe(4);
+    expect(screen.getAllByLabelText('迷霧').length).toBe(5);
     expect(screen.queryByRole('button', { name: /使用風暴之心/ })).toBeNull();
     act(() => rt.set({ game: { revealed: ['outer'] } }));
     rerender('outer');
     expect(screen.getByRole('button', { name: new RegExp(inferno) })).toBeTruthy();
-    expect(screen.getAllByLabelText('迷霧').length).toBe(3);
+    expect(screen.getAllByLabelText('迷霧').length).toBe(4);
     expect(document.querySelector('.fog.lifting')).toBeTruthy();
   });
 

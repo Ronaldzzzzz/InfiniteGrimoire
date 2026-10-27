@@ -114,3 +114,27 @@ describe('crafted spells', () => {
     expect(attackCeiling(10, c)).toBe(attackCeiling(10, content));
   });
 });
+
+describe('crafted school', () => {
+  const sch = (a: string, b: string) => resolveSpell(craftedId(a, b), content)!.school;
+  it('takes the school of the higher-attack side', () => {
+    // inferno (attack higher) vs fireball
+    expect(content.spells.inferno!.attack).toBeGreaterThan(content.spells.fireball!.attack);
+    expect(sch('inferno', 'fireball')).toBe(content.spells.inferno!.school);
+    expect(sch('water_wave', 'sunfall')).toBe('cataclysm');
+  });
+  it('ties go to the id sorted first', () => {
+    expect(content.spells.fireball!.attack).toBe(content.spells.water_wave!.attack);
+    expect(content.spells.fireball!.school).toBe('evocation');
+    expect(content.spells.water_wave!.school).toBe('conjuration');
+    expect(sch('fireball', 'water_wave')).toBe('evocation');
+  });
+  it('downgrades forbidden to cataclysm', () => {
+    expect(content.spells.worldfire!.school).toBe('forbidden');
+    expect(sch('worldfire', 'fireball')).toBe('cataclysm');
+  });
+  it('takes the other side when a material is an input', () => {
+    expect(sch('fireball', 'mat:ember_core')).toBe('evocation');
+    expect(sch('mat:ember_core', 'water_wave')).toBe('conjuration');
+  });
+});

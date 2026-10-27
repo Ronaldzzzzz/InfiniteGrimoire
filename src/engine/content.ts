@@ -45,7 +45,16 @@ const effect = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('backfire'), chance: z.number().min(0).max(1), stunMs: frac }),
 ]);
 const words = z.object({ pre: str, noun: str, preEn: str, nounEn: str });
-const node = z.object({ region: str, ring: z.number().int().min(0), angle: z.number() });
+const node = z.object({
+  region: str, ring: z.number().int().min(0), angle: z.number(),
+  tree: z.enum(['elements', 'lightdark']).optional(), side: z.enum(['light', 'dark']).optional(),
+});
+const school = z.enum(['evocation', 'conjuration', 'cataclysm', 'enchantment', 'forbidden']);
+
+/** The two named spells that live on the light/dark tree. */
+export const LIGHT_DARK_SPELLS = ['holy_judgment', 'abyss_devour'] as const;
+/** Required `depth` of a named spell by tier. */
+export const NAMED_DEPTH = (tier: number): number => (tier <= 2 ? 0 : tier <= 4 ? 1 : tier <= 6 ? 2 : 3);
 
 const spellSchema = z.object({
   id: spellId,
@@ -66,6 +75,8 @@ const spellSchema = z.object({
   node: node.nullable(),
   baseOf: element.optional(),
   rare: z.boolean().optional(),
+  school,
+  chant: str.optional(),
 });
 
 const recipeSchema = z.object({
@@ -204,6 +215,36 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
   }
   for (const e of ELEMENT_ORDER) {
     if (!baseSpells[e]) issues.push(`spells: no spell has baseOf "${e}"`);
+  }
+
+  const comboOwner = new Map<string, string>();
+  for (const r of recipes) {
+    const key = [...r.inputs].sort().join('+');
+    const prior = comboOwner.get(key);
+    if (prior) issues.push(`recipe ${r.id}: same inputs as recipe ${prior}`);
+    else comboOwner.set(key, r.id);
+  }
+
+  const lightDark = new Set<string>(LIGHT_DARK_SPELLS);
+  const seenPre = new Map<string, string>(), seenNoun = new Map<string, string>();
+  for (const s of spells) {
+    if (s.rare ? s.school !== 'forbidden' : s.school === 'forbidden') {
+      issues.push(s.rare ? `spell ${s.id}: rare spells must have school forbidden` : `spell ${s.id}: only rare spells may have school forbidden`);
+    }
+    if ((s.tier >= 7 || s.rare) && !s.chant) issues.push(`spell ${s.id}: tier 7+ and rare spells need a chant`);
+    if (s.rare ? s.tier !== 10 : s.tier > 9) issues.push(s.rare ? `spell ${s.id}: rare spells must be tier 10` : `spell ${s.id}: non-rare spells must be tier 1-9`);
+    if (s.depth !== NAMED_DEPTH(s.tier)) issues.push(`spell ${s.id}: depth ${s.depth} does not match tier ${s.tier} (expected ${NAMED_DEPTH(s.tier)})`);
+    const pre = seenPre.get(s.words.pre), noun = seenNoun.get(s.words.noun);
+    if (pre) issues.push(`spell ${s.id}: duplicate words.pre "${s.words.pre}" (also ${pre})`);
+    if (noun) issues.push(`spell ${s.id}: duplicate words.noun "${s.words.noun}" (also ${noun})`);
+    seenPre.set(s.words.pre, s.id);
+    seenNoun.set(s.words.noun, s.id);
+    if (lightDark.has(s.id)) {
+      if (s.node?.tree !== 'lightdark' || !s.node.side) issues.push(`spell ${s.id}: light/dark spells need node.tree "lightdark" and a side`);
+    } else if (s.node?.tree === 'lightdark') issues.push(`spell ${s.id}: only light/dark spells may use the lightdark tree`);
+  }
+  for (const p of passives) {
+    if (p.node.tree === 'lightdark') issues.push(`passive ${p.id}: passives may not use the lightdark tree`);
   }
 
   for (const r of recipes) {

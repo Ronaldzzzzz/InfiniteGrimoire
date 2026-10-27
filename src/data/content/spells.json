@@ -32,7 +32,8 @@
       "region": "core",
       "ring": 0,
       "angle": 0
-    }
+    },
+    "school": "evocation"
   },
   {
     "id": "mana_overload",
@@ -61,7 +62,8 @@
     "depth": 0,
     "named": true,
     "prerequisites": [],
-    "node": null
+    "node": null,
+    "school": "enchantment"
   },
   {
     "id": "fireball",
@@ -108,7 +110,8 @@
       "ring": 1,
       "angle": 0
     },
-    "baseOf": "fire"
+    "baseOf": "fire",
+    "school": "evocation"
   },
   {
     "id": "wind_blade",
@@ -147,7 +150,8 @@
       "ring": 1,
       "angle": 72
     },
-    "baseOf": "wind"
+    "baseOf": "wind",
+    "school": "evocation"
   },
   {
     "id": "lightning",
@@ -187,7 +191,8 @@
       "ring": 1,
       "angle": 144
     },
-    "baseOf": "thunder"
+    "baseOf": "thunder",
+    "school": "evocation"
   },
   {
     "id": "rock_spear",
@@ -233,13 +238,14 @@
       "ring": 1,
       "angle": 216
     },
-    "baseOf": "earth"
+    "baseOf": "earth",
+    "school": "evocation"
   },
   {
     "id": "water_wave",
-    "name": "水波",
-    "nameEn": "Water Wave",
-    "desc": "水波擴散，讓怪變慢、變濕。",
+    "name": "湧泉之環",
+    "nameEn": "Tidal Ripple",
+    "desc": "湧泉之環擴散，讓怪變慢、變濕。",
     "hint": "殘卷：兩滴水珠合一，漣漪會一圈圈擴散出去。",
     "elements": [
       "water"
@@ -267,10 +273,10 @@
       }
     ],
     "words": {
-      "pre": "流水",
-      "noun": "浪潮",
-      "preEn": "Flowing",
-      "nounEn": "Tide"
+      "pre": "湧泉",
+      "noun": "水環",
+      "preEn": "Surging",
+      "nounEn": "Ripple"
     },
     "affinity": "base",
     "depth": 0,
@@ -283,7 +289,8 @@
       "ring": 1,
       "angle": 288
     },
-    "baseOf": "water"
+    "baseOf": "water",
+    "school": "conjuration"
   },
   {
     "id": "flame_burst",
@@ -329,12 +336,13 @@
       "region": "core",
       "ring": 2,
       "angle": 0
-    }
+    },
+    "school": "evocation"
   },
   {
     "id": "tailwind",
-    "name": "順風",
-    "nameEn": "Tailwind",
+    "name": "翠風祝禱",
+    "nameEn": "Zephyr's Benediction",
     "desc": "甩出四道疾風刃，自己的施法速度也變成 2 倍，持續 8 秒。",
     "hint": "殘卷：風刃裡再灌進淬鍊過的風，風會轉而推著施法者前進。",
     "elements": [
@@ -357,10 +365,10 @@
       }
     ],
     "words": {
-      "pre": "順風",
-      "noun": "疾風",
-      "preEn": "Tail",
-      "nounEn": "Gust"
+      "pre": "翠風",
+      "noun": "祝禱",
+      "preEn": "Zephyr",
+      "nounEn": "Grace"
     },
     "affinity": "self",
     "depth": 1,
@@ -372,7 +380,8 @@
       "region": "core",
       "ring": 2,
       "angle": 72
-    }
+    },
+    "school": "enchantment"
   },
   {
     "id": "thunder_hammer",
@@ -418,12 +427,13 @@
       "region": "core",
       "ring": 2,
       "angle": 144
-    }
+    },
+    "school": "evocation"
   },
   {
     "id": "earthquake",
-    "name": "地震",
-    "nameEn": "Earthquake",
+    "name": "地脈震盪",
+    "nameEn": "Telluric Tremor",
     "desc": "全場暈眩 1.5 秒。",
     "hint": "殘卷：岩槍裡再灌進淬鍊過的土，整片大地都會跟著搖晃。",
     "elements": [
@@ -447,10 +457,10 @@
       }
     ],
     "words": {
-      "pre": "震地",
-      "noun": "地震",
-      "preEn": "Quaking",
-      "nounEn": "Quake"
+      "pre": "地脈",
+      "noun": "震盪",
+      "preEn": "Telluric",
+      "nounEn": "Tremor"
     },
     "affinity": "self",
     "depth": 1,
@@ -462,14 +472,15 @@
       "region": "core",
       "ring": 2,
       "angle": 216
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "tsunami",
     "name": "大海嘯",
     "nameEn": "Tsunami",
     "desc": "整個戰場的怪都被沖回邊緣。",
-    "hint": "殘卷：水波裡再灌進淬鍊過的水，漣漪會漲成吞沒一切的巨浪。",
+    "hint": "殘卷：湧泉之環裡再灌進淬鍊過的水，漣漪會漲成吞沒一切的巨浪。",
     "elements": [
       "water"
     ],
@@ -506,7 +517,8 @@
       "region": "core",
       "ring": 2,
       "angle": 288
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "fire_tornado",
@@ -558,7 +570,8 @@
       "region": "core",
       "ring": 3,
       "angle": 36
-    }
+    },
+    "school": "conjuration"
   },
   {
     "id": "shock_sea",
@@ -614,7 +627,8 @@
       "region": "core",
       "ring": 3,
       "angle": 216
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "thunder_cloud",
@@ -654,7 +668,8 @@
       "region": "core",
       "ring": 3,
       "angle": 108
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "meteor",
@@ -697,7 +712,8 @@
       "region": "core",
       "ring": 3,
       "angle": 288
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "ice_storm",
@@ -749,7 +765,8 @@
       "region": "core",
       "ring": 3,
       "angle": 0
-    }
+    },
+    "school": "conjuration"
   },
   {
     "id": "flame_chain",
@@ -797,12 +814,13 @@
       "region": "core",
       "ring": 3,
       "angle": 72
-    }
+    },
+    "school": "evocation"
   },
   {
     "id": "mire",
-    "name": "泥沼",
-    "nameEn": "Mire",
+    "name": "腐殖泥潭",
+    "nameEn": "Abyssal Quagmire",
     "desc": "幾乎沒有傷害，但整片怪都卡在泥巴裡動不了。",
     "hint": "殘卷：土與水攪在一起，什麼都會陷進去。",
     "elements": [
@@ -837,10 +855,10 @@
       }
     ],
     "words": {
-      "pre": "泥濘",
-      "noun": "泥沼",
-      "preEn": "Muddy",
-      "nounEn": "Mire"
+      "pre": "腐殖",
+      "noun": "泥潭",
+      "preEn": "Mire",
+      "nounEn": "Quagmire"
     },
     "affinity": "odd",
     "depth": 1,
@@ -853,12 +871,13 @@
       "region": "core",
       "ring": 3,
       "angle": 252
-    }
+    },
+    "school": "conjuration"
   },
   {
     "id": "sandstorm",
-    "name": "沙塵暴",
-    "nameEn": "Sandstorm",
+    "name": "黃昏沙暴",
+    "nameEn": "Dusk Haboob",
     "desc": "怪全都看不見，開始到處亂走。",
     "hint": "殘卷：讓風捲起沙土，敵人就再也看不清方向。",
     "elements": [
@@ -882,9 +901,9 @@
       }
     ],
     "words": {
-      "pre": "沙塵",
+      "pre": "黃昏",
       "noun": "沙暴",
-      "preEn": "Dusty",
+      "preEn": "Dusk",
       "nounEn": "Sandstorm"
     },
     "affinity": "odd",
@@ -898,13 +917,14 @@
       "region": "core",
       "ring": 3,
       "angle": 144
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "steam",
-    "name": "蒸氣",
-    "nameEn": "Steam",
-    "desc": "噗嘶……火被水澆熄了。蒸氣遮住視線、拖慢施法，還讓裡面的怪回血。",
+    "name": "沸霧逆流",
+    "nameEn": "Scalding Backdraft",
+    "desc": "噗嘶……火被水澆熄了。沸霧遮住視線、拖慢施法，還讓裡面的怪回血。",
     "hint": "殘卷：水火不容。硬要放在一起，只會冒出一陣白煙。",
     "elements": [
       "fire",
@@ -934,10 +954,10 @@
       }
     ],
     "words": {
-      "pre": "潮濕",
-      "noun": "蒸氣",
-      "preEn": "Damp",
-      "nounEn": "Steam"
+      "pre": "沸霧",
+      "noun": "逆流",
+      "preEn": "Scalding",
+      "nounEn": "Vapor"
     },
     "affinity": "bad",
     "depth": 1,
@@ -950,12 +970,13 @@
       "region": "core",
       "ring": 3,
       "angle": 324
-    }
+    },
+    "school": "enchantment"
   },
   {
     "id": "grounding",
-    "name": "接地",
-    "nameEn": "Grounding",
+    "name": "地脈噬雷",
+    "nameEn": "Telluric Short",
     "desc": "雷電多半被大地吸收了。……但偶爾岩石會被磁化炸開。",
     "hint": "殘卷：雷落進土裡便無聲無息——十次裡總有三次例外。",
     "elements": [
@@ -986,9 +1007,9 @@
       }
     ],
     "words": {
-      "pre": "接地",
+      "pre": "噬雷",
       "noun": "磁岩",
-      "preEn": "Grounded",
+      "preEn": "Shorted",
       "nounEn": "Lodestone"
     },
     "affinity": "bad",
@@ -1002,7 +1023,8 @@
       "region": "core",
       "ring": 3,
       "angle": 180
-    }
+    },
+    "school": "enchantment"
   },
   {
     "id": "inferno",
@@ -1048,7 +1070,8 @@
       "region": "outer",
       "ring": 4,
       "angle": 0
-    }
+    },
+    "school": "evocation"
   },
   {
     "id": "sunfall",
@@ -1105,16 +1128,18 @@
     ],
     "node": {
       "region": "rift",
-      "ring": 5,
+      "ring": 6,
       "angle": 0
-    }
+    },
+    "school": "cataclysm",
+    "chant": "聽吾號令，天穹之火凝聚——降下第二輪烈日！"
   },
   {
     "id": "vacuum_blades",
     "name": "真空刃",
     "nameEn": "Vacuum Blades",
     "desc": "八道真空刃同時甩出，施法也跟著變快。",
-    "hint": "殘卷：順風之中再灌進高階的風，空氣會被削成看不見的刀。",
+    "hint": "殘卷：翠風祝禱之中再灌進高階的風，空氣會被削成看不見的刀。",
     "elements": [
       "wind"
     ],
@@ -1150,7 +1175,8 @@
       "region": "outer",
       "ring": 4,
       "angle": 72
-    }
+    },
+    "school": "evocation"
   },
   {
     "id": "sky_tempest",
@@ -1197,9 +1223,11 @@
     ],
     "node": {
       "region": "rift",
-      "ring": 5,
+      "ring": 6,
       "angle": 72
-    }
+    },
+    "school": "conjuration",
+    "chant": "大氣之環盡數崩解，化作撕裂蒼穹的風暴之眼！"
   },
   {
     "id": "myriad_thunder",
@@ -1245,7 +1273,8 @@
       "region": "outer",
       "ring": 4,
       "angle": 144
-    }
+    },
+    "school": "evocation"
   },
   {
     "id": "thunder_god",
@@ -1295,16 +1324,18 @@
     ],
     "node": {
       "region": "rift",
-      "ring": 5,
+      "ring": 6,
       "angle": 144
-    }
+    },
+    "school": "cataclysm",
+    "chant": "萬雷俯首，司掌天罰之神明於此降臨！"
   },
   {
     "id": "landslide",
     "name": "山崩",
     "nameEn": "Landslide",
     "desc": "五塊巨石從天而降砸進怪群，最大的一塊專挑最硬的敵人。",
-    "hint": "殘卷：地震再吞下高階的土，山也會站不住。",
+    "hint": "殘卷：地脈震盪再吞下高階的土，山也會站不住。",
     "elements": [
       "earth"
     ],
@@ -1351,7 +1382,8 @@
       "region": "outer",
       "ring": 4,
       "angle": 216
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "wrath_of_earth",
@@ -1402,9 +1434,11 @@
     ],
     "node": {
       "region": "rift",
-      "ring": 5,
+      "ring": 6,
       "angle": 216
-    }
+    },
+    "school": "cataclysm",
+    "chant": "沉眠於地心的古老脈動啊，甦醒並震碎萬物吧！"
   },
   {
     "id": "maelstrom",
@@ -1458,7 +1492,8 @@
       "region": "outer",
       "ring": 4,
       "angle": 288
-    }
+    },
+    "school": "conjuration"
   },
   {
     "id": "deluge",
@@ -1516,14 +1551,16 @@
     ],
     "node": {
       "region": "rift",
-      "ring": 5,
+      "ring": 6,
       "angle": 288
-    }
+    },
+    "school": "cataclysm",
+    "chant": "四海傾覆，堤防盡毀，萬物重歸太古之淵！"
   },
   {
     "id": "thunder_fire_hurricane",
-    "name": "雷火颶風",
-    "nameEn": "Thunderfire Hurricane",
+    "name": "雷火狂嵐",
+    "nameEn": "Thunderfire Maelstrom",
     "desc": "火焰龍捲裡多了閃電，被吸進去的怪會被連續劈中。",
     "hint": "殘卷：龍捲之中若有雷光，被捲進去的敵人便無處可逃。",
     "elements": [
@@ -1556,9 +1593,9 @@
     ],
     "words": {
       "pre": "雷火",
-      "noun": "颶風",
+      "noun": "狂嵐",
       "preEn": "Thunderfire",
-      "nounEn": "Hurricane"
+      "nounEn": "Maelstrom"
     },
     "affinity": "good",
     "depth": 2,
@@ -1570,12 +1607,13 @@
       "region": "outer",
       "ring": 4,
       "angle": 36
-    }
+    },
+    "school": "conjuration"
   },
   {
     "id": "thunder_tsunami",
-    "name": "雷鳴海嘯",
-    "nameEn": "Thunder Tsunami",
+    "name": "狂雷怒濤",
+    "nameEn": "Voltaic Surge",
     "desc": "帶著雷的海嘯，把全場淹濕、沖走、再劈一輪。",
     "hint": "殘卷：讓風推著帶電的海往前衝，就是一場會打雷的海嘯。",
     "elements": [
@@ -1607,9 +1645,9 @@
       }
     ],
     "words": {
-      "pre": "雷鳴",
-      "noun": "怒潮",
-      "preEn": "Roaring",
+      "pre": "狂雷",
+      "noun": "怒濤",
+      "preEn": "Voltaic",
       "nounEn": "Surge"
     },
     "affinity": "good",
@@ -1622,7 +1660,8 @@
       "region": "outer",
       "ring": 4,
       "angle": 108
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "meteor_shower",
@@ -1664,7 +1703,8 @@
       "region": "outer",
       "ring": 4,
       "angle": 324
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "frozen_earth",
@@ -1721,14 +1761,15 @@
       "region": "outer",
       "ring": 4,
       "angle": 252
-    }
+    },
+    "school": "cataclysm"
   },
   {
     "id": "rain_cloud",
-    "name": "雷雨雲",
-    "nameEn": "Storm Cloud",
-    "desc": "沒用的蒸氣加上雷，竟然變成會下雨又打雷的雲。失敗作也值得留著。",
-    "hint": "殘卷：別急著把失敗的蒸氣扔掉，往裡面丟一點雷試試。",
+    "name": "劫雷積雲",
+    "nameEn": "Tempest Canopy",
+    "desc": "沒用的沸霧加上雷，竟然變成會下雨又打雷的雲。失敗作也值得留著。",
+    "hint": "殘卷：別急著把失敗的沸霧扔掉，往裡面丟一點雷試試。",
     "elements": [
       "fire",
       "thunder",
@@ -1757,10 +1798,10 @@
       }
     ],
     "words": {
-      "pre": "驟雨",
-      "noun": "雷雨",
-      "preEn": "Pouring",
-      "nounEn": "Thunderstorm"
+      "pre": "劫雷",
+      "noun": "積雲",
+      "preEn": "Tempest",
+      "nounEn": "Canopy"
     },
     "affinity": "good",
     "depth": 2,
@@ -1769,17 +1810,18 @@
       "steam"
     ],
     "node": {
-      "region": "rift",
-      "ring": 5,
-      "angle": 324
-    }
+      "region": "outer",
+      "ring": 4,
+      "angle": 168
+    },
+    "school": "cataclysm"
   },
   {
     "id": "magnet_storm",
     "name": "磁暴",
     "nameEn": "Magnetic Storm",
     "desc": "被磁化的岩石被風捲起，把怪全吸過來，再一塊塊炸開。",
-    "hint": "殘卷：接地吞掉的雷並沒有消失，只是在等一陣風。",
+    "hint": "殘卷：地脈噬雷吞掉的雷並沒有消失，只是在等一陣風。",
     "elements": [
       "wind",
       "thunder",
@@ -1820,17 +1862,18 @@
       "grounding"
     ],
     "node": {
-      "region": "rift",
-      "ring": 5,
-      "angle": 180
-    }
+      "region": "outer",
+      "ring": 4,
+      "angle": 192
+    },
+    "school": "conjuration"
   },
   {
     "id": "skyburner",
     "name": "焚天",
     "nameEn": "Skyburner",
-    "desc": "雷火颶風燒到天上去了：巨大的火焰龍捲裡雷光亂竄，閃電帶著火跳向四周。",
-    "hint": "殘卷：雷火颶風若吞下極階的火，連天空都會燒起來。",
+    "desc": "雷火狂嵐燒到天上去了：巨大的火焰龍捲裡雷光亂竄，閃電帶著火跳向四周。",
+    "hint": "殘卷：雷火狂嵐若吞下極階的火，連天空都會燒起來。",
     "elements": [
       "fire",
       "wind",
@@ -1887,16 +1930,18 @@
     ],
     "node": {
       "region": "rift",
-      "ring": 5,
+      "ring": 6,
       "angle": 36
-    }
+    },
+    "school": "cataclysm",
+    "chant": "風助火勢，雷引天威——將整片蒼穹盡數點燃！"
   },
   {
     "id": "quicksand",
-    "name": "流沙",
-    "nameEn": "Quicksand",
-    "desc": "戰場中央變成流沙，看不見的怪一隻隻被吸進去慢慢磨碎。",
-    "hint": "殘卷：泥沼遇上沙塵，地面就再也站不穩。",
+    "name": "噬骨流沙",
+    "nameEn": "Devouring Sands",
+    "desc": "戰場中央塌陷成噬骨流沙，看不見的怪一隻隻被吸進去慢慢磨碎。",
+    "hint": "殘卷：腐殖泥潭遇上黃昏沙暴，地面就再也站不穩。",
     "elements": [
       "wind",
       "earth",
@@ -1930,10 +1975,10 @@
       }
     ],
     "words": {
-      "pre": "流沙",
-      "noun": "沙渦",
-      "preEn": "Sinking",
-      "nounEn": "Quicksand"
+      "pre": "噬骨",
+      "noun": "流沙",
+      "preEn": "Devouring",
+      "nounEn": "Sands"
     },
     "affinity": "odd",
     "depth": 2,
@@ -1943,10 +1988,11 @@
       "sandstorm"
     ],
     "node": {
-      "region": "abyss",
-      "ring": 6,
+      "region": "outer",
+      "ring": 5,
       "angle": 252
-    }
+    },
+    "school": "conjuration"
   },
   {
     "id": "holy_judgment",
@@ -1958,7 +2004,7 @@
       "fire",
       "thunder"
     ],
-    "tier": 9,
+    "tier": 10,
     "attack": 95,
     "cooldownMs": 5000,
     "effects": [
@@ -2000,11 +2046,15 @@
       "thunder_hammer"
     ],
     "node": {
-      "region": "zenith",
-      "ring": 7,
-      "angle": 108
+      "region": "astral",
+      "ring": 9,
+      "angle": 0,
+      "tree": "lightdark",
+      "side": "light"
     },
-    "rare": true
+    "rare": true,
+    "school": "forbidden",
+    "chant": "日輝破曉，神雷裁決——凡有罪者，盡皆化為白光！"
   },
   {
     "id": "abyss_devour",
@@ -2016,7 +2066,7 @@
       "earth",
       "water"
     ],
-    "tier": 9,
+    "tier": 10,
     "attack": 95,
     "cooldownMs": 5000,
     "effects": [
@@ -2052,11 +2102,15 @@
       "tsunami"
     ],
     "node": {
-      "region": "abyss",
-      "ring": 6,
-      "angle": 288
+      "region": "astral",
+      "ring": 9,
+      "angle": 0,
+      "tree": "lightdark",
+      "side": "dark"
     },
-    "rare": true
+    "rare": true,
+    "school": "forbidden",
+    "chant": "深海之底、永暗之門洞開——將一切拖入無歸之淵！"
   },
   {
     "id": "worldfire",
@@ -2067,7 +2121,7 @@
     "elements": [
       "fire"
     ],
-    "tier": 8,
+    "tier": 10,
     "attack": 80,
     "cooldownMs": 3800,
     "effects": [
@@ -2106,11 +2160,13 @@
       "inferno"
     ],
     "node": {
-      "region": "rift",
-      "ring": 6,
+      "region": "astral",
+      "ring": 9,
       "angle": 18
     },
-    "rare": true
+    "rare": true,
+    "school": "forbidden",
+    "chant": "太初之火，終末之燼——連同天空與法則一併焚盡！"
   },
   {
     "id": "heavens_breath",
@@ -2121,7 +2177,7 @@
     "elements": [
       "wind"
     ],
-    "tier": 8,
+    "tier": 10,
     "attack": 80,
     "cooldownMs": 3800,
     "effects": [
@@ -2156,11 +2212,13 @@
       "vacuum_blades"
     ],
     "node": {
-      "region": "rift",
-      "ring": 6,
+      "region": "astral",
+      "ring": 9,
       "angle": 90
     },
-    "rare": true
+    "rare": true,
+    "school": "forbidden",
+    "chant": "傾聽吧，那是世界誕生之初、來自天外蒼穹的吐息。"
   },
   {
     "id": "ninefold_thunder",
@@ -2171,7 +2229,7 @@
     "elements": [
       "thunder"
     ],
-    "tier": 8,
+    "tier": 10,
     "attack": 80,
     "cooldownMs": 4500,
     "effects": [
@@ -2202,11 +2260,13 @@
       "myriad_thunder"
     ],
     "node": {
-      "region": "rift",
-      "ring": 6,
+      "region": "astral",
+      "ring": 9,
       "angle": 162
     },
-    "rare": true
+    "rare": true,
+    "school": "forbidden",
+    "chant": "九重天門盡開，降下永夜不息的雷霆煉獄！"
   },
   {
     "id": "titans_grip",
@@ -2217,7 +2277,7 @@
     "elements": [
       "earth"
     ],
-    "tier": 8,
+    "tier": 10,
     "attack": 80,
     "cooldownMs": 4000,
     "effects": [
@@ -2254,11 +2314,13 @@
       "landslide"
     ],
     "node": {
-      "region": "rift",
-      "ring": 6,
+      "region": "astral",
+      "ring": 9,
       "angle": 198
     },
-    "rare": true
+    "rare": true,
+    "school": "forbidden",
+    "chant": "群山不過指尖微塵——遠古泰坦，於此握碎大地！"
   },
   {
     "id": "moontide",
@@ -2269,7 +2331,7 @@
     "elements": [
       "water"
     ],
-    "tier": 8,
+    "tier": 10,
     "attack": 80,
     "cooldownMs": 4000,
     "effects": [
@@ -2314,10 +2376,12 @@
       "maelstrom"
     ],
     "node": {
-      "region": "rift",
-      "ring": 6,
+      "region": "astral",
+      "ring": 9,
       "angle": 324
     },
-    "rare": true
+    "rare": true,
+    "school": "forbidden",
+    "chant": "銀月低垂，滄溟倒懸，萬古潮汐盡歸吾掌！"
   }
 ]

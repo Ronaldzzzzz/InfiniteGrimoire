@@ -1,6 +1,6 @@
 import { ELEMENT_ORDER } from './types';
 import type { ElementId } from './types';
-import type { Affinity, Content, Effect, Material, Spell } from './model';
+import type { Affinity, Content, Effect, Material, School, Spell } from './model';
 
 export const CRAFTED_MAX_LEN = 512;
 export const HARD_MAX_DEPTH = 8;
@@ -60,7 +60,7 @@ function materialPart(m: Material): Part {
     material: true,
     spell: {
       id: m.id, name: m.name, nameEn: m.nameEn, desc: m.desc, elements: m.elements, tier: 1, attack: 0, cooldownMs: 0,
-      effects: [m.effect], words: m.words, affinity: 'odd', depth: 0, named: false,
+      effects: [m.effect], words: m.words, affinity: 'odd', depth: 0, named: false, school: 'enchantment',
     },
   };
 }
@@ -122,6 +122,11 @@ function derive(id: string, content: Content): Spell | null {
   const effects = combined.filter((e) => e.kind !== 'backfire' || (!seenBackfire && (seenBackfire = true)));
   if (bad && !seenBackfire) effects.push({ kind: 'backfire', chance: 0.3, stunMs: 1200 });
 
+  // School: the higher-attack side wins, ties go to the id that sorts first; materials never count; forbidden drops to cataclysm.
+  const winner = a.material ? B : b.material ? A
+    : A.attack > B.attack ? A : B.attack > A.attack ? B : (A.id <= B.id ? A : B);
+  const school: School = winner.school === 'forbidden' ? 'cataclysm' : winner.school;
+
   const desc = good ? `${A.name}和${B.name}互相增幅。`
     : bad ? `${A.name}和${B.name}互相干擾，威力下降，偶爾會反噬自己。`
     : `${A.name}和${B.name}同時發動。`;
@@ -130,7 +135,7 @@ function derive(id: string, content: Content): Spell | null {
     nameEn: (bad ? 'Unstable ' : '') + `${A.words.preEn} ${B.words.nounEn}`,
     desc, elements, tier, attack, cooldownMs, effects,
     words: { pre: A.words.pre, noun: B.words.noun, preEn: A.words.preEn, nounEn: B.words.nounEn },
-    affinity: affinity as Affinity, depth, named: false,
+    affinity: affinity as Affinity, depth, named: false, school,
   };
 }
 

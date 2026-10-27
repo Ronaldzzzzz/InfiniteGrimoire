@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ContentError, content, loadContent } from './content';
+import { ContentError, LIGHT_DARK_SPELLS, NAMED_DEPTH, content, loadContent } from './content';
 import spells from '../data/content/spells.json';
 import recipes from '../data/content/recipes.json';
 import monsters from '../data/content/monsters.json';
@@ -268,12 +268,12 @@ describe('shipped content set', () => {
       for (const w of [s.words.pre, s.words.noun, s.hint, s.name]) expect(w.trim().length, s.id).toBeGreaterThan(0);
       if (s.id === 'mana_overload') { expect(s.node).toBeNull(); continue; }
       expect(s.node, s.id).not.toBeNull();
-      const key = `${s.node!.region}:${s.node!.ring}:${((s.node!.angle % 360) + 360) % 360}`;
+      const key = `${s.node!.tree ?? 'elements'}${s.node!.side ?? ''}:${s.node!.region}:${s.node!.ring}:${((s.node!.angle % 360) + 360) % 360}`;
       expect(at.has(key), `${s.id} shares ${key}`).toBe(false);
       at.add(key);
     }
     for (const p of Object.values(content.passives)) {
-      const key = `${p.node.region}:${p.node.ring}:${((p.node.angle % 360) + 360) % 360}`;
+      const key = `elements:${p.node.region}:${p.node.ring}:${((p.node.angle % 360) + 360) % 360}`;
       expect(at.has(key), `${p.id} shares ${key}`).toBe(false);
       at.add(key);
     }
@@ -293,7 +293,7 @@ describe('rare spells', () => {
       ['titans_grip', 'earth', 'landslide'], ['moontide', 'water', 'maelstrom'],
     ] as const) {
       const s = content.spells[id]!;
-      expect(s).toMatchObject({ elements: [el], tier: 8, named: true, affinity: 'self', rare: true, prerequisites: [baseSpell] });
+      expect(s).toMatchObject({ elements: [el], tier: 10, school: 'forbidden', named: true, affinity: 'self', rare: true, prerequisites: [baseSpell] });
       const r = content.recipes.find((x) => x.id === id)!;
       expect([...r.inputs].sort()).toEqual([baseSpell, `el:${el}:3`].sort());
       expect(r.outcomes).toEqual([{ spellId: id, weight: 1 }, { spellId: null, weight: 49 }]);
@@ -314,7 +314,7 @@ describe('rare spells', () => {
 
   it('existing spells and recipes are unchanged', () => {
     for (const s of Object.values(content.spells)) {
-      if (NEW.includes(s.id)) continue;
+      if (NEW.includes(s.id) || s.rare) continue;
       expect([s.tier, s.attack, s.cooldownMs, s.depth].join('|'), s.id).toBe((baseline.spells as Record<string, string>)[s.id]);
     }
     for (const r of content.recipes) {
@@ -337,5 +337,108 @@ describe('rare spells', () => {
       expect(ratio, id).toBeLessThan(1.25);
       expect(dps(id), id).toBeLessThan(dps('holy_judgment'));
     }
+  });
+});
+
+describe('spell schools, chants and the tree layout', () => {
+  const spell = (raw: Record<string, any>, id: string) => raw.spells.find((s: any) => s.id === id);
+
+  it('requires a school, forbidden exactly for rares', () => {
+    const raw = base();
+    delete spell(raw, 'fireball').school;
+    expect(issuesOf(raw)).toContain('fireball');
+    const r2 = base();
+    spell(r2, 'worldfire').school = 'cataclysm';
+    expect(issuesOf(r2)).toContain('spell worldfire: rare spells must have school forbidden');
+    const r3 = base();
+    spell(r3, 'fireball').school = 'forbidden';
+    expect(issuesOf(r3)).toContain('spell fireball: only rare spells may have school forbidden');
+  });
+
+  it('requires a chant for tier 7+ and for rares', () => {
+    const raw = base();
+    delete spell(raw, 'sunfall').chant;
+    expect(issuesOf(raw)).toContain('spell sunfall: tier 7+ and rare spells need a chant');
+    const r2 = base();
+    delete spell(r2, 'worldfire').chant;
+    expect(issuesOf(r2)).toContain('spell worldfire: tier 7+ and rare spells need a chant');
+  });
+
+  it('keeps tier 10 for rares only', () => {
+    const raw = base();
+    spell(raw, 'fireball').tier = 10;
+    expect(issuesOf(raw)).toContain('spell fireball: non-rare spells must be tier 1-9');
+    const r2 = base();
+    spell(r2, 'worldfire').tier = 9;
+    expect(issuesOf(r2)).toContain('spell worldfire: rare spells must be tier 10');
+  });
+
+  it('checks depth against the tier', () => {
+    expect(NAMED_DEPTH(2)).toBe(0);
+    expect(NAMED_DEPTH(4)).toBe(1);
+    expect(NAMED_DEPTH(6)).toBe(2);
+    expect(NAMED_DEPTH(10)).toBe(3);
+    const raw = base();
+    spell(raw, 'inferno').depth = 3;
+    expect(issuesOf(raw)).toContain('spell inferno: depth 3 does not match tier 5 (expected 2)');
+  });
+
+  it('rejects repeated words.pre or words.noun', () => {
+    const raw = base();
+    spell(raw, 'inferno').words.pre = spell(raw, 'fireball').words.pre;
+    expect(issuesOf(raw)).toContain('duplicate words.pre');
+    const r2 = base();
+    spell(r2, 'inferno').words.noun = spell(r2, 'fireball').words.noun;
+    expect(issuesOf(r2)).toContain('duplicate words.noun');
+  });
+
+  it('keeps the light/dark tree for exactly the two light/dark spells', () => {
+    expect([...LIGHT_DARK_SPELLS]).toEqual(['holy_judgment', 'abyss_devour']);
+    const raw = base();
+    delete spell(raw, 'holy_judgment').node.tree;
+    expect(issuesOf(raw)).toContain('spell holy_judgment: light/dark spells need node.tree "lightdark" and a side');
+    const r2 = base();
+    delete spell(r2, 'abyss_devour').node.side;
+    expect(issuesOf(r2)).toContain('spell abyss_devour');
+    const r3 = base();
+    spell(r3, 'fireball').node.tree = 'lightdark';
+    spell(r3, 'fireball').node.side = 'light';
+    expect(issuesOf(r3)).toContain('spell fireball: only light/dark spells may use the lightdark tree');
+    const r4 = base();
+    r4.passives[0].node.tree = 'lightdark';
+    expect(issuesOf(r4)).toContain('passive');
+  });
+
+  it('rejects two recipes with the same inputs', () => {
+    const raw = base();
+    raw.recipes.push({ ...structuredClone(raw.recipes[0]), id: 'dupe', inputs: [...raw.recipes[0].inputs].reverse() });
+    expect(issuesOf(raw)).toContain('recipe dupe: same inputs as recipe');
+  });
+
+  it('places every named spell on ring tier - 1, in the region of its tier', () => {
+    const regionOf = (t: number) => (t <= 4 ? 'core' : t <= 6 ? 'outer' : t === 7 ? 'rift' : t === 8 ? 'abyss' : t === 9 ? 'zenith' : 'astral');
+    for (const s of Object.values(content.spells)) {
+      if (!s.node) continue;
+      expect(s.node.ring, s.id).toBe(s.tier - 1);
+      expect(s.node.region, s.id).toBe(regionOf(s.tier));
+    }
+    expect(content.spells.holy_judgment!.node).toEqual({ region: 'astral', ring: 9, angle: 0, tree: 'lightdark', side: 'light' });
+    expect(content.spells.abyss_devour!.node).toEqual({ region: 'astral', ring: 9, angle: 0, tree: 'lightdark', side: 'dark' });
+    const astral = content.regions.find((r) => r.id === 'astral')!;
+    expect(astral).toMatchObject({ order: 6, initiallyVisible: false, name: '星界', nameEn: 'Astral Sea' });
+  });
+
+  it('puts passives on a ring inside their own region', () => {
+    const rings: Record<string, number[]> = { outer: [4, 5], rift: [6], abyss: [7], zenith: [8] };
+    for (const p of Object.values(content.passives)) expect(rings[p.node.region], p.id).toContain(p.node.ring);
+  });
+
+  it('renames the 11 spells', () => {
+    const names: Record<string, string> = {
+      water_wave: '湧泉之環', tailwind: '翠風祝禱', earthquake: '地脈震盪', mire: '腐殖泥潭', sandstorm: '黃昏沙暴',
+      steam: '沸霧逆流', grounding: '地脈噬雷', rain_cloud: '劫雷積雲', thunder_tsunami: '狂雷怒濤',
+      quicksand: '噬骨流沙', thunder_fire_hurricane: '雷火狂嵐',
+    };
+    for (const [id, n] of Object.entries(names)) expect(content.spells[id]!.name, id).toBe(n);
   });
 });

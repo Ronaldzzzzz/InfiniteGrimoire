@@ -12,7 +12,7 @@ const words = { pre: 'p', noun: 'n', preEn: 'p', nounEn: 'n' };
 const spell = (o: Partial<NamedSpellDef> & { id: string }): NamedSpellDef => ({
   name: o.id, nameEn: o.id, desc: '', elements: [], tier: 1, attack: 10, cooldownMs: 900,
   effects: [{ kind: 'bolt', mult: 1, count: 1, radius: 0.03, target: 'nearest' }], words, affinity: 'base', depth: 0,
-  named: true, hint: 'h', prerequisites: [], node: null, ...o,
+  named: true, school: 'evocation', hint: 'h', prerequisites: [], node: null, ...o,
 });
 const mon = (o: Partial<Monster> & { id: string }): Monster => ({
   name: o.id, nameEn: o.id, element: 'fire', tier: 1, hp: 20, defense: 0, regenPerSec: 0, speed: 0.05, radius: 0.03,

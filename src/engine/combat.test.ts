@@ -16,7 +16,7 @@ const mkGame = (o: Partial<GameState> = {}): GameState => ({
 const testSpell = (id: string, effects: Effect[], o: Partial<NamedSpellDef> = {}): NamedSpellDef => ({
   id, name: id, nameEn: id, desc: 'd', hint: 'h', elements: [], tier: 5, attack: 100, cooldownMs: 1e6,
   effects, words: { pre: 'p', noun: 'n', preEn: 'p', nounEn: 'n' }, affinity: 'base', depth: 0, named: true,
-  prerequisites: [], node: null, ...o,
+  prerequisites: [], node: null, school: 'evocation', ...o,
 });
 const mon = (id: string, o: Partial<Monster> = {}): Monster => ({
   id, name: id, nameEn: id, element: 'fire', tier: 1, hp: 1e6, defense: 0, regenPerSec: 0, speed: 0, radius: 0.03,

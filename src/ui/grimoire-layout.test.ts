@@ -51,12 +51,12 @@ describe('layoutGrimoire', () => {
     const l = layoutGrimoire(spells, new Set(['core', 'outer']), passives);
     const p = l.nodes.find((n) => n.id === 'ember_affinity')!;
     expect(p.kind).toBe('passive');
-    expect(Math.hypot(p.x, p.y)).toBeCloseTo(315);
+    expect(Math.hypot(p.x, p.y)).toBeCloseTo(380); // outer passives sit on ring 5
     expect(l.nodes.find((n) => n.id === 'deep_insight')).toBeUndefined();
   });
   it('gives every fogged region a band around its rings and none to visible ones', () => {
     const l = layoutGrimoire(spells, visible, passives, content.regions);
-    expect(l.fog.map((f) => f.region)).toEqual(['outer', 'rift', 'abyss', 'zenith']);
+    expect(l.fog.map((f) => f.region)).toEqual(['outer', 'rift', 'abyss', 'zenith', 'astral']);
     const outer = l.fog[0]!;
     expect(outer.inner).toBeLessThan(315);
     expect(outer.outer).toBeGreaterThan(315);

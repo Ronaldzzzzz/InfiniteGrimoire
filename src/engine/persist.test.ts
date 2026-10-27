@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import type { GameState } from './model';
 import { createInitialState, parseState, serialize } from './persist';
-import { craftedId } from './spells';
+import { HARD_MAX_DEPTH, craftedId, resolveSpell } from './spells';
 
 const zone0 = content.zones[0]!.id;
 const zone1 = content.zones[1]!.id;
@@ -96,5 +96,22 @@ describe('persist', () => {
     expect(roundtrip((o) => (o.inventory['fireball'] = 1))).toBeNull();
     expect(roundtrip((o) => (o.inventory['el:fire:1'] = 1.5))).toBeNull();
     expect(roundtrip((o) => (o.synthesisLog.k.attempts = -1))).toBeNull();
+  });
+});
+
+describe('old saves after the tier rework', () => {
+  it('still parses saves that hold rares and crafted spells built on them', () => {
+    const learned = [
+      'mana_bolt', 'worldfire', 'holy_judgment', 'inferno', 'fire_tornado',
+      craftedId('inferno', 'worldfire'), craftedId('fire_tornado', 'mat:sun_shard'),
+    ];
+    const state = { ...sample(), learned: [...learned, 'fireball', crafted], equipped: 'worldfire' };
+    const parsed = parseState(JSON.parse(serialize(state)), content);
+    expect(parsed).not.toBeNull();
+    for (const id of parsed!.learned) {
+      const s = resolveSpell(id, content);
+      expect(s, id).not.toBeNull();
+      expect(s!.depth, id).toBeLessThanOrEqual(HARD_MAX_DEPTH);
+    }
   });
 });

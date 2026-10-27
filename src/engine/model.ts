@@ -17,21 +17,25 @@ export type Effect =
   | { kind: 'haste'; factor: number; ms: number }
   | { kind: 'backfire'; chance: number; stunMs: number };
 
+/** Spell school (術式學派). `forbidden` is only for rare named spells; crafted spells never get it. */
+export type School = 'evocation' | 'conjuration' | 'cataclysm' | 'enchantment' | 'forbidden';
 export interface Words { pre: string; noun: string; preEn: string; nounEn: string }
 export type Affinity = 'base' | 'self' | 'good' | 'odd' | 'bad';
 /** A castable spell: a named one from data, or a crafted one derived from its id. */
 export interface Spell {
   id: string; name: string; nameEn: string; desc: string;
   elements: ElementId[]; tier: number; attack: number; cooldownMs: number;
-  effects: Effect[]; words: Words; affinity: Affinity; depth: number; named: boolean;
+  effects: Effect[]; words: Words; affinity: Affinity; depth: number; named: boolean; school: School;
 }
-export interface TreeNode { region: string; ring: number; angle: number }
+export interface TreeNode { region: string; ring: number; angle: number; tree?: 'elements' | 'lightdark'; side?: 'light' | 'dark' }
 export interface NamedSpellDef extends Spell {
   named: true; hint: string; prerequisites: string[]; node: TreeNode | null;
   /** the element whose "el+el" grade-1 recipe teaches it; crafted inputs use it for that element */
   baseOf?: ElementId;
   /** only obtainable from a random recipe; a discovery is announced to everyone */
   rare?: boolean;
+  /** old-language incantation shown when a high-tier or rare spell is cast */
+  chant?: string;
 }
 export interface Material { id: ItemId; name: string; nameEn: string; desc: string; elements: ElementId[]; words: Words; effect: Effect }
 export interface KeyItem { id: ItemId; name: string; nameEn: string; desc: string; reveals: string }

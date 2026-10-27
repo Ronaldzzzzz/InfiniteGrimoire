@@ -33,5 +33,12 @@
     "nameEn": "Zenith",
     "order": 5,
     "initiallyVisible": false
+  },
+  {
+    "id": "astral",
+    "name": "星界",
+    "nameEn": "Astral Sea",
+    "order": 6,
+    "initiallyVisible": false
   }
 ]

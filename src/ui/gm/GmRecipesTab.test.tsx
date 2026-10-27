@@ -20,7 +20,7 @@ describe('GmRecipesTab', () => {
     render(<GmRecipesTab runtime={fakeRuntime()} content={content} />);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '焚世' } });
     expect(rows()).toHaveLength(1);
-    expect(rows()[0]!.textContent).toContain('焚世之焰 Lv.8');
+    expect(rows()[0]!.textContent).toContain('焚世之焰 Lv.10');
     expect(rows()[0]!.textContent).toContain('2%');
     expect(rows()[0]!.textContent).toContain('98%');
   });
