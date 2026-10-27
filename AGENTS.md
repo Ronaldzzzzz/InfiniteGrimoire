@@ -58,7 +58,7 @@
 **現在停在哪：** branch `feat/rare-tuning`（**未 push、未合併到 `main`**）。`feat/spell-tiers` 已在 2026-10-27 依使用者指示 fast-forward 合併回 `feat/rare-tuning`，branch 已刪除。`npm test` 68 個檔案 730 個測試全過、`npm run build` 通過（2026-10-27 量測）。瀏覽器驗收已做完（見下）。
 
 **這個 branch 做了什麼（規格 `docs/superpowers/specs/2026-10-27-tier-curve-and-map-expansion-design.md`、計畫 `docs/superpowers/plans/2026-10-27-spell-tiers.md`、帳本 `docs/superpowers/sdd/2026-10-27-spell-tiers/progress.md`，12 個任務）：**
-- **強度曲線：** 名魔法重排成 Lv.1～9（一般 60 招）＋稀有一律 Lv.10（7 招）；新增 20 招、改名 11 招，總共 67 招。每高一階約 **×1.68～×1.98**（`TIER_STEP` 1.8，使用者 2026-10-27 決定；強化滿 +50 攻擊 ×1.4＝`EMPOWER_MAX`，最多只到下一階中位數的 0.91；在 `feat/tier-step-18`，數字見帳本 `docs/superpowers/sdd/2026-10-27-tier-step-18/progress.md`）；同階 ×0.82～×1.14；Lv.10 稀有對 Lv.9 中位數 ×1.61～×1.81；強化 +50 約等於高一階剛合成。DPS 表在 `docs/superpowers/specs/2026-10-27-dps-after.md`，量測工具 `scripts/measure-dps.ts`，測試把關 `tests/sim/tier-curve.test.ts`。
+- **強度曲線：** 名魔法重排成 Lv.1～9（一般 60 招）＋稀有一律 Lv.10（7 招）；新增 20 招、改名 11 招，總共 67 招。每高一階約 **×1.68～×1.98**（`TIER_STEP` 1.8，使用者 2026-10-27 決定；強化滿 +50 攻擊 ×1.4＝`EMPOWER_MAX`，最多只到下一階中位數的 0.91；已合併進 `feat/rare-tuning`，數字見帳本 `docs/superpowers/sdd/2026-10-27-tier-step-18/progress.md`）；同階 ×0.82～×1.14；Lv.10 稀有對 Lv.9 中位數 ×1.61～×1.81；強化 +50 約等於高一階剛合成。DPS 表在 `docs/superpowers/specs/2026-10-27-dps-after.md`，量測工具 `scripts/measure-dps.ts`，測試把關 `tests/sim/tier-curve.test.ts`。
 - **規則：** 強化只改攻擊（`attack × (1 + (TIER_STEP − 1) × (L − 1) / 49)`）；自創魔法上限 Lv.9；稀有配方＝同屬性 Lv.9 名魔法＋素材、機率 1 : 49，這種「魔法＋素材」配方只扣 1 個素材、不收融合成本（R1）。
 - **地圖：** 新地點星殞高原（Lv.8–9）與世界盡頭（Lv.9–10）、8 個新魔物、神階元素掉落、關鍵道具墮星之印、魔導書新區域星界（共 6 個區域、10 環）。
 - **介面：** 技能樹 10 環（外環間距縮小，全部解開時畫面約 0.72 倍，可縮放）；光與暗分頁（光左暗右，聖光審判與深淵吞噬移到這裡，五元素樹上沒有）；魔法學派（`school`）、詠唱詞與數值顯示在詳情卡；戰鬥畫面顯示「魔王出現還差 N 隻」與「魔王現身！」；合成台「放回上次組合」按鈕（記在 `localStorage` `ig.lastCombo`）；學會一般新魔法跳 3 秒通知（只有「裝備」，最多 3 個、擠掉最舊的），稀有揭曉動畫播完停在「裝備／不裝備」（待辦 0c 已完成）。
@@ -240,7 +240,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
-- **2026-10-27（Claude Code，Opus 5.5，macOS，TIER_STEP 1.8）**：使用者決定 `TIER_STEP` 1.8、強化滿改為攻擊 ×1.4（`EMPOWER_MAX`，與每階倍率脫鉤，推翻「強化滿 ≈ 高一階」；原話：強化是同階進步、跳階要有感）、自創配合問題暫緩到副魔法實裝時。規格第 15 節、討論紀錄第六輪、計畫 `docs/superpowers/plans/2026-10-27-tier-step-18.md`、帳本 `docs/superpowers/sdd/2026-10-27-tier-step-18/progress.md`。在 branch `feat/tier-step-18`（從 `feat/rare-tuning` 分出）重調：相鄰倍率 ×1.68～×1.98、強化 +50 最多到下一階中位數 0.91、稀有為 Lv.9 的 ×1.73～×1.93；模擬前四魔王 69.5～119.3 分、全部 ≤ 211.8、每地點 6.0～71.6、刷稀有 ≤ 63、0 次被拒；墮星龍神階 0.9。`npm test` 68 檔 737 個、build 通過。停在：未 push、未合併。下一步：使用者決定合併，之後試玩。
+- **2026-10-27（Claude Code，Opus 5.5，macOS，TIER_STEP 1.8）**：使用者決定 `TIER_STEP` 1.8、強化滿改為攻擊 ×1.4（`EMPOWER_MAX`，與每階倍率脫鉤，推翻「強化滿 ≈ 高一階」；原話：強化是同階進步、跳階要有感）、自創配合問題暫緩到副魔法實裝時。規格第 15 節、討論紀錄第六輪、計畫 `docs/superpowers/plans/2026-10-27-tier-step-18.md`、帳本 `docs/superpowers/sdd/2026-10-27-tier-step-18/progress.md`。在 branch `feat/tier-step-18`（從 `feat/rare-tuning` 分出，之後依使用者選擇 fast-forward 合併回 `feat/rare-tuning` 並刪除）重調：相鄰倍率 ×1.68～×1.98、強化 +50 最多到下一階中位數 0.91、稀有為 Lv.9 的 ×1.73～×1.93；模擬前四魔王 69.5～119.3 分、全部 ≤ 211.8、每地點 6.0～71.6、刷稀有 ≤ 63、0 次被拒；墮星龍神階 0.9。`npm test` 68 檔 737 個、build 通過。停在：`feat/rare-tuning` 未 push、未合併到 `main`。下一步：使用者在真實瀏覽器試玩，再決定合併到 `main`；之後討論待辦 0b。
 
 - **2026-10-27（Claude Code，Opus 5.5，macOS，合併）**：依使用者選擇，把 `feat/spell-tiers` fast-forward 合併回 `feat/rare-tuning`，刪除 `feat/spell-tiers`；合併後 `npm test` 68 個檔案 737 個測試全過。停在：`feat/rare-tuning` 未 push、未合併到 `main`。待使用者決定：(1) 自創魔法的效果配合（66 組 Lv.9＋稀有自創中 22 組超過上限，檢查目前只印報告）——使用者提議之後用「雙重詠唱／先後施放」承接元素反應、再降低自創的係數，排進下一次設計討論；(2) `TIER_STEP` 1.7 是否定案。
 
