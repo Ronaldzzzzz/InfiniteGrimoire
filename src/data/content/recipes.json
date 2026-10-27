@@ -418,7 +418,7 @@
   {
     "id": "fire_pure_2",
     "inputs": [
-      "flame_burst",
+      "ash_serpents",
       "el:fire:3"
     ],
     "outcomes": [
@@ -431,7 +431,7 @@
   {
     "id": "fire_pure_3",
     "inputs": [
-      "inferno",
+      "crimson_pillar",
       "el:fire:4"
     ],
     "outcomes": [
@@ -442,9 +442,61 @@
     ]
   },
   {
+    "id": "fire_lv9",
+    "inputs": [
+      "hellfire_siege",
+      "el:fire:5"
+    ],
+    "outcomes": [
+      {
+        "spellId": "corona_scorch",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_lv8",
+    "inputs": [
+      "sunfall",
+      "el:fire:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "hellfire_siege",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_lv6",
+    "inputs": [
+      "inferno",
+      "el:fire:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "crimson_pillar",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "fire_lv4",
+    "inputs": [
+      "flame_burst",
+      "el:fire:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "ash_serpents",
+        "weight": 1
+      }
+    ]
+  },
+  {
     "id": "wind_pure_2",
     "inputs": [
-      "tailwind",
+      "gale_cage",
       "el:wind:3"
     ],
     "outcomes": [
@@ -457,7 +509,7 @@
   {
     "id": "wind_pure_3",
     "inputs": [
-      "vacuum_blades",
+      "severing_scythe",
       "el:wind:4"
     ],
     "outcomes": [
@@ -468,9 +520,61 @@
     ]
   },
   {
+    "id": "wind_lv9",
+    "inputs": [
+      "gale_severance",
+      "el:wind:5"
+    ],
+    "outcomes": [
+      {
+        "spellId": "void_gale",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_lv8",
+    "inputs": [
+      "sky_tempest",
+      "el:wind:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "gale_severance",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_lv6",
+    "inputs": [
+      "vacuum_blades",
+      "el:wind:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "severing_scythe",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "wind_lv4",
+    "inputs": [
+      "tailwind",
+      "el:wind:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "gale_cage",
+        "weight": 1
+      }
+    ]
+  },
+  {
     "id": "thunder_pure_2",
     "inputs": [
-      "thunder_hammer",
+      "arc_cage",
       "el:thunder:3"
     ],
     "outcomes": [
@@ -483,7 +587,7 @@
   {
     "id": "thunder_pure_3",
     "inputs": [
-      "myriad_thunder",
+      "voltaris_javelin",
       "el:thunder:4"
     ],
     "outcomes": [
@@ -494,9 +598,61 @@
     ]
   },
   {
+    "id": "thunder_lv9",
+    "inputs": [
+      "thunder_throne",
+      "el:thunder:5"
+    ],
+    "outcomes": [
+      {
+        "spellId": "astral_fulmination",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_lv8",
+    "inputs": [
+      "thunder_god",
+      "el:thunder:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "thunder_throne",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_lv6",
+    "inputs": [
+      "myriad_thunder",
+      "el:thunder:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "voltaris_javelin",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "thunder_lv4",
+    "inputs": [
+      "thunder_hammer",
+      "el:thunder:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "arc_cage",
+        "weight": 1
+      }
+    ]
+  },
+  {
     "id": "earth_pure_2",
     "inputs": [
-      "earthquake",
+      "stone_fangs",
       "el:earth:3"
     ],
     "outcomes": [
@@ -509,7 +665,7 @@
   {
     "id": "earth_pure_3",
     "inputs": [
-      "landslide",
+      "obsidian_thorns",
       "el:earth:4"
     ],
     "outcomes": [
@@ -520,9 +676,61 @@
     ]
   },
   {
+    "id": "earth_lv9",
+    "inputs": [
+      "mountain_fall",
+      "el:earth:5"
+    ],
+    "outcomes": [
+      {
+        "spellId": "continental_crush",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_lv8",
+    "inputs": [
+      "wrath_of_earth",
+      "el:earth:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "mountain_fall",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_lv6",
+    "inputs": [
+      "landslide",
+      "el:earth:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "obsidian_thorns",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "earth_lv4",
+    "inputs": [
+      "earthquake",
+      "el:earth:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "stone_fangs",
+        "weight": 1
+      }
+    ]
+  },
+  {
     "id": "water_pure_2",
     "inputs": [
-      "tsunami",
+      "torrent_lance",
       "el:water:3"
     ],
     "outcomes": [
@@ -535,12 +743,64 @@
   {
     "id": "water_pure_3",
     "inputs": [
-      "maelstrom",
+      "abyssal_crush",
       "el:water:4"
     ],
     "outcomes": [
       {
         "spellId": "deluge",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_lv9",
+    "inputs": [
+      "abyssal_prison",
+      "el:water:5"
+    ],
+    "outcomes": [
+      {
+        "spellId": "nether_tides",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_lv8",
+    "inputs": [
+      "deluge",
+      "el:water:4"
+    ],
+    "outcomes": [
+      {
+        "spellId": "abyssal_prison",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_lv6",
+    "inputs": [
+      "maelstrom",
+      "el:water:3"
+    ],
+    "outcomes": [
+      {
+        "spellId": "abyssal_crush",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "water_lv4",
+    "inputs": [
+      "tsunami",
+      "el:water:2"
+    ],
+    "outcomes": [
+      {
+        "spellId": "torrent_lance",
         "weight": 1
       }
     ]
@@ -652,7 +912,7 @@
   {
     "id": "holy_judgment",
     "inputs": [
-      "thunder_hammer",
+      "astral_fulmination",
       "mat:sun_shard"
     ],
     "outcomes": [
@@ -662,14 +922,14 @@
       },
       {
         "spellId": null,
-        "weight": 9
+        "weight": 49
       }
     ]
   },
   {
     "id": "abyss_devour",
     "inputs": [
-      "tsunami",
+      "nether_tides",
       "mat:abyss_pearl"
     ],
     "outcomes": [
@@ -679,15 +939,15 @@
       },
       {
         "spellId": null,
-        "weight": 9
+        "weight": 49
       }
     ]
   },
   {
     "id": "worldfire",
     "inputs": [
-      "inferno",
-      "el:fire:3"
+      "corona_scorch",
+      "mat:ember_core"
     ],
     "outcomes": [
       {
@@ -703,8 +963,8 @@
   {
     "id": "heavens_breath",
     "inputs": [
-      "vacuum_blades",
-      "el:wind:3"
+      "void_gale",
+      "mat:roc_feather"
     ],
     "outcomes": [
       {
@@ -720,8 +980,8 @@
   {
     "id": "ninefold_thunder",
     "inputs": [
-      "myriad_thunder",
-      "el:thunder:3"
+      "astral_fulmination",
+      "mat:fulgurite"
     ],
     "outcomes": [
       {
@@ -737,8 +997,8 @@
   {
     "id": "titans_grip",
     "inputs": [
-      "landslide",
-      "el:earth:3"
+      "continental_crush",
+      "mat:lava_stone"
     ],
     "outcomes": [
       {
@@ -754,8 +1014,8 @@
   {
     "id": "moontide",
     "inputs": [
-      "maelstrom",
-      "el:water:3"
+      "nether_tides",
+      "mat:tide_scale"
     ],
     "outcomes": [
       {

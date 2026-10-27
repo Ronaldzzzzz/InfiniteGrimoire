@@ -192,6 +192,7 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
   checkUnique('regions', regions.map((s) => s.id), issues);
 
   const spellIds = new Set(spells.map((s) => s.id));
+  const spellById = new Map(spells.map((s) => [s.id, s]));
   const monsterIds = new Set(monsters.map((m) => m.id));
   const regionIds = new Set(regions.map((r) => r.id));
   const materialIds = new Set(materials.map((m) => m.id));
@@ -262,7 +263,19 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
     if (makers.length === 0) issues.push(`rare spell "${s.id}" has no recipe that produces it`);
     for (const r of makers) {
       if (!r.outcomes.some((o) => o.spellId === null)) issues.push(`rare spell "${s.id}" comes from recipe ${r.id}, which has no fall-through (spellId null) outcome`);
+      const spellIn = r.inputs.filter((i) => spellById.has(i)), matIn = r.inputs.filter((i) => i.startsWith('mat:'));
+      const w = (id: string | null) => r.outcomes.find((o) => o.spellId === id)?.weight;
+      if (r.inputs.length !== 2 || spellIn.length !== 1 || matIn.length !== 1 || spellById.get(spellIn[0]!)?.tier !== 9) {
+        issues.push(`rare spell "${s.id}" recipe ${r.id} must be one tier 9 named spell plus one material`);
+      } else if (r.outcomes.length !== 2 || w(s.id) !== 1 || w(null) !== 49) {
+        issues.push(`rare spell "${s.id}" recipe ${r.id} must be 1 : 49 (rare : null)`);
+      }
     }
+  }
+
+  for (const e of ELEMENT_ORDER) {
+    const tiers = spells.filter((s) => !s.rare && s.elements.length === 1 && s.elements[0] === e).map((s) => s.tier).sort((a, b) => a - b);
+    if (tiers.join(',') !== '2,3,4,5,6,7,8,9') issues.push(`pure ${e} chain must have exactly one spell for each of Lv.2-9, found: ${tiers.join(',')}`);
   }
 
   for (const m of monsters) {

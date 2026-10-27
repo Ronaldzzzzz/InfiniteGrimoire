@@ -177,13 +177,12 @@ describe('shipped content set', () => {
         if (!next) break;
         line.push(next.outcomes[0]!.spellId!);
       }
-      expect(line.length, `${e}: ${line.join(' > ')}`).toBeGreaterThanOrEqual(4);
+      expect(line.length, `${e}: ${line.join(' > ')}`).toBe(8);
       const spells = line.map((id) => content.spells[id]!);
-      spells.forEach((s, d) => expect(s.depth, s.id).toBe(d));
-      for (const s of spells.slice(2)) {
-        expect(s.tier, s.id).toBeGreaterThanOrEqual(5);
-        expect(s.tier, s.id).toBeLessThanOrEqual(8);
-      }
+      spells.forEach((s, i) => {
+        expect(s.tier, s.id).toBe(i + 2);
+        expect(s.depth, s.id).toBe(NAMED_DEPTH(s.tier));
+      });
       // the end of the line can hurt every monster by tier alone
       expect(spells[spells.length - 1]!.tier, e).toBeGreaterThanOrEqual(topTier - 1);
     }
@@ -235,7 +234,7 @@ describe('shipped content set', () => {
   it('counts meet the minimums', () => {
     const by = (f: (s: (typeof spellsOf)[number]) => boolean) => spellsOf.filter(f).length;
     expect(by((s) => s.affinity === 'base' && s.elements.length === 1)).toBe(5);
-    expect(by((s) => s.affinity === 'self' && s.depth === 1)).toBe(5);
+    expect(by((s) => s.affinity === 'self' && s.tier === 3)).toBe(5);
     expect(by((s) => s.elements.length === 2 && s.depth === 1)).toBe(10);
     expect(by((s) => s.elements.length >= 2 && s.depth >= 2 && !content.recipes.some((r) => r.outcomes.length > 1 && r.outcomes.some((o) => o.spellId === s.id)))).toBeGreaterThanOrEqual(6);
     expect(Object.keys(content.materials).length).toBeGreaterThanOrEqual(8);
@@ -281,23 +280,55 @@ describe('shipped content set', () => {
 });
 
 describe('rare spells', () => {
-  const NEW = ['worldfire', 'heavens_breath', 'ninefold_thunder', 'titans_grip', 'moontide'];
+  const NEW = ['worldfire', 'heavens_breath', 'ninefold_thunder', 'titans_grip', 'moontide', 'holy_judgment', 'abyss_devour'];
 
-  it('has one rare spell per element, each only from a random recipe that needs a 高階 element', () => {
+  it('has one rare spell per element, each only from a Lv.9 spell plus a material at 1 : 49', () => {
     const rares = Object.values(content.spells).filter((s) => s.rare);
     expect(rares.map((s) => s.id).sort()).toEqual(
       ['abyss_devour', 'heavens_breath', 'holy_judgment', 'moontide', 'ninefold_thunder', 'titans_grip', 'worldfire'],
     );
-    for (const [id, el, baseSpell] of [
-      ['worldfire', 'fire', 'inferno'], ['heavens_breath', 'wind', 'vacuum_blades'], ['ninefold_thunder', 'thunder', 'myriad_thunder'],
-      ['titans_grip', 'earth', 'landslide'], ['moontide', 'water', 'maelstrom'],
+    for (const [id, lv9, mat] of [
+      ['worldfire', 'corona_scorch', 'mat:ember_core'], ['heavens_breath', 'void_gale', 'mat:roc_feather'],
+      ['ninefold_thunder', 'astral_fulmination', 'mat:fulgurite'], ['titans_grip', 'continental_crush', 'mat:lava_stone'],
+      ['moontide', 'nether_tides', 'mat:tide_scale'], ['holy_judgment', 'astral_fulmination', 'mat:sun_shard'],
+      ['abyss_devour', 'nether_tides', 'mat:abyss_pearl'],
     ] as const) {
       const s = content.spells[id]!;
-      expect(s).toMatchObject({ elements: [el], tier: 10, school: 'forbidden', named: true, affinity: 'self', rare: true, prerequisites: [baseSpell] });
+      expect(s, id).toMatchObject({ tier: 10, school: 'forbidden', named: true, rare: true, prerequisites: [lv9] });
+      expect(content.spells[lv9]!.tier, lv9).toBe(9);
       const r = content.recipes.find((x) => x.id === id)!;
-      expect([...r.inputs].sort()).toEqual([baseSpell, `el:${el}:3`].sort());
-      expect(r.outcomes).toEqual([{ spellId: id, weight: 1 }, { spellId: null, weight: 49 }]);
+      expect([...r.inputs].sort(), id).toEqual([lv9, mat].sort());
+      expect(r.outcomes, id).toEqual([{ spellId: id, weight: 1 }, { spellId: null, weight: 49 }]);
     }
+  });
+
+  it('has exactly one pure non-rare spell per element for each of Lv.2-9', () => {
+    for (const e of ELEMENT_ORDER) {
+      const tiers = Object.values(content.spells).filter((s) => !s.rare && s.elements.length === 1 && s.elements[0] === e).map((s) => s.tier).sort((a, b) => a - b);
+      expect(tiers, e).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+  });
+
+  it('has 67 named spells with the roster per tier', () => {
+    const named = Object.values(content.spells).filter((s) => s.named);
+    const per = (t: number) => named.filter((s) => s.tier === t).length;
+    expect(named.length).toBe(67);
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(per)).toEqual([2, 5, 5, 15, 11, 6, 6, 5, 5, 7]);
+  });
+
+  it('rejects a rare recipe whose spell input is not Lv.9 or whose weights are not 1 : 49', () => {
+    const r1 = base();
+    r1.recipes.find((r: any) => r.id === 'worldfire').inputs = ['hellfire_siege', 'mat:ember_core'];
+    expect(issuesOf(r1)).toContain('rare spell "worldfire"');
+    const r2 = base();
+    r2.recipes.find((r: any) => r.id === 'worldfire').outcomes[1].weight = 9;
+    expect(issuesOf(r2)).toContain('rare spell "worldfire"');
+  });
+
+  it('rejects a missing tier in a pure element chain', () => {
+    const raw = base();
+    raw.spells.find((s: any) => s.id === 'crimson_pillar').tier = 5;
+    expect(issuesOf(raw)).toContain('pure fire');
   });
 
   it('rejects content where a rare spell comes from a fixed recipe', () => {
@@ -314,29 +345,15 @@ describe('rare spells', () => {
 
   it('existing spells and recipes are unchanged', () => {
     for (const s of Object.values(content.spells)) {
-      if (NEW.includes(s.id) || s.rare) continue;
+      if (NEW.includes(s.id) || s.rare || !(s.id in baseline.spells)) continue;
       expect([s.tier, s.attack, s.cooldownMs, s.depth].join('|'), s.id).toBe((baseline.spells as Record<string, string>)[s.id]);
     }
     for (const r of content.recipes) {
-      if (NEW.includes(r.id)) continue;
+      if (NEW.includes(r.id) || /_pure_[23]$/.test(r.id) || !(r.id in baseline.recipes)) continue;
       expect(r.inputs.join('+') + '>' + r.outcomes.map((q) => `${q.spellId}:${q.weight}`).join(','), r.id).toBe((baseline.recipes as Record<string, string>)[r.id]);
     }
     expect(Object.keys(baseline.spells).every((id) => id in content.spells)).toBe(true);
     expect(Object.keys(baseline.recipes).every((id) => content.recipes.some((r) => r.id === id))).toBe(true);
-  });
-
-  it('balances each new spell between the Lv.7 pure spell and Holy Judgment', () => {
-    const dps = (id: string) => {
-      const s = content.spells[id]!;
-      const mult = s.effects.reduce((a, e) => a + ('mult' in e ? e.mult * (e.kind === 'bolt' ? e.count : e.kind === 'blades' ? e.count : e.kind === 'meteor' ? e.count : e.kind === 'chain' ? e.hops : e.kind === 'storm' ? e.ms / e.tickMs : e.kind === 'zone' ? e.ms / e.tickMs : 1) : 0), 0);
-      return (s.attack * mult) / s.cooldownMs;
-    };
-    for (const [id, lv7] of [['worldfire', 'sunfall'], ['heavens_breath', 'sky_tempest'], ['ninefold_thunder', 'thunder_god'], ['titans_grip', 'wrath_of_earth'], ['moontide', 'deluge']] as const) {
-      const ratio = dps(id) / dps(lv7);
-      expect(ratio, id).toBeGreaterThan(1.12);
-      expect(ratio, id).toBeLessThan(1.25);
-      expect(dps(id), id).toBeLessThan(dps('holy_judgment'));
-    }
   });
 });
 

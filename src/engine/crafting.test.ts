@@ -153,14 +153,15 @@ describe('crafting', () => {
     expect(r.state.inventory).toEqual({ 'el:fire:2': 1, 'el:thunder:2': 1 });
   });
 
-  it('a missed rare roll (spell + 高階 element) always spends the element, even on a known fall-through', () => {
-    // 焚世之焰: inferno + el:fire:3, no fusion cost; refunding the only item would make retries free
+  it('a missed rare roll (Lv.9 spell + material) always spends the material, even on a known fall-through', () => {
+    // 焚世之焰: corona_scorch + mat:ember_core, no fusion cost; refunding the only item would make retries free
     const miss = { next: () => 0.999, int: (min: number) => min };
-    const go = (s: GameState) => synthesize(s, ['inferno', 'el:fire:3'], content, miss, { depthCap: 8 });
-    const crafted = craftedId('fireball', 'inferno');
-    const first = go(mkState({ 'el:fire:3': 2 }, ['mana_bolt', 'inferno']));
+    const inputs = ['corona_scorch', 'mat:ember_core'];
+    const go = (s: GameState) => synthesize(s, inputs, content, miss, { depthCap: 8 });
+    const crafted = craftedId('corona_scorch', 'mat:ember_core');
+    const first = go(mkState({ 'mat:ember_core': 2 }, ['mana_bolt', 'corona_scorch']));
     expect(first.result).toEqual({ kind: 'learned', spellId: crafted, crafted: true });
-    expect(first.state.inventory).toEqual({ 'el:fire:3': 1 });
+    expect(first.state.inventory).toEqual({ 'mat:ember_core': 1 });
     const second = go(first.state);
     expect(second.result).toEqual({ kind: 'duplicate', spellId: crafted, refunded: [] });
     expect(second.state.inventory).toEqual({});
@@ -197,7 +198,7 @@ describe('crafting', () => {
     const inputs = ['hi9', 'mat:ember_core'];
     const miss = { next: () => 0.999, int: (min: number) => min };
     const hit = { next: () => 0, int: (min: number) => min };
-    const learned = ['mana_bolt', 'hi9', 'thunder_hammer'];
+    const learned = ['mana_bolt', 'hi9', 'thunder_hammer', 'astral_fulmination'];
     const crafted = craftedId('hi9', 'mat:ember_core');
 
     it('a miss spends one material and no element, and a repeat miss refunds nothing', () => {
@@ -269,6 +270,36 @@ describe('crafting', () => {
   });
 });
 
+describe('the pure fire chain (real content)', () => {
+  const chain: [string, string, string][] = [
+    ['fireball', 'el:fire:2', 'flame_burst'], ['flame_burst', 'el:fire:2', 'ash_serpents'], ['ash_serpents', 'el:fire:3', 'inferno'],
+    ['inferno', 'el:fire:3', 'crimson_pillar'], ['crimson_pillar', 'el:fire:4', 'sunfall'], ['sunfall', 'el:fire:4', 'hellfire_siege'],
+    ['hellfire_siege', 'el:fire:5', 'corona_scorch'],
+  ];
+  it('walks Lv.2 to Lv.9, one learned spell per step', () => {
+    let s = mkState({ 'el:fire:2': 2, 'el:fire:3': 2, 'el:fire:4': 2, 'el:fire:5': 1 }, ['mana_bolt', 'fireball']);
+    for (const [spell, item, out] of chain) {
+      const r = run(s, [spell, item], 8);
+      expect(r.result, out).toEqual({ kind: 'learned', spellId: out, crafted: false });
+      expect(content.spells[out]!.prerequisites, out).toEqual([spell]);
+      s = r.state;
+    }
+    expect(s.inventory).toEqual({});
+    expect(s.learned).toContain('corona_scorch');
+  });
+
+  it('corona_scorch + ember_core hits and misses with a fixed rng', () => {
+    const inputs = ['corona_scorch', 'mat:ember_core'];
+    const learned = ['mana_bolt', 'corona_scorch'];
+    const hit = synthesize(mkState({ 'mat:ember_core': 1 }, learned), inputs, content, { next: () => 0, int: (min: number) => min }, { depthCap: 8 });
+    expect(hit.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false });
+    expect(hit.state.inventory).toEqual({});
+    const miss = synthesize(mkState({ 'mat:ember_core': 1 }, learned), inputs, content, { next: () => 0.999, int: (min: number) => min }, { depthCap: 8 });
+    expect(miss.result).toMatchObject({ kind: 'learned', crafted: true });
+    expect(miss.state.learned).not.toContain('worldfire');
+  });
+});
+
 describe('fusionNeeds', () => {
   const needs = (inputs: string[], learned: string[], inventory: Record<string, number> = {}) =>
     [...fusionNeeds(mkState(inventory, ['mana_bolt', ...learned]), inputs, content)].sort();
@@ -321,18 +352,18 @@ describe('rareStillHidden', () => {
   const hidden = (inputs: string[], learned: string[]) => rareStillHidden(mkState({}, ['mana_bolt', ...learned]), inputs, content);
 
   it('is true when the inputs roll a random recipe whose named outcome is reachable but not learned yet', () => {
-    expect(hidden(['inferno', 'el:fire:3'], ['inferno'])).toBe(true);
+    expect(hidden(['corona_scorch', 'mat:ember_core'], ['corona_scorch'])).toBe(true);
   });
 
   it('is false once that outcome is learned, for fixed recipes, and for combos with no recipe', () => {
-    expect(hidden(['inferno', 'el:fire:3'], ['inferno', 'worldfire'])).toBe(false);
+    expect(hidden(['corona_scorch', 'mat:ember_core'], ['corona_scorch', 'worldfire'])).toBe(false);
     expect(hidden(['fireball', 'wind_blade'], ['fireball', 'wind_blade'])).toBe(false);
     expect(hidden(['el:fire:1', 'el:wind:1'], [])).toBe(false);
   });
 
   it('is false when the named outcome needs a prerequisite the player lacks (the roll cannot land on it)', () => {
-    expect(hidden(['thunder_hammer', 'mat:sun_shard'], ['thunder_hammer'])).toBe(true);
+    expect(hidden(['astral_fulmination', 'mat:sun_shard'], ['astral_fulmination'])).toBe(true);
     const gated = { ...content, spells: { ...content.spells, holy_judgment: { ...content.spells.holy_judgment!, prerequisites: ['nope'] } } };
-    expect(rareStillHidden(mkState({}, ['mana_bolt', 'thunder_hammer']), ['thunder_hammer', 'mat:sun_shard'], gated)).toBe(false);
+    expect(rareStillHidden(mkState({}, ['mana_bolt', 'astral_fulmination']), ['astral_fulmination', 'mat:sun_shard'], gated)).toBe(false);
   });
 });

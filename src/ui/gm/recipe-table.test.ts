@@ -19,7 +19,7 @@ describe('recipeTable', () => {
     expect(fire.outcomes[0]).toMatchObject({ label: '焚世之焰 Lv.10', rare: true });
     expect(fire.outcomes[1]).toMatchObject({ label: '落空 → 自創魔法', rare: false });
     const holy = rows.find((r) => r.id === 'holy_judgment')!;
-    expect(holy.outcomes.map((o) => o.pct)).toEqual([10, 90]);
+    expect(holy.outcomes.map((o) => o.pct)).toEqual([2, 98]);
   });
 
   it('a single outcome is 100% and not rare', () => {

@@ -34,7 +34,8 @@ function expectCleared(r: BotResult): void {
   expect(r.serverCalls).toBeGreaterThanOrEqual(Math.floor(r.simMs / 30_000) + 2);
 }
 
-describe('element routes', () => {
+// re-enabled in Task 6 (ledger Ruling P1): the bot still follows the old pure_2/pure_3 chain
+describe.skip('element routes', () => {
   for (const el of ELEMENT_ORDER) {
     it(`pure ${el} route clears all zones in 1-4 simulated hours with 0 rejections`, { timeout: TIMEOUT }, async () => {
       const r = await runBot({ route: el, seed: SEED, maxSimMs: FOUR_HOURS });

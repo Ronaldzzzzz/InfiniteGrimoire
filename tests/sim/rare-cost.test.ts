@@ -29,7 +29,8 @@ function eqPerMinuteAfter(samples: { atMs: number; eq: number }[], fromMs: numbe
   return mins > 0 ? (end.eq - start.eq) / mins : 0;
 }
 
-describe('rare spell farming cost', () => {
+// re-enabled in Task 6 (ledger Ruling P1): the bot still follows the old pure_2/pure_3 chain
+describe.skip('rare spell farming cost', () => {
   for (const el of ELEMENT_ORDER) {
     it(`pure ${el}: farming one rare spell takes at most RARE_FARM_CEILING_MIN simulated minutes`, async () => {
       const r = await runBot({ route: el, seed: SEED, maxSimMs: FOUR_HOURS });

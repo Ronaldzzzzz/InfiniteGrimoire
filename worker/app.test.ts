@@ -899,12 +899,11 @@ describe('rare discoveries', () => {
   const rareApp = (value: number) =>
     createApp({ store, now: () => clock, rng: () => rolling(value), content, pepper: 'test-pepper' });
 
-  /** A player who knows inferno and holds high-grade fire, in both the save and its anchor. */
-  async function rarePlayer(name: string, grades = [3, 4, 5]) {
+  /** A player who knows corona_scorch and holds ember cores, in both the save and its anchor. */
+  async function rarePlayer(name: string, cores = 5) {
     const { body } = await guest(name);
-    const inventory: Record<string, number> = {};
-    for (const g of grades) inventory[`el:fire:${g}`] = 5;
-    const seeded: GameState = { ...body.state, learned: [...body.state.learned, 'inferno'], inventory };
+    const inventory: Record<string, number> = { 'mat:ember_core': cores };
+    const seeded: GameState = { ...body.state, learned: [...body.state.learned, 'corona_scorch'], inventory };
     const row = store.saves.get(body.playerId)!;
     store.saves.set(body.playerId, { ...row, state: JSON.stringify(seeded), anchorState: JSON.stringify(seeded) });
     return { ...body, state: seeded };
@@ -912,7 +911,7 @@ describe('rare discoveries', () => {
   const roll = async (p: { token: string; state: GameState }, value: number, revision = 0) => {
     const res = await rareApp(value).request(
       '/api/synthesize',
-      json({ inputs: ['inferno', 'el:fire:3'], state: p.state, baseRevision: revision }, p.token),
+      json({ inputs: ['corona_scorch', 'mat:ember_core'], state: p.state, baseRevision: revision }, p.token),
     );
     return { status: res.status, out: (await res.json()) as ActionOut & { result: { rare?: unknown; crafted?: boolean } } };
   };
@@ -939,26 +938,26 @@ describe('rare discoveries', () => {
     expect(afterFirst.body.discoveries.map((d) => d.displayName)).toEqual(['Bob']);
   });
 
-  it('a missed roll learns the crafted spell with no rare field and no discovery', async () => {
+  it('a missed roll gives the crafted spell (overload at the default depth cap) with no rare field and no discovery', async () => {
+    // corona_scorch is depth 3, so the crafted fall-through is depth 4: past the default cap of 3
     const a = await rarePlayer('Ann');
     const r = await roll(a, 0.99);
     expect(r.status).toBe(200);
-    expect(r.out.result.kind).toBe('learned');
-    expect(r.out.result.crafted).toBe(true);
+    expect(r.out.result.kind).toBe('overload');
     expect('rare' in r.out.result).toBe(false);
     expect(store.discoveryLog).toEqual([]);
   });
 
-  it('a second missed roll is a duplicate that still spends the 高階 element', async () => {
-    const a = await rarePlayer('Ann', [3]);
+  it('a second missed roll is a duplicate that still spends the material', async () => {
+    const a = await rarePlayer('Ann');
     const r1 = await roll(a, 0.99);
     expect(r1.status).toBe(200);
-    expect(saved(a.playerId).inventory['el:fire:3']).toBe(4);
+    expect(saved(a.playerId).inventory['mat:ember_core']).toBe(4);
     const r2 = await roll({ token: a.token, state: r1.out.state }, 0.99, r1.out.revision);
     expect(r2.status).toBe(200);
-    expect(r2.out.result).toMatchObject({ kind: 'duplicate', refunded: [] });
-    expect(r2.out.state.inventory['el:fire:3']).toBe(3);
-    expect(saved(a.playerId).inventory['el:fire:3']).toBe(3);
+    expect(r2.out.result).toMatchObject({ kind: 'duplicate', spellId: 'mana_overload', refunded: [] });
+    expect(r2.out.state.inventory['mat:ember_core']).toBe(3);
+    expect(saved(a.playerId).inventory['mat:ember_core']).toBe(3);
   });
 
   it('a committed rare learn survives a failing discovery write', async () => {
@@ -971,7 +970,7 @@ describe('rare discoveries', () => {
   });
 
   it('a rejected action writes no discovery', async () => {
-    const a = await rarePlayer('Ann', [1]);
+    const a = await rarePlayer('Ann', 1);
     const seeded = { ...a.state, inventory: {} };
     const r = await roll({ token: a.token, state: seeded }, 0.001);
     expect(r.status).toBe(422);

@@ -86,31 +86,31 @@ describe('SynthesisAltar', () => {
 
   describe('a miss on a random recipe', () => {
     const retry = () => document.querySelector('.synth-retry')?.textContent ?? null;
-    const missed = craftedId('el:fire:3', 'inferno');
+    const missed = craftedId('corona_scorch', 'mat:ember_core');
     const play = async (learned: string[], reply: ActionResult) => {
       vi.useFakeTimers();
-      setup({ learned: ['mana_bolt', ...learned], inventory: { 'el:fire:3': 1 } }, ['inferno', 'el:fire:3'], async () => reply);
+      setup({ learned: ['mana_bolt', ...learned], inventory: { 'mat:ember_core': 1 } }, ['corona_scorch', 'mat:ember_core'], async () => reply);
       fireEvent.click(go());
       await flush();
       act(() => vi.advanceTimersByTime(MIN_FUSE_MS));
     };
 
     it('hints that trying again may turn out differently, without naming the result', async () => {
-      await play(['inferno'], { kind: 'learned', spellId: missed, crafted: true });
+      await play(['corona_scorch'], { kind: 'learned', spellId: missed, crafted: true });
       expect(retry()).toBe(RETRY_HINT);
       expect(retry()).not.toContain('焚世');
     });
 
     it('also hints after a duplicate miss', async () => {
-      await play(['inferno', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
+      await play(['corona_scorch', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
       expect(retry()).toBe(RETRY_HINT);
     });
 
     it('stays quiet when the roll hits, or when the hidden result is already learned', async () => {
-      await play(['inferno'], { kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
+      await play(['corona_scorch'], { kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
       expect(retry()).toBeNull();
       cleanup();
-      await play(['inferno', 'worldfire', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
+      await play(['corona_scorch', 'worldfire', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
       expect(retry()).toBeNull();
     });
   });

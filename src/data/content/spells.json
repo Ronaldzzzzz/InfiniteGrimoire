@@ -1064,7 +1064,7 @@
     "depth": 2,
     "named": true,
     "prerequisites": [
-      "flame_burst"
+      "ash_serpents"
     ],
     "node": {
       "region": "outer",
@@ -1124,7 +1124,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "inferno"
+      "crimson_pillar"
     ],
     "node": {
       "region": "rift",
@@ -1169,7 +1169,7 @@
     "depth": 2,
     "named": true,
     "prerequisites": [
-      "tailwind"
+      "gale_cage"
     ],
     "node": {
       "region": "outer",
@@ -1219,7 +1219,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "vacuum_blades"
+      "severing_scythe"
     ],
     "node": {
       "region": "rift",
@@ -1267,7 +1267,7 @@
     "depth": 2,
     "named": true,
     "prerequisites": [
-      "thunder_hammer"
+      "arc_cage"
     ],
     "node": {
       "region": "outer",
@@ -1320,7 +1320,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "myriad_thunder"
+      "voltaris_javelin"
     ],
     "node": {
       "region": "rift",
@@ -1376,7 +1376,7 @@
     "depth": 2,
     "named": true,
     "prerequisites": [
-      "earthquake"
+      "stone_fangs"
     ],
     "node": {
       "region": "outer",
@@ -1430,7 +1430,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "landslide"
+      "obsidian_thorns"
     ],
     "node": {
       "region": "rift",
@@ -1486,7 +1486,7 @@
     "depth": 2,
     "named": true,
     "prerequisites": [
-      "tsunami"
+      "torrent_lance"
     ],
     "node": {
       "region": "outer",
@@ -1547,7 +1547,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "maelstrom"
+      "abyssal_crush"
     ],
     "node": {
       "region": "rift",
@@ -1995,6 +1995,1134 @@
     "school": "conjuration"
   },
   {
+    "id": "ash_serpents",
+    "name": "灰燼火蛇",
+    "nameEn": "Serpents of Ash",
+    "desc": "三條灰燼凝成的火蛇竄向隨機的怪，咬中便持續燃燒。",
+    "hint": "殘卷：烈焰爆發再餵進一口中階的火，爆炎會散成三條爬行的火蛇。",
+    "elements": [
+      "fire"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 3000,
+    "effects": [
+      {
+        "kind": "bolt",
+        "mult": 0.9,
+        "count": 3,
+        "radius": 0.2,
+        "target": "random",
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 5000,
+            "power": 0.5
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "灰燼",
+      "noun": "火蛇",
+      "preEn": "Ashen",
+      "nounEn": "Serpent"
+    },
+    "affinity": "self",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "flame_burst"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 12
+    },
+    "school": "evocation"
+  },
+  {
+    "id": "crimson_pillar",
+    "name": "紅蓮火柱",
+    "nameEn": "Pillar of Ignis",
+    "desc": "在最密集的怪群腳下立起火柱持續灼燒 4 秒，並把灰燼向外推開。",
+    "hint": "殘卷：煉獄再吞下高階的火，漫天業火會竄升為擎天火柱。",
+    "elements": [
+      "fire"
+    ],
+    "tier": 6,
+    "attack": 55,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.4,
+        "radius": 0.35,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 4000,
+            "power": 0.5
+          }
+        ]
+      },
+      {
+        "kind": "ring",
+        "mult": 0.8,
+        "radius": 0.5,
+        "push": 0.5,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 3000,
+            "power": 0.4
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "紅蓮",
+      "noun": "火柱",
+      "preEn": "Crimson",
+      "nounEn": "Pillar"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "inferno"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 5,
+      "angle": 0
+    },
+    "school": "conjuration"
+  },
+  {
+    "id": "hellfire_siege",
+    "name": "赤獄焚城",
+    "nameEn": "Hellfire Siege",
+    "desc": "熱浪先把怪群往外推並點燃，接著三顆火球砸向最密的地方，留下一片熔岩。",
+    "hint": "殘卷：墜日再灌進極階的火，天空落下的火雨會把整座城燒成赤色牢獄。",
+    "elements": [
+      "fire"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 1.5,
+        "radius": 0.9,
+        "push": 0.4,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 4000,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "meteor",
+        "mult": 1.2,
+        "count": 3,
+        "radius": 0.3,
+        "delayMs": 600,
+        "lavaMs": 2000,
+        "target": "densest"
+      }
+    ],
+    "words": {
+      "pre": "赤獄",
+      "noun": "焚城",
+      "preEn": "Hellish",
+      "nounEn": "Siege"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "sunfall"
+    ],
+    "node": {
+      "region": "abyss",
+      "ring": 7,
+      "angle": 0
+    },
+    "chant": "赤焰為牆，獄火為梯——圍城者，焚！",
+    "school": "cataclysm"
+  },
+  {
+    "id": "corona_scorch",
+    "name": "日冕焦土",
+    "nameEn": "Corona Scorch",
+    "desc": "全場瞬間化為白熱焦土並燃燒 7 秒，隨後三顆烈日砸向最密的怪群。",
+    "hint": "殘卷：赤獄焚城吞下神階的火種，大地本身都會融化成發光的日冕。",
+    "elements": [
+      "fire"
+    ],
+    "tier": 9,
+    "attack": 90,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "field",
+        "mult": 2,
+        "delayMs": 600,
+        "status": [
+          {
+            "kind": "burn",
+            "ms": 7000,
+            "power": 0.7
+          }
+        ]
+      },
+      {
+        "kind": "meteor",
+        "mult": 1.4,
+        "count": 3,
+        "radius": 0.3,
+        "delayMs": 900,
+        "lavaMs": 3000,
+        "target": "densest"
+      }
+    ],
+    "words": {
+      "pre": "日冕",
+      "noun": "焦土",
+      "preEn": "Corona",
+      "nounEn": "Scorch"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "hellfire_siege"
+    ],
+    "node": {
+      "region": "zenith",
+      "ring": 8,
+      "angle": 12
+    },
+    "chant": "萬象皆焚，大氣蒸騰——於地上重現恆星之冕！",
+    "school": "cataclysm"
+  },
+  {
+    "id": "gale_cage",
+    "name": "疾嵐風籠",
+    "nameEn": "Gale Cage",
+    "desc": "在戰場中央捲起風籠 3 秒，把怪往中心拉並減速。",
+    "hint": "殘卷：翠風祝禱再灌進中階的風，風會圍成一座看不見的籠。",
+    "elements": [
+      "wind"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.25,
+        "radius": 0.4,
+        "ms": 3000,
+        "tickMs": 250,
+        "target": "center",
+        "pull": 0.7,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.6
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "疾嵐",
+      "noun": "風籠",
+      "preEn": "Rushing",
+      "nounEn": "Cage"
+    },
+    "affinity": "self",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "tailwind"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 84
+    },
+    "school": "conjuration"
+  },
+  {
+    "id": "severing_scythe",
+    "name": "斷空風鐮",
+    "nameEn": "Severing Scythe",
+    "desc": "把真空壓成十二柄弧形風鐮橫掃戰場，擊退沿途的魔物。",
+    "hint": "殘卷：真空刃再吞下高階的風，無形的風壓會彎成收割萬物的巨鐮。",
+    "elements": [
+      "wind"
+    ],
+    "tier": 6,
+    "attack": 55,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "blades",
+        "mult": 1,
+        "count": 12,
+        "push": 0.8
+      }
+    ],
+    "words": {
+      "pre": "斷空",
+      "noun": "風鐮",
+      "preEn": "Severing",
+      "nounEn": "Scythe"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "vacuum_blades"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 5,
+      "angle": 72
+    },
+    "school": "evocation"
+  },
+  {
+    "id": "gale_severance",
+    "name": "蒼嵐斷界",
+    "nameEn": "Severance of the Blue Gale",
+    "desc": "颶風把怪吸向中心 5 秒，十四道風刃把牠們切開，施法也變快 4 秒。",
+    "hint": "殘卷：天穹颶風再灌進極階的風，風暴的邊緣會鋒利得切開空間。",
+    "elements": [
+      "wind"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.4,
+        "radius": 0.6,
+        "ms": 5000,
+        "tickMs": 250,
+        "target": "center",
+        "pull": 0.8,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.5
+          }
+        ]
+      },
+      {
+        "kind": "blades",
+        "mult": 1,
+        "count": 14,
+        "push": 0.6
+      },
+      {
+        "kind": "haste",
+        "factor": 1.5,
+        "ms": 4000
+      }
+    ],
+    "words": {
+      "pre": "蒼嵐",
+      "noun": "斷界",
+      "preEn": "Azure",
+      "nounEn": "Severance"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "sky_tempest"
+    ],
+    "node": {
+      "region": "abyss",
+      "ring": 7,
+      "angle": 72
+    },
+    "chant": "蒼天之嵐，裂界之刃——此處，不容越線！",
+    "school": "conjuration"
+  },
+  {
+    "id": "void_gale",
+    "name": "絕空裂風",
+    "nameEn": "Void Gale",
+    "desc": "抽空戰場的空氣把敵群扯向中心，全場瞬間內爆，再有十六道風刃絞碎牠們。",
+    "hint": "殘卷：在天穹颶風的風眼注入神階之風，連空間都會被吹出裂痕。",
+    "elements": [
+      "wind"
+    ],
+    "tier": 9,
+    "attack": 90,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.6,
+        "radius": 0.8,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "center",
+        "pull": 1.2,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "blades",
+        "mult": 1.2,
+        "count": 16,
+        "push": 0.3
+      },
+      {
+        "kind": "field",
+        "mult": 1.5,
+        "delayMs": 500
+      }
+    ],
+    "words": {
+      "pre": "絕空",
+      "noun": "裂風",
+      "preEn": "Void",
+      "nounEn": "Riftwind"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "gale_severance"
+    ],
+    "node": {
+      "region": "zenith",
+      "ring": 8,
+      "angle": 72
+    },
+    "chant": "呼吸止息，萬籟俱寂——於絕對真空之中碎裂吧！",
+    "school": "cataclysm"
+  },
+  {
+    "id": "arc_cage",
+    "name": "電弧球網",
+    "nameEn": "Arc Cage",
+    "desc": "閃電在怪之間彈跳八次，每一下都讓牠們麻痺 0.4 秒。",
+    "hint": "殘卷：雷神之槌再灌進中階的雷，電流會織成一張球形的網。",
+    "elements": [
+      "thunder"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 2800,
+    "effects": [
+      {
+        "kind": "chain",
+        "mult": 0.8,
+        "hops": 8,
+        "range": 0.3,
+        "explode": 0,
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 400
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "電弧",
+      "noun": "球網",
+      "preEn": "Arcing",
+      "nounEn": "Net"
+    },
+    "affinity": "self",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "thunder_hammer"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 156
+    },
+    "school": "conjuration"
+  },
+  {
+    "id": "voltaris_javelin",
+    "name": "雷光長槍",
+    "nameEn": "Javelin of Voltaris",
+    "desc": "三柄極速雷槍狙擊最強的敵人並使其暈眩 1 秒，餘波化為電弧擴散。",
+    "hint": "殘卷：萬雷再吞下高階的雷，電網會收束成貫穿重甲的長槍。",
+    "elements": [
+      "thunder"
+    ],
+    "tier": 6,
+    "attack": 55,
+    "cooldownMs": 3200,
+    "effects": [
+      {
+        "kind": "bolt",
+        "mult": 5,
+        "count": 3,
+        "radius": 0.03,
+        "target": "strongest",
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 1000
+          }
+        ]
+      },
+      {
+        "kind": "chain",
+        "mult": 0.8,
+        "hops": 6,
+        "range": 0.3,
+        "explode": 0.1
+      }
+    ],
+    "words": {
+      "pre": "雷槍",
+      "noun": "貫雷",
+      "preEn": "Voltaic",
+      "nounEn": "Javelin"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "myriad_thunder"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 5,
+      "angle": 144
+    },
+    "school": "evocation"
+  },
+  {
+    "id": "thunder_throne",
+    "name": "雷霆王座",
+    "nameEn": "Throne of Thunder",
+    "desc": "四秒的雷暴落在全場，閃電跳過十二隻怪，最後一道重雷劈向最強的敵人。",
+    "hint": "殘卷：雷神降臨再灌進極階的雷，雷神會為自己搭起王座。",
+    "elements": [
+      "thunder"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "storm",
+        "mult": 1.2,
+        "ms": 4000,
+        "tickMs": 100
+      },
+      {
+        "kind": "chain",
+        "mult": 1.5,
+        "hops": 12,
+        "range": 0.35,
+        "explode": 0.1
+      },
+      {
+        "kind": "bolt",
+        "mult": 6,
+        "count": 1,
+        "radius": 0.03,
+        "target": "strongest"
+      }
+    ],
+    "words": {
+      "pre": "雷霆",
+      "noun": "王座",
+      "preEn": "Thunderous",
+      "nounEn": "Throne"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "thunder_god"
+    ],
+    "node": {
+      "region": "abyss",
+      "ring": 7,
+      "angle": 144
+    },
+    "chant": "雲為階，雷為冕——王座已立，萬雷朝拜！",
+    "school": "cataclysm"
+  },
+  {
+    "id": "astral_fulmination",
+    "name": "星屑雷罰",
+    "nameEn": "Astral Fulmination",
+    "desc": "五秒高頻雷暴轟擊全場，二十連跳的電弧貫穿所有魔物，最後再補一記重擊。",
+    "hint": "殘卷：雷霆王座吞下神階的雷光，落下的將不再是凡間之電，而是星辰破碎的雷罰。",
+    "elements": [
+      "thunder"
+    ],
+    "tier": 9,
+    "attack": 90,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "storm",
+        "mult": 1.5,
+        "ms": 5000,
+        "tickMs": 50
+      },
+      {
+        "kind": "chain",
+        "mult": 2,
+        "hops": 20,
+        "range": 0.35,
+        "explode": 0.12
+      },
+      {
+        "kind": "bolt",
+        "mult": 9,
+        "count": 1,
+        "radius": 0.03,
+        "target": "strongest"
+      }
+    ],
+    "words": {
+      "pre": "星雷",
+      "noun": "神罰",
+      "preEn": "Astral",
+      "nounEn": "Fulmination"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "thunder_throne"
+    ],
+    "node": {
+      "region": "zenith",
+      "ring": 8,
+      "angle": 144
+    },
+    "chant": "蒼穹之上、群星之巔——降下抹殺萬物的白光雷罰！",
+    "school": "cataclysm"
+  },
+  {
+    "id": "stone_fangs",
+    "name": "岩牙碎擊",
+    "nameEn": "Stone Fangs",
+    "desc": "三根岩牙從地底刺向隨機的怪，使牠們暈眩 0.8 秒。",
+    "hint": "殘卷：地脈震盪再灌進中階的土，地底會長出尖牙。",
+    "elements": [
+      "earth"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 3500,
+    "effects": [
+      {
+        "kind": "bolt",
+        "mult": 1.2,
+        "count": 3,
+        "radius": 0.15,
+        "target": "random",
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 800
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "岩牙",
+      "noun": "碎擊",
+      "preEn": "Fanged",
+      "nounEn": "Smash"
+    },
+    "affinity": "self",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "earthquake"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 228
+    },
+    "school": "evocation"
+  },
+  {
+    "id": "obsidian_thorns",
+    "name": "黑曜荊棘",
+    "nameEn": "Obsidian Thorns",
+    "desc": "在最密集的怪群腳下長出黑曜石荊棘林 4 秒，踏進去的怪受傷、減速並一再暈眩。",
+    "hint": "殘卷：山崩再吞下高階的土，碎石會結晶成漆黑如鏡的荊棘。",
+    "elements": [
+      "earth"
+    ],
+    "tier": 6,
+    "attack": 55,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.35,
+        "radius": 0.5,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 1000,
+            "power": 0.5
+          },
+          {
+            "kind": "stun",
+            "ms": 600
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "黑曜",
+      "noun": "荊棘",
+      "preEn": "Obsidian",
+      "nounEn": "Thorns"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "landslide"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 5,
+      "angle": 216
+    },
+    "school": "conjuration"
+  },
+  {
+    "id": "mountain_fall",
+    "name": "群山傾覆",
+    "nameEn": "Fall of Mountains",
+    "desc": "大地一震，全場暈眩 1.5 秒，隨後六座山頭隨機砸落。",
+    "hint": "殘卷：大地之怒再灌進極階的土，群山站不穩，一座接一座倒下。",
+    "elements": [
+      "earth"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "meteor",
+        "mult": 3,
+        "count": 6,
+        "radius": 0.25,
+        "delayMs": 600,
+        "lavaMs": 0,
+        "target": "random"
+      },
+      {
+        "kind": "ring",
+        "mult": 1.5,
+        "radius": 1,
+        "push": 0,
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 1500
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "群山",
+      "noun": "傾覆",
+      "preEn": "Toppling",
+      "nounEn": "Fall"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "wrath_of_earth"
+    ],
+    "node": {
+      "region": "abyss",
+      "ring": 7,
+      "angle": 216
+    },
+    "chant": "群峰低首，山脈傾頹——天地之間，再無山巒！",
+    "school": "cataclysm"
+  },
+  {
+    "id": "continental_crush",
+    "name": "大陸崩落",
+    "nameEn": "Continental Crush",
+    "desc": "整塊大陸隆起傾覆，全場暈眩 2.5 秒，隨後六座山岳級岩塊砸向最密的怪群。",
+    "hint": "殘卷：群山傾覆吞下神階的土，崩塌的不再是一座山，而是整片大陸。",
+    "elements": [
+      "earth"
+    ],
+    "tier": 9,
+    "attack": 90,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "ring",
+        "mult": 3,
+        "radius": 1.2,
+        "push": 0,
+        "status": [
+          {
+            "kind": "stun",
+            "ms": 2500
+          }
+        ]
+      },
+      {
+        "kind": "meteor",
+        "mult": 4,
+        "count": 6,
+        "radius": 0.3,
+        "delayMs": 900,
+        "lavaMs": 0,
+        "target": "densest"
+      }
+    ],
+    "words": {
+      "pre": "陸沉",
+      "noun": "星隕",
+      "preEn": "Continental",
+      "nounEn": "Crush"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "mountain_fall"
+    ],
+    "node": {
+      "region": "zenith",
+      "ring": 8,
+      "angle": 216
+    },
+    "chant": "板塊斷裂，山岳倒懸——感受大陸傾覆的重量吧！",
+    "school": "cataclysm"
+  },
+  {
+    "id": "torrent_lance",
+    "name": "激流水槍",
+    "nameEn": "Torrent Lance",
+    "desc": "兩道高壓水槍射向最強的敵人，使牠濕透並減速。",
+    "hint": "殘卷：大海嘯再灌進中階的水，浪會壓縮成一支細長的槍。",
+    "elements": [
+      "water"
+    ],
+    "tier": 4,
+    "attack": 40,
+    "cooldownMs": 3000,
+    "effects": [
+      {
+        "kind": "bolt",
+        "mult": 2,
+        "count": 2,
+        "radius": 0.1,
+        "target": "strongest",
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 4000
+          },
+          {
+            "kind": "slow",
+            "ms": 1500,
+            "power": 0.6
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "激流",
+      "noun": "水槍",
+      "preEn": "Torrent",
+      "nounEn": "Lance"
+    },
+    "affinity": "self",
+    "depth": 1,
+    "named": true,
+    "prerequisites": [
+      "tsunami"
+    ],
+    "node": {
+      "region": "core",
+      "ring": 3,
+      "angle": 300
+    },
+    "school": "evocation"
+  },
+  {
+    "id": "abyssal_crush",
+    "name": "深海重壓",
+    "nameEn": "Abyssal Crush",
+    "desc": "把深海的水壓降在漩渦中心 4 秒，怪群被壓在原地，最後引爆一道高壓水柱。",
+    "hint": "殘卷：大漩渦再吞下高階的水，漩渦底部的水壓足以壓碎鋼鐵。",
+    "elements": [
+      "water"
+    ],
+    "tier": 6,
+    "attack": 55,
+    "cooldownMs": 4000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.5,
+        "radius": 0.4,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 0.8,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 3000
+          },
+          {
+            "kind": "slow",
+            "ms": 2000,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "bolt",
+        "mult": 3,
+        "count": 1,
+        "radius": 0.3,
+        "target": "densest"
+      }
+    ],
+    "words": {
+      "pre": "深海",
+      "noun": "重壓",
+      "preEn": "Abyssal",
+      "nounEn": "Pressure"
+    },
+    "affinity": "self",
+    "depth": 2,
+    "named": true,
+    "prerequisites": [
+      "maelstrom"
+    ],
+    "node": {
+      "region": "outer",
+      "ring": 5,
+      "angle": 288
+    },
+    "school": "conjuration"
+  },
+  {
+    "id": "abyssal_prison",
+    "name": "滄淵水牢",
+    "nameEn": "Abyssal Prison",
+    "desc": "一道水浪把怪沖到邊緣並淋濕，密集處再升起一座水牢 5 秒，把怪拉進去並重度減速。",
+    "hint": "殘卷：大洪水再灌進極階的水，水會在最深處凝成牢籠。",
+    "elements": [
+      "water"
+    ],
+    "tier": 8,
+    "attack": 80,
+    "cooldownMs": 4500,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.6,
+        "radius": 0.5,
+        "ms": 5000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 1,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 4000
+          },
+          {
+            "kind": "slow",
+            "ms": 3000,
+            "power": 0.7
+          }
+        ]
+      },
+      {
+        "kind": "ring",
+        "mult": 2,
+        "radius": 1.2,
+        "push": 1,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 5000
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "滄淵",
+      "noun": "水牢",
+      "preEn": "Sunken",
+      "nounEn": "Prison"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "deluge"
+    ],
+    "node": {
+      "region": "abyss",
+      "ring": 7,
+      "angle": 288
+    },
+    "chant": "滄海之淵，鎖我敵魂——入水者，永世不得出！",
+    "school": "conjuration"
+  },
+  {
+    "id": "nether_tides",
+    "name": "歸墟冥潮",
+    "nameEn": "Nether Tides",
+    "desc": "歸墟的黑水淹沒全場並把怪沖開，兩座冥淵漩渦同時吞噬敵群並使牠們緩慢。",
+    "hint": "殘卷：滄淵水牢若吞下神階的水，流出的將是萬水終結之地「歸墟」的冥潮。",
+    "elements": [
+      "water"
+    ],
+    "tier": 9,
+    "attack": 90,
+    "cooldownMs": 5000,
+    "effects": [
+      {
+        "kind": "zone",
+        "mult": 0.6,
+        "radius": 0.5,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "densest",
+        "pull": 1,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 4000
+          },
+          {
+            "kind": "slow",
+            "ms": 2500,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "zone",
+        "mult": 0.6,
+        "radius": 0.5,
+        "ms": 4000,
+        "tickMs": 250,
+        "target": "random",
+        "pull": 1,
+        "follow": false,
+        "strikes": 0,
+        "status": [
+          {
+            "kind": "wet",
+            "ms": 4000
+          },
+          {
+            "kind": "slow",
+            "ms": 2500,
+            "power": 0.6
+          }
+        ]
+      },
+      {
+        "kind": "ring",
+        "mult": 2,
+        "radius": 1.2,
+        "push": 1.5,
+        "status": [
+          {
+            "kind": "slow",
+            "ms": 3000,
+            "power": 0.6
+          }
+        ]
+      }
+    ],
+    "words": {
+      "pre": "歸墟",
+      "noun": "冥潮",
+      "preEn": "Nether",
+      "nounEn": "Tide"
+    },
+    "affinity": "self",
+    "depth": 3,
+    "named": true,
+    "prerequisites": [
+      "abyssal_prison"
+    ],
+    "node": {
+      "region": "zenith",
+      "ring": 8,
+      "angle": 288
+    },
+    "chant": "八紘九野之水，盡歸無底之墟——沉入永劫的深海吧！",
+    "school": "cataclysm"
+  },
+  {
     "id": "holy_judgment",
     "name": "聖光審判",
     "nameEn": "Holy Judgment",
@@ -2043,7 +3171,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "thunder_hammer"
+      "astral_fulmination"
     ],
     "node": {
       "region": "astral",
@@ -2099,7 +3227,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "tsunami"
+      "nether_tides"
     ],
     "node": {
       "region": "astral",
@@ -2157,7 +3285,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "inferno"
+      "corona_scorch"
     ],
     "node": {
       "region": "astral",
@@ -2209,7 +3337,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "vacuum_blades"
+      "void_gale"
     ],
     "node": {
       "region": "astral",
@@ -2257,7 +3385,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "myriad_thunder"
+      "astral_fulmination"
     ],
     "node": {
       "region": "astral",
@@ -2311,7 +3439,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "landslide"
+      "continental_crush"
     ],
     "node": {
       "region": "astral",
@@ -2373,7 +3501,7 @@
     "depth": 3,
     "named": true,
     "prerequisites": [
-      "maelstrom"
+      "nether_tides"
     ],
     "node": {
       "region": "astral",

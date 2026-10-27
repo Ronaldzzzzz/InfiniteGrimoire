@@ -31,7 +31,7 @@ describe('GmRecipesTab', () => {
     const fire = rows().length;
     expect(fire).toBeGreaterThan(1);
     expect(fire).toBeLessThan(content.recipes.length);
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: content.spells.inferno!.name } });
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: content.spells.corona_scorch!.name } });
     expect(rows().some((r) => r.textContent!.includes('焚世之焰'))).toBe(true);
   });
 
