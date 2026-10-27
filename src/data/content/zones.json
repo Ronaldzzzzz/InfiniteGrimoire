@@ -75,5 +75,43 @@
       "everyMs": 6000,
       "size": 10
     }
+  },
+  {
+    "id": "starfall_plateau",
+    "name": "星殞高原",
+    "nameEn": "Starfall Plateau",
+    "order": 5,
+    "monsters": [
+      "frost_griffin",
+      "astral_ray",
+      "meteor_golem"
+    ],
+    "bossId": "fallen_star_wyrm",
+    "killsForBoss": 180,
+    "maxAlive": 80,
+    "spawnIntervalMs": 1000,
+    "pack": {
+      "everyMs": 6000,
+      "size": 10
+    }
+  },
+  {
+    "id": "worlds_end",
+    "name": "世界盡頭",
+    "nameEn": "World's End",
+    "order": 6,
+    "monsters": [
+      "ash_giant",
+      "chaos_wisp",
+      "doom_knight"
+    ],
+    "bossId": "first_page_warden",
+    "killsForBoss": 220,
+    "maxAlive": 80,
+    "spawnIntervalMs": 1000,
+    "pack": {
+      "everyMs": 6000,
+      "size": 10
+    }
   }
 ]

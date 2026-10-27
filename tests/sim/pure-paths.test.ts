@@ -16,8 +16,7 @@ const ofPath = (id: string, el: ElementId) => {
   const s = resolveSpell(id, content);
   return !!s && s.elements.length > 0 && s.elements.every((e) => e === el);
 };
-// astral is opened by a key item that Task 4 adds; until then no boss drops it
-const allRegions = content.regions.filter((r) => !r.initiallyVisible && r.id !== 'astral').map((r) => r.id);
+const allRegions = content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id);
 const lastBossAt = (r: BotResult) => r.clearedAt[content.zones[content.zones.length - 1]!.id]!;
 const minutes = (r: BotResult) => Object.fromEntries(Object.entries(r.clearedAt).map(([z, ms]) => [z, +(ms / MINUTE).toFixed(1)]));
 

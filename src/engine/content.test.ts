@@ -196,14 +196,14 @@ describe('shipped content set', () => {
     expect(stumble.length, stumble.map((s) => s.id).join(',')).toBeGreaterThanOrEqual(2);
   });
 
-  it('each boss drops a key item that reveals a different region', () => {
-    const revealed = content.zones.map((z) => {
+  it('each boss but the last drops a key item that reveals a different region', () => {
+    const revealed = content.zones.slice(0, -1).map((z) => {
       const boss = content.monsters[z.bossId]!;
       const key = boss.drops.find((d) => d.itemId.startsWith('key:') && d.chance === 1 && d.min >= 1);
       expect(key, z.bossId).toBeDefined();
       return content.keyItems[key!.itemId]!.reveals;
     });
-    expect(new Set(revealed).size).toBe(content.zones.length);
+    expect(new Set(revealed).size).toBe(content.zones.length - 1);
     for (const r of revealed) expect(hidden.has(r), r).toBe(true);
   });
 
@@ -246,19 +246,21 @@ describe('shipped content set', () => {
     expect(passives.some((p) => p.unlock.kind === 'learned')).toBe(true);
     expect(content.regions.length).toBeGreaterThanOrEqual(4);
     expect(content.regions.filter((r) => r.initiallyVisible).map((r) => r.id)).toEqual(['core']);
-    expect(content.zones.length).toBeGreaterThanOrEqual(4);
+    expect(content.zones.length).toBe(6);
     const bands = content.zones.map((z) => z.monsters.map((m) => content.monsters[m]!.tier));
-    [[1, 2], [3, 4], [5, 6], [7, 8]].forEach(([lo, hi], i) => {
+    [[1, 2], [3, 4], [5, 6], [7, 8], [8, 9], [9, 10]].forEach(([lo, hi], i) => {
       expect(Math.min(...bands[i]!), content.zones[i]!.id).toBe(lo);
       expect(Math.max(...bands[i]!), content.zones[i]!.id).toBe(hi);
     });
-    // each zone leans to its own element: the most common monster element differs per zone
+    // each zone leans to its own element: the most common monster element differs from the previous zone's
+    // (six zones, five elements: the two ends cannot all differ)
     const lean = content.zones.map((z) => {
       const n: Record<string, number> = {};
       for (const m of z.monsters) n[content.monsters[m]!.element] = (n[content.monsters[m]!.element] ?? 0) + 1;
       return Object.entries(n).sort((a, b) => b[1] - a[1])[0]![0];
     });
-    expect(new Set(lean).size, lean.join(',')).toBe(content.zones.length);
+    lean.forEach((e, i) => { if (i > 0) expect(e, lean.join(',')).not.toBe(lean[i - 1]); });
+    expect(new Set(lean.slice(0, 5)).size, lean.join(',')).toBe(5);
   });
 
   it('every named spell is readable and placed', () => {
@@ -275,6 +277,102 @@ describe('shipped content set', () => {
       const key = `elements:${p.node.region}:${p.node.ring}:${((p.node.angle % 360) + 360) % 360}`;
       expect(at.has(key), `${p.id} shares ${key}`).toBe(false);
       at.add(key);
+    }
+  });
+});
+
+describe('map expansion', () => {
+  const zs = content.zones;
+  const normals = (z: (typeof zs)[number]) => z.monsters.map((m) => content.monsters[m]!);
+  const boss = (z: (typeof zs)[number]) => content.monsters[z.bossId]!;
+  const rows = (m: { drops: { itemId: string; chance: number }[] }, prefix: string) => m.drops.filter((d) => d.itemId.startsWith(prefix));
+
+  it('has six zones with non-decreasing boss tiers and the two new ones in order', () => {
+    expect(zs.map((z) => z.id)).toEqual(['mist_meadow', 'thunder_gorge', 'ember_wastes', 'sunken_temple', 'starfall_plateau', 'worlds_end']);
+    expect(zs.map((z) => z.killsForBoss).slice(4)).toEqual([180, 220]);
+    for (let i = 1; i < zs.length; i++) expect(boss(zs[i]!).tier).toBeGreaterThanOrEqual(boss(zs[i - 1]!).tier);
+  });
+
+  it('every boss is at least as strong as its zone\'s regular monsters', () => {
+    for (const z of zs) expect(boss(z).tier, z.id).toBeGreaterThanOrEqual(Math.max(...normals(z).map((m) => m.tier)));
+  });
+
+  it('rejects a boss weaker than the zone\'s regular monsters', () => {
+    const raw = base();
+    raw.monsters.find((m: any) => m.id === 'fallen_star_wyrm').tier = 5;
+    expect(issuesOf(raw)).toContain('weaker than');
+  });
+
+  it('every pure element drops in every zone (R12)', () => {
+    for (const z of zs) {
+      for (const e of ELEMENT_ORDER) {
+        expect(normals(z).some((m) => m.drops.some((d) => d.itemId.startsWith(`el:${e}:`))), `${z.id} ${e}`).toBe(true);
+      }
+    }
+  });
+
+  it('the new monsters have the specified elements and tiers', () => {
+    const want: Record<string, [string, number]> = {
+      meteor_golem: ['earth', 8], frost_griffin: ['wind', 9], astral_ray: ['water', 9], fallen_star_wyrm: ['fire', 9],
+      ash_giant: ['fire', 9], chaos_wisp: ['thunder', 10], doom_knight: ['earth', 10], first_page_warden: ['wind', 10],
+    };
+    for (const [id, [el, tier]] of Object.entries(want)) {
+      expect(content.monsters[id]!.element, id).toBe(el);
+      expect(content.monsters[id]!.tier, id).toBe(tier);
+    }
+  });
+
+  it('the Starfall boss drops Divine elements sometimes; World\'s End regulars drop them', () => {
+    const star = zs[4]!;
+    for (const e of ELEMENT_ORDER) {
+      const d = boss(star).drops.find((x) => x.itemId === `el:${e}:5`);
+      expect(d, e).toBeDefined();
+      expect(d!.chance).toBeLessThan(1);
+      expect(rows(boss(star), 'el:').some((x) => x.itemId === `el:${e}:4` && x.chance === 1), e).toBe(true);
+      expect(normals(zs[5]!).some((m) => m.drops.some((x) => x.itemId === `el:${e}:5`)), e).toBe(true);
+    }
+  });
+
+  it('the two new zones drop all seven rare materials, 2-3 per regular monster at 1-2%', () => {
+    const rareMats = new Set(content.recipes.filter((r) => r.outcomes.some((o) => o.spellId === null)).flatMap((r) => r.inputs).filter((i) => i.startsWith('mat:')));
+    expect(rareMats.size).toBe(7);
+    const seen = new Set<string>();
+    for (const z of [zs[4]!, zs[5]!]) {
+      for (const m of normals(z)) {
+        const mats = rows(m, 'mat:');
+        expect(mats.length, m.id).toBeGreaterThanOrEqual(2);
+        expect(mats.length, m.id).toBeLessThanOrEqual(3);
+        for (const d of mats) {
+          expect(rareMats.has(d.itemId), d.itemId).toBe(true);
+          expect(d.chance, m.id).toBeGreaterThanOrEqual(0.01);
+          expect(d.chance, m.id).toBeLessThanOrEqual(0.02);
+          seen.add(d.itemId);
+        }
+      }
+    }
+    expect(seen).toEqual(rareMats);
+  });
+
+  it('the Star Sigil opens the astral region and only the Starfall boss drops it; the last boss drops no key', () => {
+    expect(content.keyItems['key:star_sigil']!.reveals).toBe('astral');
+    const holders = Object.values(content.monsters).filter((m) => m.drops.some((d) => d.itemId === 'key:star_sigil')).map((m) => m.id);
+    expect(holders).toEqual(['fallen_star_wyrm']);
+    expect(boss(zs[4]!).drops.find((d) => d.itemId === 'key:star_sigil')!.chance).toBe(1);
+    expect(boss(zs[5]!).drops.some((d) => d.itemId.startsWith('key:'))).toBe(false);
+  });
+
+  it('astral attunement sits on the astral ring and unlocks with the Starfall boss', () => {
+    const p = content.passives.astral_attunement!;
+    expect(p.node.region).toBe('astral');
+    expect(p.node.ring).toBe(9);
+    expect(p.bonus).toEqual({ kind: 'damage', element: null, pct: 5 });
+    expect(p.unlock).toEqual({ kind: 'boss', bossId: 'fallen_star_wyrm' });
+  });
+
+  it('a Lv.N monster is hurt by Lv.N-1 spells but not Lv.N-2 spells of attack 90 or less', () => {
+    for (const id of ['meteor_golem', 'frost_griffin', 'astral_ray', 'fallen_star_wyrm', 'ash_giant', 'chaos_wisp', 'doom_knight', 'first_page_warden']) {
+      const m = content.monsters[id]!;
+      expect(m.defense * 0.7, id).toBeGreaterThan(90);
     }
   });
 });
@@ -446,7 +544,7 @@ describe('spell schools, chants and the tree layout', () => {
   });
 
   it('puts passives on a ring inside their own region', () => {
-    const rings: Record<string, number[]> = { outer: [4, 5], rift: [6], abyss: [7], zenith: [8] };
+    const rings: Record<string, number[]> = { outer: [4, 5], rift: [6], abyss: [7], zenith: [8], astral: [9] };
     for (const p of Object.values(content.passives)) expect(rings[p.node.region], p.id).toContain(p.node.ring);
   });
 

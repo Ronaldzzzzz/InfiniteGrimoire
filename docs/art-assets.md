@@ -247,6 +247,86 @@ pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-alias
 pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 64x64 sprite, single static frame, idle pose, imposing boss monster "Sunken Titan", earth element themed, dominant color #c79a5a, front-facing, menacing but cute silhouette, larger and more detailed than regular monsters
 ```
 
+### monster_meteor_golem
+
+- 檔名：`public/assets/monster_meteor_golem.png`
+- 用途：隕鐵魔像（Meteor Golem），土屬性，T8。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Meteor Golem", earth element themed, dominant color #c79a5a, front-facing, menacing but cute silhouette
+```
+
+### monster_frost_griffin
+
+- 檔名：`public/assets/monster_frost_griffin.png`
+- 用途：霜翼獅鷲（Frost Griffin），風屬性，T9。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Frost Griffin", wind element themed, dominant color #7fd0c0, front-facing, menacing but cute silhouette
+```
+
+### monster_astral_ray
+
+- 檔名：`public/assets/monster_astral_ray.png`
+- 用途：星界鰩（Astral Ray），水屬性，T9。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Astral Ray", water element themed, dominant color #5aa0e8, front-facing, menacing but cute silhouette
+```
+
+### monster_fallen_star_wyrm
+
+- 檔名：`public/assets/monster_fallen_star_wyrm.png`
+- 用途：墮星龍（Fallen Star Wyrm），火屬性，T9，魔王。
+- 尺寸：現階段 64×64 單張；之後建議 4 格待機動畫，總尺寸 256×64。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 64x64 sprite, single static frame, idle pose, imposing boss monster "Fallen Star Wyrm", fire element themed, dominant color #e2643b, front-facing, menacing but cute silhouette, larger and more detailed than regular monsters
+```
+
+### monster_ash_giant
+
+- 檔名：`public/assets/monster_ash_giant.png`
+- 用途：灰燼巨人（Ash Giant），火屬性，T9。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Ash Giant", fire element themed, dominant color #e2643b, front-facing, menacing but cute silhouette
+```
+
+### monster_chaos_wisp
+
+- 檔名：`public/assets/monster_chaos_wisp.png`
+- 用途：混沌雷靈（Chaos Wisp），雷屬性，T10。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Chaos Wisp", thunder element themed, dominant color #f3e36b, front-facing, menacing but cute silhouette
+```
+
+### monster_doom_knight
+
+- 檔名：`public/assets/monster_doom_knight.png`
+- 用途：終焉騎士（Doom Knight），土屬性，T10。
+- 尺寸：現階段 32×32 單張；之後建議 2 格待機動畫，總尺寸 64×32。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 32x32 sprite, single static frame, idle pose, small fantasy monster "Doom Knight", earth element themed, dominant color #c79a5a, front-facing, menacing but cute silhouette
+```
+
+### monster_first_page_warden
+
+- 檔名：`public/assets/monster_first_page_warden.png`
+- 用途：太初守門者（First Page Warden），風屬性，T10，魔王。
+- 尺寸：現階段 64×64 單張；之後建議 4 格待機動畫，總尺寸 256×64。
+- 提示詞：
+```
+pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-aliasing, no gradients, transparent background, readable on a very dark (#0d0f14) background, 64x64 sprite, single static frame, idle pose, imposing boss monster "First Page Warden", wind element themed, dominant color #7fd0c0, front-facing, menacing but cute silhouette, larger and more detailed than regular monsters
+```
+
 ## 特效
 
 特效（火星、風痕、閃電、碎石、水滴、龍捲、熔岩、冰霜等）全部由程式繪製（`src/render/element-fx.ts`、`src/render/battle-view.ts`），不需要貼圖。

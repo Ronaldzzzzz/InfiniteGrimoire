@@ -26,5 +26,12 @@
     "nameEn": "Titan Crown",
     "desc": "沉沒巨神的王冠。戴上它的瞬間，魔導書最外層的天穹被照亮了。",
     "reveals": "zenith"
+  },
+  {
+    "id": "key:star_sigil",
+    "name": "墮星之印",
+    "nameEn": "Star Sigil",
+    "desc": "墮星龍胸口燃燒的印記，帶著星界的光。魔導書的最深處，一頁從未被翻開的星界會在它面前顯現。",
+    "reveals": "astral"
   }
 ]

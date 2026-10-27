@@ -308,6 +308,17 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
     const boss = monsters.find((m) => m.id === z.bossId);
     if (!boss) issues.push(`zone ${z.id}: unknown boss "${z.bossId}"`);
     else if (!boss.boss) issues.push(`zone ${z.id}: boss "${z.bossId}" is not flagged boss`);
+    else {
+      const top = Math.max(...z.monsters.map((id) => monsters.find((m) => m.id === id)?.tier ?? 0));
+      if (boss.tier < top) issues.push(`zone ${z.id}: boss "${z.bossId}" (Lv.${boss.tier}) is weaker than its regular monsters (Lv.${top})`);
+    }
+  }
+  const ordered = [...zones].sort((a, b) => a.order - b.order);
+  for (let i = 1; i < ordered.length; i++) {
+    const tierOf = (id: string) => monsters.find((m) => m.id === id)?.tier ?? 0;
+    if (tierOf(ordered[i]!.bossId) < tierOf(ordered[i - 1]!.bossId)) {
+      issues.push(`zone ${ordered[i]!.id}: boss tier is lower than the previous zone's boss`);
+    }
   }
 
   if (issues.length > 0) throw new ContentError(issues);

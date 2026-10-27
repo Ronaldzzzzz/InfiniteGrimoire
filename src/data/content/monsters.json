@@ -550,6 +550,36 @@
         "max": 1
       },
       {
+        "itemId": "el:fire:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
         "itemId": "mat:sun_shard",
         "chance": 0.01,
         "min": 1,
@@ -627,6 +657,36 @@
       {
         "itemId": "el:water:2",
         "chance": 0.008,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.004,
         "min": 1,
         "max": 1
       },
@@ -718,6 +778,36 @@
         "max": 1
       },
       {
+        "itemId": "el:fire:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
         "itemId": "mat:lava_stone",
         "chance": 0.02,
         "min": 1,
@@ -791,67 +881,121 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.11,
+        "chance": 0.04,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.02,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
+        "chance": 0.06,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
         "chance": 0.02,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.002,
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
@@ -878,67 +1022,121 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.11,
+        "chance": 0.04,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
+        "chance": 0.08,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
         "chance": 0.02,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.002,
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.004,
         "min": 1,
         "max": 1
       },
@@ -971,67 +1169,121 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.11,
+        "chance": 0.04,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.08,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.02,
+        "chance": 0.06,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.02,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
+        "chance": 0.06,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
         "chance": 0.02,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.002,
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.003,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
@@ -1087,10 +1339,886 @@
         "max": 3
       },
       {
+        "itemId": "el:fire:4",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
         "itemId": "key:titan_crown",
         "chance": 1,
         "min": 1,
         "max": 1
+      }
+    ]
+  },
+  {
+    "id": "meteor_golem",
+    "name": "隕鐵魔像",
+    "nameEn": "Meteor Golem",
+    "element": "earth",
+    "tier": 8,
+    "hp": 4500,
+    "defense": 190,
+    "regenPerSec": 0.5,
+    "speed": 0.04,
+    "radius": 0.05,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.006,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:lava_stone",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:fulgurite",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:abyss_pearl",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "frost_griffin",
+    "name": "霜翼獅鷲",
+    "nameEn": "Frost Griffin",
+    "element": "wind",
+    "tier": 9,
+    "hp": 5200,
+    "defense": 210,
+    "regenPerSec": 0.5,
+    "speed": 0.08,
+    "radius": 0.04,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.006,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:roc_feather",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:tide_scale",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "astral_ray",
+    "name": "星界鰩",
+    "nameEn": "Astral Ray",
+    "element": "water",
+    "tier": 9,
+    "hp": 5800,
+    "defense": 215,
+    "regenPerSec": 0.5,
+    "speed": 0.06,
+    "radius": 0.045,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:2",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:2",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.05,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.006,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:tide_scale",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:abyss_pearl",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:sun_shard",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "fallen_star_wyrm",
+    "name": "墮星龍",
+    "nameEn": "Fallen Star Wyrm",
+    "element": "fire",
+    "tier": 9,
+    "hp": 220000,
+    "defense": 220,
+    "regenPerSec": 1,
+    "speed": 0.025,
+    "radius": 0.095,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:fire:4",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 1,
+        "min": 2,
+        "max": 3
+      },
+      {
+        "itemId": "el:fire:5",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:5",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:5",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:5",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:5",
+        "chance": 0.1,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "key:star_sigil",
+        "chance": 1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "ash_giant",
+    "name": "灰燼巨人",
+    "nameEn": "Ash Giant",
+    "element": "fire",
+    "tier": 9,
+    "hp": 8000,
+    "defense": 215,
+    "regenPerSec": 0.5,
+    "speed": 0.04,
+    "radius": 0.055,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.06,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:ember_core",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:lava_stone",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:sun_shard",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "chaos_wisp",
+    "name": "混沌雷靈",
+    "nameEn": "Chaos Wisp",
+    "element": "thunder",
+    "tier": 10,
+    "hp": 9000,
+    "defense": 240,
+    "regenPerSec": 0.5,
+    "speed": 0.09,
+    "radius": 0.035,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.06,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:fulgurite",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:roc_feather",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "doom_knight",
+    "name": "終焉騎士",
+    "nameEn": "Doom Knight",
+    "element": "earth",
+    "tier": 10,
+    "hp": 11000,
+    "defense": 250,
+    "regenPerSec": 0.5,
+    "speed": 0.05,
+    "radius": 0.05,
+    "boss": false,
+    "drops": [
+      {
+        "itemId": "el:fire:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:3",
+        "chance": 0.06,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:3",
+        "chance": 0.04,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.03,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:5",
+        "chance": 0.004,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:ember_core",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "mat:abyss_pearl",
+        "chance": 0.015,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  },
+  {
+    "id": "first_page_warden",
+    "name": "太初守門者",
+    "nameEn": "First Page Warden",
+    "element": "wind",
+    "tier": 10,
+    "hp": 600000,
+    "defense": 260,
+    "regenPerSec": 1,
+    "speed": 0.02,
+    "radius": 0.1,
+    "boss": true,
+    "drops": [
+      {
+        "itemId": "el:fire:5",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:wind:5",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:thunder:5",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:earth:5",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      },
+      {
+        "itemId": "el:water:5",
+        "chance": 1,
+        "min": 1,
+        "max": 2
       }
     ]
   }

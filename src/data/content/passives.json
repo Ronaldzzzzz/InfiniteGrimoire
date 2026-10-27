@@ -208,5 +208,25 @@
       "kind": "boss",
       "bossId": "sunken_titan"
     }
+  },
+  {
+    "id": "astral_attunement",
+    "name": "星界共鳴",
+    "nameEn": "Astral Attunement",
+    "desc": "擊敗墮星龍後解鎖：所有魔法傷害 +5%。",
+    "node": {
+      "region": "astral",
+      "ring": 9,
+      "angle": 252
+    },
+    "bonus": {
+      "kind": "damage",
+      "element": null,
+      "pct": 5
+    },
+    "unlock": {
+      "kind": "boss",
+      "bossId": "fallen_star_wyrm"
+    }
   }
 ]
