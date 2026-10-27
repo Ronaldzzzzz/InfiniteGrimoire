@@ -87,3 +87,12 @@
 - Ruling T9a: 外環間距 65→35（RING_RADIUS 到 550），全部解開時技能樹畫面縮成約 0.72 倍 — 讓 HOME 看得到 10 環；可以縮放 — 若錯：手機上節點偏小，驗收時看。
 - Task 9: minor (deferred): 切換分頁 key={tab} 會重設縮放與選取；光暗迷霧矩形高度寫死 220；外環迷霧帶沒有專門測試。
 - Task 9: complete (commits 6dc45c3..454dc4c, review clean)
+- Ruling T10a: 「放回上次組合」在按下合成時就記錄（不等結果），用左右原順序 — 規格要求每種結果都記，連線錯誤也算一次嘗試 — 若錯：連線失敗的組合也會被記住（無害）。
+- Task 10: dispatched (BASE ff81808, implementer aa879ddfe68b9d1cf, sonnet)
+- Task 10: minor (deferred): last-combo.ts 重複定義 isItem；上次組合只在掛載時讀一次；多餘的 `lastCombo &&`；`slots as string[]` 轉型；倒數位置 top 28px 未在真實瀏覽器確認。
+- Task 10: complete (commits ff81808..f723c3e, review clean)
+- Task 11: dispatched (BASE f723c3e, implementer ac988c63ecf2732ab, sonnet)
+- Task 11: review → Needs fixes: Important 稀有揭曉的裝備／不裝備按鈕無法用鍵盤操作（root onKeyDown 吃掉 Enter/Space）；fix round 1 dispatched to same implementer
+- Task 11: fix round 1/5 (1 addressed, 0 open; commits 7c5dd67..6953469)
+- Task 11: minor (deferred): Enter/Space 測試只證明沒被 preventDefault（jsdom 不會合成 click）；通知可能和 DiscoveryBanner 在很矮的戰鬥畫面重疊；App.test 透過轉型改假 runtime。
+- Task 11: complete (commits f723c3e..6953469, review clean after 1 fix round)
