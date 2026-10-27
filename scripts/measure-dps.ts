@@ -7,7 +7,7 @@
  * Run: npx esbuild scripts/measure-dps.ts --bundle --platform=node --format=esm --outfile=<tmp>/measure.mjs && node <tmp>/measure.mjs
  */
 import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engine/combat';
-import { clean, curveReport } from '../tests/sim/measure';
+import { clean, CURVE_EXEMPT, CURVE_OPTS, curveReport, median } from '../tests/sim/measure';
 import { content } from '../src/engine/content';
 import type { GameState } from '../src/engine/model';
 import { createInitialState } from '../src/engine/persist';
@@ -66,13 +66,14 @@ for (const zone of content.zones) {
     const f = (x: number) => (x === 0 ? '無效' : Math.round(x).toString());
     out.push(`| ${s.name}${s.rare ? '（稀有）' : ''} | ${s.tier} | ${f(s1)} | ${f(s50)} | ${f(c1)} | ${f(c50)} | ${sec(real.clearMs)} | ${sec(real.bossMs)} |`);
     const row = ((summary[zone.id] ??= {})[s.tier] ??= { solo: [], crowd: [] });
-    if (s1 > 0) row.solo.push(s1);
-    if (c1 > 0) row.crowd.push(c1);
+    // the summary below follows the curve checks: control spells (CURVE_EXEMPT) are left out
+    if (s1 > 0 && !CURVE_EXEMPT.includes(s.id)) row.solo.push(s1);
+    if (c1 > 0 && !CURVE_EXEMPT.includes(s.id)) row.crowd.push(c1);
   }
 }
 
-out.push('\n### 各階中位數（未強化）與相對前一階的倍率\n');
-const line = (xs: number[]) => { const v = [...xs].sort((a, b) => a - b); return v.length ? { med: v[Math.floor(v.length / 2)]!, min: v[0]!, max: v[v.length - 1]! } : null; };
+out.push('\n### 各階中位數（未強化，不含控制型例外魔法）與相對前一階的倍率\n');
+const line = (xs: number[]) => { const v = [...xs].sort((a, b) => a - b); return v.length ? { med: median(v), min: v[0]!, max: v[v.length - 1]! } : null; };
 for (const zone of content.zones) {
   for (const key of ['solo', 'crowd'] as const) {
     let prev: number | null = null;
@@ -87,7 +88,7 @@ for (const zone of content.zones) {
   }
 }
 
-const rep = curveReport({ seed: SEEDS[0]!, soloMs: 20_000, crowdMs: 10_000 });
+const rep = curveReport(CURVE_OPTS);
 out.push('\n### 依主場的各階中位數（非例外魔法，未強化；比較照規格 7.2 在較低階的主場）\n');
 for (const m of rep.medians) {
   out.push(`- Lv.${m.tier} @${m.zone}：單挑 ${m.solo.toFixed(1)}${m.ratioSolo ? `（×${m.ratioSolo.toFixed(2)}）` : ''}；群怪 ${m.crowd.toFixed(1)}${m.ratioCrowd ? `（×${m.ratioCrowd.toFixed(2)}）` : ''}；幾何 ${m.geo.toFixed(1)}`);

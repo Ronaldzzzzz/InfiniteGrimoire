@@ -14,6 +14,9 @@ export const HOME_ZONE: Record<number, string> = {
   6: 'ember_wastes', 7: 'sunken_temple', 8: 'starfall_plateau', 9: 'worlds_end', 10: 'worlds_end',
 };
 
+/** The windows and seeds of the curve checks (spec 7.3), shared by tier-curve.test.ts and scripts/measure-dps.ts (ledger T7a). */
+export const CURVE_OPTS = { seeds: [20261021, 7], soloMs: 60_000, crowdMs: 30_000 };
+
 /** Control / bad-affinity spells: only checked against the upper bound. */
 export const CURVE_EXEMPT = ['mire', 'sandstorm', 'steam', 'grounding', 'mana_overload'];
 
@@ -89,7 +92,12 @@ export function median(xs: number[]): number {
 }
 const f1 = (x: number) => x.toFixed(1);
 
-export function curveReport(opts: { seed: number; soloMs: number; crowdMs: number }): CurveReport {
+/** Seed-averaged scenario DPS (the curve uses the mean over `seeds`). */
+const meanOver = (seeds: number[], f: (seed: number) => number) => seeds.reduce((n, sd) => n + f(sd), 0) / seeds.length;
+
+export function curveReport(opts: { seeds: number[]; soloMs: number; crowdMs: number }): CurveReport {
+  const solo = (id: string, level: number, z: string) => meanOver(opts.seeds, (seed) => soloBossDps(id, level, z, { seed, ms: opts.soloMs }));
+  const crowd = (id: string, level: number, z: string) => meanOver(opts.seeds, (seed) => crowdDps(id, level, z, { seed, ms: opts.crowdMs }));
   const spells = Object.values(content.spells).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
   const perSpell: SpellCurve[] = [];
   const nameOf = (id: string) => content.spells[id]!.name;
@@ -98,13 +106,13 @@ export function curveReport(opts: { seed: number; soloMs: number; crowdMs: numbe
     if (s.tier >= 2) zones.add(HOME_ZONE[s.tier - 1]!);
     const row: SpellCurve = { id: s.id, tier: s.tier, rare: !!s.rare, soloAt: {}, crowdAt: {}, empoweredGeoAt: {} };
     for (const z of zones) {
-      row.soloAt[z] = soloBossDps(s.id, 1, z, { seed: opts.seed, ms: opts.soloMs });
-      row.crowdAt[z] = crowdDps(s.id, 1, z, { seed: opts.seed, ms: opts.crowdMs });
+      row.soloAt[z] = solo(s.id, 1, z);
+      row.crowdAt[z] = crowd(s.id, 1, z);
     }
     const home = HOME_ZONE[s.tier]!;
     row.empoweredGeoAt[home] = geo(
-      soloBossDps(s.id, MAX_SPELL_LEVEL, home, { seed: opts.seed, ms: opts.soloMs }),
-      crowdDps(s.id, MAX_SPELL_LEVEL, home, { seed: opts.seed, ms: opts.crowdMs }));
+      solo(s.id, MAX_SPELL_LEVEL, home),
+      crowd(s.id, MAX_SPELL_LEVEL, home));
     perSpell.push(row);
   }
 

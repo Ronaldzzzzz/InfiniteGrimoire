@@ -3,7 +3,7 @@
     "id": "mana_bolt",
     "name": "魔力彈",
     "nameEn": "Mana Bolt",
-    "desc": "最基本的魔力彈，打向最近的怪，命中時炸開、波及周圍。",
+    "desc": "最基本的魔力彈，一次射出兩發打向最近的怪，命中時小範圍炸開。",
     "hint": "殘卷：純粹的魔力凝聚成彈，是所有魔法的起點。",
     "elements": [],
     "tier": 1,
@@ -13,8 +13,8 @@
       {
         "kind": "bolt",
         "mult": 0.95,
-        "count": 1,
-        "radius": 0.28,
+        "count": 2,
+        "radius": 0.12,
         "target": "nearest"
       }
     ],
@@ -80,7 +80,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 1.424,
+        "mult": 1.093,
         "count": 1,
         "radius": 0.13,
         "target": "nearest",
@@ -128,7 +128,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 4.109,
+        "mult": 3.864,
         "count": 3,
         "push": 1
       }
@@ -168,7 +168,7 @@
     "effects": [
       {
         "kind": "chain",
-        "mult": 1.04,
+        "mult": 0.9979,
         "hops": 11,
         "range": 0.3,
         "explode": 0
@@ -209,7 +209,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 1.716,
+        "mult": 1.408,
         "count": 1,
         "radius": 0.15,
         "target": "densest",
@@ -256,7 +256,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 2.15,
+        "mult": 2.579,
         "radius": 0.65,
         "push": 0.4,
         "status": [
@@ -307,7 +307,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 1.036,
+        "mult": 1.024,
         "count": 1,
         "radius": 0.22,
         "target": "densest",
@@ -354,7 +354,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 3.19,
+        "mult": 2.703,
         "count": 4,
         "push": 0.8
       },
@@ -398,14 +398,14 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 3.63,
+        "mult": 3.075,
         "count": 1,
         "radius": 0.03,
         "target": "strongest"
       },
       {
         "kind": "chain",
-        "mult": 0.544,
+        "mult": 0.4609,
         "hops": 6,
         "range": 0.33,
         "explode": 0
@@ -445,7 +445,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 0.856,
+        "mult": 0.846,
         "radius": 1.2,
         "push": 0,
         "status": [
@@ -457,7 +457,7 @@
       },
       {
         "kind": "bolt",
-        "mult": 1.59,
+        "mult": 1.572,
         "count": 1,
         "radius": 0.03,
         "target": "strongest"
@@ -497,7 +497,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 1.45,
+        "mult": 1.365,
         "radius": 1,
         "push": 1.7,
         "status": [
@@ -543,7 +543,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.1252,
+        "mult": 0.09287,
         "radius": 0.28,
         "ms": 4000,
         "tickMs": 250,
@@ -596,7 +596,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 0.05545,
+        "mult": 0.05141,
         "delayMs": 0,
         "status": [
           {
@@ -612,7 +612,7 @@
       },
       {
         "kind": "storm",
-        "mult": 0.1677,
+        "mult": 0.1555,
         "ms": 1500,
         "tickMs": 60
       }
@@ -653,7 +653,7 @@
     "effects": [
       {
         "kind": "storm",
-        "mult": 0.2818,
+        "mult": 0.2874,
         "ms": 5000,
         "tickMs": 140
       }
@@ -694,9 +694,9 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 1.823,
+        "mult": 1.788,
         "count": 1,
-        "radius": 0.31,
+        "radius": 0.22,
         "delayMs": 800,
         "lavaMs": 3000,
         "target": "densest"
@@ -738,7 +738,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 1.111,
+        "mult": 1.04,
         "radius": 0.85,
         "push": 0,
         "status": [
@@ -750,7 +750,7 @@
       },
       {
         "kind": "blades",
-        "mult": 1.656,
+        "mult": 1.551,
         "count": 6,
         "push": 0.3
       }
@@ -791,8 +791,8 @@
     "effects": [
       {
         "kind": "chain",
-        "mult": 0.9312,
-        "hops": 6,
+        "mult": 0.8709,
+        "hops": 4,
         "range": 0.36,
         "explode": 0.11,
         "status": [
@@ -840,7 +840,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.0505,
+        "mult": 0.04682,
         "radius": 0.56,
         "ms": 6000,
         "tickMs": 500,
@@ -897,7 +897,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 0.1515,
+        "mult": 0.1405,
         "delayMs": 0,
         "status": [
           {
@@ -943,7 +943,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 0.101,
+        "mult": 0.09365,
         "radius": 0.52,
         "push": 0,
         "status": [
@@ -1001,7 +1001,7 @@
       },
       {
         "kind": "bolt",
-        "mult": 1.01,
+        "mult": 0.9365,
         "count": 14,
         "radius": 0.1,
         "target": "random",
@@ -1048,7 +1048,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 0.7831,
+        "mult": 0.6906,
         "count": 3,
         "radius": 0.3,
         "target": "densest",
@@ -1095,7 +1095,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 2.28,
+        "mult": 1.69,
         "count": 1,
         "radius": 0.32,
         "target": "densest",
@@ -1109,7 +1109,7 @@
       },
       {
         "kind": "ring",
-        "mult": 0.196,
+        "mult": 0.1453,
         "radius": 1.2,
         "push": 0.3,
         "status": [
@@ -1156,7 +1156,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 2.307,
+        "mult": 2.283,
         "count": 8,
         "push": 0.6
       },
@@ -1200,7 +1200,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.1989,
+        "mult": 0.1925,
         "radius": 0.6,
         "ms": 5000,
         "tickMs": 250,
@@ -1211,7 +1211,7 @@
       },
       {
         "kind": "blades",
-        "mult": 0.4554,
+        "mult": 0.4407,
         "count": 10,
         "push": 0.4
       }
@@ -1251,14 +1251,14 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 1.455,
+        "mult": 1.207,
         "count": 1,
         "radius": 0.03,
         "target": "strongest"
       },
       {
         "kind": "chain",
-        "mult": 0.5475,
+        "mult": 0.4541,
         "hops": 12,
         "range": 0.35,
         "explode": 0.1
@@ -1298,20 +1298,20 @@
     "effects": [
       {
         "kind": "storm",
-        "mult": 0.263,
+        "mult": 0.2448,
         "ms": 4000,
         "tickMs": 50
       },
       {
         "kind": "chain",
-        "mult": 0.263,
+        "mult": 0.2448,
         "hops": 15,
         "range": 0.35,
         "explode": 0.12
       },
       {
         "kind": "bolt",
-        "mult": 1.04,
+        "mult": 0.9681,
         "count": 1,
         "radius": 0.03,
         "target": "strongest"
@@ -1352,7 +1352,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 0.6118,
+        "mult": 0.6053,
         "count": 5,
         "radius": 0.2,
         "delayMs": 500,
@@ -1361,7 +1361,7 @@
       },
       {
         "kind": "bolt",
-        "mult": 1.158,
+        "mult": 1.146,
         "count": 1,
         "radius": 0.08,
         "target": "strongest",
@@ -1407,7 +1407,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 1.19,
+        "mult": 1.231,
         "radius": 1.2,
         "push": 0,
         "status": [
@@ -1419,7 +1419,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 2.4,
+        "mult": 2.483,
         "count": 3,
         "radius": 0.3,
         "delayMs": 800,
@@ -1462,7 +1462,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.1871,
+        "mult": 0.1482,
         "radius": 0.35,
         "ms": 4000,
         "tickMs": 250,
@@ -1517,7 +1517,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 1.17,
+        "mult": 1.167,
         "radius": 1.2,
         "push": 1.5,
         "status": [
@@ -1534,7 +1534,7 @@
       },
       {
         "kind": "zone",
-        "mult": 0.294,
+        "mult": 0.2931,
         "radius": 0.4,
         "ms": 4000,
         "tickMs": 250,
@@ -1581,7 +1581,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.1535,
+        "mult": 0.1519,
         "radius": 0.5,
         "ms": 5000,
         "tickMs": 500,
@@ -1634,7 +1634,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 0.1554,
+        "mult": 0.1692,
         "radius": 1.1,
         "push": 1.2,
         "status": [
@@ -1646,7 +1646,7 @@
       },
       {
         "kind": "storm",
-        "mult": 0.2059,
+        "mult": 0.2242,
         "ms": 1500,
         "tickMs": 50
       }
@@ -1686,7 +1686,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 0.6282,
+        "mult": 0.5024,
         "count": 9,
         "radius": 0.23,
         "delayMs": 600,
@@ -1741,7 +1741,7 @@
       },
       {
         "kind": "field",
-        "mult": 1.534,
+        "mult": 1.841,
         "delayMs": 700,
         "status": [
           {
@@ -1799,7 +1799,7 @@
       },
       {
         "kind": "storm",
-        "mult": 0.1198,
+        "mult": 0.1186,
         "ms": 6000,
         "tickMs": 100
       }
@@ -1840,7 +1840,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.06782,
+        "mult": 0.0678,
         "radius": 0.35,
         "ms": 4000,
         "tickMs": 300,
@@ -1892,7 +1892,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.0705,
+        "mult": 0.07219,
         "radius": 0.5,
         "ms": 6000,
         "tickMs": 250,
@@ -1910,7 +1910,7 @@
       },
       {
         "kind": "chain",
-        "mult": 0.121,
+        "mult": 0.1239,
         "hops": 8,
         "range": 0.36,
         "explode": 0.1,
@@ -1960,7 +1960,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.1552,
+        "mult": 0.1707,
         "radius": 0.6,
         "ms": 6000,
         "tickMs": 250,
@@ -2016,7 +2016,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 0.7353,
+        "mult": 0.6886,
         "count": 3,
         "radius": 0.2,
         "target": "random",
@@ -2063,8 +2063,8 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.3185,
-        "radius": 0.3,
+        "mult": 0.3394,
+        "radius": 0.25,
         "ms": 4000,
         "tickMs": 250,
         "target": "densest",
@@ -2081,7 +2081,7 @@
       },
       {
         "kind": "ring",
-        "mult": 0.3989,
+        "mult": 0.2715,
         "radius": 0.5,
         "push": 0.5,
         "status": [
@@ -2127,7 +2127,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 0.8375,
+        "mult": 1.103,
         "radius": 0.9,
         "push": 0.4,
         "status": [
@@ -2140,7 +2140,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 2.04,
+        "mult": 1.986,
         "count": 3,
         "radius": 0.28,
         "delayMs": 600,
@@ -2183,7 +2183,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 1.233,
+        "mult": 1.067,
         "delayMs": 600,
         "status": [
           {
@@ -2195,9 +2195,9 @@
       },
       {
         "kind": "meteor",
-        "mult": 3.044,
+        "mult": 3.202,
         "count": 3,
-        "radius": 0.28,
+        "radius": 0.26,
         "delayMs": 900,
         "lavaMs": 3000,
         "target": "densest"
@@ -2238,7 +2238,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.1464,
+        "mult": 0.1357,
         "radius": 0.4,
         "ms": 3000,
         "tickMs": 250,
@@ -2289,7 +2289,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 4.155,
+        "mult": 4.238,
         "count": 12,
         "push": 0.8
       }
@@ -2328,7 +2328,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.2858,
+        "mult": 0.2473,
         "radius": 0.6,
         "ms": 5000,
         "tickMs": 250,
@@ -2346,7 +2346,7 @@
       },
       {
         "kind": "blades",
-        "mult": 0.7164,
+        "mult": 0.6199,
         "count": 14,
         "push": 0.6
       },
@@ -2391,7 +2391,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.6274,
+        "mult": 0.6149,
         "radius": 0.8,
         "ms": 4000,
         "tickMs": 250,
@@ -2409,13 +2409,13 @@
       },
       {
         "kind": "blades",
-        "mult": 1.259,
+        "mult": 1.234,
         "count": 16,
         "push": 0.3
       },
       {
         "kind": "field",
-        "mult": 1.582,
+        "mult": 1.55,
         "delayMs": 500
       }
     ],
@@ -2454,7 +2454,7 @@
     "effects": [
       {
         "kind": "chain",
-        "mult": 2.272,
+        "mult": 2.128,
         "hops": 8,
         "range": 0.3,
         "explode": 0,
@@ -2500,7 +2500,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 4.684,
+        "mult": 3.968,
         "count": 3,
         "radius": 0.03,
         "target": "strongest",
@@ -2513,7 +2513,7 @@
       },
       {
         "kind": "chain",
-        "mult": 0.7517,
+        "mult": 0.6368,
         "hops": 6,
         "range": 0.3,
         "explode": 0.1
@@ -2553,20 +2553,20 @@
     "effects": [
       {
         "kind": "storm",
-        "mult": 0.4864,
+        "mult": 0.5261,
         "ms": 4000,
         "tickMs": 100
       },
       {
         "kind": "chain",
-        "mult": 0.6078,
+        "mult": 0.6575,
         "hops": 12,
         "range": 0.35,
         "explode": 0.1
       },
       {
         "kind": "bolt",
-        "mult": 2.437,
+        "mult": 2.636,
         "count": 1,
         "radius": 0.03,
         "target": "strongest"
@@ -2607,20 +2607,20 @@
     "effects": [
       {
         "kind": "storm",
-        "mult": 0.4391,
+        "mult": 0.4303,
         "ms": 5000,
         "tickMs": 50
       },
       {
         "kind": "chain",
-        "mult": 0.5848,
+        "mult": 0.5731,
         "hops": 20,
         "range": 0.35,
         "explode": 0.12
       },
       {
         "kind": "bolt",
-        "mult": 2.632,
+        "mult": 2.579,
         "count": 1,
         "radius": 0.03,
         "target": "strongest"
@@ -2661,7 +2661,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 2.202,
+        "mult": 1.654,
         "count": 3,
         "radius": 0.15,
         "target": "random",
@@ -2707,8 +2707,8 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.3957,
-        "radius": 0.3,
+        "mult": 0.3724,
+        "radius": 0.22,
         "ms": 4000,
         "tickMs": 250,
         "target": "densest",
@@ -2762,7 +2762,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 2.28,
+        "mult": 2.219,
         "count": 6,
         "radius": 0.25,
         "delayMs": 600,
@@ -2771,7 +2771,7 @@
       },
       {
         "kind": "ring",
-        "mult": 1.135,
+        "mult": 1.105,
         "radius": 1,
         "push": 0,
         "status": [
@@ -2817,7 +2817,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 3.122,
+        "mult": 3.06,
         "radius": 1.2,
         "push": 0,
         "status": [
@@ -2829,7 +2829,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 4.162,
+        "mult": 4.079,
         "count": 6,
         "radius": 0.3,
         "delayMs": 900,
@@ -2872,7 +2872,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 3.202,
+        "mult": 2.969,
         "count": 2,
         "radius": 0.1,
         "target": "strongest",
@@ -2923,8 +2923,8 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.1441,
-        "radius": 0.3,
+        "mult": 0.1103,
+        "radius": 0.2,
         "ms": 4000,
         "tickMs": 250,
         "target": "densest",
@@ -2945,7 +2945,7 @@
       },
       {
         "kind": "bolt",
-        "mult": 4.606,
+        "mult": 5.513,
         "count": 1,
         "radius": 0.05,
         "target": "strongest"
@@ -2985,7 +2985,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.3504,
+        "mult": 0.379,
         "radius": 0.5,
         "ms": 5000,
         "tickMs": 250,
@@ -3007,7 +3007,7 @@
       },
       {
         "kind": "ring",
-        "mult": 1.171,
+        "mult": 1.267,
         "radius": 1.2,
         "push": 1,
         "status": [
@@ -3053,7 +3053,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.3819,
+        "mult": 0.3743,
         "radius": 0.5,
         "ms": 4000,
         "tickMs": 250,
@@ -3075,7 +3075,7 @@
       },
       {
         "kind": "zone",
-        "mult": 0.3819,
+        "mult": 0.3743,
         "radius": 0.5,
         "ms": 4000,
         "tickMs": 250,
@@ -3097,7 +3097,7 @@
       },
       {
         "kind": "ring",
-        "mult": 1.269,
+        "mult": 1.244,
         "radius": 1.2,
         "push": 1.5,
         "status": [
@@ -3145,7 +3145,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 2.084,
+        "mult": 2.147,
         "delayMs": 600,
         "status": [
           {
@@ -3156,13 +3156,13 @@
       },
       {
         "kind": "storm",
-        "mult": 1.047,
+        "mult": 1.079,
         "ms": 3000,
         "tickMs": 50
       },
       {
         "kind": "bolt",
-        "mult": 5.608,
+        "mult": 5.777,
         "count": 1,
         "radius": 0.05,
         "target": "strongest"
@@ -3207,7 +3207,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.8672,
+        "mult": 0.8934,
         "radius": 0.45,
         "ms": 5000,
         "tickMs": 200,
@@ -3262,7 +3262,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 1.871,
+        "mult": 1.928,
         "delayMs": 500,
         "status": [
           {
@@ -3274,7 +3274,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 2.506,
+        "mult": 2.582,
         "count": 4,
         "radius": 0.28,
         "delayMs": 700,
@@ -3318,7 +3318,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.6686,
+        "mult": 0.6888,
         "radius": 0.7,
         "ms": 5000,
         "tickMs": 250,
@@ -3329,7 +3329,7 @@
       },
       {
         "kind": "blades",
-        "mult": 1.621,
+        "mult": 1.67,
         "count": 9,
         "push": 0.5
       }
@@ -3370,13 +3370,13 @@
     "effects": [
       {
         "kind": "storm",
-        "mult": 0.7934,
+        "mult": 0.8174,
         "ms": 4000,
         "tickMs": 50
       },
       {
         "kind": "chain",
-        "mult": 0.7353,
+        "mult": 0.7575,
         "hops": 18,
         "range": 0.35,
         "explode": 0.12
@@ -3418,7 +3418,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 4.347,
+        "mult": 4.478,
         "radius": 1.2,
         "push": 1,
         "status": [
@@ -3430,7 +3430,7 @@
       },
       {
         "kind": "bolt",
-        "mult": 33.05,
+        "mult": 34.05,
         "count": 1,
         "radius": 0.03,
         "target": "strongest"
@@ -3472,7 +3472,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.6222,
+        "mult": 0.641,
         "radius": 0.5,
         "ms": 5000,
         "tickMs": 250,
@@ -3483,7 +3483,7 @@
       },
       {
         "kind": "field",
-        "mult": 3.523,
+        "mult": 3.629,
         "delayMs": 400,
         "status": [
           {
