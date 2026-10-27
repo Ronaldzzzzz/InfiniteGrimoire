@@ -6,7 +6,7 @@ const MINUTE = 60_000;
 const SIX_HOURS = 360 * MINUTE;
 const SEED = 20261021;
 /** Tuning target is measured and printed until Task 7 finishes tuning; flip to true to enforce it. */
-const ENFORCE = false;
+const ENFORCE = true;
 /** Spec 2.1: farming one rare spell takes at most this many simulated minutes. */
 const RARE_FARM_CEILING_MIN = 120;
 /** The Lv.9 spell each element's rare recipe takes as its first input, and the rare's material (R1: one material per attempt). */

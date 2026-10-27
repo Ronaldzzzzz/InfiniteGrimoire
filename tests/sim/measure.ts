@@ -114,8 +114,11 @@ export function curveReport(opts: { seed: number; soloMs: number; crowdMs: numbe
   const med = (t: number, zone: string, key: 'soloAt' | 'crowdAt') => median(tierRows(t).map((p) => p[key][zone] ?? 0));
   const medGeo = (t: number, zone: string) => median(tierRows(t).map((p) => geo(p.soloAt[zone] ?? 0, p.crowdAt[zone] ?? 0)));
 
+  // spells with no damaging effect at all (mana_overload) have nothing to measure
+  const dealsDamage = (id: string) => content.spells[id]!.effects.some((e) => 'mult' in e && e.mult > 0);
   for (const p of perSpell) {
     const home = HOME_ZONE[p.tier]!;
+    if (exempt(p.id) && !dealsDamage(p.id)) continue;
     if (!(p.soloAt[home]! > 0) && !(p.crowdAt[home]! > 0)) failures.push(`${nameOf(p.id)}（Lv.${p.tier}）在 ${home} 完全打不到（cannot damage）。`);
     else if (!(p.soloAt[home]! > 0)) failures.push(`${nameOf(p.id)}（Lv.${p.tier}）單挑魔王打不動（cannot damage，DPS 0）。`);
     else if (!(p.crowdAt[home]! > 0)) failures.push(`${nameOf(p.id)}（Lv.${p.tier}）打不動群怪（cannot damage，DPS 0）。`);
@@ -163,7 +166,7 @@ export function curveReport(opts: { seed: number; soloMs: number; crowdMs: numbe
     const z = HOME_ZONE[10]!, m9 = medGeo(9, z);
     for (const p of perSpell.filter((x) => x.tier === 10)) {
       const g = geo(p.soloAt[z]!, p.crowdAt[z]!);
-      if (g < m9 * 1.5) failures.push(`${nameOf(p.id)}（Lv.10 稀有）幾何平均 ${f1(g)}，低於 Lv.9 中位數 ${f1(m9)} 的 1.5 倍（×${m9 > 0 ? (g / m9).toFixed(2) : '∞'}）。`);
+      if (!(m9 > 0) || g < m9 * 1.5) failures.push(`${nameOf(p.id)}（Lv.10 稀有）幾何平均 ${f1(g)}，低於 Lv.9 中位數 ${f1(m9)} 的 1.5 倍（×${m9 > 0 ? (g / m9).toFixed(2) : '∞'}）。`);
     }
   }
 
@@ -174,7 +177,7 @@ export function curveReport(opts: { seed: number; soloMs: number; crowdMs: numbe
     const lo = next.length ? Math.min(...next) : 0, hi = medGeo(n + 1, z) * 1.1;
     for (const p of tierRows(n)) {
       const e = p.empoweredGeoAt[z]!;
-      if (e < lo || e > hi) failures.push(`${nameOf(p.id)}（Lv.${n}）強化 +${MAX_SPELL_LEVEL - 1} 的幾何平均 ${f1(e)}，應落在 Lv.${n + 1} 的最低值 ${f1(lo)} 與中位數×1.1 ${f1(hi)} 之間。`);
+      if (!(e > 0) || e < lo || e > hi) failures.push(`${nameOf(p.id)}（Lv.${n}）強化 +${MAX_SPELL_LEVEL - 1} 的幾何平均 ${f1(e)}，應落在 Lv.${n + 1} 的最低值 ${f1(lo)} 與中位數×1.1 ${f1(hi)} 之間。`);
     }
   }
   return { perSpell, failures, medians };

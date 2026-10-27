@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { curveReport } from './measure';
 
 /** Task 7 flips this on once the numbers are tuned (ledger R4); until then the report is only printed. */
-const ENFORCE = false;
+const ENFORCE = true;
 
 describe('spell tier curve', () => {
   it('measures the curve and reports failures', { timeout: 60_000 }, () => {
