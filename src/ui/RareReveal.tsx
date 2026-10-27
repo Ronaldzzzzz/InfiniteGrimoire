@@ -5,8 +5,7 @@ import { COLORS } from '../render/palette';
 import { ElementDots } from './DiscoveryBanner';
 import { ELEMENT_NAMES } from './messages';
 
-/** The whole reveal: gather (0–1 s), burst (1–2 s), title (2–4 s), then `onDone`. */
-export const RARE_REVEAL_MS = 4000;
+/** The reveal: gather (0–1 s), burst (1–2 s), then the title waits for 裝備 / 不裝備. */
 const BURST_AT_MS = 1000;
 const TITLE_AT_MS = 2000;
 const BURST_PARTICLES = 44;
@@ -59,34 +58,33 @@ function hintText(spell: Spell): string | null {
 
 /**
  * The full-screen reveal of a rare spell, over everything. A click in the first two phases jumps to the title,
- * a click on the title ends it; under prefers-reduced-motion it starts on the title.
+ * the title waits for 裝備 / 不裝備 (a click elsewhere does nothing); under prefers-reduced-motion it starts on the title.
  * Pure CSS transforms and opacity, so the battle canvas keeps its frame rate.
  */
-export function RareReveal({ spell, first, onDone }: { spell: Spell; first: boolean; onDone: () => void }) {
+export function RareReveal({ spell, first, onChoose }: { spell: Spell; first: boolean; onChoose: (equip: boolean) => void }) {
   const [reduced] = useState(prefersReducedMotion);
   const [phase, setPhase] = useState<Phase>(() => (reduced ? 'title' : 'gather'));
   const [origin] = useState(altarOffset);
   const [motes] = useState(() => ({ burst: motesOf(spell, BURST_PARTICLES), gather: motesOf(spell, GATHER_MOTES), embers: motesOf(spell, EMBERS) }));
 
-  const done = useRef(onDone);
+  const choose = useRef(onChoose);
   useEffect(() => {
-    done.current = onDone;
-  }, [onDone]);
+    choose.current = onChoose;
+  }, [onChoose]);
   const ended = useRef(false);
-  const finish = (): void => {
+  const finish = (equip: boolean): void => {
     if (ended.current) return;
     ended.current = true;
-    done.current();
+    choose.current(equip);
   };
 
   useEffect(() => {
-    const ts = [setTimeout(finish, RARE_REVEAL_MS)];
-    if (!reduced) {
-      ts.push(setTimeout(() => setPhase((p) => (p === 'gather' ? 'burst' : p)), BURST_AT_MS));
-      ts.push(setTimeout(() => setPhase('title'), TITLE_AT_MS));
-    }
+    if (reduced) return;
+    const ts = [
+      setTimeout(() => setPhase((p) => (p === 'gather' ? 'burst' : p)), BURST_AT_MS),
+      setTimeout(() => setPhase('title'), TITLE_AT_MS),
+    ];
     return () => ts.forEach(clearTimeout);
-    // runs once per reveal (`finish` only reads refs)
   }, [reduced]);
 
   const root = useRef<HTMLDivElement>(null);
@@ -95,8 +93,7 @@ export function RareReveal({ spell, first, onDone }: { spell: Spell; first: bool
   }, []);
 
   const advance = (): void => {
-    if (phase === 'title') finish();
-    else setPhase('title');
+    if (phase !== 'title') setPhase('title');
   };
   const onKey = (e: KeyboardEvent): void => {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
@@ -189,11 +186,15 @@ export function RareReveal({ spell, first, onDone }: { spell: Spell; first: bool
               </div>
               <div className="rr-meta">{[names, `Lv.${spell.tier}`, '稀有魔法'].filter(Boolean).join('・')}</div>
               {hint && <div className="rr-hint">{hint}</div>}
+              <div className="rr-choice">
+                <button type="button" className="rr-equip" onClick={() => finish(true)}>裝備</button>
+                <button type="button" className="rr-keep" onClick={() => finish(false)}>不裝備</button>
+              </div>
             </div>
           </>
         )}
       </div>
-      <span className="rr-skip" aria-hidden="true">{phase === 'title' ? '點一下關閉' : '點一下跳過'}</span>
+      {phase !== 'title' && <span className="rr-skip" aria-hidden="true">點一下跳過</span>}
     </div>
   );
 }

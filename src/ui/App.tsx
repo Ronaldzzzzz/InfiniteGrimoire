@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Content, Spell } from '../engine/model';
 import { resolveSpell } from '../engine/spells';
 import type { AccountInfo, ActionResult, ApiClient, LoginResult } from '../game/api';
@@ -8,6 +8,7 @@ import './App.css';
 import { AccountDialog } from './AccountDialog';
 import { BattleCanvas } from './BattleCanvas';
 import { DiscoveryBanner } from './DiscoveryBanner';
+import { EquipToasts, pushToast, type EquipToast } from './EquipToasts';
 import { ElementTable } from './ElementTable';
 import { GmWindow } from './GmWindow';
 import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
@@ -47,7 +48,9 @@ export function App({
   // `n` restarts the banner when the same spell comes out twice in a row
   const [discovery, setDiscovery] = useState<{ spell: Spell; isNew: boolean; n: number } | null>(null);
   // rare spells play one full-screen reveal at a time; one arriving mid-reveal waits its turn (`n` keys each one)
-  const [rareQueue, setRareQueue] = useState<{ spell: Spell; first: boolean; n: number }[]>([]);
+  const [rareQueue, setRareQueue] = useState<{ spell: Spell; spellId: string; first: boolean; n: number }[]>([]);
+  const [toasts, setToasts] = useState<EquipToast[]>([]);
+  const toastN = useRef(0);
   const [lifting, setLifting] = useState<string | null>(null);
   useEffect(() => {
     if (!lifting) return;
@@ -61,10 +64,22 @@ export function App({
   const endDiscovery = useCallback(() => setDiscovery(null), []);
   // the bell shows the new rare discovery as soon as the reveal ends
   const { entries: feed, refresh: refreshFeed } = useDiscoveryFeed(api, status === 'online');
-  const endRareReveal = useCallback((): void => {
+  // the state may have been replaced since the question was asked: only equip a spell still learned
+  const equipIfLearned = useCallback((id: string): void => {
+    if (runtime.getSnapshot().game.learned.includes(id)) runtime.equip(id);
+  }, [runtime]);
+  const endRareReveal = useCallback((equip: boolean): void => {
+    const id = rareQueue[0]?.spellId;
+    if (equip && id) equipIfLearned(id);
     setRareQueue((q) => q.slice(1));
     refreshFeed();
-  }, [refreshFeed]);
+  }, [refreshFeed, rareQueue, equipIfLearned]);
+  const dropToast = useCallback((n: number): void => setToasts((l) => l.filter((t) => t.n !== n)), []);
+  const equipToast = useCallback((n: number): void => {
+    const t = toasts.find((x) => x.n === n);
+    if (t) equipIfLearned(t.spellId);
+    dropToast(n);
+  }, [toasts, equipIfLearned, dropToast]);
   // an in-tab account switch starts a new runtime: forget the old account (and with it the GM
   // window's token) and look the new one up
   useEffect(() => {
@@ -87,16 +102,20 @@ export function App({
     if (result.kind !== 'learned' && result.kind !== 'duplicate') return;
     const spell = resolveSpell(result.spellId, content);
     if (!spell) return;
-    // equip only now: the reply has already replaced the state, so it can't undo the equip
-    if (result.kind === 'learned') runtime.equip(result.spellId);
+    // no auto-equip: a toast (or the rare reveal) asks first, since swapping spells zeroes the DPS
     if (result.kind === 'learned' && result.rare) {
       // the full-screen reveal replaces the 新發現 banner
       const first = result.rare.first;
-      setRareQueue((q) => [...q, { spell, first, n: (q.at(-1)?.n ?? 0) + 1 }]);
+      setRareQueue((q) => [...q, { spell, spellId: result.spellId, first, n: (q.at(-1)?.n ?? 0) + 1 }]);
       return;
     }
+    if (result.kind === 'learned') {
+      toastN.current += 1;
+      const toast = { n: toastN.current, spellId: result.spellId, name: spell.name };
+      setToasts((l) => pushToast(l, toast));
+    }
     setDiscovery((d) => ({ spell, isNew: result.kind === 'learned', n: (d?.n ?? 0) + 1 }));
-  }, [content, runtime]);
+  }, [content]);
   // The hint stays until another node is clicked or the spell is learned.
   const hint = hintId && !game.learned.includes(hintId) ? (content.spells[hintId]?.hint ?? null) : null;
 
@@ -115,6 +134,7 @@ export function App({
         <div className="battle">
           <BattleCanvas runtime={runtime} />
           <BossCounter runtime={runtime} content={content} />
+          <EquipToasts toasts={toasts} onEquip={equipToast} onExpire={dropToast} />
           {discovery && (
             <DiscoveryBanner key={discovery.n} spell={discovery.spell} isNew={discovery.isNew} onDone={endDiscovery} />
           )}
@@ -168,7 +188,7 @@ export function App({
         />
       )}
       {rareQueue[0] && (
-        <RareReveal key={rareQueue[0].n} spell={rareQueue[0].spell} first={rareQueue[0].first} onDone={endRareReveal} />
+        <RareReveal key={rareQueue[0].n} spell={rareQueue[0].spell} first={rareQueue[0].first} onChoose={endRareReveal} />
       )}
       <GmWindow api={api} sync={sync} runtime={runtime} content={content} username={account?.username ?? null} />
       <OfflineOverlay status={status} />

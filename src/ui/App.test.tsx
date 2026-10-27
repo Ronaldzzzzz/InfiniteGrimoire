@@ -189,21 +189,44 @@ describe('App layout', () => {
     expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(hint);
   });
 
-  it('a new synthesis result is equipped after the reply', async () => {
+  async function learnCrafted() {
     const id = craftedId('fireball', 'wind_blade');
-    const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball', 'wind_blade']);
+    const h = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball', 'wind_blade']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     placeFromTree(content.spells.wind_blade!.name);
     fireEvent.click(screen.getByRole('button', { name: '合成' }));
+    h.reply({ kind: 'learned', spellId: id, crafted: true });
+    await screen.findByText(`裝備「${resolveSpell(id, content)!.name}」？`, {}, { timeout: 3000 });
+    return { ...h, id };
+  }
+
+  it('a new synthesis result is not auto-equipped; the toast asks, and 裝備 equips', async () => {
+    const { runtime, id } = await learnCrafted();
     expect(runtime.equip).not.toHaveBeenCalled();
-    reply({ kind: 'learned', spellId: id, crafted: true });
-    await waitFor(() => expect(runtime.equip).toHaveBeenCalledWith(id), { timeout: 3000 });
     const banner = screen.getByRole('status', { name: '合成結果' });
     expect(banner.textContent).toContain('自創魔法！');
     expect(banner.textContent).toContain(resolveSpell(id, content)!.name);
+    // the learned spell is in the fake state?  put it there like the server reply would
+    act(() => (runtime as unknown as { set: (p: unknown) => void }).set({ game: { learned: ['mana_bolt', id] } }));
+    fireEvent.click(screen.getByRole('button', { name: '裝備' }));
+    expect(runtime.equip).toHaveBeenCalledWith(id);
   });
 
-  it('a known result shows 已經會了 and does not re-equip', async () => {
+  it('the toast expires after 3 s without equipping', async () => {
+    const { runtime, id } = await learnCrafted();
+    const label = `裝備「${resolveSpell(id, content)!.name}」？`;
+    await waitFor(() => expect(screen.queryByText(label)).toBeNull(), { timeout: 4500 });
+    expect(runtime.equip).not.toHaveBeenCalled();
+  }, 10000);
+
+  it('pressing 裝備 after the save lost that spell does not equip', async () => {
+    const { runtime } = await learnCrafted();
+    // the fake state never gained the crafted spell, like a replaced save
+    fireEvent.click(screen.getByRole('button', { name: '裝備' }));
+    expect(runtime.equip).not.toHaveBeenCalled();
+  });
+
+  it('a known result shows 已經會了, with no toast and no equip', async () => {
     const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
@@ -211,18 +234,18 @@ describe('App layout', () => {
     reply({ kind: 'duplicate', spellId: 'fireball', refunded: ['el:fire:1'] });
     await waitFor(() => expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('已經會了'), { timeout: 3000 });
     expect(runtime.equip).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '裝備' })).toBeNull();
   });
 
-  it('a rare result plays the full-screen reveal instead of the banner, and queues a second rare one', async () => {
-    const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt']);
+  it('a rare result plays the reveal; 裝備 equips once and the next queued reveal follows', async () => {
+    const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'worldfire', 'moontide']);
     const fire = () => screen.getByRole('button', { name: '初階火 ×3' });
     fireEvent.click(fire());
     fireEvent.click(fire());
     fireEvent.click(screen.getByRole('button', { name: '合成' }));
     reply({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
     const first = await screen.findByRole('dialog', { name: '稀有魔法' }, { timeout: 3000 });
-    expect(runtime.equip).toHaveBeenCalledTimes(1);
-    expect(runtime.equip).toHaveBeenCalledWith('worldfire');
+    expect(runtime.equip).not.toHaveBeenCalled();
     expect(screen.queryByRole('status', { name: '新發現' })).toBeNull();
     expect(screen.queryByRole('status', { name: '合成結果' })).toBeNull();
     expect(slotTexts()).toEqual(['空', '空']);
@@ -232,17 +255,21 @@ describe('App layout', () => {
     fireEvent.click(fire());
     fireEvent.click(screen.getByRole('button', { name: '合成' }));
     reply({ kind: 'learned', spellId: 'moontide', crafted: false, rare: { first: false } });
-    await waitFor(() => expect(runtime.equip).toHaveBeenCalledTimes(2), { timeout: 3000 });
-    expect(screen.getAllByRole('dialog', { name: '稀有魔法' })).toHaveLength(1);
+    await waitFor(() => expect(screen.getAllByRole('dialog', { name: '稀有魔法' })).toHaveLength(1), { timeout: 3000 });
     fireEvent.click(first); // to the title
     expect(first.textContent).toContain('焚世之焰');
     expect(first.textContent).toContain('全服首次發現');
-    fireEvent.click(first); // closes it
-    const second = screen.getByRole('dialog', { name: '稀有魔法' });
+    fireEvent.click(first); // background: still open
+    expect(screen.getByRole('dialog', { name: '稀有魔法' })).toBe(first);
+    fireEvent.click(screen.getByRole('button', { name: '裝備' }));
+    expect(runtime.equip).toHaveBeenCalledTimes(1);
+    expect(runtime.equip).toHaveBeenCalledWith('worldfire');
+    const second = await screen.findByRole('dialog', { name: '稀有魔法' }, { timeout: 3000 });
     fireEvent.click(second);
     expect(second.textContent).toContain('滄溟月潮');
     expect(second.textContent).toContain('✦ 稀有魔法！✦');
-    fireEvent.click(second);
+    fireEvent.click(screen.getByRole('button', { name: '不裝備' }));
+    expect(runtime.equip).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog', { name: '稀有魔法' })).toBeNull();
     expect(screen.queryByRole('status', { name: '新發現' })).toBeNull();
     expect(slotTexts()).toEqual(['空', '空']);
@@ -266,7 +293,7 @@ describe('App layout', () => {
     pending(false);
     reply({ kind: 'learned', spellId: craftedId('fireball', 'wind_blade'), crafted: true });
     await waitFor(() => expect(slotTexts()).toEqual(['空', '空']), { timeout: 3000 });
-    expect(runtime.equip).toHaveBeenCalled();
+    expect(runtime.equip).not.toHaveBeenCalled();
   });
 
   it('while pending with an empty side left, element cells and the tree still place nothing', () => {
