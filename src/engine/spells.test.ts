@@ -45,6 +45,27 @@ describe('crafted spells', () => {
     expect(s.effects.filter((e) => e.kind === 'backfire')).toHaveLength(1);
   });
 
+  it('each side keeps the damage of its own attack (Ruling F1)', () => {
+    // a strong and a weak input: the weak side's effects must not be lifted to the strong side's attack
+    for (const [x, y] of [['heavens_breath', 'titans_grip'], ['moontide', 'ninefold_thunder'], ['fireball', 'water_wave'], ['fire_tornado', 'lightning']] as const) {
+      const id = craftedId(x, y);
+      const s = resolveSpell(id, content)!;
+      const [ta, tb] = id.slice(2, -1).split('|') as [string, string];
+      const A = content.spells[ta]!, B = content.spells[tb]!;
+      const gain = s.affinity === 'good' ? 1 + 0.35 * 0.7 ** (s.depth - 1) : s.affinity === 'bad' ? 0.6 : 1;
+      const dmg = (fx: typeof s.effects) => fx.reduce((n, e) => n + ('mult' in e ? e.mult : 0), 0);
+      const sideA = s.effects.slice(0, A.effects.length), sideB = s.effects.slice(A.effects.length, A.effects.length + B.effects.length);
+      // per-cast damage of each side = 0.6 x gain x that input's own attack x its own mults (ceiling may only lower it)
+      expect(s.attack * dmg(sideA)).toBeLessThanOrEqual(0.6 * gain * A.attack * dmg(A.effects) + 1e-6);
+      expect(s.attack * dmg(sideB)).toBeLessThanOrEqual(0.6 * gain * B.attack * dmg(B.effects) + 1e-6);
+      const weak = A.attack < B.attack ? sideA : sideB, weakIn = A.attack < B.attack ? A : B;
+      if (Math.min(A.attack, B.attack) * gain <= s.attack) expect(s.attack * dmg(weak)).toBeCloseTo(0.6 * gain * weakIn.attack * dmg(weakIn.effects), 6);
+      // crafted DPS (attack x mults / cooldown) never beats gain x the better input's
+      const dps = (sp: { attack: number; cooldownMs: number; effects: typeof s.effects }) => sp.attack * dmg(sp.effects) / sp.cooldownMs;
+      expect(dps(s)).toBeLessThanOrEqual(gain * Math.max(dps(A), dps(B)) + 1e-9);
+    }
+  });
+
   it('material modifies a spell', () => {
     const s = resolveSpell(craftedId('lightning', 'mat:ember_core'), content)!;
     expect(s.effects).toContainEqual(content.materials['mat:ember_core']!.effect);

@@ -7,7 +7,7 @@ import { content } from '../../src/engine/content';
 import type { Content, GameState } from '../../src/engine/model';
 import { createInitialState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
-import { MAX_SPELL_LEVEL, TIER_STEP } from '../../src/engine/spells';
+import { craftedId, MAX_SPELL_LEVEL, resolveSpell, TIER_STEP } from '../../src/engine/spells';
 
 export const HOME_ZONE: Record<number, string> = {
   1: 'mist_meadow', 2: 'mist_meadow', 3: 'mist_meadow', 4: 'thunder_gorge', 5: 'thunder_gorge',
@@ -80,6 +80,12 @@ export interface SpellCurve {
 export interface CurveReport {
   perSpell: SpellCurve[];
   failures: string[];
+  /**
+   * Crafted spells made from two of the tier-9 named spells and the rares, measured at HOME_ZONE[9]: plain-language lines for
+   * every pair whose geometric mean beats the better input's by more than the affinity gain allows (x1.10 tolerance).
+   */
+  craftedFailures: string[];
+  crafted: { id: string; affinity: string; depth: number; solo: number; crowd: number; geo: number; bestInput: number; bound: number }[];
   /** Per tier, measured at HOME_ZONE[tier], non-exempt spells only. */
   medians: { tier: number; zone: string; solo: number; crowd: number; geo: number; ratioSolo: number | null; ratioCrowd: number | null }[];
 }
@@ -188,5 +194,24 @@ export function curveReport(opts: { seeds: number[]; soloMs: number; crowdMs: nu
       if (!(e > 0) || e < lo || e > hi) failures.push(`${nameOf(p.id)}（Lv.${n}）強化 +${MAX_SPELL_LEVEL - 1} 的幾何平均 ${f1(e)}，應落在 Lv.${n + 1} 的最低值 ${f1(lo)} 與中位數×1.1 ${f1(hi)} 之間。`);
     }
   }
-  return { perSpell, failures, medians };
+  // 5: crafted spells made from the strongest inputs (tier-9 named spells and the rares) must not beat them by more than the
+  // affinity gain (Ruling F1): crafted geo <= max(input geo) x gain bound x 1.10.
+  const crafted: CurveReport['crafted'] = [];
+  const craftedFailures: string[] = [];
+  {
+    const z = HOME_ZONE[9]!;
+    const top = perSpell.filter((p) => p.tier >= 9).map((p) => p.id).sort();
+    const inputGeo = (id: string) => { const p = perSpell.find((x) => x.id === id)!; return geo(p.soloAt[z] ?? 0, p.crowdAt[z] ?? 0); };
+    for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) {
+      const id = craftedId(top[i]!, top[j]!);
+      const s = resolveSpell(id, content);
+      if (!s) continue;
+      const so = solo(id, 1, z), cr = crowd(id, 1, z), g = geo(so, cr);
+      const best = Math.max(inputGeo(top[i]!), inputGeo(top[j]!));
+      const bound = (s.affinity === 'good' ? 1 + 0.35 * 0.7 ** (s.depth - 1) : 1) * 1.10;
+      crafted.push({ id, affinity: s.affinity, depth: s.depth, solo: so, crowd: cr, geo: g, bestInput: best, bound });
+      if (g > best * bound) craftedFailures.push(`自創「${s.name}」（${nameOf(top[i]!)}＋${nameOf(top[j]!)}，相性 ${s.affinity}）在 ${z} 幾何平均 ${f1(g)}（單挑 ${f1(so)}、群怪 ${f1(cr)}），比較強的輸入 ${f1(best)} 高出 ×${(g / best).toFixed(2)}，上限 ×${bound.toFixed(2)}。`);
+    }
+  }
+  return { perSpell, failures, medians, craftedFailures, crafted };
 }

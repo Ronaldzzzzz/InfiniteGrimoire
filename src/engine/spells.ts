@@ -88,8 +88,17 @@ function part(token: string, content: Content): Part | null {
   return s ? { spell: s, material: false } : null;
 }
 
-const scaleEffect = (e: Effect, material: boolean): Effect =>
-  !material && 'mult' in e ? { ...e, mult: e.mult * 0.6 } : e;
+/**
+ * A crafted spell's effects are hits of the crafted attack, so each spell side's mults are rescaled to keep the damage of
+ * that input's own attack x gain (capped by the crafted attack, which already holds the ceiling), times the 0.6 of a
+ * shared cast (Ruling F1). Crafted DPS is then about gain x the cooldown-weighted average of the inputs' DPS, never more
+ * than gain x the better input. Material sides keep their effect as is.
+ */
+const scaleEffect = (e: Effect, side: Part, gain: number, attack: number): Effect => {
+  if (side.material || !('mult' in e)) return e;
+  const own = attack > 0 ? Math.min(side.spell.attack * gain, attack) / attack : 0;
+  return { ...e, mult: e.mult * 0.6 * own };
+};
 
 function derive(id: string, content: Content): Spell | null {
   if (!id.startsWith('c(') || !id.endsWith(')')) return null;
@@ -116,7 +125,7 @@ function derive(id: string, content: Content): Spell | null {
     : b.material ? A.cooldownMs
     : Math.min(MAX_COOLDOWN_MS, Math.round((A.cooldownMs + B.cooldownMs) * 0.6));
 
-  const combined = [...A.effects.map((e) => scaleEffect(e, a.material)), ...B.effects.map((e) => scaleEffect(e, b.material))]
+  const combined = [...A.effects.map((e) => scaleEffect(e, a, gain, attack)), ...B.effects.map((e) => scaleEffect(e, b, gain, attack))]
     .slice(0, MAX_EFFECTS);
   let seenBackfire = false;
   const effects = combined.filter((e) => e.kind !== 'backfire' || (!seenBackfire && (seenBackfire = true)));
