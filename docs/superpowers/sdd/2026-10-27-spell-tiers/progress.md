@@ -65,3 +65,18 @@
 - Task 6: 未調平量測：只有風清完 6 地點（289.9 分）；火、雷、水、混合 5/6，土 4/6；星殞高原 58～139 分；只有風學到 Lv.9（189.3 分），刷稀有 125 分。tests/sim 約 134 秒。
 - Task 6: minor (deferred): rare-cost 窗口不足 30 分時雜訊大；clearMinutes 假設依序清關；每條路線在 pure-paths 與 rare-cost 各模擬一次。
 - Task 6: complete (commits 980f538..96e9057, review clean)
+- Task 7: dispatched (BASE 4987b10, implementer a572f9fbddd90fdee, opus)
+- Ruling R-T7-1: pure-paths 的「前 4 個魔王 60～240」改成檢查第 4 個魔王倒下的累計時間（原寫法要求每個地點都 ≥ 60，和「每個地點 5～90」矛盾）— 對齊規格 6.4 — 若錯：前期節奏可能太快，但每地點下限 5 分仍把關。
+- Task 7: review → Needs fixes: Important 1 規格 12-2 要求完整版（60/30 秒）量測也滿足 7.3，目前 33 條不通過、Lv.7→8 群怪 ×0.90～0.94。
+- Ruling T7a: 採做法 (a)：tier-curve 測試改用與完整版相同的 60/30 秒窗口（原本整檔只要 1.5 秒，負擔得起），重調到兩者一致通過；不採「以短量法為準」— 短窗口曲線不穩，正是使用者抱怨的「高一階反而弱」— 若錯：多一輪調平時間。
+- Ruling R-T7-2: 沒有改 combat.ts，storm/field 用每招 mult 與形狀收斂 — 規格 7.4 允許但不需要 — 若錯：無。
+- Ruling R-T7-3: 沒有傷害效果的例外招（魔力過載）不算「打不動」 — 無東西可量 — 若錯：無。
+- Ruling R-T7-4: 7 招稀有攻擊統一 100（mult 等比縮小，DPS 不變）— 面板會顯示攻擊，原本 80 低於 Lv.9 的 90 — 若錯：只是顯示值。
+- Ruling R-T7-5: 世界盡頭 3 隻一般怪各掉 3 種素材、各 2%，7 種都有（補潮汐鱗片；餘燼核心只剩灰燼巨人）— 原本純水刷不到滄溟月潮 — 若錯：某屬性刷稀有較慢，rare-cost 測試把關。
+- Ruling R-T7-7: 曲線檢查用 60/30 秒、2 個種子（20261021、7）平均，與 measure-dps.ts 共用 CURVE_OPTS — T7a — 若錯：測試約 4.5 秒，負擔小。
+- Ruling R-T7-8: 墮星龍神階掉率 0.8（仍 < 1）— 0.4 時雷路線運氣差會超過時間目標 — 若錯：神階太容易拿。
+- Ruling R-T7-9: measure-dps.ts 中位數摘要排除 CURVE_EXEMPT，和 measure.ts 一致 — 若錯：無。
+- Task 7: fix round 1/5 (1 Important + 4 Minor addressed, 0 open; commits ba8c9ad..fd8a66d)
+- Task 7: 結果：曲線 0 條未通過（60/30 秒、2 種子）；相鄰倍率 ×1.57～×1.79（幾何平均約 1.67）；同階最大／最小 1.14／0.82；6 條路線全清、0 次被拒；前四魔王 64.1～116.2 分、全部 90.5～203.4 分、每地點 5.5～82.2 分；刷稀有 24～68 分。
+- Task 7: minor (deferred): 模擬餘裕小（水草原 5.5/下限 5、風水前四魔王 64～65/下限 60、雷神殿 82.2/上限 90）；調平腳本不在版本庫（係數表在 task-7 報告，已併入本帳本摘要）。
+- Task 7: complete (commits 4987b10..fd8a66d, review clean after 1 fix round)
