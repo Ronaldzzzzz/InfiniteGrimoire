@@ -96,3 +96,11 @@
 - Task 11: fix round 1/5 (1 addressed, 0 open; commits 7c5dd67..6953469)
 - Task 11: minor (deferred): Enter/Space 測試只證明沒被 preventDefault（jsdom 不會合成 click）；通知可能和 DiscoveryBanner 在很矮的戰鬥畫面重疊；App.test 透過轉型改假 runtime。
 - Task 11: complete (commits f723c3e..6953469, review clean after 1 fix round)
+- Ruling T12a: Task 12 只做驗收與文件（Step 1、2、4、5）；最終全 branch 審查與詢問使用者由 controller 做 — 技能流程規定 final review 由 controller 派 — 若錯：無。
+- Task 12: dispatched (BASE 0a9c7b3, implementer aeced5e91c26f87a7, sonnet)
+- Task 12: 驗收（headless Chrome）規格 12.3 全過、無頁面錯誤；npm test 68 檔 730 個、build 通過；焚世之焰是真的試 121 次合出（沒改機率）；4 個通知那次把 3000 ms 放大成 15000 ms；清過 guest_creations；本機 D1 建了一個 GM 測試帳號。
+- Task 12: 驗收發現（未修，交給 final review 修正波）：(1) 裝備通知蓋住 DPS 數字與魔王倒數；(2) 預設縮放下兩組名稱標籤重疊（蒼嵐斷界／絕空裂風、滄淵水牢／歸墟冥潮）；(3) 手機上技能樹文字很小；(4) GM 地圖分頁沒有地點名稱（原本設計如此）。
+- Task 12: review → Needs fixes: AGENTS.md 其他段落仍寫舊狀態（branch、待辦 000/00 下一步、v2b 的 Lv.8）；fix round 1 dispatched
+- Task 12: fix round 1/5 (4 addressed, 0 open; commits 097cd04..8fb37e6)
+- Task 12: parked — 複查認為「剩下約 58 招」應為 48 — Ruling: 58 正確：這次 67 招中只有 57 招對應 Phase 1 文案（另 10 招是 Phase 1 沒有的純屬 Lv.4／Lv.8），115 − 57 = 58。
+- Task 12: complete (commits 0a9c7b3..8fb37e6, 1 parked)
