@@ -66,7 +66,7 @@
 
 **瀏覽器驗收（2026-10-27，headless Chrome＋puppeteer-core，macOS）：** 規格第 12.3 節各項都通過、無頁面錯誤；細節與截圖路徑見 `.superpowers/sdd/2026-10-27-spell-tiers/task-12-report.md`（截圖與腳本在 `.superpowers/sdd/2026-10-27-spell-tiers/accept/`，未進版本庫）。**種進去的：** 每個測試的存檔（已學會的魔法、元素與素材數量、已散開的迷霧區域、已開放的地點、`zoneKills`、關鍵道具墮星之印）都是直接改本機 D1 種的；**實際操作的：** 技能樹與迷霧、使用關鍵道具、切換分頁、詳情卡、泡泡、雙擊放入、合成（連續 4 個新魔法與稀有魔法）、按「裝備」、放回上次組合、換地點、GM 視窗。稀有魔法是真的用介面連續合成 121 次擲出焚世之焰（沒有調機率）。連續 4 個通知那次為了讓 4 次伺服器往返重疊，在頁面裡暫時把 3000 ms 的逾時放大成 15000 ms；通知單獨存活約 3 秒是另外用原本時間量的（3032 ms）。驗收用本機 D1 清過 `guest_creations`（遊客每小時 10 個的限制）。一個本機 GM 測試帳號已在本機 D1 綁定（密碼只是驗收用的臨時值）。
 
-**驗收發現的小問題（都不影響玩法，沒有修）：** 學會新魔法的通知（左上）會蓋住「魔王出現還差 N 隻」與 DPS 數字（通知存在的 3 秒內）；全部解開時技能樹縮小，預設縮放下有兩組名稱標籤的邊界框重疊（蒼嵐斷界／絕空裂風、滄淵水牢／歸墟冥潮，圓點沒有重疊）；手機（390×844）上技能樹的節點與名稱很小，需要縮放才好讀；GM 地圖分頁只有三個批次按鈕，沒有列出地點名稱（列出新地點靠按鈕「開放所有地點」生效）。
+**驗收發現的小問題：** ~~學會新魔法的通知蓋住「魔王出現還差 N 隻」與 DPS 數字~~（最終審查修正：通知移到戰鬥畫面**右上角**，稀有揭曉動畫顯示期間通知的 3 秒暫停）；~~全部解開時預設縮放下名稱標籤重疊~~（最終審查修正：Lv.8 的五條主軸節點角度 +6°、雷光長槍與黑曜荊棘 −6°、被動疾速詠唱 +6°，並加了「標籤不壓到其他標籤或節點」的版面測試）；手機（390×844）上技能樹的節點與名稱很小，需要縮放才好讀；GM 地圖分頁只有三個批次按鈕，沒有列出地點名稱（列出新地點靠按鈕「開放所有地點」生效）。
 
 **接下來的順序（使用者決定，照這個走）：**
 
@@ -109,7 +109,7 @@
 000. **【部分完成】魔法深度拓展（十大標的）**：第一批（20 招新魔法、改名 11 招、Lv.1～10 階級、強度曲線、地圖擴充）**已在 `feat/spell-tiers` 實作**（見 3.0）；其餘約 58 招 Phase 1 魔法與其他標的（施法形態、異變詞綴、共鳴、禁忌殘頁、媒介、Overdrive、道途尊號等）**仍只有文案、沒有程式，等使用者核准後才實作**。見 `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md` 與 `2026-10-27-spell-expansion-green-items-review.md`。原十大標的內容：使用者希望在實作強度曲線之前，將魔法內容拓展為十大維度：(1) 名稱與 Lv.1～10 階級體系、(2) 施法形態 `Effect['kind']` 拓展、(3) 魔法定義（術式分類 `school`／詠唱古語／詳情面板透明化）、(4) **天賦型「獨特技能（5%～10% 機率覺醒，如雙刀流／大賢者）」vs 努力型「十里坡劍神（萬次詠唱返璞歸真／迷霧草原苦修極意／凡人專屬限制器解除 +100／百敗成聖）」雙軌對抗體系**、(5) 魔法隨機異變詞綴（Spell Mutations）、(6) 戰場元素共鳴反應與束縛契約、(7) 禁忌殘頁與儀式合成（失落古魔法）、(8) 施法媒介／本命魔導具（短杖／重杖／寶珠／黑書流派切換）、(9) 超位魔法／魔力充能解放（Overdrive 戰鬥高潮）、(10) 元素道途體質與動態魔導尊號。**請所有接手 AI 或開發人員務必先參閱該文件，並協助使用者完成建置。**
 00. **【已完成於 `feat/spell-tiers`（2026-10-27），待使用者試玩並確認 `TIER_STEP`】魔法階級強度曲線**：規格 `docs/superpowers/specs/2026-10-27-tier-curve-and-map-expansion-design.md`、計畫 `docs/superpowers/plans/2026-10-27-spell-tiers.md`、帳本 `docs/superpowers/sdd/2026-10-27-spell-tiers/progress.md`、調平後 DPS 表 `docs/superpowers/specs/2026-10-27-dps-after.md`；原始討論紀錄 `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`。`feat/rare-tuning` 與 `feat/spell-tiers` 尚未合併，等使用者決定。
 0b. **【稍後與使用者討論】刷稀有魔法落空時的保底／補償機制**：使用者提出，尚未討論；紀錄與要一起考慮的事項在 `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md` 的「稍後再討論」一節。排在強度曲線之後主動提出來討論。
-0c. **【已完成於 `feat/spell-tiers`（2026-10-27），待使用者試玩】合成出新魔法時跳出限時通知，問要不要裝備**：目前每次學會新魔法都會直接裝備（`src/ui/App.tsx` 的 `if (result.kind === 'learned') runtime.equip(result.spellId)`），換裝會讓 DPS 歸零。使用者決定：(1) 一般新魔法跳出約 **3 秒**的通知（例如「裝備『火焰龍捲』？」），**時間到沒按就不裝備**，所以通知上**只有「裝備」一個按鈕**；(2) **稀有魔法**的全螢幕揭曉動畫播完後，下方顯示「裝備」與「不裝備」兩個按鈕，**畫面暫時卡住，等玩家選擇**（不會自動消失）；(3) 連續合出多個新魔法時，**新通知把舊的往下推，最多同時 3 個，第 4 個出現時直接擠掉最舊的那個**；(4) 「記住以後都自動裝備／都不裝備」的偏好**暫時不需要**。使用者原話：「大約3秒。時間到了不裝備，因此按鈕只顯示裝備即可。播完動畫後下面提示裝備與不裝備兩個按鈕，且暫時卡住畫面，等待玩家選擇。通知往下推，但上限為3個，超過三個則直接擠掉第一個通知。暫時不需要這功能。」
+0c. **【已完成於 `feat/spell-tiers`（2026-10-27），待使用者試玩】合成出新魔法時跳出限時通知，問要不要裝備**：原本每次學會新魔法都會直接裝備（`src/ui/App.tsx` 的 `if (result.kind === 'learned') runtime.equip(result.spellId)`），換裝會讓 DPS 歸零；這個 branch 已改成先詢問（`EquipToasts`、`RareReveal` 的裝備選擇）。使用者決定：(1) 一般新魔法跳出約 **3 秒**的通知（例如「裝備『火焰龍捲』？」），**時間到沒按就不裝備**，所以通知上**只有「裝備」一個按鈕**；(2) **稀有魔法**的全螢幕揭曉動畫播完後，下方顯示「裝備」與「不裝備」兩個按鈕，**畫面暫時卡住，等玩家選擇**（不會自動消失）；(3) 連續合出多個新魔法時，**新通知把舊的往下推，最多同時 3 個，第 4 個出現時直接擠掉最舊的那個**；(4) 「記住以後都自動裝備／都不裝備」的偏好**暫時不需要**。使用者原話：「大約3秒。時間到了不裝備，因此按鈕只顯示裝備即可。播完動畫後下面提示裝備與不裝備兩個按鈕，且暫時卡住畫面，等待玩家選擇。通知往下推，但上限為3個，超過三個則直接擠掉第一個通知。暫時不需要這功能。」
 0d. **【待辦，Gemini 提案・使用者採納 2026-10-24】玩法與「奇幻中古世紀大魔法師」沉浸感擴充（共 7 項）**：
   - **（玩法 1）雙重詠唱／魔導迴路（共鳴槽）**：除了主詠唱（主動施放的魔法）外，新增副迴路（共鳴鑲嵌槽），可嵌入已學會的舊魔法或自創魔法，讓主魔法繼承部分屬性效果或詞綴（如隕石術附帶燃燒），避免低階與過渡魔法淪為倉庫擺設。
   - **（玩法 3）自創魔法的「真名刻印」與傳奇詞綴**：當合出「相性極佳」的自創魔法或強化達一定等級（如 +10）時，允許玩家為自創魔法刻印「真名」（或從中世紀神秘學古語字庫組合專屬稱號），並可顯示於排行榜或發現紀錄。
@@ -164,9 +164,14 @@ src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable
               GrimoirePanel（SVG 技能樹，含迷霧、泡泡 NodeBubble、浮動詳情卡 NodeCard）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
               Onboarding、OfflineOverlay；
               useGame.ts 的 useRuntime(selector)；開發用 PerfMeter；戰鬥畫面的 DPS 數字在 src/render/dps.ts（BattleView 左上角）
+              BossCounter（戰鬥畫面左上「魔王出現還差 N 隻」）、EquipToasts（學會新魔法的 3 秒裝備通知，戰鬥畫面右上角）、
+              last-combo（合成台「放回上次組合」，localStorage `ig.lastCombo`）、spell-facts＋SpellFactsView（詳情卡的學派／數值／詠唱詞）、
+              grimoire-layout（五元素樹 layoutGrimoire 與光暗樹 layoutLightDark）
               GmWindow 與 gm/（GM 浮動視窗與四個分頁：GmInventoryTab、GmMapTab、GmRecipesTab＋recipe-table、GmPlayersTab＋temp-password、run-gm）、
               RareReveal（稀有魔法的全螢幕揭曉動畫，React＋CSS，不算戰鬥特效）、DiscoveryBell（頂端鈴鐺與動態清單）、useDiscoveryFeed（60 秒輪詢；未讀記在 localStorage `ig.feedSeen`）
-tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）
+tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）；measure.ts（強度曲線量測 curveReport，含 Lv.9／稀有兩兩自創的檢查）、
+              tier-curve.test.ts（強度曲線把關）
+scripts/      measure-dps.ts（只讀的 DPS 表產生器，用 esbuild 打包後以 node 執行）、session-context.mjs
 tests/d1/     node:sqlite 上的 D1Store 與 migration 測試
 ```
 
@@ -235,9 +240,11 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
+- **2026-10-27（Claude Code，Opus 5.5，macOS，最終審查修正）**：`feat/spell-tiers` 最終審查的修正一輪。Ruling F1：自創魔法每一邊的效果改成保留該輸入自己的攻擊（`spells.ts` 的 `scaleEffect`），較弱的一邊不再被拉到較強一邊的攻擊；`curveReport` 加上 Lv.9／稀有兩兩自創的檢查，但**目前只印報告、沒有強制**（66 組裡仍有 22 組超過上限，原因是效果之間的連動：拉怪的領域把魔物聚到環擊與隕石底下、濕潤讓雷系 ×2，不是攻擊被放大；需要使用者或設計者決定要不要限制）。另外：學會新魔法的通知移到戰鬥畫面右上角、稀有揭曉時暫停；刷稀有落空成魔力過載時合成台只說「這次沒有成功，素材已消耗。」（Ruling F2，只改介面）；技能樹幾個節點角度微調讓標籤不重疊。停在：已 commit，未 push、未合併。下一步：決定自創連動的處理方式，其餘同下一筆。
+
 - **2026-10-27（Claude Code，Opus 5.5，macOS，續二）**：使用者決定待辦 0c（學會新魔法時詢問是否裝備）這次一起做，並指示光暗系魔法不放五元素技能樹、改獨立的左右形式技能樹。規格更新為第二版：新增 9.3、9.4、內容檢查第 8 項、驗收項目、第 14 節第 12～13 項、附錄名魔法總表（實作後共 67 招：五元素樹 65＋光暗樹 2）。停在：等使用者確認總表與規格 → writing-plans。
 
-- **2026-10-27（Claude Code，Sonnet 5.5，macOS）**：魔法階級強度曲線與地圖擴充（branch `feat/spell-tiers`，從 `feat/rare-tuning` 分出）12 個任務全部完成並各自審查（帳本 `docs/superpowers/sdd/2026-10-27-spell-tiers/progress.md`）。Task 12 在 headless Chrome（puppeteer-core 裝在專案外）逐項驗收規格 12.3：10 環技能樹（桌面 1280×900、手機 390×844 圓點都不重疊、無橫向捲動）、星界迷霧與解開動畫、詳情卡的學派／數值／詠唱詞、魔王倒數與「魔王現身！」、放回上次組合（無紀錄與材料不足時停用且有原因）、3 秒通知與連續 4 個擠掉最舊、稀有揭曉停在裝備選擇、光暗分頁左右佈局與迷霧、五元素樹沒有聖光審判／深淵吞噬、新地點可進入、GM 配方表與地圖分頁，全部通過、無頁面錯誤；發現 4 個外觀小問題（記在 3.0）。`npm test` 68 個檔案 730 個測試、`npm run build` 通過。文件：AGENTS.md（第 2、3、10 節）、`2026-10-24-spell-tier-balance-notes.md` 標記已實作。停在：`feat/rare-tuning` 與 `feat/spell-tiers` 都 commit，未 push、未合併；沒有改遊戲程式與數值。下一步：使用者試玩、確認 `TIER_STEP`、決定合併，之後主動提出待辦 0b（稀有落空保底）。
+- **2026-10-27（Claude Code，Sonnet 5.5，macOS）**：魔法階級強度曲線與地圖擴充（branch `feat/spell-tiers`，從 `feat/rare-tuning` 分出）12 個任務全部完成並各自審查（帳本 `docs/superpowers/sdd/2026-10-27-spell-tiers/progress.md`）。Task 12 在 headless Chrome（puppeteer-core 裝在專案外）逐項驗收規格 12.3：10 環技能樹（桌面 1280×900、手機 390×844 圓點都不重疊、無橫向捲動）、星界迷霧與解開動畫、詳情卡的學派／數值／詠唱詞、魔王倒數與「魔王現身！」、放回上次組合（無紀錄與材料不足時停用且有原因）、3 秒通知與連續 4 個擠掉最舊、稀有揭曉停在裝備選擇、光暗分頁左右佈局與迷霧、五元素樹沒有聖光審判／深淵吞噬、新地點可進入、GM 配方表與地圖分頁，全部通過、無頁面錯誤；發現 4 個外觀小問題（記在 3.0）。`npm test` 68 個檔案 730 個測試、`npm run build` 通過。文件：AGENTS.md（第 2、3、10 節）、`2026-10-24-spell-tier-balance-notes.md` 標記已實作。停在：`feat/rare-tuning` 與 `feat/spell-tiers` 都 commit，未 push、未合併；Task 12 本身只做驗收與文件，沒有改遊戲程式與數值（這個 branch 的 Task 1～11 有改遊戲程式與內容資料）。下一步：使用者試玩、確認 `TIER_STEP`、決定合併，之後主動提出待辦 0b（稀有落空保底）。
 
 - **2026-10-27（Claude Code，Opus 5.5，macOS，續）**：記錄使用者對 6 個骨架問題與 4 個確認的回答（審查文件第 5、5.1 節）；寫只讀量測 `scripts/measure-dps.ts`，產出基準表 `2026-10-27-dps-baseline.md`；使用者要求「照預設寫、地圖細節你決定」，寫出整合規格草稿 `2026-10-27-tier-curve-and-map-expansion-design.md`（沒有派 subagent 做 builder check，改由自己以實作者角度審過一次）。停在：`feat/rare-tuning` 已 commit，未 push、未合併；沒有改遊戲程式與數值。下一步：使用者確認規格（特別是第 14 節 11 項設計者決定）→ writing-plans。
 
