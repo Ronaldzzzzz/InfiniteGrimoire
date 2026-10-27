@@ -69,6 +69,34 @@ describe('RareReveal', () => {
     expect(no).toHaveBeenCalledWith(false);
   });
 
+  it('keyboard: 裝備 gets focus at the title; Enter/Space on it chooses; Escape chooses 不裝備', () => {
+    vi.useFakeTimers();
+    const a = vi.fn();
+    const { unmount } = render(<RareReveal spell={worldfire} first={false} onChoose={a} />);
+    act(() => vi.advanceTimersByTime(2000));
+    const btn = screen.getByRole('button', { name: '裝備' });
+    expect(document.activeElement).toBe(btn);
+    // a native Enter/Space click happens unless keydown was default-prevented
+    expect(fireEvent.keyDown(btn, { key: 'Enter' })).toBe(true);
+    expect(fireEvent.keyDown(btn, { key: ' ' })).toBe(true);
+    fireEvent.click(btn);
+    expect(a).toHaveBeenCalledWith(true);
+    unmount();
+    const b = vi.fn();
+    render(<RareReveal spell={worldfire} first={false} onChoose={b} />);
+    act(() => vi.advanceTimersByTime(2000));
+    fireEvent.keyDown(dialog(), { key: 'Enter' });
+    expect(b).not.toHaveBeenCalled();
+    fireEvent.keyDown(dialog(), { key: 'Escape' });
+    expect(b).toHaveBeenCalledWith(false);
+  });
+
+  it('reduced motion: 裝備 has focus immediately', () => {
+    stubReducedMotion(true);
+    render(<RareReveal spell={worldfire} first onChoose={vi.fn()} />);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '裝備' }));
+  });
+
   it('a click during the burst also jumps to the title', () => {
     vi.useFakeTimers();
     render(<RareReveal spell={worldfire} first={false} onChoose={vi.fn()} />);

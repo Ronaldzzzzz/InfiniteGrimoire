@@ -96,11 +96,23 @@ export function RareReveal({ spell, first, onChoose }: { spell: Spell; first: bo
     if (phase !== 'title') setPhase('title');
   };
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (phase === 'title') finish(false);
+      else advance();
+      return;
+    }
+    // Enter / Space on a focused button must reach the button's own click
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       advance();
     }
   };
+  const equipBtn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (phase === 'title') equipBtn.current?.focus();
+  }, [phase]);
 
   const blend = blendForSpell(spell.elements);
   const style = {
@@ -187,7 +199,7 @@ export function RareReveal({ spell, first, onChoose }: { spell: Spell; first: bo
               <div className="rr-meta">{[names, `Lv.${spell.tier}`, '稀有魔法'].filter(Boolean).join('・')}</div>
               {hint && <div className="rr-hint">{hint}</div>}
               <div className="rr-choice">
-                <button type="button" className="rr-equip" onClick={() => finish(true)}>裝備</button>
+                <button type="button" ref={equipBtn} className="rr-equip" onClick={() => finish(true)}>裝備</button>
                 <button type="button" className="rr-keep" onClick={() => finish(false)}>不裝備</button>
               </div>
             </div>
