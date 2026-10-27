@@ -7,8 +7,9 @@
  * Run: npx esbuild scripts/measure-dps.ts --bundle --platform=node --format=esm --outfile=<tmp>/measure.mjs && node <tmp>/measure.mjs
  */
 import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engine/combat';
+import { clean, curveReport } from '../tests/sim/measure';
 import { content } from '../src/engine/content';
-import type { Content, GameState } from '../src/engine/model';
+import type { GameState } from '../src/engine/model';
 import { createInitialState } from '../src/engine/persist';
 import { createRng } from '../src/engine/rng';
 import { MAX_SPELL_LEVEL } from '../src/engine/spells';
@@ -40,41 +41,6 @@ function run(spellId: string, level: number, zoneId: string, seed: number): Run 
     if (bossAt !== null && t - bossAt >= BOSS_CAP_MS) return { clearMs, bossMs: null };
   }
   return { clearMs, bossMs: null };
-}
-
-/** The zone with spawning switched off, so a hand-placed set of foes is all there is. */
-const quiet = (zoneId: string): Content => ({
-  ...content,
-  zones: content.zones.map((z) => (z.id === zoneId ? { ...z, spawnIntervalMs: 1e12, pack: { ...z.pack, everyMs: 1e12 } } : z)),
-});
-
-/** Damage per second dealt to the given foes (hits plus burn) over `ms`, or until they all fall. */
-function clean(spellId: string, level: number, zoneId: string, seed: number, foes: { defId: string; hpMul: number }[], ms: number): number {
-  const c = quiet(zoneId);
-  let game: GameState = {
-    ...createInitialState(content),
-    learned: [spellId], equipped: spellId, levels: level > 1 ? { [spellId]: level } : {},
-    currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
-  };
-  const rng = createRng(seed);
-  let battle: BattleState = { ...createBattle(zoneId), spawnTimerMs: -1e12, packTimerMs: -1e12, nextUid: foes.length + 1 };
-  battle.foes = foes.map((f, i) => {
-    const def = content.monsters[f.defId]!;
-    const a = (i / foes.length) * 2 * Math.PI;
-    const r = foes.length === 1 ? 0.6 : 0.3 + 0.5 * ((i * 7) % 10) / 10;
-    return { uid: i + 1, defId: f.defId, x: r * Math.cos(a), y: r * Math.sin(a), hp: def.hp * f.hpMul, maxHp: def.hp * f.hpMul, statuses: [], kx: 0, ky: 0, wander: 0 };
-  });
-  let t = 0, dealt = 0;
-  while (t < ms) {
-    const r = stepBattle(game, battle, c, rng);
-    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle; t += STEP_MS;
-    for (const e of r.events) {
-      if (e.type === 'hit') dealt += e.dealt;
-      if (e.type === 'dot') dealt += e.damage;
-    }
-    if (battle.foes.length === 0) break;
-  }
-  return dealt / (t / 1000);
 }
 
 const avg = (xs: (number | null)[]): number | null => (xs.some((x) => x === null) ? null : xs.reduce((a, b) => a! + b!, 0)! / xs.length);
@@ -120,4 +86,12 @@ for (const zone of content.zones) {
     out.push(`- ${zone.name}・${key === 'solo' ? '單挑魔王' : '群怪'}：${parts.join('；')}`);
   }
 }
+
+const rep = curveReport({ seed: SEEDS[0]!, soloMs: 20_000, crowdMs: 10_000 });
+out.push('\n### 依主場的各階中位數（非例外魔法，未強化；比較照規格 7.2 在較低階的主場）\n');
+for (const m of rep.medians) {
+  out.push(`- Lv.${m.tier} @${m.zone}：單挑 ${m.solo.toFixed(1)}${m.ratioSolo ? `（×${m.ratioSolo.toFixed(2)}）` : ''}；群怪 ${m.crowd.toFixed(1)}${m.ratioCrowd ? `（×${m.ratioCrowd.toFixed(2)}）` : ''}；幾何 ${m.geo.toFixed(1)}`);
+}
+out.push(`\n### 階級曲線檢查：${rep.failures.length} 條未通過\n`);
+for (const f of rep.failures) out.push(`- ${f}`);
 console.log(out.join('\n'));
