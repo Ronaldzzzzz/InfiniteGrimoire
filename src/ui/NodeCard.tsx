@@ -9,6 +9,7 @@ import { EmpowerPanel } from './EmpowerPanel';
 import type { BubbleSelected } from './NodeBubble';
 import { empowerLabel, passiveRequirementLabel } from './messages';
 import { runAction } from './run-action';
+import { SpellFactsView } from './SpellFactsView';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /** The floating details card: what a node is, its actions, and (for a learned spell) the empower section. */
@@ -61,6 +62,7 @@ export function NodeCard({
             {level > 1 && <span className="empower-tag">{empowerLabel(level)}</span>}
           </h4>
           <p><AffinityTag affinity={spell.affinity} /> {spell.desc}</p>
+          <SpellFactsView spell={spell} level={level} chant={spell.chant} />
           <div className="node-actions">
             <button type="button" disabled={slotsFull || pending} onClick={() => onPick(spell.id)}>放入合成</button>
             <button type="button" disabled={isEquipped || pending} onClick={() => runtime.equip(spell.id)}>

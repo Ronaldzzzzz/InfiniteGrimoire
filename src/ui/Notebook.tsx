@@ -6,6 +6,7 @@ import type { SyncController } from '../game/sync';
 import { AffinityTag, ElementDots } from './DiscoveryBanner';
 import { EmpowerPanel } from './EmpowerPanel';
 import { empowerLabel } from './messages';
+import { SpellFactsView } from './SpellFactsView';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /** 「魔法筆記」: the crafted spells (not on the tree). Click a row to put it into the slots. */
@@ -56,6 +57,7 @@ export const Notebook = memo(function Notebook({
               </span>
             </div>
             <p className="notebook-desc muted">{spell.desc}</p>
+            <SpellFactsView spell={spell} level={level} />
             {open === id && <EmpowerPanel spellId={id} runtime={runtime} sync={sync} content={content} />}
           </li>
         );

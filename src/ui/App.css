@@ -502,3 +502,6 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
   .gm-window { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-width: none; }
   .gm-titlebar { cursor: default; }
 }
+
+.spell-chant { font-style: italic; color: #e8b84a; margin: 0.25rem 0; }
+.spell-facts-line { margin: 0.25rem 0; font-size: 0.85em; }

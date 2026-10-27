@@ -37,6 +37,12 @@ describe('EmpowerPanel', () => {
     await waitFor(() => expect(screen.getByText('強化成功：強化 +2')).toBeTruthy());
   });
 
+  it('shows one decimal when the rounded attack would not change', () => {
+    const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'] });
+    render(<EmpowerPanel spellId="fireball" runtime={rt} sync={{ action: vi.fn() }} content={content} />);
+    expect(screen.getByRole('region', { name: '強化' }).textContent).toMatch(/攻擊 \d+\.\d → \d+\.\d/);
+  });
+
   it('shows the first step without a current level, and the cap at max level', () => {
     const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], levels: {}, inventory: {} });
     const sync = { action: vi.fn() };

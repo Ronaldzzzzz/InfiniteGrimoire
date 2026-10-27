@@ -69,6 +69,23 @@ describe('GrimoirePanel', () => {
     expect(screen.queryByRole('region', { name: '節點詳情' })).toBeNull();
   });
 
+  it('the card shows school, attack, cooldown, statuses and the chant of a high-tier spell', () => {
+    setup({ learned: ['mana_bolt', 'fireball', 'worldfire'], revealed: ['astral'] });
+    fireEvent.click(node(content.spells.fireball!.name));
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    let card = screen.getByRole('region', { name: '節點詳情' });
+    expect(card.textContent).toContain('學派：塑能投射');
+    expect(card.textContent).toContain('攻擊');
+    expect(card.textContent).toContain('冷卻');
+    expect(card.textContent).toContain('燃燒');
+    expect(card.querySelector('.spell-chant')).toBeNull();
+    fireEvent.click(node(content.spells.worldfire!.name));
+    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
+    card = screen.getByRole('region', { name: '節點詳情' });
+    expect(card.textContent).toContain('學派：神話禁咒');
+    expect(card.querySelector('.spell-chant')!.textContent).toContain(content.spells.worldfire!.chant!);
+  });
+
   it('a locked spell bubble shows the hint and no buttons', () => {
     const { rt, onHint } = setup();
     fireEvent.click(node(`${content.spells.fireball!.name}（未學會）`));

@@ -41,6 +41,9 @@ export function EmpowerPanel({
     for (const id of empowerCost(spell, level)) cost.set(id, (cost.get(id) ?? 0) + 1);
     const enough = [...cost].every(([id, n]) => have(id) >= n);
     const now = spellAtLevel(spell, level), next = spellAtLevel(spell, level + 1);
+    // one decimal only when the rounded integers would read as no change (matches spellFacts' rounded attack otherwise)
+    const sameRounded = Math.round(now.attack) === Math.round(next.attack);
+    const atk = (n: number) => (sameRounded ? n.toFixed(1) : String(Math.round(n)));
     const run = async (): Promise<void> => {
       try {
         const result = await sync.action('empower', { spellId });
@@ -53,7 +56,7 @@ export function EmpowerPanel({
       <>
         <p>
           下一級：{empowerLabel(level + 1)}
-          <span className="muted">（攻擊 {Math.round(now.attack)} → {Math.round(next.attack)}{next.tier > now.tier ? `，Lv.${next.tier}` : ''}）</span>
+          <span className="muted">（攻擊 {atk(now.attack)} → {atk(next.attack)}{next.tier > now.tier ? `，Lv.${next.tier}` : ''}）</span>
         </p>
         <ul className="empower-cost">
           {[...cost].map(([id, n]) => (

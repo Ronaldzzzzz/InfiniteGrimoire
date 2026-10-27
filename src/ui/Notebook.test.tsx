@@ -41,6 +41,16 @@ describe('Notebook', () => {
     expect(screen.getByRole('region', { name: '強化' })).toBeTruthy();
   });
 
+  it('shows school, attack and cooldown on each row, and no chant line for crafted spells', () => {
+    const rt = fakeRuntime({ learned: ['mana_bolt', good] });
+    const { container } = render(<Notebook runtime={rt} sync={sync()} content={content} onPick={vi.fn()} />);
+    const t = screen.getByRole('listitem').textContent!;
+    expect(t).toContain('學派');
+    expect(t).toContain('攻擊');
+    expect(t).toContain('冷卻');
+    expect(container.querySelector('.spell-chant')).toBeNull();
+  });
+
   it('says how to find crafted spells when there are none', () => {
     render(<Notebook runtime={fakeRuntime()} sync={sync()} content={content} onPick={vi.fn()} />);
     expect(screen.getByText(/還沒有自創魔法/)).toBeTruthy();
