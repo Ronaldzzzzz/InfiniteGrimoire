@@ -104,3 +104,11 @@
 - Task 12: fix round 1/5 (4 addressed, 0 open; commits 097cd04..8fb37e6)
 - Task 12: parked — 複查認為「剩下約 58 招」應為 48 — Ruling: 58 正確：這次 67 招中只有 57 招對應 Phase 1 文案（另 10 招是 Phase 1 沒有的純屬 Lv.4／Lv.8），115 − 57 = 58。
 - Task 12: complete (commits 0a9c7b3..8fb37e6, 1 parked)
+- Final review (opus): With fixes — Critical 0；Important 2：(1) 用稀有當輸入的自創 Lv.9 DPS 最高約為稀有的 1.7 倍（derive 把較高攻擊套到兩邊效果）；(2) 裝備通知蓋住 DPS 與魔王倒數。Minor：稀有落空顯示「魔力過載」、AGENTS.md 幾處不準、揭曉期間通知在下面過期、Lv.7/8 標籤重疊、ig.lastCombo 不分帳號。
+- Ruling F1: 自創魔法每一邊的效果改成保留「該輸入自己的攻擊」造成的傷害（mult × 輸入攻擊 ÷ 自創攻擊 × 0.6），冷卻規則不變，因此自創 DPS ≈ 相性加成 × 兩個輸入 DPS 的加權平均，不會超過「最強輸入 × 相性加成」；tier-curve 測試加上自創上限檢查 — 使用者原則「不同階不能讓人覺得換錯、同階只因自創相性而異」，規格 5.2 只說其他規則不變但沒預見這個疊加 — 若錯：現有自創魔法普遍變弱（玩家若喜歡強自創，可改回或放寬加成）。
+- Ruling F2: 一次修正波一起處理 Minor 1（稀有配方落空時顯示中性落空訊息）、2（AGENTS.md）、3（稀有揭曉期間暫停通知計時）、4（Lv.8 節點角度錯開避免標籤重疊）；Minor 5（ig.lastCombo 不分帳號）延後 — 便宜且玩家看得到；5 無害 — 若錯：多一點改動面。
+- Final fix wave: dispatched (FIX_BASE bb5287b, implementer a7b53b62af6c1be30, opus)
+- Final fix wave: re-review — all findings addressed (commits bb5287b..282f3eb)：F1 已實作；通知移到右上；稀有落空改中性訊息；揭曉期間暫停通知；標籤重疊修正（原有 11 處）；AGENTS.md 修正。npm test 68 檔 737 個、sims 17 個（0 次被拒）、build 通過。
+- Final: parked — F1 後 66 組（Lv.9＋稀有兩兩自創）仍有 22 組超過「最強輸入 × 相性加成 × 1.1」，來源是效果互相配合（拉怪領域＋環擊／隕石群怪 ×2～2.75、潮濕＋雷 ×2、單挑型＋群怪型合併）；檢查只印報告（ENFORCE_CRAFTED = false） — Ruling: 先接受並交給使用者決定；效果配合是自創的玩法核心，要擋得改 combat.ts 或對自創統一打折，超出本次範圍 — 若錯：玩家拿到稀有後最佳選擇仍可能是拿去自創。
+- Final: deferred — ig.lastCombo 不分帳號（無害）；較低階的自創沒有曲線檢查。
+- Ruling P3: 保留 `.superpowers/sdd/2026-10-27-spell-tiers/`（不刪 workspace）— AGENTS.md 指向那裡的驗收腳本與截圖，與先前計畫慣例一致 — 若錯：只是多佔本機空間（已被 gitignore）。
