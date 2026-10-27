@@ -123,7 +123,7 @@ describe('App layout', () => {
     fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
     expect(screen.getByRole('tab', { name: '魔法筆記' }).getAttribute('aria-selected')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: /使用風暴之心/ }));
-    await waitFor(() => expect(screen.getByRole('tab', { name: '技能樹' }).getAttribute('aria-selected')).toBe('true'));
+    await waitFor(() => expect(screen.getByRole('tab', { name: '五元素' }).getAttribute('aria-selected')).toBe('true'));
   });
 
   it('opens the account dialog from the top bar', async () => {
@@ -139,10 +139,22 @@ describe('App layout', () => {
     expect(screen.queryByRole('button', { name: '魔導書' })).toBeNull();
     expect(screen.queryByRole('button', { name: '地圖' })).toBeNull();
     // the grimoire column switches between the tree and the notebook
-    expect(screen.getByRole('tab', { name: '技能樹' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: '五元素' }).getAttribute('aria-selected')).toBe('true');
     fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
     expect(screen.getByText(/還沒有自創魔法/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '合成' })).toBeTruthy(); // the synth action button, not a tab
+  });
+
+  it('switches between the three grimoire tabs without clearing the altar', () => {
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
+    for (const name of ['光與暗', '魔法筆記', '五元素']) {
+      fireEvent.click(screen.getByRole('tab', { name }));
+      expect(screen.getByRole('tab', { name }).getAttribute('aria-selected')).toBe('true');
+      expect(slotTexts()).toEqual(['火・初階', '空']);
+    }
+    fireEvent.click(screen.getByRole('tab', { name: '光與暗' }));
+    expect(screen.getAllByLabelText('迷霧').length).toBe(1);
   });
 
   it('puts a clicked element cell into the first empty slot, then the next one', () => {

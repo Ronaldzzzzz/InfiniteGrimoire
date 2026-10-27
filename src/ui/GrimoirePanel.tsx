@@ -5,7 +5,7 @@ import { visibleRegions } from '../engine/tree';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import { COLORS, spellColor } from '../render/palette';
-import { layoutGrimoire, polar, type FogBand } from './grimoire-layout';
+import { layoutGrimoire, layoutLightDark, polar, type FogBand } from './grimoire-layout';
 import { NodeBubble } from './NodeBubble';
 import { NodeCard } from './NodeCard';
 import { BUBBLE_SIZE, bubblePlacement, HOME, panBy, viewBoxOf, wheelFactor, zoomAt, type View } from './tree-viewport';
@@ -24,8 +24,22 @@ type Runtime = RuntimeStore & Pick<GameRuntime, 'equip'>;
 type Sync = Pick<SyncController, 'action'>;
 
 /** The ring band of a fogged region, with question marks around it. */
-function Fog({ band, lifting = false }: { band: FogBand; lifting?: boolean }) {
+function Fog({ band, lifting = false, columns = false }: { band: FogBand; lifting?: boolean; columns?: boolean }) {
   const { inner, outer } = band;
+  if (columns) {
+    // light/dark tree: a vertical strip on each side of the emblem (inner/outer are half-widths in x)
+    const mid = (inner + outer) / 2;
+    return (
+      <g className={`fog ${lifting ? 'lifting' : ''}`} {...(lifting ? { 'aria-hidden': true } : { role: 'img', 'aria-label': '迷霧' })}>
+        {[-1, 1].map((side) => (
+          <g key={side}>
+            <rect x={Math.min(side * inner, side * outer)} y={-110} width={outer - inner} height={220} rx={12} className="fog-band" />
+            <text x={side * mid} y={6} textAnchor="middle" className="fog-mark">？</text>
+          </g>
+        ))}
+      </g>
+    );
+  }
   const circle = (r: number, sweep: 0 | 1) =>
     r <= 0 ? '' : `M ${-r} 0 A ${r} ${r} 0 1 ${sweep} ${r} 0 A ${r} ${r} 0 1 ${sweep} ${-r} 0 Z`;
   const mid = (inner + outer) / 2;
@@ -48,6 +62,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   slotsFull,
   lifting,
   content = defaultContent,
+  tree = 'elements',
 }: {
   runtime: Runtime;
   sync: Sync;
@@ -57,6 +72,8 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   /** The region whose fog is lifting right now (set by the app after a key item is used). */
   lifting: string | null;
   content?: Content;
+  /** Which tree to draw: the five elements (rings) or light and dark (left and right). */
+  tree?: 'elements' | 'lightdark';
 }) {
   const learned = useRuntime(runtime, (s) => s.game.learned);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
@@ -66,14 +83,19 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   // while a synthesis is in flight nothing may be placed either (and no toast or flash may suggest it was)
   const noPlace = slotsFull || synthPending;
   const visible = useMemo(() => visibleRegions({ revealed }, content), [content, revealed]);
+  const lightDark = tree === 'lightdark';
   const layout = useMemo(
-    () => layoutGrimoire(Object.values(content.spells), visible, Object.values(content.passives), content.regions),
-    [content, visible],
+    () => lightDark
+      ? layoutLightDark(Object.values(content.spells), visible, content.regions)
+      : layoutGrimoire(Object.values(content.spells), visible, Object.values(content.passives), content.regions),
+    [content, visible, lightDark],
   );
   // every region's band, for the fog that is lifting off a region just revealed
   const allBands = useMemo(
-    () => layoutGrimoire(Object.values(content.spells), new Set(), Object.values(content.passives), content.regions).fog,
-    [content],
+    () => (lightDark
+      ? layoutLightDark(Object.values(content.spells), new Set(), content.regions)
+      : layoutGrimoire(Object.values(content.spells), new Set(), Object.values(content.passives), content.regions)).fog,
+    [content, lightDark],
   );
   const pos = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n])), [layout]);
   const [selected, setSelected] = useState<Selected>(null);
@@ -227,11 +249,19 @@ export const GrimoirePanel = memo(function GrimoirePanel({
           if (!wasDrag.current && !(e.target as Element).closest('.grimoire-node')) closeAll();
         }}
       >
-        <circle cx={0} cy={0} r={100} fill={COLORS.rune} opacity={0.08} />
+        {lightDark ? (
+          <g className="lightdark-emblem" aria-hidden="true">
+            <circle cx={0} cy={0} r={40} fill="none" stroke="#3a3350" strokeWidth={2} />
+            <path d="M 0 -36 A 36 36 0 0 0 0 36 Z" fill={COLORS.amber} opacity={0.85} />
+            <path d="M 0 -36 A 36 36 0 0 1 0 36 Z" fill="#3b1f5c" opacity={0.95} />
+          </g>
+        ) : (
+          <circle cx={0} cy={0} r={100} fill={COLORS.rune} opacity={0.08} />
+        )}
         {layout.fog.map((b) => (
-          <Fog key={b.region} band={b} />
+          <Fog key={b.region} band={b} columns={lightDark} />
         ))}
-        {liftBand && <Fog key={`lift-${liftBand.region}`} band={liftBand} lifting />}
+        {liftBand && <Fog key={`lift-${liftBand.region}`} band={liftBand} lifting columns={lightDark} />}
         {layout.edges.map((e) => {
           const a = pos.get(e.from);
           const b = pos.get(e.to);

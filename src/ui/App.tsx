@@ -42,7 +42,7 @@ export function App({
   const [hintId, setHintId] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [tab, setTab] = useState<'tree' | 'notebook'>('tree');
+  const [tab, setTab] = useState<'tree' | 'lightdark' | 'notebook'>('tree');
   // `n` restarts the banner when the same spell comes out twice in a row
   const [discovery, setDiscovery] = useState<{ spell: Spell; isNew: boolean; n: number } | null>(null);
   // rare spells play one full-screen reveal at a time; one arriving mid-reveal waits its turn (`n` keys each one)
@@ -140,12 +140,13 @@ export function App({
           </section>
           <section className="grimoire-col" aria-label="魔導書">
             <div className="grimoire-tabs" role="tablist" aria-label="魔導書">
-              <button type="button" role="tab" aria-selected={tab === 'tree'} onClick={() => setTab('tree')}>技能樹</button>
+              <button type="button" role="tab" aria-selected={tab === 'tree'} onClick={() => setTab('tree')}>五元素</button>
+              <button type="button" role="tab" aria-selected={tab === 'lightdark'} onClick={() => setTab('lightdark')}>光與暗</button>
               <button type="button" role="tab" aria-selected={tab === 'notebook'} onClick={() => setTab('notebook')}>魔法筆記</button>
             </div>
             {/* <768px the altar is scrolled out of view above the grimoire; the node bubble repeats the hint */}
-            {tab === 'tree' ? (
-              <GrimoirePanel runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={!slots.includes(null)} lifting={lifting} content={content} />
+            {tab !== 'notebook' ? (
+              <GrimoirePanel key={tab} tree={tab === 'lightdark' ? 'lightdark' : 'elements'} runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={!slots.includes(null)} lifting={lifting} content={content} />
             ) : (
               <Notebook runtime={runtime} sync={sync} content={content} onPick={pick} />
             )}

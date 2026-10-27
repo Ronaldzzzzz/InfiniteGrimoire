@@ -366,4 +366,29 @@ describe('GrimoirePanel', () => {
     fireEvent.click(document.querySelector('svg.grimoire-svg')!);
     expect(n.getAttribute('aria-pressed')).toBe('false');
   });
+
+  describe('tree="lightdark"', () => {
+    const holy = content.spells.holy_judgment!.name;
+    function lightDark(game: Partial<GameState>) {
+      const rt = fakeRuntime(game);
+      const onPick = vi.fn();
+      render(<GrimoirePanel runtime={rt} sync={{ action: vi.fn(async () => null) }} onHint={vi.fn()} onPick={onPick} slotsFull={false} lifting={null} content={content} tree="lightdark" />);
+      return { onPick };
+    }
+    it('hides the spells behind one fog band per side, without their names', () => {
+      lightDark({ learned: ['mana_bolt'] });
+      expect(screen.getAllByLabelText('迷霧').length).toBe(1);
+      expect(screen.queryByText(holy)).toBeNull();
+      expect(screen.queryByText(content.spells.abyss_devour!.name)).toBeNull();
+    });
+    it('click opens the bubble, double click puts a learned spell into the altar', () => {
+      const { onPick } = lightDark({ learned: ['mana_bolt', 'holy_judgment'], revealed: ['astral'] });
+      expect(screen.queryByLabelText('迷霧')).toBeNull();
+      fireEvent.click(node(holy));
+      expect(screen.getByRole('group', { name: '魔法操作' })).toBeTruthy();
+      fireEvent.doubleClick(node(holy));
+      expect(onPick).toHaveBeenCalledWith('holy_judgment');
+      expect(screen.queryByRole('button', { name: /^火球/ })).toBeNull(); // elements tree spells are not here
+    });
+  });
 });

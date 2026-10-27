@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../engine/content';
 import type { NamedSpellDef } from '../engine/model';
-import { layoutGrimoire } from './grimoire-layout';
+import { layoutGrimoire, layoutLightDark, ringRadius } from './grimoire-layout';
+import { HOME, viewBoxOf } from './tree-viewport';
+
+const NODE_R = 16; // GrimoirePanel's node radius
 
 const spells = Object.values(content.spells);
 const visible = new Set(['core']);
@@ -63,5 +66,51 @@ describe('layoutGrimoire', () => {
     expect(outer.inner).toBeGreaterThan(250);
     const rift = l.fog[1]!;
     expect(rift.inner).toBeCloseTo(outer.outer);
+  });
+});
+
+describe('light/dark tree and ten rings', () => {
+  const all = new Set(content.regions.map((r) => r.id));
+  const allPassives = Object.values(content.passives);
+  it('keeps lightdark spells out of the elements layout', () => {
+    const l = layoutGrimoire(spells, all, allPassives, content.regions);
+    expect(l.nodes.find((n) => n.id === 'holy_judgment')).toBeUndefined();
+    expect(l.nodes.find((n) => n.id === 'abyss_devour')).toBeUndefined();
+    expect(l.nodes.find((n) => n.id === 'wind_blade')).toBeDefined();
+  });
+  it('lays the two spells left (light) and right (dark) on one row', () => {
+    const l = layoutLightDark(spells, all, content.regions);
+    expect(l.nodes.map((n) => n.id).sort()).toEqual(['abyss_devour', 'holy_judgment']);
+    const light = l.nodes.find((n) => n.id === 'holy_judgment')!;
+    const dark = l.nodes.find((n) => n.id === 'abyss_devour')!;
+    expect(light.x).toBeLessThan(0);
+    expect(dark.x).toBeGreaterThan(0);
+    expect(light.y).toBe(dark.y);
+    expect(l.fog).toEqual([]);
+  });
+  it('shows only an anonymous astral fog band while the region is hidden', () => {
+    const l = layoutLightDark(spells, new Set(['core']), content.regions);
+    expect(l.nodes).toEqual([]);
+    expect(l.fog.map((f) => f.region)).toEqual(['astral']);
+    expect(JSON.stringify(l)).not.toContain('holy');
+    expect(l.fog[0]!.outer).toBeGreaterThan(l.fog[0]!.inner);
+  });
+  it('fits all ten rings in the home view without crowding a ring', () => {
+    const l = layoutGrimoire(spells, all, allPassives, content.regions);
+    const maxR = Math.max(...l.nodes.map((n) => Math.hypot(n.x, n.y)));
+    expect(maxR).toBeCloseTo(ringRadius(9));
+    const base = Math.max(600, 2 * (maxR + 50)); // GrimoirePanel's base size
+    const [vx, vy, w] = viewBoxOf(HOME, base).split(' ').map(Number) as [number, number, number];
+    for (const n of l.nodes) {
+      expect(n.x).toBeGreaterThan(vx + NODE_R);
+      expect(n.x).toBeLessThan(vx + w - NODE_R);
+      expect(n.y).toBeGreaterThan(vy + NODE_R);
+      expect(n.y).toBeLessThan(vy + w - NODE_R);
+    }
+    for (const a of l.nodes) for (const b of l.nodes) {
+      if (a.id >= b.id || Math.round(Math.hypot(a.x, a.y)) !== Math.round(Math.hypot(b.x, b.y))) continue;
+      expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(2 * NODE_R);
+    }
+    for (let r = 1; r < 10; r++) expect(ringRadius(r) - ringRadius(r - 1)).toBeGreaterThanOrEqual(2 * NODE_R);
   });
 });

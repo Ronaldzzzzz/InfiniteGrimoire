@@ -10,8 +10,15 @@ export interface GrimoireLayout {
   fog: FogBand[];
 }
 
-const RING_RADIUS = [0, 120, 185, 250];
-const OUTER_RING_STEP = 65;
+/**
+ * Rings 0-9 (ring = tier - 1). The step shrinks from 65 to 35 towards the rim so the ten rings still fit
+ * the home view (ring 9 at 550 -> base size 1200); every step stays above 2 x the node radius (16).
+ */
+const RING_RADIUS = [0, 120, 185, 250, 315, 380, 430, 475, 515, 550];
+const OUTER_RING_STEP = 35;
+/** Light/dark tree: one column per ring, light to the left of the emblem and dark to the right. */
+export const COLUMN_STEP = 60;
+export const ROW_STEP = 48;
 
 /** Screen-style polar: 0deg is up, angles grow clockwise, y points down. */
 export function polar(deg: number, r: number): { x: number; y: number } {
@@ -36,7 +43,7 @@ export function layoutGrimoire(
   passives: Passive[] = [],
   regions: TreeRegion[] = [],
 ): GrimoireLayout {
-  const shown = spells.filter((s) => s.node !== null && visible.has(s.node.region));
+  const shown = spells.filter((s) => s.node !== null && s.node.tree !== 'lightdark' && visible.has(s.node.region));
   const ids = new Set(shown.map((s) => s.id));
   const place = (id: string, kind: GrimoireNode['kind'], n: TreeNode): GrimoireNode => ({
     id, kind, region: n.region, ...polar(n.angle, ringRadius(n.ring)),
@@ -48,7 +55,7 @@ export function layoutGrimoire(
   const edges = shown.flatMap((s) => s.prerequisites.filter((from) => ids.has(from)).map((from) => ({ from, to: s.id })));
 
   const rings = new Map<string, { min: number; max: number }>();
-  const all = [...spells.flatMap((s) => (s.node ? [s.node] : [])), ...passives.map((p) => p.node)];
+  const all = [...spells.flatMap((s) => (s.node && s.node.tree !== 'lightdark' ? [s.node] : [])), ...passives.map((p) => p.node)];
   for (const n of all) {
     const r = rings.get(n.region);
     rings.set(n.region, r ? { min: Math.min(r.min, n.ring), max: Math.max(r.max, n.ring) } : { min: n.ring, max: n.ring });
@@ -59,6 +66,50 @@ export function layoutGrimoire(
     .map((r) => {
       const { min, max } = rings.get(r.id)!;
       return { region: r.id, inner: min === 0 ? 0 : between(min - 1), outer: between(max) };
+    });
+  return { nodes, edges, fog };
+}
+
+/**
+ * The light/dark tree: spells with `tree: 'lightdark'` in columns left (light) and right (dark) of the
+ * central emblem, one column per ring. A fogged region is a vertical band; `inner`/`outer` are half-widths in x.
+ */
+export function layoutLightDark(
+  spells: NamedSpellDef[],
+  visible: ReadonlySet<string>,
+  regions: TreeRegion[] = [],
+): GrimoireLayout {
+  const own = spells.filter((s) => s.node?.tree === 'lightdark');
+  const shown = own.filter((s) => visible.has(s.node!.region));
+  const column = (n: TreeNode) => `${n.side}:${n.ring}`;
+  const counts = new Map<string, number>();
+  const seen = new Map<string, number>();
+  for (const s of shown) counts.set(column(s.node!), (counts.get(column(s.node!)) ?? 0) + 1);
+  const nodes: GrimoireNode[] = shown.map((s) => {
+    const n = s.node!;
+    const k = column(n);
+    const i = seen.get(k) ?? 0;
+    seen.set(k, i + 1);
+    return {
+      id: s.id, kind: 'spell', region: n.region,
+      x: (n.side === 'light' ? -1 : 1) * COLUMN_STEP * n.ring,
+      y: (i - (counts.get(k)! - 1) / 2) * ROW_STEP,
+    };
+  });
+  const ids = new Set(shown.map((s) => s.id));
+  const edges = shown.flatMap((s) => s.prerequisites.filter((from) => ids.has(from)).map((from) => ({ from, to: s.id })));
+  const rings = new Map<string, { min: number; max: number }>();
+  for (const s of own) {
+    const n = s.node!;
+    const r = rings.get(n.region);
+    rings.set(n.region, r ? { min: Math.min(r.min, n.ring), max: Math.max(r.max, n.ring) } : { min: n.ring, max: n.ring });
+  }
+  const fog = [...regions]
+    .sort((a, b) => a.order - b.order)
+    .filter((r) => !visible.has(r.id) && rings.has(r.id))
+    .map((r) => {
+      const { min, max } = rings.get(r.id)!;
+      return { region: r.id, inner: Math.max(0, (min - 0.5) * COLUMN_STEP), outer: (max + 0.5) * COLUMN_STEP };
     });
   return { nodes, edges, fog };
 }
