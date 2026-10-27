@@ -7,7 +7,7 @@ import { elementEquivalent, upgradeElement } from '../../src/engine/inventory';
 import type { Effect, GameState, Spell, Zone } from '../../src/engine/model';
 import { parseState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
-import { resolveSpell, spellAtLevel } from '../../src/engine/spells';
+import { MAX_SPELL_LEVEL, resolveSpell, spellAtLevel } from '../../src/engine/spells';
 import { visibleRegions } from '../../src/engine/tree';
 import { ELEMENT_ORDER, elementItem, GRADE_UPGRADE_COST, gradeValue, type ElementId, type ItemId } from '../../src/engine/types';
 import { createApp } from '../../worker/app';
@@ -32,6 +32,8 @@ export interface BotResult {
   learnedAt: Record<string, number>;
   /** per element: cumulative grade-1 equivalents gained from drops (spending and upgrades not subtracted), sampled each simulated minute */
   gained: Record<ElementId, { atMs: number; eq: number }[]>;
+  /** per `mat:` item: cumulative count gained from drops, sampled each simulated minute (same loop as `gained`) */
+  gainedItems: Record<ItemId, { atMs: number; n: number }[]>;
   /** requests sent to PUT /api/save and the action endpoints */
   serverCalls: number;
   /** non-200 responses from PUT /api/save and the action endpoints */
@@ -69,15 +71,21 @@ function dps(spell: Spell): number {
  * applied as the client would (success -> adopt the returned state; rejected / conflict -> adopt
  * the server state).
  *
- * The route is a list of recipes learned in order: pure X = base, strengthening and the two upper
- * layers of the X line (X_base, X_empower, X_pure_2, X_pure_3); mixed = fireball, wind_blade, fire
- * tornado, thunderfire hurricane and skyburner. Element inputs and fusion costs are upgraded from
+ * The route is a list of recipes learned in order: pure X = the Lv.2-9 line (X_base, X_empower, X_lv4,
+ * X_pure_2, X_lv6, X_pure_3, X_lv8, X_lv9); mixed = fireball, wind_blade, fire tornado, thunderfire
+ * hurricane and skyburner, then the fire trunk. Element inputs and fusion costs are upgraded from
  * lower grades on the client, like the element table. Every 5 simulated minutes the elements beyond
  * what the next recipe needs empower the strongest spell. Key items are used as soon as they drop.
  */
 export const ROUTE_RECIPES: Record<Exclude<Route, null>, string[]> = {
-  ...(Object.fromEntries(ELEMENT_ORDER.map((e) => [e, [`${e}_base`, `${e}_empower`, `${e}_pure_2`, `${e}_pure_3`]])) as Record<ElementId, string[]>),
-  mixed: ['fire_base', 'wind_base', 'fire_wind', 'thunder_fire_hurricane', 'skyburner'],
+  ...(Object.fromEntries(
+    ELEMENT_ORDER.map((e) => [e, [`${e}_base`, `${e}_empower`, `${e}_lv4`, `${e}_pure_2`, `${e}_lv6`, `${e}_pure_3`, `${e}_lv8`, `${e}_lv9`]]),
+  ) as Record<ElementId, string[]>),
+  // after skyburner the mixed route follows the fire trunk
+  mixed: [
+    'fire_base', 'wind_base', 'fire_wind', 'thunder_fire_hurricane', 'skyburner',
+    'fire_empower', 'fire_lv4', 'fire_pure_2', 'fire_lv6', 'fire_pure_3', 'fire_lv8', 'fire_lv9',
+  ],
 };
 
 export async function runBot(opts: BotOptions): Promise<BotResult> {
@@ -224,7 +232,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     const keep = reserve();
     for (let guard = 0; guard < 50; guard++) {
       const spell = resolveSpell(target, content)!;
-      if (spell.elements.length === 0) return;
+      if (spell.elements.length === 0 || levelOf(target) >= MAX_SPELL_LEVEL) return;
       const cost = empowerCost(spell, levelOf(target));
       const grade = Number(cost[0]!.split(':')[2]);
       const per = cost.length / spell.elements.length;
@@ -268,6 +276,8 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
 
   const gainedEq = Object.fromEntries(ELEMENT_ORDER.map((e) => [e, 0])) as Record<ElementId, number>;
   const gained = Object.fromEntries(ELEMENT_ORDER.map((e) => [e, [] as { atMs: number; eq: number }[]])) as BotResult['gained'];
+  const gainedMat: Record<ItemId, number> = {};
+  const gainedItems: BotResult['gainedItems'] = {};
   let nextSample = 60_000;
   let nextDecision = DECISION_MS;
   let nextUpload = UPLOAD_MS;
@@ -284,12 +294,18 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
         if (now > was) gainedEq[e] += (now - was) * gradeValue(g);
       }
     }
+    for (const id of Object.keys(r.game.inventory)) {
+      if (!id.startsWith('mat:')) continue;
+      const was = Object.hasOwn(game.inventory, id) ? game.inventory[id]! : 0;
+      if (r.game.inventory[id]! > was) gainedMat[id] = (gainedMat[id] ?? 0) + (r.game.inventory[id]! - was);
+    }
     game = r.game;
     battle = r.battle;
     simMs += STEP_MS;
     if (simMs >= nextSample) {
       nextSample += 60_000;
       for (const e of ELEMENT_ORDER) gained[e].push({ atMs: simMs, eq: gainedEq[e] });
+      for (const id of Object.keys(gainedMat)) (gainedItems[id] ??= []).push({ atMs: simMs, n: gainedMat[id]! });
     }
     for (const z of content.zones) if (!(z.id in clearedAt) && game.defeatedBosses.includes(z.bossId)) clearedAt[z.id] = simMs;
     if (lastClearedAt === null && game.defeatedBosses.includes(lastZone.bossId)) lastClearedAt = simMs;
@@ -307,6 +323,15 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     }
   }
 
+  // minutes each zone took: from the previous zone's clear (0 for the first) to its own
+  const clearMinutes: Record<string, number> = {};
+  let prevAt = 0;
+  for (const z of content.zones) {
+    if (!(z.id in clearedAt)) break;
+    clearMinutes[z.id] = +((clearedAt[z.id]! - prevAt) / 60_000).toFixed(1);
+    prevAt = clearedAt[z.id]!;
+  }
+
   return {
     clearedZones: content.zones.filter((z) => game.defeatedBosses.includes(z.bossId)).map((z) => z.id),
     learned: game.learned,
@@ -316,9 +341,10 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     clearedAt,
     learnedAt,
     gained,
+    gainedItems,
     serverCalls,
     rejectedUploads,
     rejectionReasons,
-    summary: { simMs, clearedAt, learned: game.learned, levels: game.levels, zone: game.currentZone, inventory: game.inventory },
+    summary: { simMs, clearedAt, clearMinutes, learned: game.learned, levels: game.levels, zone: game.currentZone, inventory: game.inventory },
   };
 }

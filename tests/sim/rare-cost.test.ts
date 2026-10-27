@@ -1,45 +1,50 @@
 import { describe, expect, it } from 'vitest';
-import { ELEMENT_ORDER, gradeValue, type ElementId } from '../../src/engine/types';
+import { ELEMENT_ORDER, type ElementId } from '../../src/engine/types';
 import { runBot } from './bot';
 
 const MINUTE = 60_000;
-const FOUR_HOURS = 240 * MINUTE;
+const SIX_HOURS = 360 * MINUTE;
 const SEED = 20261021;
-/**
- * Spec 2.1 cost check. The first cut (1:64) measured 139–211 minutes against a 120 ceiling; the user chose to raise the
- * odds slightly (1:49, 2%) and accept the rest, so the ceiling is the accepted range with a little headroom.
- */
-const RARE_FARM_CEILING_MIN = 180;
-/** The Lv.5 pure spell each element's rare recipe takes as its first input. */
-const BASE: Record<ElementId, string> = {
-  fire: 'inferno',
-  wind: 'vacuum_blades',
-  thunder: 'myriad_thunder',
-  earth: 'landslide',
-  water: 'maelstrom',
+/** Tuning target is measured and printed until Task 7 finishes tuning; flip to true to enforce it. */
+const ENFORCE = false;
+/** Spec 2.1: farming one rare spell takes at most this many simulated minutes. */
+const RARE_FARM_CEILING_MIN = 120;
+/** The Lv.9 spell each element's rare recipe takes as its first input, and the rare's material (R1: one material per attempt). */
+const LV9: Record<ElementId, { spell: string; material: string }> = {
+  fire: { spell: 'corona_scorch', material: 'mat:ember_core' },
+  wind: { spell: 'void_gale', material: 'mat:roc_feather' },
+  thunder: { spell: 'astral_fulmination', material: 'mat:fulgurite' },
+  earth: { spell: 'continental_crush', material: 'mat:lava_stone' },
+  water: { spell: 'nether_tides', material: 'mat:tide_scale' },
 };
 /** Expected attempts for a 1:49 weight rare outcome. */
 const ATTEMPTS = 50;
 
-/** Grade-1 equivalents gained per sim minute in the `windowMin` minutes after `fromMs` (or to the end of the samples). */
-function eqPerMinuteAfter(samples: { atMs: number; eq: number }[], fromMs: number, windowMin: number): number {
-  const start = samples.findLast((s) => s.atMs <= fromMs) ?? { atMs: fromMs, eq: 0 };
-  const end = samples.findLast((s) => s.atMs <= fromMs + windowMin * MINUTE)!;
+/** Items gained per sim minute in the `windowMin` minutes after `fromMs` (or to the end of the samples). */
+function perMinuteAfter(samples: { atMs: number; n: number }[], fromMs: number, windowMin: number): number {
+  const start = samples.findLast((s) => s.atMs <= fromMs) ?? { atMs: fromMs, n: 0 };
+  const end = samples.findLast((s) => s.atMs <= fromMs + windowMin * MINUTE);
+  if (!end) return 0;
   const mins = (end.atMs - start.atMs) / MINUTE;
-  return mins > 0 ? (end.eq - start.eq) / mins : 0;
+  return mins > 0 ? (end.n - start.n) / mins : 0;
 }
 
-// re-enabled in Task 6 (ledger Ruling P1): the bot still follows the old pure_2/pure_3 chain
-describe.skip('rare spell farming cost', () => {
+describe('rare spell farming cost', () => {
   for (const el of ELEMENT_ORDER) {
     it(`pure ${el}: farming one rare spell takes at most RARE_FARM_CEILING_MIN simulated minutes`, async () => {
-      const r = await runBot({ route: el, seed: SEED, maxSimMs: FOUR_HOURS });
-      const from = r.learnedAt[BASE[el]];
-      expect(from, `${BASE[el]} was never learned`).toBeDefined();
-      const rate = eqPerMinuteAfter(r.gained[el], from!, 30);
-      const minutes = (ATTEMPTS * gradeValue(3)) / rate;
-      console.info(`[rare-cost] ${el}: ${rate.toFixed(1)} eq/min -> ${minutes.toFixed(0)} min`);
-      expect(minutes).toBeLessThanOrEqual(RARE_FARM_CEILING_MIN);
+      const { spell, material } = LV9[el];
+      const r = await runBot({ route: el, seed: SEED, maxSimMs: SIX_HOURS });
+      expect(r.rejectedUploads, r.rejectionReasons.join('\n')).toBe(0);
+      const from = r.learnedAt[spell];
+      if (from === undefined) {
+        console.info(`[rare-cost] ${el}: ${spell} was never learned (sim ${(r.simMs / MINUTE).toFixed(0)} min)`);
+        if (ENFORCE) expect(from, `${spell} was never learned`).toBeDefined();
+        return;
+      }
+      const rate = perMinuteAfter(r.gainedItems[material] ?? [], from, 30);
+      const minutes = rate > 0 ? ATTEMPTS / rate : Infinity;
+      console.info(`[rare-cost] ${el}: learned ${spell} at ${(from / MINUTE).toFixed(1)} min, ${rate.toFixed(2)} ${material}/min -> ${minutes.toFixed(0)} min`);
+      if (ENFORCE) expect(minutes).toBeLessThanOrEqual(RARE_FARM_CEILING_MIN);
     }, 600_000);
   }
 });
