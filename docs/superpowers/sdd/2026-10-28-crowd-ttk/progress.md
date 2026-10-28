@@ -134,3 +134,4 @@ worlds_end        rel  1 (Lv.10, 7 spells) 場上 6.1；碰線 0.0；15 秒清�
 - Fix Ruling: 前一招 keeps the older entry when the swapped-out spell never reached a nonzero DPS — avoids blanking the comparison on a quick A→B→C — cost if wrong: line may show a spell two swaps back.
 - Fix Ruling: 每下傷害 uses the largest `mult` among effects that carry one (haste has none) and the diff compares rounded values — spec wording — cost if wrong: none.
 
+- Final review: fix wave 1/1 (all findings addressed; commits c6ea375..e9b32a3). Re-review minors (deferred): "no diff when viewing the equipped spell" only tested at function level (component ternary untested); `equippedVs` recomputed each render without useMemo; 前一招 lags up to one 250 ms refresh. Dangling AGENTS.md 3.0 sentence removed by controller (docs only).
