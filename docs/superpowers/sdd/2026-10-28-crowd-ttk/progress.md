@@ -95,3 +95,28 @@ Task 3 路線通關時間（種子 20261021，模擬分鐘，0 次被拒，6 條
 
 （調整前：前四魔王 69.5～119.3、全部 ≤ 211.8。）每個地點 1.0～36.8 分，沉沒神殿 23.1～36.8 分最長（原因沒有查）。刷稀有（只印報告）：火 38、風 15、雷 27、土 100、水 83 分。`tier-curve` 四項 0 條未通過；自創 Lv.9／稀有兩兩組合超標 21／66（只印報告，之前 22）。
 - Task 3: minor (deferred): 雷鳴峽谷調整後一般魔物血量 180～306，比迷霧草原的 210～420 還低（防禦較高，所以低階魔法仍打不動）；看起來怪，但不影響規則。
+- Controller Ruling C3（2026-10-28，使用者選「維持現狀並先試玩」）: 保留 Task 3 的血量係數、不重調；(1) `touched` 不算被拉怪效果（`zone` 且 `pull > 0`：流沙、天穹風暴、斷空裂風、絕空裂風、蒼穹之息…）拉到停止圈的魔物，只算走進來的，C2（整段含暖機）不變；(2) 把關改成：rel 0 場上 10～35；rel +1 碰線 ≤ 2 且清場 > 50%，迷霧草原例外只要求 rel +1 場上 < rel 0 場上；rel −1 場上 > 同地點 rel 0 場上；`ENFORCE_CROWD = true`；(3) 改完仍不通過的列不再放寬，記錄下來；(4) 使用者試玩時要看「同階偏簡單」與低一階魔法能清掉前面地點（雷鳴峽谷、熔火荒原）。規格 4.3 加了同日修訂說明。
+- Task 3 Ruling T3d: 「被拉」的判斷 = 這一步之前（`battle.fx`）或之後（`r.battle.fx`）魔物在任一個 `pull > 0` 的 `zone` 效果的拉力範圍內（`radius × ZONE_REACH + 魔物半徑`，和引擎 `within` 相同），那一步就不算碰線；同一隻魔物之後自己走到線上（不在拉力範圍內）仍會算 — 用效果範圍而不是速度判斷，因為拉力是直接改位置（不是 `kx/ky`），沒有速度可看；`ZONE_REACH` 改成從 `combat.ts` export（只加 export，數值不變）— 若錯：拉力範圍內剛好自己走到線上的魔物會少算。
+- Task 3 Ruling T3e: 修正後仍不通過的兩列在 `crowd.test.ts` 以 `KNOWN_GAPS` 跳過並印出（不放寬門檻）：迷霧草原 rel 0 場上 39.2（> 35）、雷鳴峽谷 rel −1 場上 12.7（≤ rel 0 的 18.1）— 依 C3 第 3 點 — 若錯：這兩列之後要靠重調或改門檻處理。
+
+Task 3 碰線修正後（CROWD_OPTS；ENFORCE_CROWD = true；場上、清場不變，只有碰線改變）：
+```
+mist_meadow       rel  0 (Lv.2, 5 spells) 場上 39.2；碰線 102.0；15 秒清場 0%     ← 已知缺口（> 35）
+mist_meadow       rel  1 (Lv.3, 5 spells) 場上 17.1；碰線 6.0；15 秒清場 40%      （例外：17.1 < 39.2 通過）
+thunder_gorge     rel -1 (Lv.3, 5 spells) 場上 12.7；碰線 20.5；15 秒清場 40%     ← 已知缺口（≤ 18.1）
+thunder_gorge     rel  0 (Lv.4, 11 spells) 場上 18.1；碰線 32.0；15 秒清場 9%
+thunder_gorge     rel  1 (Lv.5, 11 spells) 場上 5.3；碰線 0.0；15 秒清場 55%
+ember_wastes      rel -1 (Lv.5, 11 spells) 場上 31.7；碰線 0.0；15 秒清場 18%
+ember_wastes      rel  0 (Lv.6, 6 spells) 場上 27.6；碰線 7.3；15 秒清場 33%
+ember_wastes      rel  1 (Lv.7, 6 spells) 場上 3.9；碰線 0.0；15 秒清場 67%
+sunken_temple     rel -1 (Lv.6, 6 spells) 場上 73.1；碰線 32.5；15 秒清場 0%
+sunken_temple     rel  0 (Lv.7, 6 spells) 場上 13.6；碰線 0.0；15 秒清場 17%
+sunken_temple     rel  1 (Lv.8, 5 spells) 場上 9.3；碰線 0.0；15 秒清場 60%
+starfall_plateau  rel -1 (Lv.7, 6 spells) 場上 78.9；碰線 39.3；15 秒清場 0%
+starfall_plateau  rel  0 (Lv.8, 5 spells) 場上 16.6；碰線 0.0；15 秒清場 20%
+starfall_plateau  rel  1 (Lv.9, 5 spells) 場上 11.3；碰線 0.0；15 秒清場 60%
+worlds_end        rel -1 (Lv.8, 5 spells) 場上 78.6；碰線 52.5；15 秒清場 0%
+worlds_end        rel  0 (Lv.9, 5 spells) 場上 15.4；碰線 10.5；15 秒清場 40%
+worlds_end        rel  1 (Lv.10, 7 spells) 場上 6.1；碰線 0.0；15 秒清場 71%
+```
+修訂後的把關：17 列中 15 列通過，2 列是已知缺口（上面標示）。
