@@ -322,13 +322,11 @@ describe('map expansion', () => {
     }
   });
 
-  it('the Starfall boss drops Divine elements sometimes; World\'s End regulars drop them', () => {
+  it('Divine elements come from upgrading Extreme ones (the Starfall boss drops Extreme only); World\'s End regulars drop them', () => {
     const star = zs[4]!;
     for (const e of ELEMENT_ORDER) {
-      const d = boss(star).drops.find((x) => x.itemId === `el:${e}:5`);
-      expect(d, e).toBeDefined();
-      expect(d!.chance).toBeLessThan(1);
-      expect(rows(boss(star), 'el:').some((x) => x.itemId === `el:${e}:4` && x.chance === 1), e).toBe(true);
+      expect(boss(star).drops.some((x) => x.itemId === `el:${e}:5`), e).toBe(false);
+      expect(rows(boss(star), 'el:').some((x) => x.itemId === `el:${e}:4` && x.chance > 0 && x.chance < 1), e).toBe(true);
       expect(normals(zs[5]!).some((m) => m.drops.some((x) => x.itemId === `el:${e}:5`)), e).toBe(true);
     }
   });

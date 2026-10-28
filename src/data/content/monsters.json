@@ -14,31 +14,31 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.07,
+        "chance": 0.0126,
         "min": 1,
         "max": 1
       },
@@ -65,31 +65,31 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.07,
+        "chance": 0.0126,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
@@ -116,31 +116,31 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.07,
+        "chance": 0.0126,
         "min": 1,
         "max": 1
       },
@@ -167,31 +167,31 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.07,
+        "chance": 0.0126,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.025,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       }
@@ -212,31 +212,31 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 1,
+        "chance": 0.5,
         "min": 3,
         "max": 5
       },
       {
         "itemId": "el:wind:1",
-        "chance": 1,
+        "chance": 0.5,
         "min": 3,
         "max": 5
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 1,
+        "chance": 0.5,
         "min": 3,
         "max": 5
       },
       {
         "itemId": "el:earth:1",
-        "chance": 1,
+        "chance": 0.5,
         "min": 3,
         "max": 5
       },
       {
         "itemId": "el:water:1",
-        "chance": 1,
+        "chance": 0.5,
         "min": 3,
         "max": 5
       },
@@ -263,37 +263,37 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.08,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.01,
+        "chance": 0.0015,
         "min": 1,
         "max": 1
       },
@@ -320,37 +320,37 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.01,
+        "chance": 0.0015,
         "min": 1,
         "max": 1
       },
@@ -377,37 +377,37 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.035,
+        "chance": 0.00525,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.01,
+        "chance": 0.0015,
         "min": 1,
         "max": 1
       },
@@ -440,31 +440,31 @@
     "drops": [
       {
         "itemId": "el:fire:2",
-        "chance": 1,
+        "chance": 0.5,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:wind:2",
-        "chance": 1,
+        "chance": 0.5,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 1,
+        "chance": 0.5,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:earth:2",
-        "chance": 1,
+        "chance": 0.5,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:water:2",
-        "chance": 1,
+        "chance": 0.5,
         "min": 2,
         "max": 3
       },
@@ -491,97 +491,127 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.09,
+        "chance": 0.0108,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.0096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.01,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "mat:sun_shard",
         "chance": 0.01,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.0005,
         "min": 1,
         "max": 1
       }
@@ -602,91 +632,91 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.09,
+        "chance": 0.0108,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.0096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.01,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
@@ -699,6 +729,36 @@
       {
         "itemId": "mat:lava_stone",
         "chance": 0.01,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.0005,
         "min": 1,
         "max": 1
       }
@@ -719,97 +779,127 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.08,
+        "chance": 0.0096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.09,
+        "chance": 0.0108,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.07,
+        "chance": 0.0084,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.01,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.008,
+        "chance": 0.00096,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.001,
+        "chance": 0.00012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "mat:lava_stone",
         "chance": 0.02,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:fire:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:wind:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:thunder:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:earth:4",
+        "chance": 0.0005,
+        "min": 1,
+        "max": 1
+      },
+      {
+        "itemId": "el:water:4",
+        "chance": 0.0005,
         "min": 1,
         "max": 1
       }
@@ -830,31 +920,31 @@
     "drops": [
       {
         "itemId": "el:fire:3",
-        "chance": 0.8,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.8,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.8,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.8,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.8,
+        "chance": 0.08,
         "min": 1,
         "max": 1
       },
@@ -881,121 +971,121 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.08,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.03,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.004,
+        "chance": 0.0003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
@@ -1022,121 +1112,121 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.08,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.03,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.004,
+        "chance": 0.0003,
         "min": 1,
         "max": 1
       },
@@ -1169,121 +1259,121 @@
     "drops": [
       {
         "itemId": "el:fire:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:1",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:1",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.08,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.06,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.03,
+        "chance": 0.0045,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.02,
+        "chance": 0.003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.004,
+        "chance": 0.0003,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.003,
+        "chance": 0.000225,
         "min": 1,
         "max": 1
       },
@@ -1310,61 +1400,61 @@
     "drops": [
       {
         "itemId": "el:fire:3",
-        "chance": 1,
+        "chance": 0.2,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:wind:3",
-        "chance": 1,
+        "chance": 0.2,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 1,
+        "chance": 0.2,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:earth:3",
-        "chance": 1,
+        "chance": 0.2,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:water:3",
-        "chance": 1,
+        "chance": 0.2,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:fire:4",
-        "chance": 1,
+        "chance": 0.1,
         "min": 1,
         "max": 2
       },
       {
         "itemId": "el:wind:4",
-        "chance": 1,
+        "chance": 0.1,
         "min": 1,
         "max": 2
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 1,
+        "chance": 0.1,
         "min": 1,
         "max": 2
       },
       {
         "itemId": "el:earth:4",
-        "chance": 1,
+        "chance": 0.1,
         "min": 1,
         "max": 2
       },
       {
         "itemId": "el:water:4",
-        "chance": 1,
+        "chance": 0.1,
         "min": 1,
         "max": 2
       },
@@ -1391,91 +1481,91 @@
     "drops": [
       {
         "itemId": "el:fire:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.05,
-        "min": 1,
-        "max": 1
-      },
-      {
-        "itemId": "el:water:3",
         "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
+        "itemId": "el:water:3",
+        "chance": 0.018,
+        "min": 1,
+        "max": 1
+      },
+      {
         "itemId": "el:fire:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.006,
+        "chance": 0.0036,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
@@ -1514,91 +1604,91 @@
     "drops": [
       {
         "itemId": "el:fire:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.05,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.006,
+        "chance": 0.0036,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
@@ -1631,91 +1721,91 @@
     "drops": [
       {
         "itemId": "el:fire:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:2",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:2",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.03,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.05,
+        "chance": 0.03,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.004,
+        "chance": 0.0024,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.006,
+        "chance": 0.0036,
         "min": 1,
         "max": 1
       },
@@ -1754,63 +1844,33 @@
     "drops": [
       {
         "itemId": "el:fire:4",
-        "chance": 1,
+        "chance": 0.3,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:wind:4",
-        "chance": 1,
+        "chance": 0.3,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 1,
+        "chance": 0.3,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:earth:4",
-        "chance": 1,
+        "chance": 0.3,
         "min": 2,
         "max": 3
       },
       {
         "itemId": "el:water:4",
-        "chance": 1,
+        "chance": 0.3,
         "min": 2,
         "max": 3
-      },
-      {
-        "itemId": "el:fire:5",
-        "chance": 0.9,
-        "min": 1,
-        "max": 1
-      },
-      {
-        "itemId": "el:wind:5",
-        "chance": 0.9,
-        "min": 1,
-        "max": 1
-      },
-      {
-        "itemId": "el:thunder:5",
-        "chance": 0.9,
-        "min": 1,
-        "max": 1
-      },
-      {
-        "itemId": "el:earth:5",
-        "chance": 0.9,
-        "min": 1,
-        "max": 1
-      },
-      {
-        "itemId": "el:water:5",
-        "chance": 0.9,
-        "min": 1,
-        "max": 1
       },
       {
         "itemId": "key:star_sigil",
@@ -1835,91 +1895,91 @@
     "drops": [
       {
         "itemId": "el:fire:3",
-        "chance": 0.06,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
@@ -1958,91 +2018,91 @@
     "drops": [
       {
         "itemId": "el:fire:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.06,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
@@ -2081,91 +2141,91 @@
     "drops": [
       {
         "itemId": "el:fire:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:3",
-        "chance": 0.06,
+        "chance": 0.018,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:3",
-        "chance": 0.04,
+        "chance": 0.012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:4",
-        "chance": 0.03,
+        "chance": 0.009,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:4",
-        "chance": 0.02,
+        "chance": 0.006,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:fire:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:wind:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:thunder:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:earth:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
       {
         "itemId": "el:water:5",
-        "chance": 0.004,
+        "chance": 0.0012,
         "min": 1,
         "max": 1
       },
