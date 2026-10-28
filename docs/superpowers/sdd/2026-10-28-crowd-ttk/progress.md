@@ -135,3 +135,10 @@ worlds_end        rel  1 (Lv.10, 7 spells) 場上 6.1；碰線 0.0；15 秒清�
 - Fix Ruling: 每下傷害 uses the largest `mult` among effects that carry one (haste has none) and the diff compares rounded values — spec wording — cost if wrong: none.
 
 - Final review: fix wave 1/1 (all findings addressed; commits c6ea375..e9b32a3). Re-review minors (deferred): "no diff when viewing the equipped spell" only tested at function level (component ternary untested); `equippedVs` recomputed each render without useMemo; 前一招 lags up to one 250 ms refresh. Dangling AGENTS.md 3.0 sentence removed by controller (docs only).
+
+- Playtest follow-up (spec 9, commits 5c2a3e8, 08c2b6f): user "魔王有點太硬了，地圖一就已經需要花好幾分鐘" and "擊退特效請加入邊界". Measured boss fights: home tier mist_meadow could not kill in 10 min, others 103–238 s.
+- Ruling B1: boss time is counted from the boss entering ENGAGE_R, not from spawn — the ~20 s walk-in made a from-spawn 30 s target cut mist_meadow's boss to 450 hp (a normal foe) — cost if wrong: visible boss time is ~50 s, not 30 s.
+- Ruling K1: KNOCK_MAX_R = ENGAGE_R (0.4), and knockback never carries a foe farther out than it already was; velocity zeroed on clamp — narrow battle views show only ~0.42 on the short axis — cost if wrong: 40vh tablet (~0.36 visible) can still clip a foe slightly.
+- Ruling K2: knockback refit scales every damage mult of a spell by one factor (spells with push > 0 or any meteor), matching the mean log ratio of solo and crowd DPS at the curve zones to the pre-change values; a two-factor (push effects vs others) fit diverged and was dropped — cost if wrong: solo/crowd split of these spells shifted (e.g. wind_blade solo ×1.33, crowd ×0.75 vs before).
+- User choices: keep the bound and lower knockback spells' damage; list the two residual misses as known gaps (tier-curve `KNOWN_GAPS` prefix match, crowd `starfall_plateau rel 1`); boss target ~30 s; boss hp table confirmed.
+- Result: npm test 69 files / 762 tests pass, build passes; routes clear 35.0–41.5 sim min, 0 rejections. Rare-cost earth reports 0 lava_stone/min (report only).
