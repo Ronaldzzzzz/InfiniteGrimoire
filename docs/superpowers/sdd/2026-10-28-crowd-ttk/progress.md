@@ -124,3 +124,4 @@ worlds_end        rel  1 (Lv.10, 7 spells) 場上 6.1；碰線 0.0；15 秒清�
 - Task 3: minor (deferred): a KNOWN_GAPS row that starts passing is not flagged as stale.
 - Task 3: minor (deferred): `inPull` ignores knockback / `METEOR_PUSH` (correct, not pulls) — deserves a one-line comment.
 - Task 3: complete (commits 196cbf6..852aacb, review clean; 2 KNOWN_GAPS rows per Ruling C3)
+- Task 4 (畫面確認, headless Chrome, 無程式變更): sunken_temple，Lv.7 墜日 60 秒場上 40～55 隻（預期 10～35，偏多）；切到 Lv.8 赤獄焚城後 15 秒內 37→17→16→4→16→15 隻、最後截圖只剩魔王 1 隻（預期 <= 5，未穩定達到，約 15）。DPS 4,534 / 3,457（千位數，符合）；無頁面錯誤。種的：新遊客存檔的 learned、equipped、currentZone、unlockedZones、revealed（本機 D1）；實際操作：開戰 60 秒、點技能樹節點與氣泡「裝備」換魔法、再戰 15 秒；怪數用 React fiber 讀 runtime snapshot。細節見 `.superpowers/sdd/2026-10-28-crowd-ttk/task-4-report.md`。
