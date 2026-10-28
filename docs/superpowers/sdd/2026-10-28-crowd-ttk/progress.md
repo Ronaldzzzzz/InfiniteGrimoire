@@ -52,3 +52,6 @@ worlds_end        rel  0 (Lv.9, 5 spells) 場上 77.3；碰線 127.0；15 秒清
 worlds_end        rel  1 (Lv.10, 7 spells) 場上 58.0；碰線 146.5；15 秒清場 0%
 ```
 - Controller Ruling C2: keep T2c (`touched` counts the whole window incl. warm-up) — the spell is equipped from t=0, so a tier-up spell must keep every foe off the line from the start; stricter than counting after warm-up — cost if wrong: Task 3 tunes HP a bit lower than strictly needed.
+- Task 2: minor (deferred): `crowdStats` always runs `crowdClear` though `crowdReport` only uses it for rel +1 (~2/3 wasted work).
+- Task 2: minor (deferred): `measure.ts` `st` map has a pointless `const a = ...; return a;`.
+- Task 2: complete (commits 22683b7..6c9f8d1, review clean)
