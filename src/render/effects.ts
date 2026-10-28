@@ -26,7 +26,7 @@ export function jaggedPath(from: Pt, to: Pt, segments: number, rng: Rng): Pt[] {
 
 export function floatingText(hit: { damage: number; immune: boolean }): { text: string; color: string } {
   if (hit.immune) return { text: '無效', color: '#9aa3b2' };
-  return { text: String(Math.round(hit.damage)), color: '#ffffff' };
+  return { text: Math.round(hit.damage).toLocaleString('en-US'), color: '#ffffff' };
 }
 
 /** Points along an ellipse (radii rx, ry) rotated by `rot` around `c`, from angle a0 to a1 (segments + 1 points). */

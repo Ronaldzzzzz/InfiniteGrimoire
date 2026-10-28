@@ -12,7 +12,7 @@ import type { ElementId } from '../engine/types';
 import type { Snapshot } from '../game/runtime';
 import { floatTextStart, makeArena, toScreen, type Arena } from './arena';
 import { ellipseArc, floatingText, jaggedPath, type Pt } from './effects';
-import { DpsMeter, formatDps } from './dps';
+import { DpsReadout, formatDps, formatPrevDps } from './dps';
 import { blendForSpell, MULTI_KILL_WINDOW_MS, multiKillLabel, particleStyle, shakeFor, type ParticleShape, type ParticleStyle } from './element-fx';
 import { interpolate } from './motion';
 import { COLORS } from './palette';
@@ -162,9 +162,9 @@ export class BattleView {
   private castLabel: Text | null = null;
   /** top-left readout: hit points removed per second over the last 10 s (hits plus summed burn), for the equipped spell only */
   private dpsLabel: Text | null = null;
-  private readonly dps = new DpsMeter(0);
+  private dpsPrevLabel: Text | null = null;
+  private readonly dps = new DpsReadout();
   private dpsRefreshAt = 0;
-  private dpsSpell: string | null = null;
   private castAge = CAST_LABEL_MS;
   private readonly killTimes: number[] = [];
   private shake = 0;
@@ -224,7 +224,13 @@ export class BattleView {
       style: { fill: COLORS.amber, fontSize: 13, fontWeight: 'bold', fontFamily: 'system-ui, sans-serif', stroke: { color: '#000000', width: 3 } },
     });
     this.dpsLabel.position.set(8, 6);
-    this.uiLayer.addChild(this.banner, this.castLabel, this.dpsLabel);
+    this.dpsPrevLabel = new Text({
+      text: '',
+      style: { fill: COLORS.amber, fontSize: 11, fontFamily: 'system-ui, sans-serif', stroke: { color: '#000000', width: 3 } },
+    });
+    this.dpsPrevLabel.alpha = 0.75;
+    this.dpsPrevLabel.position.set(8, 23);
+    this.uiLayer.addChild(this.banner, this.castLabel, this.dpsLabel, this.dpsPrevLabel);
     ensureDamageFont();
     this.ready_ = true;
     this.app.ticker.add((t) => this.tick(t.deltaMS));
@@ -348,11 +354,11 @@ export class BattleView {
   sync(snapshot: Snapshot, alpha = 1): void {
     if (!this.ready_ || this.destroyed) return;
     const battle = snapshot.battle;
-    // swapping spells restarts the average, so the number always belongs to the spell in hand
-    if (snapshot.game.equipped !== this.dpsSpell) {
-      if (this.dpsSpell !== null) this.dps.reset(this.time);
-      this.dpsSpell = snapshot.game.equipped;
-    }
+    // swapping spells restarts the average (the old number moves to the 前一招 line), so the big number always
+    // belongs to the spell in hand; its cooldown sets how long after a hit we still count as "fighting"
+    const eq = snapshot.game.equipped;
+    const eqSpell = eq === null ? null : resolveSpell(eq, this.content);
+    this.dps.equip(eq, eqSpell?.name ?? null, eqSpell?.cooldownMs ?? 0);
     if (battle !== this.lastBattle) {
       const last = this.lastBattle;
       this.prevPos.clear();
@@ -361,7 +367,7 @@ export class BattleView {
         for (const f of last.foes) this.prevPos.set(f.uid, { x: f.x, y: f.y });
       } else {
         this.seenFx.clear();
-        this.dps.reset(this.time);
+        this.dps.newBattle();
       }
       this.lastBattle = battle;
       this.byUid = new Map(battle.foes.map((f) => [f.uid, f]));
@@ -865,7 +871,7 @@ export class BattleView {
     for (const e of events) {
       switch (e.type) {
         case 'hit': {
-          this.dps.add(this.time, e.dealt); // hit points actually removed, so overkill on weak foes doesn't inflate it
+          this.dps.hit(this.time, e.damage); // the full hit, overkill included: the number is about the spell, not about foe hp
           const v = this.foes.get(e.uid);
           if (!v) break;
           const ft = floatingText(e);
@@ -873,7 +879,7 @@ export class BattleView {
           break;
         }
         case 'dot':
-          this.dps.add(this.time, e.damage);
+          this.dps.dot(this.time, e.damage);
           break;
         case 'kill': {
           this.killTimes.push(this.time);
@@ -1152,6 +1158,7 @@ export class BattleView {
     this.updateBanner(dtMs);
     if (this.dpsLabel && this.time >= this.dpsRefreshAt) {
       this.dpsLabel.text = formatDps(this.dps.value(this.time));
+      if (this.dpsPrevLabel) this.dpsPrevLabel.text = formatPrevDps(this.dps.previous);
       this.dpsRefreshAt = this.time + DPS_REFRESH_MS;
     }
     this.updateShake(dtMs);

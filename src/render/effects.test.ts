@@ -20,6 +20,10 @@ describe('floatingText', () => {
   it('shows the damage number', () => {
     expect(floatingText({ damage: 12, immune: false }).text).toBe('12');
   });
+  it('groups thousands', () => {
+    expect(floatingText({ damage: 12345.4, immune: false }).text).toBe('12,345');
+    expect(floatingText({ damage: 1_234_567, immune: false }).text).toBe('1,234,567');
+  });
 });
 
 describe('ellipseArc', () => {

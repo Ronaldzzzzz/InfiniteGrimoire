@@ -26,6 +26,8 @@ export const Notebook = memo(function Notebook({
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const pending = useRuntime(runtime, (s) => s.synthPending);
   const [open, setOpen] = useState<string | null>(null);
+  const eqSpell = resolveSpell(equipped, content);
+  const eqVs = eqSpell ? { spell: eqSpell, level: Object.hasOwn(levels, equipped) ? levels[equipped]! : 1 } : null;
 
   const rows = learned.flatMap((id) => {
     const spell = resolveSpell(id, content);
@@ -57,7 +59,7 @@ export const Notebook = memo(function Notebook({
               </span>
             </div>
             <p className="notebook-desc muted">{spell.desc}</p>
-            <SpellFactsView spell={spell} level={level} />
+            <SpellFactsView spell={spell} level={level} versus={isEquipped ? null : eqVs} />
             {open === id && <EmpowerPanel spellId={id} runtime={runtime} sync={sync} content={content} />}
           </li>
         );

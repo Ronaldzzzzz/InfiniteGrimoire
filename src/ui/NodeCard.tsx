@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Content } from '../engine/model';
-import { spellAtLevel } from '../engine/spells';
+import { resolveSpell, spellAtLevel } from '../engine/spells';
 import { passiveRequirementMet } from '../engine/tree';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
@@ -54,6 +54,8 @@ export function NodeCard({
     } else {
       const level = Object.hasOwn(levels, spell.id) ? levels[spell.id]! : 1;
       const isEquipped = equipped === spell.id;
+      const eqSpell = resolveSpell(equipped, content);
+      const equippedVs = eqSpell ? { spell: eqSpell, level: Object.hasOwn(levels, equipped) ? levels[equipped]! : 1 } : null;
       body = (
         <>
           <h4>
@@ -62,7 +64,7 @@ export function NodeCard({
             {level > 1 && <span className="empower-tag">{empowerLabel(level)}</span>}
           </h4>
           <p><AffinityTag affinity={spell.affinity} /> {spell.desc}</p>
-          <SpellFactsView spell={spell} level={level} chant={spell.chant} />
+          <SpellFactsView spell={spell} level={level} chant={spell.chant} versus={isEquipped ? null : equippedVs} />
           <div className="node-actions">
             <button type="button" disabled={slotsFull || pending} onClick={() => onPick(spell.id)}>放入合成</button>
             <button type="button" disabled={isEquipped || pending} onClick={() => runtime.equip(spell.id)}>

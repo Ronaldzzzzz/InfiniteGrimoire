@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../engine/content';
 import { MAX_SPELL_LEVEL, spellAtLevel } from '../engine/spells';
-import { spellFacts } from './spell-facts';
+import { formatPerHit, perHit, perHitDiff, spellFacts } from './spell-facts';
 
 describe('spellFacts', () => {
   it('lists school, attack, cooldown and the burn of a fireball', () => {
@@ -32,5 +32,43 @@ describe('spellFacts', () => {
       { kind: 'storm', mult: 1, ms: 1000, tickMs: 100, status: [{ kind: 'burn', ms: 4500 }] },
     ];
     expect(spellFacts(s, 1).statuses).toEqual([{ name: '燃燒', sec: '4.5 秒' }, { name: '潮濕', sec: '1.5 秒' }]);
+  });
+});
+
+describe('perHit', () => {
+  it('is the empowered attack times the largest effect mult, rounded', () => {
+    const s = structuredClone(content.spells.fireball!);
+    s.attack = 1000;
+    s.effects = [
+      { kind: 'bolt', mult: 1, count: 1, radius: 0.1, target: 'nearest' },
+      { kind: 'ring', mult: 1.85, radius: 0.3, push: 0 },
+    ];
+    expect(perHit(s, 1)).toBe(1850);
+    expect(spellFacts(s, 1).perHit).toBe(1850);
+    expect(perHit(s, MAX_SPELL_LEVEL)).toBe(Math.round(spellAtLevel(s, MAX_SPELL_LEVEL).attack * 1.85));
+  });
+});
+
+describe('perHitDiff', () => {
+  const mk = (attack: number, mult: number) => {
+    const s = structuredClone(content.spells.fireball!);
+    s.attack = attack;
+    s.effects = [{ kind: 'ring', mult, radius: 0.3, push: 0 }];
+    return s;
+  };
+  it('is plus when the viewed spell hits harder, minus when softer, none when equal', () => {
+    const eq = { spell: mk(1000, 1), level: 1 };
+    expect(perHitDiff(mk(1420, 1), 1, eq)).toEqual({ value: 420, text: '（+420）', tone: 'up' });
+    expect(perHitDiff(mk(870, 1), 1, eq)).toEqual({ value: -130, text: '（−130）', tone: 'down' });
+    expect(perHitDiff(mk(1000, 1), 1, eq)).toBeNull();
+  });
+  it('shows no difference when there is nothing to compare with', () => {
+    expect(perHitDiff(mk(1000, 1), 1, null)).toBeNull();
+    expect(perHitDiff(mk(1000, 1), 1, undefined)).toBeNull();
+  });
+  it('groups thousands', () => {
+    expect(formatPerHit(1850)).toBe('1,850');
+    const eq = { spell: mk(1000, 1), level: 1 };
+    expect(perHitDiff(mk(3200, 1), 1, eq)?.text).toBe('（+2,200）');
   });
 });
