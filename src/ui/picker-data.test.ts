@@ -28,15 +28,15 @@ describe('spellPickerGroups', () => {
   it('carries tier, shape, attack and the equipped flag', () => {
     const rows = spellPickerGroups(game(), content, 'tier')[0]!.rows;
     const fb = rows.find((r) => r.id === 'fireball')!;
-    expect(fb).toMatchObject({ tier: 2, shape: 'bolt', attack: 12, equipped: true, elements: ['fire'] });
+    expect(fb).toMatchObject({ tier: 2, shape: 'bolt', attack: 120, equipped: true, elements: ['fire'] });
     expect(rows.find((r) => r.id === 'wind_blade')!.shape).toBe('blades');
     expect(rows.find((r) => r.id === 'mana_bolt')!.equipped).toBe(false);
   });
 
   it('shows learned spells at their empower level', () => {
     const rows = spellPickerGroups(game({ levels: { fireball: 11 } }), content, 'tier')[0]!.rows;
-    // 12 x (1 + (EMPOWER_MAX - 1) x 10 / 49) = 12.98
-    expect(rows.find((r) => r.id === 'fireball')!).toMatchObject({ tier: 2, attack: 13 });
+    // 120 x (1 + (EMPOWER_MAX - 1) x 10 / 49) = 129.8
+    expect(rows.find((r) => r.id === 'fireball')!).toMatchObject({ tier: 2, attack: 130 });
   });
 
   it('lists crafted spells by their derived name', () => {

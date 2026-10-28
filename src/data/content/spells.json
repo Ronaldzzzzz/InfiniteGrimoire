@@ -7,7 +7,7 @@
     "hint": "殘卷：純粹的魔力凝聚成彈，是所有魔法的起點。",
     "elements": [],
     "tier": 1,
-    "attack": 8,
+    "attack": 80,
     "cooldownMs": 1000,
     "effects": [
       {
@@ -43,7 +43,7 @@
     "hint": "殘卷：把魔法疊得比自己能承受的還深，魔力就會在手中炸開。",
     "elements": [],
     "tier": 1,
-    "attack": 1,
+    "attack": 10,
     "cooldownMs": 3000,
     "effects": [
       {
@@ -75,7 +75,7 @@
       "fire"
     ],
     "tier": 2,
-    "attack": 12,
+    "attack": 120,
     "cooldownMs": 1100,
     "effects": [
       {
@@ -123,7 +123,7 @@
       "wind"
     ],
     "tier": 2,
-    "attack": 12,
+    "attack": 120,
     "cooldownMs": 1100,
     "effects": [
       {
@@ -163,7 +163,7 @@
       "thunder"
     ],
     "tier": 2,
-    "attack": 12,
+    "attack": 120,
     "cooldownMs": 1100,
     "effects": [
       {
@@ -204,7 +204,7 @@
       "earth"
     ],
     "tier": 2,
-    "attack": 12,
+    "attack": 120,
     "cooldownMs": 1100,
     "effects": [
       {
@@ -251,7 +251,7 @@
       "water"
     ],
     "tier": 2,
-    "attack": 12,
+    "attack": 120,
     "cooldownMs": 1100,
     "effects": [
       {
@@ -302,7 +302,7 @@
       "fire"
     ],
     "tier": 3,
-    "attack": 25,
+    "attack": 250,
     "cooldownMs": 2200,
     "effects": [
       {
@@ -349,7 +349,7 @@
       "wind"
     ],
     "tier": 3,
-    "attack": 25,
+    "attack": 250,
     "cooldownMs": 3000,
     "effects": [
       {
@@ -393,7 +393,7 @@
       "thunder"
     ],
     "tier": 3,
-    "attack": 25,
+    "attack": 250,
     "cooldownMs": 2600,
     "effects": [
       {
@@ -440,7 +440,7 @@
       "earth"
     ],
     "tier": 3,
-    "attack": 25,
+    "attack": 250,
     "cooldownMs": 3200,
     "effects": [
       {
@@ -492,7 +492,7 @@
       "water"
     ],
     "tier": 3,
-    "attack": 25,
+    "attack": 250,
     "cooldownMs": 2800,
     "effects": [
       {
@@ -538,7 +538,7 @@
       "wind"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3200,
     "effects": [
       {
@@ -591,7 +591,7 @@
       "water"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -648,7 +648,7 @@
       "thunder"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -689,7 +689,7 @@
       "earth"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -733,7 +733,7 @@
       "water"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -786,7 +786,7 @@
       "thunder"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 2600,
     "effects": [
       {
@@ -835,7 +835,7 @@
       "water"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -892,7 +892,7 @@
       "earth"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -938,7 +938,7 @@
       "water"
     ],
     "tier": 4,
-    "attack": 20,
+    "attack": 200,
     "cooldownMs": 3000,
     "effects": [
       {
@@ -991,7 +991,7 @@
       "earth"
     ],
     "tier": 4,
-    "attack": 20,
+    "attack": 200,
     "cooldownMs": 2500,
     "effects": [
       {
@@ -1043,7 +1043,7 @@
       "fire"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 2600,
     "effects": [
       {
@@ -1090,7 +1090,7 @@
       "fire"
     ],
     "tier": 7,
-    "attack": 70,
+    "attack": 700,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -1151,7 +1151,7 @@
       "wind"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 1600,
     "effects": [
       {
@@ -1195,7 +1195,7 @@
       "wind"
     ],
     "tier": 7,
-    "attack": 70,
+    "attack": 700,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -1246,7 +1246,7 @@
       "thunder"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 2400,
     "effects": [
       {
@@ -1293,7 +1293,7 @@
       "thunder"
     ],
     "tier": 7,
-    "attack": 70,
+    "attack": 700,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -1347,7 +1347,7 @@
       "earth"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 3000,
     "effects": [
       {
@@ -1402,7 +1402,7 @@
       "earth"
     ],
     "tier": 7,
-    "attack": 70,
+    "attack": 700,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -1457,7 +1457,7 @@
       "water"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -1512,7 +1512,7 @@
       "water"
     ],
     "tier": 7,
-    "attack": 70,
+    "attack": 700,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -1576,7 +1576,7 @@
       "thunder"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -1629,7 +1629,7 @@
       "water"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -1681,7 +1681,7 @@
       "earth"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -1725,7 +1725,7 @@
       "water"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -1783,7 +1783,7 @@
       "water"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -1835,7 +1835,7 @@
       "earth"
     ],
     "tier": 5,
-    "attack": 50,
+    "attack": 500,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -1887,7 +1887,7 @@
       "thunder"
     ],
     "tier": 7,
-    "attack": 70,
+    "attack": 700,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -1955,7 +1955,7 @@
       "water"
     ],
     "tier": 6,
-    "attack": 55,
+    "attack": 550,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -2011,7 +2011,7 @@
       "fire"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3000,
     "effects": [
       {
@@ -2058,7 +2058,7 @@
       "fire"
     ],
     "tier": 6,
-    "attack": 55,
+    "attack": 550,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -2122,7 +2122,7 @@
       "fire"
     ],
     "tier": 8,
-    "attack": 80,
+    "attack": 800,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -2178,7 +2178,7 @@
       "fire"
     ],
     "tier": 9,
-    "attack": 90,
+    "attack": 900,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -2233,7 +2233,7 @@
       "wind"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -2284,7 +2284,7 @@
       "wind"
     ],
     "tier": 6,
-    "attack": 55,
+    "attack": 550,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -2323,7 +2323,7 @@
       "wind"
     ],
     "tier": 8,
-    "attack": 80,
+    "attack": 800,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -2386,7 +2386,7 @@
       "wind"
     ],
     "tier": 9,
-    "attack": 90,
+    "attack": 900,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -2449,7 +2449,7 @@
       "thunder"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 2800,
     "effects": [
       {
@@ -2495,7 +2495,7 @@
       "thunder"
     ],
     "tier": 6,
-    "attack": 55,
+    "attack": 550,
     "cooldownMs": 3200,
     "effects": [
       {
@@ -2548,7 +2548,7 @@
       "thunder"
     ],
     "tier": 8,
-    "attack": 80,
+    "attack": 800,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -2602,7 +2602,7 @@
       "thunder"
     ],
     "tier": 9,
-    "attack": 90,
+    "attack": 900,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -2656,7 +2656,7 @@
       "earth"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3500,
     "effects": [
       {
@@ -2702,7 +2702,7 @@
       "earth"
     ],
     "tier": 6,
-    "attack": 55,
+    "attack": 550,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -2757,7 +2757,7 @@
       "earth"
     ],
     "tier": 8,
-    "attack": 80,
+    "attack": 800,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -2812,7 +2812,7 @@
       "earth"
     ],
     "tier": 9,
-    "attack": 90,
+    "attack": 900,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -2867,7 +2867,7 @@
       "water"
     ],
     "tier": 4,
-    "attack": 40,
+    "attack": 400,
     "cooldownMs": 3000,
     "effects": [
       {
@@ -2918,7 +2918,7 @@
       "water"
     ],
     "tier": 6,
-    "attack": 55,
+    "attack": 550,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -2980,7 +2980,7 @@
       "water"
     ],
     "tier": 8,
-    "attack": 80,
+    "attack": 800,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -3048,7 +3048,7 @@
       "water"
     ],
     "tier": 9,
-    "attack": 90,
+    "attack": 900,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -3140,7 +3140,7 @@
       "thunder"
     ],
     "tier": 10,
-    "attack": 100,
+    "attack": 1000,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -3202,7 +3202,7 @@
       "water"
     ],
     "tier": 10,
-    "attack": 100,
+    "attack": 1000,
     "cooldownMs": 5000,
     "effects": [
       {
@@ -3257,7 +3257,7 @@
       "fire"
     ],
     "tier": 10,
-    "attack": 100,
+    "attack": 1000,
     "cooldownMs": 3800,
     "effects": [
       {
@@ -3313,7 +3313,7 @@
       "wind"
     ],
     "tier": 10,
-    "attack": 100,
+    "attack": 1000,
     "cooldownMs": 3800,
     "effects": [
       {
@@ -3365,7 +3365,7 @@
       "thunder"
     ],
     "tier": 10,
-    "attack": 100,
+    "attack": 1000,
     "cooldownMs": 4500,
     "effects": [
       {
@@ -3413,7 +3413,7 @@
       "earth"
     ],
     "tier": 10,
-    "attack": 100,
+    "attack": 1000,
     "cooldownMs": 4000,
     "effects": [
       {
@@ -3467,7 +3467,7 @@
       "water"
     ],
     "tier": 10,
-    "attack": 100,
+    "attack": 1000,
     "cooldownMs": 4000,
     "effects": [
       {

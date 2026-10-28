@@ -42,11 +42,11 @@ describe('DpsMeter', () => {
 });
 
 describe('formatDps', () => {
-  it('shows a dash for nothing, grouped integers below 100k, and k above', () => {
+  it('shows a dash for nothing, grouped integers below a million, and k above', () => {
     expect(formatDps(0)).toBe('DPS —');
     expect(formatDps(12.6)).toBe('DPS 13');
     expect(formatDps(1234.4)).toBe('DPS 1,234');
-    expect(formatDps(123_456)).toBe('DPS 123k');
+    expect(formatDps(123_456)).toBe('DPS 123,456');
     expect(formatDps(2_500_000)).toBe('DPS 2,500k');
   });
 });

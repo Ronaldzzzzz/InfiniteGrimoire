@@ -2,6 +2,8 @@ import type { ElementId } from './types';
 import type { Monster } from './model';
 
 export const OVERLEVEL_K = 0.5;
+/** Damage = attack x DEFENSE_SCALE / (DEFENSE_SCALE + defense); attack, hp and defense were all scaled x10, so this went 100 -> 1000. */
+export const DEFENSE_SCALE = 1000;
 
 /** element -> the element it counters */
 const COUNTERS: Record<ElementId, ElementId> = {
@@ -40,7 +42,7 @@ export function computeDamage(
 ): number {
   if (!canDamage(spell, monster)) return 0;
   const raw =
-    ((attack * 100) / (100 + monster.defense)) *
+    ((attack * DEFENSE_SCALE) / (DEFENSE_SCALE + monster.defense)) *
     affinityMultiplier(spell.elements, monster.element) *
     (opts.frozen ? 1.5 : 1) *
     (opts.wetThunder ? 2 : 1) *

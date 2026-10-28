@@ -38,8 +38,10 @@ describe('EmpowerPanel', () => {
   });
 
   it('shows one decimal when the rounded attack would not change', () => {
+    // no shipped elemental spell is weak enough any more (smallest is 120), so shrink fireball: one level adds 0.1
+    const weak = { ...content, spells: { ...content.spells, fireball: { ...content.spells['fireball']!, attack: 12 } } };
     const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'] });
-    render(<EmpowerPanel spellId="fireball" runtime={rt} sync={{ action: vi.fn() }} content={content} />);
+    render(<EmpowerPanel spellId="fireball" runtime={rt} sync={{ action: vi.fn() }} content={weak} />);
     expect(screen.getByRole('region', { name: '強化' }).textContent).toMatch(/攻擊 \d+\.\d → \d+\.\d/);
   });
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createBattle, stepBattle } from './combat';
 import { content } from './content';
+import { createRng } from './rng';
 import type { GameState } from './model';
 import { createInitialState, parseState, serialize } from './persist';
 import { HARD_MAX_DEPTH, craftedId, resolveSpell } from './spells';
@@ -113,5 +115,26 @@ describe('old saves after the tier rework', () => {
       expect(s, id).not.toBeNull();
       expect(s!.depth, id).toBeLessThanOrEqual(HARD_MAX_DEPTH);
     }
+  });
+});
+
+describe('legacy saves after the x10 number scale', () => {
+  it('a pre-scale save still fights: parse, createBattle, 10 s of steps, real damage dealt', () => {
+    const old = {
+      ...JSON.parse(serialize(createInitialState(content))),
+      learned: ['mana_bolt', 'fireball'], equipped: 'fireball', currentZone: 'mist_meadow',
+    };
+    let game = parseState(old, content)!;
+    expect(game.currentZone).toBe('mist_meadow');
+    let battle = createBattle(game.currentZone);
+    const rng = createRng(1234);
+    let dealt = 0;
+    for (let i = 0; i < 200; i++) {
+      const r = stepBattle(game, battle, content, rng);
+      game = r.game;
+      battle = r.battle;
+      for (const e of r.events) if (e.type === 'hit' && e.dealt > 0) dealt += e.dealt;
+    }
+    expect(dealt).toBeGreaterThan(0);
   });
 });

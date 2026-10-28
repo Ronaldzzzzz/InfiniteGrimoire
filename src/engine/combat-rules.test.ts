@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { OVERLEVEL_K, affinityMultiplier, canDamage, computeDamage, overlevelEfficiency } from './combat-rules';
+import { DEFENSE_SCALE, OVERLEVEL_K, affinityMultiplier, canDamage, computeDamage, overlevelEfficiency } from './combat-rules';
 import type { Monster } from './model';
 import { ELEMENT_ORDER } from './types';
+import type { ElementId } from './types';
 
 describe('canDamage', () => {
   it('tier >= monster tier - 1 always damages', () => {
@@ -50,11 +51,20 @@ describe('affinityMultiplier', () => {
 });
 
 describe('computeDamage', () => {
+  it('scales linearly when attack and defense both grow x10', () => {
+    const sp = { tier: 5, attack: 500, elements: [] as ElementId[] };
+    // the pre-scale hit: attack 50 vs defense 30 under the old scale of 100
+    const before = (50 * 100) / (100 + 30);
+    const after = computeDamage(500, sp, mon({ defense: 300 }), plain);
+    expect(Math.abs(after - before * 10)).toBeLessThanOrEqual(1);
+  });
+  it('uses DEFENSE_SCALE 1000', () => expect(DEFENSE_SCALE).toBe(1000));
+
   const mon = (o: Partial<Monster> = {}): Monster => ({
-    id: 'm', name: 'm', nameEn: 'm', element: 'fire', tier: 5, hp: 100, defense: 100,
+    id: 'm', name: 'm', nameEn: 'm', element: 'fire', tier: 5, hp: 100, defense: 1000,
     regenPerSec: 0, speed: 0, radius: 0.03, boss: false, drops: [], ...o,
   });
-  const sp = { tier: 5, attack: 100, elements: [] };
+  const sp = { tier: 5, attack: 100, elements: [] as ElementId[] };
   const plain = { frozen: false, wetThunder: false, bonusPct: 0 };
   it('is 0 when the spell cannot damage', () => {
     expect(computeDamage(1000, { tier: 1, attack: 1, elements: [] }, mon({ tier: 10, defense: 100 }), plain)).toBe(0);

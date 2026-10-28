@@ -35,6 +35,6 @@ export class DpsMeter {
 
 export function formatDps(dps: number): string {
   if (dps <= 0) return 'DPS —';
-  if (dps >= 100_000) return `DPS ${Math.round(dps / 1000).toLocaleString('en-US')}k`;
+  if (dps >= 1_000_000) return `DPS ${Math.round(dps / 1000).toLocaleString('en-US')}k`;
   return `DPS ${Math.round(dps).toLocaleString('en-US')}`;
 }
