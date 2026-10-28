@@ -2,7 +2,7 @@
  * Shared DPS measurement for the spell tier curve (used by scripts/measure-dps.ts and tests/sim/tier-curve.test.ts).
  * Read-only: changes no game data. Damage counted is what actually came off foes' hit points (hit.dealt + burn).
  */
-import { createBattle, stepBattle, STEP_MS, STOP_R, type BattleState } from '../../src/engine/combat';
+import { createBattle, stepBattle, STEP_MS, STOP_R, ZONE_REACH, type ActiveFx, type BattleState, type Foe } from '../../src/engine/combat';
 import { content } from '../../src/engine/content';
 import type { Content, GameState } from '../../src/engine/model';
 import { createInitialState } from '../../src/engine/persist';
@@ -235,7 +235,29 @@ const crowdGame = (spellId: string, zoneId: string): GameState => ({
   currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
 });
 
-/** Real spawning, the spell equipped from t=0; alive = mean foe count over [warmMs, ms]; touched = distinct non-boss foes that reached STOP_R + radius + 0.01; clearMs from crowdClear. */
+/**
+ * Ruling C3: true when `f` is within the pull reach (radius x ZONE_REACH + the foe's radius, the engine's `within`) of a
+ * pulling zone in `fx`. A foe there may have been dragged to the stop ring, so that step does not count as a touch.
+ */
+export function inPull(fx: readonly ActiveFx[], f: Foe): boolean {
+  const fr = content.monsters[f.defId]!.radius;
+  return fx.some((x) => {
+    if (x.effect.kind !== 'zone' || !(x.effect.pull > 0)) return false;
+    const reach = x.effect.radius * ZONE_REACH + fr;
+    return (f.x - x.x) ** 2 + (f.y - x.y) ** 2 <= reach * reach;
+  });
+}
+
+/** A walked-in touch (spec 1, Ruling C3): a non-boss foe at STOP_R + radius + 0.01 that no pulling zone held before or after this step. */
+export function walkedTouch(f: Foe, before: readonly ActiveFx[], after: readonly ActiveFx[]): boolean {
+  const def = content.monsters[f.defId]!;
+  return !def.boss && Math.hypot(f.x, f.y) <= STOP_R + def.radius + 0.01 && !inPull(before, f) && !inPull(after, f);
+}
+
+/**
+ * Real spawning, the spell equipped from t=0; alive = mean foe count over [warmMs, ms]; touched = distinct foes with a
+ * walkedTouch at any step of the whole run, warm-up included (Ruling C2); clearMs from crowdClear.
+ */
 export function crowdStats(spellId: string, zoneId: string, opts: { seed: number; ms: number; warmMs: number }): CrowdStats {
   let game = crowdGame(spellId, zoneId);
   let battle = createBattle(zoneId);
@@ -243,12 +265,10 @@ export function crowdStats(spellId: string, zoneId: string, opts: { seed: number
   const touched = new Set<number>();
   let t = 0, sum = 0, n = 0;
   while (t < opts.ms) {
+    const before = battle.fx;
     const r = stepBattle(game, battle, content, rng);
     game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle; t += STEP_MS;
-    for (const f of battle.foes) {
-      const def = content.monsters[f.defId]!;
-      if (!def.boss && Math.hypot(f.x, f.y) <= STOP_R + def.radius + 0.01) touched.add(f.uid);
-    }
+    for (const f of battle.foes) if (walkedTouch(f, before, battle.fx)) touched.add(f.uid);
     if (t > opts.warmMs) { sum += battle.foes.length; n++; }
   }
   return { alive: n ? sum / n : 0, touched: touched.size, clearMs: crowdClear(spellId, zoneId, { seed: opts.seed, limitMs: 15_000 }) };
