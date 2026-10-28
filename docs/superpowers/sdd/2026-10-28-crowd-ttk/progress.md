@@ -128,3 +128,9 @@ worlds_end        rel  1 (Lv.10, 7 spells) 場上 6.1；碰線 0.0；15 秒清�
 - Ruling T4r: Task 4 changed only this ledger (no product code), so no separate task review; its findings go to the final review and the user — cost if wrong: none (nothing to review).
 - Task 4: finding for user: DPS meter counts damage actually dealt, so once a tier-up spell empties the field the number drops (Lv.8 3,457 vs Lv.7 4,534 in the browser check) — conflicts with the user's "DPS 統計也能看到明顯的差異"; not fixed here.
 - Task 4: complete (commits 9e752ed..0b1da6b, ledger only)
+- Final review Ruling: regenPerSec was ×10 but not multiplied by the zone factor, so regen as a share of max hp rose (thunder_gorge ~0.14% → ~2.8%/s); left as is — hits are hundreds per cast so it is negligible; revisit with the next retune — cost if wrong: slightly tougher foes in low-HP zones.
+- Final review Ruling: crafted attack is Math.round on the ×10 scale, so it is not exactly old×10 (±5); client and server share content so anti-cheat is unaffected; only a combo sitting exactly on the def×0.7 threshold could flip — accepted.
+- Fix Ruling: dps gap for burn ('dot') samples is max(spell gap, 1 s) — dot events are summed once per second — a burn-only stretch counts as fighting for that second — cost if wrong: DPS slightly off during pure burn.
+- Fix Ruling: 前一招 keeps the older entry when the swapped-out spell never reached a nonzero DPS — avoids blanking the comparison on a quick A→B→C — cost if wrong: line may show a spell two swaps back.
+- Fix Ruling: 每下傷害 uses the largest `mult` among effects that carry one (haste has none) and the diff compares rounded values — spec wording — cost if wrong: none.
+
