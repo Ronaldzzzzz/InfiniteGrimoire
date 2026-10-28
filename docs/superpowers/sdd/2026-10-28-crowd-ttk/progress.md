@@ -125,3 +125,6 @@ worlds_end        rel  1 (Lv.10, 7 spells) 場上 6.1；碰線 0.0；15 秒清�
 - Task 3: minor (deferred): `inPull` ignores knockback / `METEOR_PUSH` (correct, not pulls) — deserves a one-line comment.
 - Task 3: complete (commits 196cbf6..852aacb, review clean; 2 KNOWN_GAPS rows per Ruling C3)
 - Task 4 (畫面確認, headless Chrome, 無程式變更): sunken_temple，Lv.7 墜日 60 秒場上 40～55 隻（預期 10～35，偏多）；切到 Lv.8 赤獄焚城後 15 秒內 37→17→16→4→16→15 隻、最後截圖只剩魔王 1 隻（預期 <= 5，未穩定達到，約 15）。DPS 4,534 / 3,457（千位數，符合）；無頁面錯誤。種的：新遊客存檔的 learned、equipped、currentZone、unlockedZones、revealed（本機 D1）；實際操作：開戰 60 秒、點技能樹節點與氣泡「裝備」換魔法、再戰 15 秒；怪數用 React fiber 讀 runtime snapshot。細節見 `.superpowers/sdd/2026-10-28-crowd-ttk/task-4-report.md`。
+- Ruling T4r: Task 4 changed only this ledger (no product code), so no separate task review; its findings go to the final review and the user — cost if wrong: none (nothing to review).
+- Task 4: finding for user: DPS meter counts damage actually dealt, so once a tier-up spell empties the field the number drops (Lv.8 3,457 vs Lv.7 4,534 in the browser check) — conflicts with the user's "DPS 統計也能看到明顯的差異"; not fixed here.
+- Task 4: complete (commits 9e752ed..0b1da6b, ledger only)
