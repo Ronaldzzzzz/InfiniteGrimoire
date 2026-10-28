@@ -23,3 +23,6 @@ Spec: `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`. 
 - Task 1 Ruling: persist legacy-save test runs in `mist_meadow`, not `ember_wastes` — fireball (Lv.2) is immune there (monsters Lv.5-6, same before the x10), so dealt would be 0 — still proves parse -> battle -> real damage — cost if wrong: none.
 - Task 1 Ruling: `content-baseline.json` spell attacks x10 (pin of the scaled values) — content.test compares tier|attack|cooldown|depth — cost if wrong: baseline test noise.
 - Task 1 Ruling: EmpowerPanel one-decimal test now uses a shrunk fireball (attack 12) — no shipped elemental spell has attack < 120 so the branch is unreachable with real content; branch kept (harmless) — cost if wrong: dead code.
+- Task 1: minor (deferred): EmpowerPanel one-decimal branch unreachable with shipped content (smallest elemental attack 120); kept as guard, test uses synthetic fixture.
+- Task 1: minor (deferred): combat-rules.test.ts new tests sit above the `mon`/`sp`/`plain` helpers they use.
+- Task 1: complete (commits 262f2c6..5ab5c0b, review clean)
