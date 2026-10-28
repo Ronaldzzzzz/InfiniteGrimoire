@@ -8,10 +8,13 @@ import { runBot, type BotResult } from './bot';
 const MINUTE = 60_000;
 const SIX_HOURS = 360 * MINUTE;
 /**
- * Tuning targets (spec 6.4) are measured and printed until Task 7 finishes tuning; flip to true to enforce them.
  * Always on: 0 rejections and pure routes only learn their own element.
+ * ENFORCE_CLEAR: every zone cleared, every region revealed, enough server calls (and the mixed route's spells).
+ * ENFORCE_TIMES: the time bounds below. Report-only since the 2026-10-28 hit-point cut (crowd TTK spec): monsters die much
+ * faster, so routes clear early; the user deferred the drop rebalance ("4的掉落平衡後續再更動"), restore this with it.
  */
-const ENFORCE = true;
+const ENFORCE_CLEAR = true;
+const ENFORCE_TIMES = false;
 /** Spec 6.4: the first four bosses fall between 1 and 4 hours, all six within 6 hours, each zone takes 5-90 minutes. */
 const FIRST_FOUR_MIN = 60 * MINUTE;
 const FIRST_FOUR_MAX = 240 * MINUTE;
@@ -29,7 +32,7 @@ const minutes = (r: BotResult) => Object.fromEntries(Object.entries(r.clearedAt)
 
 const TIMEOUT = 600_000;
 
-/** Always-on checks, then the tuning targets (printed, and asserted only under ENFORCE). */
+/** Always-on checks, then the clear checks (ENFORCE_CLEAR) and the time bounds (printed, asserted only under ENFORCE_TIMES). */
 function check(label: string, r: BotResult): void {
   expect(r.rejectedUploads, r.rejectionReasons.join('\n')).toBe(0);
   expect(r.learned).toContain('mana_bolt');
@@ -37,11 +40,13 @@ function check(label: string, r: BotResult): void {
   console.info(`[sim] ${label}: cleared=${r.clearedZones.length}/${content.zones.length} sim=${(r.simMs / MINUTE).toFixed(1)}min`
     + ` clearedAt=${JSON.stringify(minutes(r))} perZone=${JSON.stringify(r.summary.clearMinutes)}`
     + ` revealed=${r.revealed.length}/${allRegions.length} learnedAt=${JSON.stringify(learnedMin)}`);
-  if (!ENFORCE) return;
   const zones = content.zones;
-  expect(r.clearedZones, JSON.stringify(r.summary)).toEqual(zones.map((z) => z.id));
-  expect([...r.revealed].sort()).toEqual([...allRegions].sort());
-  expect(r.serverCalls).toBeGreaterThanOrEqual(Math.floor(r.simMs / 30_000) + 2);
+  if (ENFORCE_CLEAR) {
+    expect(r.clearedZones, JSON.stringify(r.summary)).toEqual(zones.map((z) => z.id));
+    expect([...r.revealed].sort()).toEqual([...allRegions].sort());
+    expect(r.serverCalls).toBeGreaterThanOrEqual(Math.floor(r.simMs / 30_000) + 2);
+  }
+  if (!ENFORCE_TIMES) return;
   // the fourth boss (Sunken Temple) is when the first four have fallen
   const fourth = zones[3]!.id;
   expect(r.clearedAt[fourth]!, `${fourth} ${JSON.stringify(minutes(r))}`).toBeGreaterThanOrEqual(FIRST_FOUR_MIN);
@@ -66,7 +71,7 @@ describe('element routes', () => {
   it('mixed fire + wind route learns fire_tornado and the thunderfire hurricane, then the fire trunk', { timeout: TIMEOUT }, async () => {
     const r = await runBot({ route: 'mixed', seed: SEED, maxSimMs: SIX_HOURS });
     check('mixed', r);
-    if (ENFORCE) expect(r.learned).toEqual(expect.arrayContaining(['fire_tornado', 'thunder_fire_hurricane', 'corona_scorch']));
+    if (ENFORCE_CLEAR) expect(r.learned).toEqual(expect.arrayContaining(['fire_tornado', 'thunder_fire_hurricane', 'corona_scorch']));
   });
 
   it('mana_bolt only cannot clear thunder_gorge', { timeout: TIMEOUT }, async () => {

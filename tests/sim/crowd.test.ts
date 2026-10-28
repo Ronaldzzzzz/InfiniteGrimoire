@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CROWD_OPTS, crowdReport } from './measure';
 
-/** Task 3 flips this on once hit points are tuned; until then the report is only printed (spec 4.3). */
+/**
+ * Spec 4.3 targets. Still report-only after the Task 3 hit-point cut: hit points alone cannot meet all rows (ledger Task 3
+ * Ruling T3-impossible: rel +1 met in five zones, rel 0 under 30 and rel -1 under 60 there; mist_meadow rel +1 does not move
+ * with hit points). Flip once the controller/user decides the thresholds or another lever.
+ */
 const ENFORCE_CROWD = false;
 
 describe('crowd size on the field', () => {
