@@ -2,7 +2,7 @@
  * Shared DPS measurement for the spell tier curve (used by scripts/measure-dps.ts and tests/sim/tier-curve.test.ts).
  * Read-only: changes no game data. Damage counted is what actually came off foes' hit points (hit.dealt + burn).
  */
-import { createBattle, stepBattle, STEP_MS, type BattleState } from '../../src/engine/combat';
+import { createBattle, stepBattle, STEP_MS, STOP_R, type BattleState } from '../../src/engine/combat';
 import { content } from '../../src/engine/content';
 import type { Content, GameState } from '../../src/engine/model';
 import { createInitialState } from '../../src/engine/persist';
@@ -219,3 +219,94 @@ export function curveReport(opts: { seeds: number[]; soloMs: number; crowdMs: nu
   }
   return { perSpell, failures, medians, craftedFailures, crafted };
 }
+
+// ---- Crowd size on the field (spec 2 and 4.3) ----
+
+/** Spec 4.3: the tier each zone is judged at. */
+export const ZONE_TIER: Record<string, number> = {
+  mist_meadow: 2, thunder_gorge: 4, ember_wastes: 6, sunken_temple: 7, starfall_plateau: 8, worlds_end: 9,
+};
+export interface CrowdStats { alive: number; touched: number; clearMs: number | null }
+
+/** Real battle in `zoneId`; zoneKills pinned to 0 every step so the boss never spawns (Ruling P1) and `alive` counts ordinary foes. */
+const crowdGame = (spellId: string, zoneId: string): GameState => ({
+  ...createInitialState(content),
+  learned: [spellId], equipped: spellId, levels: {},
+  currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
+});
+
+/** Real spawning, the spell equipped from t=0; alive = mean foe count over [warmMs, ms]; touched = distinct non-boss foes that reached STOP_R + radius + 0.01; clearMs from crowdClear. */
+export function crowdStats(spellId: string, zoneId: string, opts: { seed: number; ms: number; warmMs: number }): CrowdStats {
+  let game = crowdGame(spellId, zoneId);
+  let battle = createBattle(zoneId);
+  const rng = createRng(opts.seed);
+  const touched = new Set<number>();
+  let t = 0, sum = 0, n = 0;
+  while (t < opts.ms) {
+    const r = stepBattle(game, battle, content, rng);
+    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle; t += STEP_MS;
+    for (const f of battle.foes) {
+      const def = content.monsters[f.defId]!;
+      if (!def.boss && Math.hypot(f.x, f.y) <= STOP_R + def.radius + 0.01) touched.add(f.uid);
+    }
+    if (t > opts.warmMs) { sum += battle.foes.length; n++; }
+  }
+  return { alive: n ? sum / n : 0, touched: touched.size, clearMs: crowdClear(spellId, zoneId, { seed: opts.seed, limitMs: 15_000 }) };
+}
+
+/**
+ * Fill the zone to maxAlive with nothing equipped that casts (Ruling T2a: `equipped` is an id that resolves to no spell), then equip
+ * `spellId`; ms until <= 5 foes remain, or null within limitMs.
+ */
+export function crowdClear(spellId: string, zoneId: string, opts: { seed: number; limitMs: number }): number | null {
+  const zone = content.zones.find((z) => z.id === zoneId)!;
+  let game: GameState = { ...crowdGame(spellId, zoneId), equipped: '__none__' };
+  let battle = createBattle(zoneId);
+  const rng = createRng(opts.seed);
+  for (let guard = 0; battle.foes.length < zone.maxAlive && guard < 20_000; guard++) {
+    const r = stepBattle(game, battle, content, rng);
+    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle;
+  }
+  game = { ...game, equipped: spellId };
+  let t = 0;
+  while (t < opts.limitMs) {
+    const r = stepBattle(game, battle, content, rng);
+    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle; t += STEP_MS;
+    if (battle.foes.length <= 5) return t;
+  }
+  return null;
+}
+
+export interface CrowdRow { zoneId: string; rel: -1 | 0 | 1; tier: number; spells: string[]; medianAlive: number; medianTouched: number; clearedShare: number }
+
+/** For each zone: named non-rare, non-CURVE_EXEMPT spells of ZONE_TIER-1, ZONE_TIER, ZONE_TIER+1 (worlds_end +1 = rare Lv.10; mist_meadow has no -1 row); stats averaged over seeds; clearedShare = share of rel +1 spells with clearMs <= 15000. */
+export function crowdReport(opts: { seeds: number[]; ms: number; warmMs: number }): CrowdRow[] {
+  const rows: CrowdRow[] = [];
+  const all = Object.values(content.spells).filter((s) => !CURVE_EXEMPT.includes(s.id));
+  for (const zone of content.zones) {
+    const zt = ZONE_TIER[zone.id]!;
+    for (const rel of [-1, 0, 1] as const) {
+      const tier = zt + rel;
+      if (tier < 2 && rel === -1) continue; // mist_meadow: tier 1 is not tracked (spec 4.3)
+      const spells = all.filter((s) => s.tier === tier && (tier === 10 ? s.rare : s.named && !s.rare)).map((s) => s.id).sort();
+      if (!spells.length) continue;
+      const per = spells.map((id) => {
+        const st = opts.seeds.map((seed) => {
+          const a = crowdStats(id, zone.id, { seed, ms: opts.ms, warmMs: opts.warmMs });
+          return a;
+        });
+        const m = (f: (x: CrowdStats) => number) => st.reduce((n, x) => n + f(x), 0) / st.length;
+        const clears = st.map((x) => x.clearMs);
+        return { alive: m((x) => x.alive), touched: m((x) => x.touched), cleared: clears.every((c) => c !== null && c <= 15_000) };
+      });
+      rows.push({
+        zoneId: zone.id, rel, tier, spells,
+        medianAlive: median(per.map((p) => p.alive)), medianTouched: median(per.map((p) => p.touched)),
+        clearedShare: per.filter((p) => p.cleared).length / per.length,
+      });
+    }
+  }
+  return rows;
+}
+
+export const CROWD_OPTS = { seeds: [20261021, 7], ms: 120_000, warmMs: 30_000 };
