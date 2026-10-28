@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import {
-  DOT_REPORT_MS, ENGAGE_R, MAX_ACTIVE_FX, STEP_MS, STOP_R, createBattle, stepBattle,
+  DOT_REPORT_MS, ENGAGE_R, KNOCK_MAX_R, MAX_ACTIVE_FX, STEP_MS, STOP_R, createBattle, stepBattle,
   type ActiveStatus, type BattleEvent, type BattleState, type Foe,
 } from './combat';
 import { createRng, type Rng } from './rng';
@@ -213,6 +213,20 @@ describe('stepBattle: effects', () => {
     expect([1, 2, 3, 4].map((u) => hitsOn(r.events, u).length)).toEqual([1, 1, 1, 0]);
     const stepOf = (u: number) => firstStep(r.perStep, (e) => e.type === 'hit' && e.uid === u);
     expect(stepOf(1)).toBeLessThan(stepOf(3));
+  });
+
+  it('knockback never carries a foe past KNOCK_MAX_R, nor farther out than it already was', () => {
+    const ring = testSpell('t_push', [{ kind: 'ring', mult: 0.01, radius: 0.8, push: 5 }]);
+    const c = withTest([ring]);
+    const b = staged([foe(1, 'dummy', 0.2, 0, c), foe(2, 'dummy', 0, 0.6, c)]);
+    let far1 = 0, far2 = 0;
+    run(mkGame({ equipped: 't_push' }), b, c, 80, createRng(1), (s) => {
+      far1 = Math.max(far1, dist(s.foes.find((f) => f.uid === 1)!));
+      far2 = Math.max(far2, dist(s.foes.find((f) => f.uid === 2)!));
+    });
+    expect(far1).toBeGreaterThan(0.3);
+    expect(far1).toBeLessThanOrEqual(KNOCK_MAX_R + 1e-9);
+    expect(far2).toBeLessThanOrEqual(0.6 + 1e-9);
   });
 
   it('chain doubles on wet foes', () => {

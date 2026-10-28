@@ -128,7 +128,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 4.518,
+        "mult": 2.413,
         "count": 3,
         "push": 1
       }
@@ -256,7 +256,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 3.015,
+        "mult": 0.7982,
         "radius": 0.65,
         "push": 0.4,
         "status": [
@@ -354,7 +354,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 3.389,
+        "mult": 2.046,
         "count": 4,
         "push": 0.8
       },
@@ -694,7 +694,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 2.613,
+        "mult": 2.558,
         "count": 1,
         "radius": 0.22,
         "delayMs": 800,
@@ -738,7 +738,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 1.52,
+        "mult": 1.358,
         "radius": 0.85,
         "push": 0,
         "status": [
@@ -750,7 +750,7 @@
       },
       {
         "kind": "blades",
-        "mult": 2.266,
+        "mult": 2.024,
         "count": 6,
         "push": 0.3
       }
@@ -1095,7 +1095,7 @@
     "effects": [
       {
         "kind": "bolt",
-        "mult": 3.345,
+        "mult": 3.059,
         "count": 1,
         "radius": 0.32,
         "target": "densest",
@@ -1109,7 +1109,7 @@
       },
       {
         "kind": "ring",
-        "mult": 0.2876,
+        "mult": 0.263,
         "radius": 1.2,
         "push": 0.3,
         "status": [
@@ -1156,7 +1156,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 3.835,
+        "mult": 1.153,
         "count": 8,
         "push": 0.6
       },
@@ -1352,7 +1352,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 0.8134,
+        "mult": 0.7129,
         "count": 5,
         "radius": 0.2,
         "delayMs": 500,
@@ -1361,7 +1361,7 @@
       },
       {
         "kind": "bolt",
-        "mult": 1.54,
+        "mult": 1.35,
         "count": 1,
         "radius": 0.08,
         "target": "strongest",
@@ -1407,7 +1407,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 2.436,
+        "mult": 1.941,
         "radius": 1.2,
         "push": 0,
         "status": [
@@ -1419,7 +1419,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 4.914,
+        "mult": 3.915,
         "count": 3,
         "radius": 0.3,
         "delayMs": 800,
@@ -1517,7 +1517,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 2.31,
+        "mult": 2.092,
         "radius": 1.2,
         "push": 1.5,
         "status": [
@@ -1534,7 +1534,7 @@
       },
       {
         "kind": "zone",
-        "mult": 0.58,
+        "mult": 0.5252,
         "radius": 0.4,
         "ms": 4000,
         "tickMs": 250,
@@ -1686,7 +1686,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 0.8439,
+        "mult": 0.7115,
         "count": 9,
         "radius": 0.23,
         "delayMs": 600,
@@ -2063,7 +2063,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.6013,
+        "mult": 0.5273,
         "radius": 0.25,
         "ms": 4000,
         "tickMs": 250,
@@ -2081,7 +2081,7 @@
       },
       {
         "kind": "ring",
-        "mult": 0.481,
+        "mult": 0.4218,
         "radius": 0.5,
         "push": 0.5,
         "status": [
@@ -2127,7 +2127,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 2.339,
+        "mult": 2.101,
         "radius": 0.9,
         "push": 0.4,
         "status": [
@@ -2140,7 +2140,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 4.213,
+        "mult": 3.785,
         "count": 3,
         "radius": 0.28,
         "delayMs": 600,
@@ -2183,7 +2183,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 2.382,
+        "mult": 2.294,
         "delayMs": 600,
         "status": [
           {
@@ -2195,7 +2195,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 7.147,
+        "mult": 6.884,
         "count": 3,
         "radius": 0.26,
         "delayMs": 900,
@@ -2289,7 +2289,7 @@
     "effects": [
       {
         "kind": "blades",
-        "mult": 7.508,
+        "mult": 6.578,
         "count": 12,
         "push": 0.8
       }
@@ -2762,7 +2762,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 4.707,
+        "mult": 3.794,
         "count": 6,
         "radius": 0.25,
         "delayMs": 600,
@@ -2771,7 +2771,7 @@
       },
       {
         "kind": "ring",
-        "mult": 2.344,
+        "mult": 1.889,
         "radius": 1,
         "push": 0,
         "status": [
@@ -2817,7 +2817,7 @@
     "effects": [
       {
         "kind": "ring",
-        "mult": 6.83,
+        "mult": 5.226,
         "radius": 1.2,
         "push": 0,
         "status": [
@@ -2829,7 +2829,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 9.105,
+        "mult": 6.966,
         "count": 6,
         "radius": 0.3,
         "delayMs": 900,
@@ -2985,7 +2985,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.804,
+        "mult": 0.773,
         "radius": 0.5,
         "ms": 5000,
         "tickMs": 250,
@@ -3007,7 +3007,7 @@
       },
       {
         "kind": "ring",
-        "mult": 2.688,
+        "mult": 2.584,
         "radius": 1.2,
         "push": 1,
         "status": [
@@ -3053,7 +3053,7 @@
     "effects": [
       {
         "kind": "zone",
-        "mult": 0.8355,
+        "mult": 0.8198,
         "radius": 0.5,
         "ms": 4000,
         "tickMs": 250,
@@ -3075,7 +3075,7 @@
       },
       {
         "kind": "zone",
-        "mult": 0.8355,
+        "mult": 0.8198,
         "radius": 0.5,
         "ms": 4000,
         "tickMs": 250,
@@ -3097,7 +3097,7 @@
       },
       {
         "kind": "ring",
-        "mult": 2.777,
+        "mult": 2.725,
         "radius": 1.2,
         "push": 1.5,
         "status": [
@@ -3262,7 +3262,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 4.673,
+        "mult": 4.268,
         "delayMs": 500,
         "status": [
           {
@@ -3274,7 +3274,7 @@
       },
       {
         "kind": "meteor",
-        "mult": 6.257,
+        "mult": 5.715,
         "count": 4,
         "radius": 0.28,
         "delayMs": 700,

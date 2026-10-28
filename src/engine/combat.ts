@@ -21,6 +21,11 @@ export const MAX_ACTIVE_FX = 24;
  * (the visible fight); only when nobody is that close do they consider the whole field.
  */
 export const ENGAGE_R = 0.4;
+/**
+ * Knockback never carries a foe past this distance (nor farther out than it already was): the arena edge is off-screen
+ * by design, and a foe knocked out there would vanish from view.
+ */
+export const KNOCK_MAX_R = ENGAGE_R;
 
 const DT = STEP_MS / 1000;
 const PACK_SPREAD = 0.12;
@@ -469,8 +474,13 @@ function moveFoe(ctx: Ctx, f: Foe, def: Monster): void {
   }
   if (f.hp > 0) f.hp = Math.min(f.maxHp, f.hp + def.regenPerSec * DT);
 
-  f.x += f.kx * DT;
-  f.y += f.ky * DT;
+  if (f.kx !== 0 || f.ky !== 0) {
+    const limit = Math.max(KNOCK_MAX_R, Math.hypot(f.x, f.y));
+    f.x += f.kx * DT;
+    f.y += f.ky * DT;
+    const d = Math.hypot(f.x, f.y);
+    if (d > limit) { f.x *= limit / d; f.y *= limit / d; f.kx = 0; f.ky = 0; }
+  }
   f.kx *= KNOCK_KEEP;
   f.ky *= KNOCK_KEEP;
 
