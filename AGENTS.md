@@ -42,8 +42,11 @@
 | `docs/superpowers/specs/2026-10-27-tier-curve-and-map-expansion-design.md` | **魔法階級強度曲線與地圖擴充規格（已實作，在 `feat/rare-tuning`；第 15 節為實作後修訂：`TIER_STEP` 1.8、強化滿 ×1.4；目前階級／地圖／強化規則的最高依據）**：`TIER_STEP` 1.8（第 15 節修訂；強化滿 ×1.4 另訂 `EMPOWER_MAX`）、兩情境各階中位數 1.6～2 倍與同階 ±25%、五純屬 Lv.2～9、稀有 Lv.10＝Lv.9＋素材 1:49、強化只改攻擊、自創上限 Lv.9、星殞高原與世界盡頭、神階掉落、距離魔王還差幾隻、放回上次組合、學會新魔法時詢問是否裝備 |
 | `docs/superpowers/plans/2026-10-27-spell-tiers.md` | 上述規格的 12 個任務實作計畫（已執行完成） |
 | `docs/superpowers/sdd/2026-10-27-spell-tiers/progress.md` | 魔法階級強度曲線的帳本：各任務審查結果、Ruling（R1～R4、T3a～T12a、R-T7-x）、模擬時間、延後的小問題 |
-| `docs/superpowers/specs/2026-10-27-dps-after.md` | 調平後的 DPS 表（和基準表對照；`scripts/measure-dps.ts`） |
+| `docs/superpowers/specs/2026-10-27-dps-after.md` | 調平後的 DPS 表（和基準表對照；`scripts/measure-dps.ts`；2026-10-28 以 ×10 與血量重調後的數值重新產生，加了「場上平均隻數」「碰線隻數」兩欄） |
 | `docs/superpowers/specs/2026-10-27-dps-baseline.md` | 改動前的 DPS 基準表（工具 `scripts/measure-dps.ts`） |
+| `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md` | **清怪節奏（TTK）與數字放大規格（目前數字尺度與血量的最高依據）**：攻擊／血量／防禦／回血 ×10、依地點縮短魔物血量、場上隻數與碰線的驗收標準（第 4.3 節）、通關時間檢查暫時只印報告 |
+| `docs/superpowers/plans/2026-10-28-crowd-ttk.md` | 上述規格的 4 個任務實作計畫（×10、量測工具、調血量、畫面確認） |
+| `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md` | 清怪節奏的帳本：Ruling（P1、P2、C2、T2a～T2d、T3a～T3c、T3-impossible）、各地點血量係數、調整前後的場上隻數表、路線通關時間 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼（用 GM 工具重設）、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
@@ -51,18 +54,25 @@
 
 規格與計畫衝突時，以規格為準。計畫沒寫到的地方，看帳本中的 `Ruling:` 行。
 
-## 3. 目前狀態（2026-10-27）
+## 3. 目前狀態（2026-10-28）
 
-### 3.0 接手先看這裡（2026-10-27 更新）
+### 3.0 接手先看這裡（2026-10-28 更新）
 
-**現在停在哪：** branch `feat/rare-tuning`（**未 push、未合併到 `main`**）。`feat/spell-tiers`（12 個任務）與 `feat/tier-step-18`（改成 `TIER_STEP` 1.8 的重調）都已在 2026-10-27 依使用者指示 fast-forward 合併回 `feat/rare-tuning`，兩個 branch 都已刪除。`npm test` 68 個檔案 737 個測試全過、`npm run build` 通過（2026-10-27 量測）。瀏覽器驗收已做完（見下）。
+**現在停在哪（2026-10-28）：** branch `feat/crowd-ttk`（從 `feat/rare-tuning` 分出，**未 push、未合併**），清怪節奏（TTK）與數字放大，規格 `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`、計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md`、帳本 `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md`。起因是使用者試玩 1.8 版：「換了一階魔法但畫面的怪物還是一堆」「怪物整體的TTK過長」。4 個任務中 Task 1～3 已完成，Task 4（畫面確認）還沒做。`npm test` 69 個檔案 745 個測試全過、`npm run build` 通過（2026-10-28）。
+- **數字 ×10（Task 1）：** 魔法攻擊、魔物血量、防禦、回血全部 ×10（`DEFENSE_SCALE` 1000），比例不變；Lv.1 單發約 80、Lv.9 千位數。存檔不用 migration。
+- **血量依地點縮短（Task 3）：** 一般魔物與魔王乘同一個係數：迷霧草原 0.5、雷鳴峽谷 0.05、熔火荒原 0.10、沉沒神殿 0.15、星殞高原 0.14、世界盡頭 0.11（照規格「高一階壓制優先」）。
+- **場上隻數（`tests/sim/crowd.test.ts`，量測在 `tests/sim/measure.ts` 的 `crowdReport`）：** 高一階：五個地點碰線中位數 0、15 秒清場 55%～71%（通過）；**迷霧草原不通過**（碰線 6、清場 40%，不隨血量改變）。同階：只有迷霧草原 39.2 隻在 30～50，其他地點 13.6～27.6 隻。低一階：雷鳴峽谷 12.7、熔火荒原 31.7 低於 60。**只靠血量無法同時達成規格 4.3 的所有目標**（同一階裡單體、拉怪、範圍魔法的差異太大；拉怪魔法會把怪拉到停止圈而被算成碰線），所以 `ENFORCE_CROWD` 仍是 false、門檻沒改，**等使用者決定**（帳本 Ruling T3-impossible 列了可以考慮的槓桿）。
+- **通關時間檢查暫時只印報告：** 使用者「4的掉落平衡後續再更動」。`pure-paths.test.ts` 拆成 `ENFORCE_CLEAR`（仍強制：清完六個地點、迷霧全開）與 `ENFORCE_TIMES = false`；`rare-cost.test.ts` 的 120 分鐘上限也只印報告。量到（種子 20261021，模擬分鐘，0 次被拒）：全清 49.4～61.4 分（之前 ≤ 211.8）、前四魔王 39.4～49.7 分、刷稀有 15～100 分。
+- `tier-curve` 四項仍 0 條未通過；DPS 表 `docs/superpowers/specs/2026-10-27-dps-after.md` 已重新產生。
+
+**之前停在哪（2026-10-27）：** branch `feat/rare-tuning`（**未 push、未合併到 `main`**）。`feat/spell-tiers`（12 個任務）與 `feat/tier-step-18`（改成 `TIER_STEP` 1.8 的重調）都已在 2026-10-27 依使用者指示 fast-forward 合併回 `feat/rare-tuning`，兩個 branch 都已刪除。`npm test` 68 個檔案 737 個測試全過、`npm run build` 通過（2026-10-27 量測）。瀏覽器驗收已做完（見下）。
 
 **這個 branch 做了什麼（規格 `docs/superpowers/specs/2026-10-27-tier-curve-and-map-expansion-design.md`，第 15 節是實作後的修訂；計畫 `docs/superpowers/plans/2026-10-27-spell-tiers.md`＋`2026-10-27-tier-step-18.md`；帳本 `docs/superpowers/sdd/2026-10-27-spell-tiers/progress.md`＋`2026-10-27-tier-step-18/progress.md`）：**
 - **強度曲線：** 名魔法重排成 Lv.1～9（一般 60 招）＋稀有一律 Lv.10（7 招）；新增 20 招、改名 11 招，總共 67 招。每高一階約 **×1.68～×1.98**（`TIER_STEP` 1.8，使用者 2026-10-27 決定；強化滿 +50 攻擊 ×1.4＝`EMPOWER_MAX`，最多只到下一階中位數的 0.91；已合併進 `feat/rare-tuning`，數字見帳本 `docs/superpowers/sdd/2026-10-27-tier-step-18/progress.md`）；Lv.10 稀有對 Lv.9 中位數 ×1.73～×1.93；強化 +50 不會追上下一階（每招 ≤ 下一階中位數，各階中位數 ≤ 下一階 ÷ 1.2）。DPS 表在 `docs/superpowers/specs/2026-10-27-dps-after.md`，量測工具 `scripts/measure-dps.ts`，測試把關 `tests/sim/tier-curve.test.ts`。
 - **規則：** 強化只改攻擊（`attack × (1 + (EMPOWER_MAX − 1) × (L − 1) / 49)`，`EMPOWER_MAX` 1.4）；自創魔法上限 Lv.9；稀有配方＝同屬性 Lv.9 名魔法＋素材、機率 1 : 49，這種「魔法＋素材」配方只扣 1 個素材、不收融合成本（R1）。
 - **地圖：** 新地點星殞高原（Lv.8–9）與世界盡頭（Lv.9–10）、8 個新魔物、神階元素掉落、關鍵道具墮星之印、魔導書新區域星界（共 6 個區域、10 環）。
 - **介面：** 技能樹 10 環（外環間距縮小，全部解開時畫面約 0.72 倍，可縮放）；光與暗分頁（光左暗右，聖光審判與深淵吞噬移到這裡，五元素樹上沒有）；魔法學派（`school`）、詠唱詞與數值顯示在詳情卡；戰鬥畫面顯示「魔王出現還差 N 隻」與「魔王現身！」；合成台「放回上次組合」按鈕（記在 `localStorage` `ig.lastCombo`）；學會一般新魔法跳 3 秒通知（只有「裝備」，最多 3 個、擠掉最舊的），稀有揭曉動畫播完停在「裝備／不裝備」（待辦 0c 已完成）。
-- **模擬結果（1.8 重調後，種子 20261021，模擬分鐘，0 次被拒）：** 6 條路線全清 6 個地點；前四個魔王 69.5～119.3 分；全部 ≤ 211.8 分；每個地點 6.0～71.6 分；刷稀有 ≤ 63 分。要注意：Lv.1→2 群怪倍率 ×1.98，離上限 2.0 很近。
+- **模擬結果（1.8 重調後、2026-10-28 血量重調前，種子 20261021，模擬分鐘，0 次被拒）：** 6 條路線全清 6 個地點；前四個魔王 69.5～119.3 分；全部 ≤ 211.8 分；每個地點 6.0～71.6 分；刷稀有 ≤ 63 分。要注意：Lv.1→2 群怪倍率 ×1.98，離上限 2.0 很近。
 - **暫緩（使用者決定）：** 用 Lv.9／稀有當材料的自創魔法，因效果互相配合（拉怪＋範圍、潮濕＋雷），66 組中 22 組超過「最強材料 × 相性加成」；檢查只印報告（`ENFORCE_CRAFTED = false`）。等實裝副魔法（雙重詠唱／先後施放，待辦 0d）時再一起降低自創係數。
 
 **瀏覽器驗收（2026-10-27，headless Chrome＋puppeteer-core，macOS）：** 規格第 12.3 節各項都通過、無頁面錯誤；細節與截圖路徑見 `.superpowers/sdd/2026-10-27-spell-tiers/task-12-report.md`（截圖與腳本在 `.superpowers/sdd/2026-10-27-spell-tiers/accept/`，未進版本庫）。**種進去的：** 每個測試的存檔（已學會的魔法、元素與素材數量、已散開的迷霧區域、已開放的地點、`zoneKills`、關鍵道具墮星之印）都是直接改本機 D1 種的；**實際操作的：** 技能樹與迷霧、使用關鍵道具、切換分頁、詳情卡、泡泡、雙擊放入、合成（連續 4 個新魔法與稀有魔法）、按「裝備」、放回上次組合、換地點、GM 視窗。稀有魔法是真的用介面連續合成 121 次擲出焚世之焰（沒有調機率）。連續 4 個通知那次為了讓 4 次伺服器往返重疊，在頁面裡暫時把 3000 ms 的逾時放大成 15000 ms；通知單獨存活約 3 秒是另外用原本時間量的（3032 ms）。驗收用本機 D1 清過 `guest_creations`（遊客每小時 10 個的限制）。一個本機 GM 測試帳號已在本機 D1 綁定（密碼只是驗收用的臨時值）。
@@ -83,7 +93,9 @@
 | 2 | 第二版 C+D：排行榜與每日至尊稱號 | 開始前先和使用者決定「大魔導士稱號」與「內容太少會同分」 | `docs/superpowers/specs/2026-10-21-v2-roadmap.md` |
 | 3 | 全面擴充內容（地圖、魔法數量、技能樹） | 之後 | — |
 
-**下一步（給接手者）：** (1) 使用者在真實瀏覽器試玩（換高一階有沒有感、強化滿與剛合成的下一階差多少、各地點節奏、通知、光暗分頁、手機版面）；(2) 問使用者要不要把 `feat/rare-tuning` 合併到 `main`；(3) 主動提出待辦 0b（稀有落空保底）的討論。**遠端 D1 不需要新的 migration**（這個 branch 沒有改資料表；舊存檔若含 Lv.8 舊稀有或自創魔法，`parseState` 與深度檢查已有測試）。
+**下一步（給接手者，2026-10-28）：** 先做 `feat/crowd-ttk` 的 Task 4（畫面確認），並請使用者決定場上隻數目標達不到的部分（見上面與帳本 T3-impossible）；之後才是下面 10-27 的步驟（`feat/crowd-ttk` 要合併回 `feat/rare-tuning` 也要先問）。
+
+**下一步（10-27 寫的）：** (1) 使用者在真實瀏覽器試玩（換高一階有沒有感、強化滿與剛合成的下一階差多少、各地點節奏、通知、光暗分頁、手機版面）；(2) 問使用者要不要把 `feat/rare-tuning` 合併到 `main`；(3) 主動提出待辦 0b（稀有落空保底）的討論。**遠端 D1 不需要新的 migration**（這個 branch 沒有改資料表；舊存檔若含 Lv.8 舊稀有或自創魔法，`parseState` 與深度檢查已有測試）。
 
 **接手者務必遵守（摘要，全文見第 6、7 節與記憶）：** 用繁體中文溝通；**不部署、不主動提部署**；**push、合併、部署前都要先問**；只改文件可以直接在 `main` commit（但目前文件都跟著 `feat/rare-tuning`，合併後就會到 `main`）；不要 commit `.dev.vars`；平衡數值現在是進行中的工作，但倍率、機率等數字的最終值要給使用者確認；結束前更新本節與第 10 節交接紀錄。
 
@@ -98,7 +110,7 @@
 - **合成台介面改版（2026-10-23，`feat/synthesis-altar`）：** 規格 `docs/superpowers/specs/2026-10-23-synthesis-altar-ui-design.md`，計畫 `docs/superpowers/plans/2026-10-23-synthesis-altar.md`，帳本 `docs/superpowers/sdd/2026-10-23-synthesis-altar/progress.md`。右欄改成方形合成台（`SynthesisAltar`：左右各放一個輸入、各依元素與魔法有不同特效、中間「合成」、按下後融合特效再揭曉結果；被拒絕時不播完整動畫、兩邊保留並顯示原因）；原本的合成區下拉選單與「嘗試紀錄」組合表已移除（伺服器的 `synthesisLog` 保留給第二版 B）。魔導書：單擊魔法冒出泡泡（放入合成／裝備／詳情）、雙擊直接放入合成台、詳情與強化合成一張浮動卡（`NodeCard`）、縮放按鈕移進技能樹並加「⌖ 回到中心」、滾輪只縮放不捲頁、拖曳與縮放不經過 React state。關鍵道具按鈕移到戰鬥畫面（`KeyItemBar`），訊息幾秒後自動消失。
 - **GM 工具（2026-10-23，`feat/gm-tool`）：** 規格、計畫、帳本見第 2 節。遊戲畫面上**沒有任何 GM 入口**；按 Ctrl＋Shift＋`（或網址加 `?gm`）叫出紫色浮動視窗（`src/ui/GmWindow.tsx`，可拖曳、縮小，位置記在 `localStorage` `ig.gmWindow`），先在視窗內再驗證一次帳號密碼（瀏覽器雜湊，伺服器比對；GM 必須先以已綁定帳號登入），通過後發 30 分鐘的 GM token（只存在記憶體，重新整理要重驗）。四個分頁：元素（5×5 元素、素材、關鍵道具，按「套用」一次送出）、地圖（開放所有地點／散開所有迷霧／目前地點差 1 隻出魔王）、配方表（純用戶端，可搜尋，融合需求以 GM 自己的狀態用 `fusionNeeds` 計算）、玩家（重設其他玩家的密碼，臨時密碼只在視窗顯示一次）。**GM 名單**在伺服器設定 `GM_USERNAMES`（逗號分隔帳號名稱；本機寫進 `.dev.vars`，上線用 `wrangler secret put`）；沒設定時 `/api/gm/*` 一律 404。**只列已經綁定在你自己名下的帳號名稱**：GM 身分是「誰先綁定這個名稱」，列了但還沒人綁定的名稱，任何人都能搶先綁定而成為 GM；名單裡格式不合法的名稱會被忽略。上線時先不設名單部署、用強密碼綁定 GM 帳號，之後才設定名單。用過任何改存檔功能的帳號 `players.gm_used = 1`，之後不寫 `discoveries`、不成為首位（`excludedFromRecords`）。migration `0006_gm.sql` 新增 `gm_used`、`gm_tokens`、`gm_actions`，**不會重置存檔**（本機已套用，套用前後 `players` 都是 28 筆）；**遠端未套用，而且新 worker 部署前遠端一定要先套用 0005 與 0006**（每次讀玩家都會讀 `gm_used`）。**已知限制：** 配方表在前端 bundle 裡，GM 視窗隱藏配方表只是介面上的，不是安全邊界。
 - **GM 工具驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 9 項全過、無頁面錯誤。未設定 `GM_USERNAMES` 時所有 `/api/gm/*` 回 404（設定後同一路徑未登入回 401）；快捷鍵與 `?gm` 都能打開；非 GM 帳號用正確帳密得到「帳號或密碼錯誤」；改元素與關鍵道具後元素表立刻更新、掉落不丟、之後 60 秒上傳 200、`rejections` 沒增加、`gm_used = 1`；地圖三個按鈕都生效；配方表 57 筆、搜尋可用、火球＋疾風刃的融合需求與合成台顯示一致；重設玩家密碼（含已被連錯鎖住的帳號）舊密碼失敗、臨時密碼成功、舊裝置被登出、請求與 `gm_actions` 都沒有明文；重設自己回 403、不存在的帳號回 404；`gm_used` 的帳號合出聖光審判時沒有 `discoveries` 列、`rare.first = false`；GM token 過期後視窗回到登入表單、遊戲照常。**種進去的：** 聖光審判那次是把 `thunder_hammer` 直接寫進本機存檔的 `learned`，並用 GM 工具給足元素與日輝碎片；「差 1 隻出魔王」是看存檔的 `zoneKills`（39），沒有再打到魔王；token 過期那次把 `GM_TOKEN_TTL_MS` 暫時改成 15 秒（只在驗收用的本機伺服器，已還原、沒有 commit）。腳本與截圖在 `.superpowers/sdd/2026-10-23-gm-tool/accept/`（未進版本庫）。
-- **測試：** `npm test` 68 個檔案、737 個測試全部通過（合併後的 `feat/rare-tuning`，2026-10-27；含 `tests/sim` 路線模擬、曲線檢查與稀有刷取成本）；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
+- **測試：** `npm test` 69 個檔案、745 個測試全部通過（`feat/crowd-ttk`，2026-10-28；`feat/rare-tuning` 是 68 個檔案 737 個，2026-10-27；含 `tests/sim` 路線模擬、曲線檢查與稀有刷取成本）；`npm run build` 通過（只有 Pixi 打包超過 500 kB 的提示）。
 - **合成台驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 規格第 9 節 10 項全過、無頁面錯誤。元素存量、已學會的魔法清單與一個關鍵道具是直接改本機存檔種進去的；放入、裝備、合成、強化、使用關鍵道具、解鎖被動、拖曳、滾輪都是實際操作。1280x900 下拖曳技能樹同時重複播放合成台特效約 149 fps（單幀最長 75 ms；戰場上只有少數怪，沒有重測 80 隻怪的情況）。驗收中發現泡泡在已學會魔法上高度估錯、會蓋住自己的節點，已修正（`fix(ui): reserve the real height of a learned spell's bubble`）。腳本與截圖在 `.superpowers/`（未進版本庫）。
 - **第二版 B：稀有魔法與發現紀錄（2026-10-23，`feat/v2b-rare-discoveries`）：** 規格、計畫、帳本見第 2 節。5 個新稀有魔法（焚世之焰、蒼穹之息、九天雷獄、泰坦之握、滄溟月潮，當時 Lv.8，每種屬性一個；**`feat/spell-tiers` 之後已改成 Lv.10，配方是「該屬性 Lv.9 名魔法＋素材」，1 : 49**），當時是「該屬性 Lv.5 魔法＋高階元素」的機率配方（稀有 1 : 落空 64，約 1/65；**後來改成 1 : 49**，見待辦 0a；**階級已在 `feat/spell-tiers` 改成 Lv.10**，見 3.0）；聖光審判、深淵吞噬也標為稀有（`spells.json` 的 `rare: true`，數值與配方不變）。合出稀有魔法時，發現者看到全螢幕揭曉動畫（`RareReveal`，首位「✦ 全服首次發現 ✦」、其餘「✦ 稀有魔法！✦」，點一下跳過），其他玩家在頂端鈴鐺（`DiscoveryBell`）看到動態（名稱、殘卷線索、發現者顯示名稱、時間；**沒有配方**），用戶端每 60 秒輪詢 `GET /api/discoveries`。migration `0005_discoveries.sql` 新增 `discoveries` 表，**不會重置存檔**（本機已套用，套用前後 `saves` 都是 26 筆）；首位由部分唯一索引保證只有一位，可疑帳號不寫入。**遠端未套用。**
 - **第二版 B 驗收（headless Edge + puppeteer-core，2026-10-23，Windows）：** 兩個獨立的瀏覽器 context 當兩位玩家。玩家 1 合出焚世之焰：看到「✦ 全服首次發現 ✦」、點一下跳過、魔法已裝備；玩家 2 的鈴鐺約 50 秒後亮起未讀 1、清單有名稱、殘卷線索、「艾莉亞」與時間、沒有配方，打開後未讀歸零；玩家 2 自己合出時看到「✦ 稀有魔法！✦」；玩家 1 自己的發現不算未讀；`discoveries` 兩筆（`first` 1 與 0）；無頁面錯誤。**種進去的：** 兩位玩家的存檔（已學會煉獄、12 個高階火、迷霧區域已散開）直接改本機 D1；**擲骰方法：** 驗收期間把 `recipes.json` 的焚世之焰權重暫時改成 1000 : 1（只在驗收用的本機 dev server，已還原、沒有 commit），所以「合出稀有魔法」不是真的 1/65 機率；機率本身由 `worker/` 的單元測試以注入的亂數涵蓋。截圖與腳本在 `.superpowers/sdd/2026-10-23-v2b-rare-discoveries/accept/`（未進版本庫）。
@@ -240,6 +252,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-28（Claude Code，Opus 5.5，macOS，清怪節奏 Task 3）**：在 branch `feat/crowd-ttk`（從 `feat/rare-tuning` 分出）做計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md` 的 Task 3：依地點把一般魔物與魔王的血量乘一個係數（迷霧草原 0.5、雷鳴峽谷 0.05、熔火荒原 0.10、沉沒神殿 0.15、星殞高原 0.14、世界盡頭 0.11），以「高一階碰線 ≈ 0」優先。結果：高一階壓制在五個地點達成，迷霧草原不隨血量改變；同階只有迷霧草原落在 30～50 隻（其他 13.6～27.6），雷鳴峽谷與熔火荒原的低一階不到 60 隻；只靠血量做不到規格 4.3 的全部目標，`ENFORCE_CROWD` 仍是 false、門檻沒改（帳本 Ruling T3-impossible）。通關時間與刷稀有上限改成只印報告（使用者「4的掉落平衡後續再更動」）：全清 49.4～61.4 模擬分鐘、0 次被拒、6 條路線都清完。`tier-curve` 0 條未通過；重新產生 `2026-10-27-dps-after.md`。`npm test` 69 檔 745 個、build 通過。停在：`feat/crowd-ttk` 未 push、未合併；Task 4（畫面確認）還沒做。下一步：使用者決定場上隻數目標的處理方式，再做 Task 4。
 
 - **2026-10-27（Claude Code，Opus 5.5，macOS，TIER_STEP 1.8）**：使用者決定 `TIER_STEP` 1.8、強化滿改為攻擊 ×1.4（`EMPOWER_MAX`，與每階倍率脫鉤，推翻「強化滿 ≈ 高一階」；原話：強化是同階進步、跳階要有感）、自創配合問題暫緩到副魔法實裝時。規格第 15 節、討論紀錄第六輪、計畫 `docs/superpowers/plans/2026-10-27-tier-step-18.md`、帳本 `docs/superpowers/sdd/2026-10-27-tier-step-18/progress.md`。在 branch `feat/tier-step-18`（從 `feat/rare-tuning` 分出，之後依使用者選擇 fast-forward 合併回 `feat/rare-tuning` 並刪除）重調：相鄰倍率 ×1.68～×1.98、強化 +50 最多到下一階中位數 0.91、稀有為 Lv.9 的 ×1.73～×1.93；模擬前四魔王 69.5～119.3 分、全部 ≤ 211.8、每地點 6.0～71.6、刷稀有 ≤ 63、0 次被拒；墮星龍神階 0.9。`npm test` 68 檔 737 個、build 通過。停在：`feat/rare-tuning` 未 push、未合併到 `main`。下一步：使用者在真實瀏覽器試玩，再決定合併到 `main`；之後討論待辦 0b。
 
