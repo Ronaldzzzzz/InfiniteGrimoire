@@ -120,3 +120,7 @@ worlds_end        rel  0 (Lv.9, 5 spells) 場上 15.4；碰線 10.5；15 秒清�
 worlds_end        rel  1 (Lv.10, 7 spells) 場上 6.1；碰線 0.0；15 秒清場 71%
 ```
 修訂後的把關：17 列中 15 列通過，2 列是已知缺口（上面標示）。
+- Task 3: minor (deferred): `crowd.test.ts` prints a console.warn per KNOWN_GAPS row every run (test noise, deliberate).
+- Task 3: minor (deferred): a KNOWN_GAPS row that starts passing is not flagged as stale.
+- Task 3: minor (deferred): `inPull` ignores knockback / `METEOR_PUSH` (correct, not pulls) — deserves a one-line comment.
+- Task 3: complete (commits 196cbf6..852aacb, review clean; 2 KNOWN_GAPS rows per Ruling C3)
