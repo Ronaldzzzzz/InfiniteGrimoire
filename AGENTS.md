@@ -57,9 +57,14 @@
 
 ## 3. 目前狀態（2026-10-28）
 
-### 3.0 接手先看這裡（2026-10-28 更新）
+### 3.0 接手先看這裡（2026-10-29 更新）
 
-**現在停在哪（2026-10-29）：** 使用者試玩完畢，`feat/crowd-ttk` 與 `feat/rare-tuning` 已 fast-forward 合併到 **`main`**（兩個 branch 已刪除；`main` 比 `origin/main` 多 80 個 commit，**尚未 push**，push 由使用者 `! git push`）。**遊戲性討論已完成（2026-10-29）：** 結論寫在 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md`（魔法研究改版總體設計），使用者同意四個專案的順序：(1) 橫向戰鬥帶與關卡 → (2) 魔法陣合成 → (3) 每次合成的手氣（品質、熟練度、異變）→ (4) 教科書與解鎖；存檔直接重置。**下一步：寫專案 1（橫向戰鬥帶與關卡）的細規格**（總體設計第 6 節列了要決定的事），0b 併入專案 3。 以下是合併進來的清怪節奏（TTK）與數字放大，清怪節奏（TTK）與數字放大，規格 `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`、計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md`、帳本 `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md`。起因是使用者試玩 1.8 版：「換了一階魔法但畫面的怪物還是一堆」「怪物整體的TTK過長」。4 個任務中 4 個任務與最終審查修正都已完成（Task 4 畫面確認的結果見帳本）；之後依試玩回饋又做了三輪（都在這個 branch）：活動時間 DPS（規格第 8 節）、擊退邊界與魔王血量（第 9 節）、升階成本 3／5／10／20 與元素掉落重調（第 10 節）。`npm test` 69 個檔案 763 個測試全過、`npm run build` 通過（2026-10-29）。
+**現在停在哪（2026-10-29，專案 1：橫向戰鬥帶與關卡）：** branch `feat/battle-strip`（從 `main` 分出，**未 push、未合併**）。規格 `docs/superpowers/specs/2026-10-29-side-scroll-battle-strip-design.md`、計畫 `docs/superpowers/plans/2026-10-29-battle-strip.md`；帳本與各任務報告在 `.superpowers/sdd/2026-10-29-battle-strip/`（gitignore，不進版本庫）。Task 1～7（程式）與 Task 8（瀏覽器驗收＋文件）已完成，驗收報告 `.superpowers/sdd/2026-10-29-battle-strip/task-8-report.md`。**待使用者確認的平衡提案**（關卡波次、血量、各階清關時間）尚未決定；Task 9（離線收益）要先和使用者討論。
+- **這個 branch 做了什麼：** 圓形戰場換成主介面下方的橫向長帶（`src/render` 的 `makeArena(w, h)`；`combat.ts` 的 `RANGE`／`LANE_Y`／`STOP_X`／`RIGHT_X`）：小人固定在左、怪從右緣進場往左走、停在停止線、擊退一律往右且不出右緣。推圖改成關卡：每個地點 10 關（1～9 小怪關、第 10 關魔王關；`zones.json` 的 `stages[].waves`；`src/engine/stages.ts`）；一波清完才出下一波；魔王關最後一波是魔王，**遇到魔王波才開始倒數 `BOSS_LIMIT_MS` = 180 秒**，時間到失敗並退回前一關。`StageBar`（`src/ui/StageBar.tsx`）顯示「地點 關卡」、進度條、魔王倒數、「自動前進」勾選（`localStorage`）、魔王關前的「進入魔王關」與結算／失敗通知；`BossCounter`、`zoneKills`、`ENGAGE_R`／`KNOCK_MAX_R`／`walkedTouch` 都已移除。**結算：** 打完小怪關，用戶端送 `POST /api/stage-clear`（`src/engine/stage-clear.ts`，`stageLoot` 約為這關掉落的兩倍；伺服器擲骰、檢查最快時間 `minStageMs`、魔王關要魔王真的被打倒）；`clearedStages`、`lastClearAt` 是**伺服器擁有**的欄位；`audit.ts` 的 `maxKills` 改看「到目前為止能出現的波數」，魔王擊殺要先清完前 9 關。migration `0007_stages.sql` **會重置所有存檔**（本機已套用，遠端未套用）。
+- **瀏覽器驗收（2026-10-29，headless Chrome＋puppeteer-core，macOS）：** 結果見 task-8-report.md。規格第 4 節 1～7 項大致通過、無頁面錯誤（迷霧草原 1-1 用火球約 128 秒清完；結算先顯示「結算中…」再列戰利品、伺服器 `clearedStages` 0 → 1；魔王關按鈕、走完前面波才出現 180 秒倒數、打倒後 `clearedStages` 10、掉落風暴之心、開放雷鳴峽谷；時間到顯示「時間到，退回 1-9」）。**擋住的問題：視窗寬 601～1099 px（例如 900×900）時 `.battle-strip` 是 `position: relative`、落在頁面最底（`.app { height: auto }`），第一屏看不到長帶；1280 與 390 正常。這個要回到 CSS 修。** 另：長帶上的佔位怪方塊很大（約 60 px）、互相疊在一起，部分超出長帶上下緣，不影響玩法但外觀待處理。
+- **接手者先做：** 最終全 branch 審查 → 使用者在真實瀏覽器試玩 → 決定合併。`npm test` 72 個檔案 823 個測試全過、`npm run build` 通過（2026-10-29）。
+
+**之前停在哪（2026-10-29 上午，合併 `feat/crowd-ttk` 之後）：** 使用者試玩完畢，`feat/crowd-ttk` 與 `feat/rare-tuning` 已 fast-forward 合併到 **`main`**（兩個 branch 已刪除；`main` 比 `origin/main` 多 80 個 commit，**尚未 push**，push 由使用者 `! git push`）。**遊戲性討論已完成（2026-10-29）：** 結論寫在 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md`（魔法研究改版總體設計），使用者同意四個專案的順序：(1) 橫向戰鬥帶與關卡 → (2) 魔法陣合成 → (3) 每次合成的手氣（品質、熟練度、異變）→ (4) 教科書與解鎖；存檔直接重置。**下一步：寫專案 1（橫向戰鬥帶與關卡）的細規格**（總體設計第 6 節列了要決定的事），0b 併入專案 3。 以下是合併進來的清怪節奏（TTK）與數字放大，清怪節奏（TTK）與數字放大，規格 `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`、計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md`、帳本 `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md`。起因是使用者試玩 1.8 版：「換了一階魔法但畫面的怪物還是一堆」「怪物整體的TTK過長」。4 個任務中 4 個任務與最終審查修正都已完成（Task 4 畫面確認的結果見帳本）；之後依試玩回饋又做了三輪（都在這個 branch）：活動時間 DPS（規格第 8 節）、擊退邊界與魔王血量（第 9 節）、升階成本 3／5／10／20 與元素掉落重調（第 10 節）。`npm test` 69 個檔案 763 個測試全過、`npm run build` 通過（2026-10-29）。
 - **數字 ×10（Task 1）：** 魔法攻擊、魔物血量、防禦、回血全部 ×10（`DEFENSE_SCALE` 1000），比例不變；Lv.1 單發約 80、Lv.9 千位數。存檔不用 migration。
 - **血量依地點縮短（Task 3）：** 一般魔物與魔王乘同一個係數：迷霧草原 0.5、雷鳴峽谷 0.05、熔火荒原 0.10、沉沒神殿 0.15、星殞高原 0.14、世界盡頭 0.11（照規格「高一階壓制優先」）。
 - **場上隻數（`tests/sim/crowd.test.ts`，量測在 `tests/sim/measure.ts` 的 `crowdReport`）：** 只靠血量無法同時達成規格 4.3 原本的目標（帳本 Ruling T3-impossible），使用者選「維持現狀並先試玩」（Ruling C3，規格 4.3 有同日修訂）：保留血量係數；碰線改成不算被拉怪魔法（流沙、天穹風暴、絕空裂風等）拉到停止圈的魔物（`walkedTouch`）；把關改成同階 10～35 隻、高一階碰線 ≤ 2 且 15 秒清場過半（迷霧草原只要求高一階少於同階）、低一階多於同階，`ENFORCE_CROWD = true`。結果：高一階五個地點碰線 0、清場 55%～71%，迷霧草原 17.1 < 39.2；同階 13.6～27.6 隻；低一階多於同階。**兩列仍沒達到，列為已知缺口、只印不擋**（`KNOWN_GAPS`）：迷霧草原同階 39.2 隻（> 35）、雷鳴峽谷低一階 12.7 隻（少於同階 18.1）。**使用者試玩時要看：**「同階偏簡單」（同階魔法就把畫面壓到十幾、二十幾隻），以及低一階魔法能清掉前面的地點（雷鳴峽谷、熔火荒原）。
@@ -169,18 +174,19 @@ src/engine/   純 TypeScript 遊戲邏輯（瀏覽器與伺服器共用；禁止
   spells.ts 名魔法與自創魔法的解析（resolveSpell、craftedId、spellAtLevel、攻擊上限）
   crafting.ts 合成（配方、相性、融合成本、重擲不免費）· tree.ts 魔導書節點與迷霧、深度上限、被動解鎖
   empower.ts 魔法強化與被動加成 · inventory.ts 背包與升階
-  combat-rules.ts 傷害門檻／越級遞減／相剋 · combat.ts 戰鬥模擬（成群魔物、各種魔法效果、狀態、ENGAGE_R 瞄準、MAX_ACTIVE_FX）
+  combat-rules.ts 傷害門檻／越級遞減／相剋 · combat.ts 橫向長帶戰鬥模擬（成群魔物、各種魔法效果、狀態、`RANGE` 射程瞄準、`LANE_Y`／`STOP_X`／`RIGHT_X` 幾何、波次與關卡階段 `createBattle`／`enterStage`、MAX_ACTIVE_FX）
+  stages.ts 關卡規則（`WALK_MS`、`BOSS_LIMIT_MS` 180 秒、`stageTotal`、`minStageMs`、`highestPlayable`）· stage-clear.ts 關卡結算戰利品與驗證（`stageLoot`、`LOOT_ROLLS` 2）
   persist.ts 初始存檔與存檔解析（zod）· audit.ts 防作弊：上傳上限檢查（取代舊的 validate.ts）· rng.ts
 src/data/content/  魔法 spells、配方 recipes、魔物 monsters、地點 zones、素材 materials、關鍵道具 key-items、
               被動 passives、魔導書區域 regions（*.json；內容與數值都在這裡）
 worker/       Cloudflare Worker（Hono）：遊客與帳號（sessions／credentials、password.ts 對瀏覽器雜湊做 HMAC＋pepper）、
               存檔上傳、伺服器擲骰合成、強化、使用關鍵道具、解鎖被動；
               store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）；`discoveries`（稀有魔法的發現紀錄：`recordDiscovery`／`recentDiscoveries`、部分唯一索引保證每個魔法只有一位首位、可疑帳號不寫入）與 `GET /api/discoveries?after=<id>`（最多 20 筆、不回傳 player_id）；GM 端點 `POST /api/gm/login`、`/api/gm/inventory`、`/api/gm/zones`、`/api/gm/reset-password`（`GM_USERNAMES` 未設定時全部 404，檢查在 session 驗證之前；GM token 以 `X-GM-Token` 傳，雜湊後存 `gm_tokens`；`gm_actions` 只寫入、不含密碼）、`excludedFromRecords(player)`（`suspicious || gmUsed`）
-migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔、0005 發現紀錄 `discoveries`：不動存檔、0006 GM 工具 `gm_used`／`gm_tokens`／`gm_actions`：不動存檔）
+migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔、0005 發現紀錄 `discoveries`：不動存檔、0006 GM 工具 `gm_used`／`gm_tokens`／`gm_actions`：不動存檔、0007 關卡 `currentStage`／`clearedStages`／`lastClearAt`、移除 `zoneKills`：**重置存檔**）
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳／動作／斷線／錯誤）、loop、boot
-src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 圓形戰場幾何；
+src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 橫向長帶幾何（`makeArena(w, h)`）；
               element-fx.ts 各元素的粒子語彙；effects.ts 特效視覺；motion.ts 怪物擺動
-src/ui/       React 介面：TopBar（地點／魔法選擇器）、ElementTable、SynthesisAltar（方形合成台，資料與特效描述在 altar-data）、
+src/ui/       React 介面：TopBar（地點與關卡／魔法選擇器）、StageBar（長帶左上的關卡名稱、進度條、魔王倒數、自動前進、進入魔王關、結算通知）、ElementTable、SynthesisAltar（方形合成台，資料與特效描述在 altar-data）、
               DiscoveryBanner（新發現、一網打盡）、Notebook（魔法筆記）、EmpowerPanel（強化）、
               GrimoirePanel（SVG 技能樹，含迷霧、泡泡 NodeBubble、浮動詳情卡 NodeCard）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
               Onboarding、OfflineOverlay；
@@ -204,12 +210,13 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - **傷害門檻**：魔法階級 ≥ 魔物階級 − 1，或攻擊力 ≥ 防禦 × 0.7，否則傷害為 0（畫面顯示「無效」）。
 - **越級遞減**：d = 魔法階級 − 魔物階級，d ≥ 2 時掉落效益 = 0.5 + 0.5 × 0.5^(d−1)。例外：`key:` 道具不受遞減影響（R13），每個魔王第一次擊倒一定掉關鍵道具。
 - **小人沒有血條、不會死。**
-- **伺服器是銀行**：`learned`、`levels`、`revealed`、`passives`、`synthesisLog` 只能由伺服器改變（合成、強化、使用關鍵道具、解鎖被動都是伺服器動作）；合成一律伺服器擲骰。被拒絕的動作回 422、不寫入、不算作弊（R9、R11）。
+- **伺服器是銀行**：`learned`、`levels`、`revealed`、`passives`、`synthesisLog`、`clearedStages`、`lastClearAt` 只能由伺服器改變（合成、強化、使用關鍵道具、解鎖被動、關卡結算都是伺服器動作）；合成一律伺服器擲骰。被拒絕的動作回 422、不寫入、不算作弊（R9、R11）。
 - **元素五階**：初階／中階／高階／極階／神階；升階成本 3／5／10／20 個低一階的元素（2026-10-28 使用者核准，原本 3／10／30／100；`GRADE_UPGRADE_COST`）。
 - **隨機配方的重試不免費**（R14、R14b）：落空到已會的自創魔法時，照名魔法重複的方式扣成本。
 - **自創魔法 id 只有一種寫法**：`c(<a>|<b>)`，兩個輸入 token 依字串排序（`craftedId`）；不照順序或只有素材的 id 解析成 null（R4）。深度上限 `HARD_MAX_DEPTH`，強化等級上限 `MAX_SPELL_LEVEL`，攻擊上限 `CEILING_FACTOR`。
 - **特效上限**：場上同時存在的特效 `MAX_ACTIVE_FX = 24`（`combat.ts`），畫面與引擎共用；新增特效不要繞過它。
-- **範圍魔法的瞄準**：最密、隨機、最強等目標只考慮中心 `ENGAGE_R = 0.4` 以內的魔物，沒有才退回全部（R16）；一網打盡一定要在畫面裡看得到。
+- **範圍魔法的瞄準**：最密、隨機、最強等目標只考慮小人前方射程 `RANGE` 內的魔物（長帶座標 `x <= RANGE`），沒有才退回全部；擊退一律往右、不推出右緣 `RIGHT_X`；怪停在停止線 `STOP_X` 前、不會穿過小人；一網打盡一定要在畫面裡看得到。
+- **關卡與結算**：每個地點 10 關，第 10 關是魔王關；一波清完才出下一波；魔王關要玩家按「進入魔王關」（自動前進會停在魔王關前），**遇到魔王波才開始倒數 180 秒（`BOSS_LIMIT_MS`）**，時間到失敗並退回前一關。打完小怪關後用戶端送 `POST /api/stage-clear` 結算（伺服器擲骰、`stageLoot` 約兩倍掉落、檢查 `minStageMs`、魔王關要魔王真的倒下）。**`clearedStages`、`lastClearAt` 只能由伺服器改變**（上傳被改會被 `audit.ts` 拒絕；錨點窗口照舊）；`zoneKills` 已不存在，`maxKills` 改依「到目前為止能出現的波數」。
 - **防作弊錨點窗口**：上傳以「錨點存檔 + 目前的伺服器欄位」為基準檢查增益（`audit.ts`）；錨點每 60 秒前進一次，最多採計 180 秒；合成時把扣掉的材料也記到錨點（可為負，代表欠量）；`key:` 道具不給 `GAIN_SLACK`，必須來自真的魔王擊殺（R8）。改動 `audit.ts` 或 `worker/app.ts` 時，必須保持 `tests/sim` 各條路線 0 次被拒，以及 worker 的對抗測試全部通過。
 - **React 效能**：魔導書與節點詳情用窄 selector 訂閱，不能訂閱整個 `game` 或背包（戰鬥中每次掉落會讓整個 SVG 重畫）；有 Profiler 測試把關。
 - **「Lv.」永遠是魔法／魔物階級**；強化等級顯示成「強化 +N」（R17）。
@@ -260,6 +267,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-29（Claude Code，Sonnet 5.5，macOS，專案 1 驗收與文件）**：branch `feat/battle-strip`（從 `main` 分出）Task 1～7 完成後做 Task 8：本機套用 0007、用 headless Chrome（puppeteer-core 裝在專案外）逐項驗收橫向戰鬥帶規格第 4 節，並把 AGENTS.md（3.0、第 5、6 節）、README、上線前檢查清單（遠端 D1 要套用 0007，會重置存檔）更新。驗收發現一個擋住的問題：寬 601～1099 px 長帶在頁面最底、第一屏看不到（待 controller 派工修 CSS）。種進本機 D1 的：魔法、解鎖地點、`clearedStages`／`currentStage`；魔王關時間到測試用頁面內的虛擬時鐘加速 10 倍並裝備無傷害的魔力過載（只在驗收腳本，沒有改程式）。**停在：** branch **未 push、未合併**；平衡提案（關卡波次、血量）待使用者確認；Task 9（離線收益）要先和使用者討論。下一步：修寬度 601～1099 的長帶 → 最終全 branch 審查 → 使用者試玩 → 決定合併。
 
 - **2026-10-29（Claude Code，Opus 5.5，macOS，遊戲性討論）**：使用者試玩後表示「完全體會不到自己是魔法師的感覺」「在小人刷怪這部分著墨太多」，參考了 ChatGPT 的統整（專案根目錄 `魔法合成與掛機遊戲_完整聊天統整.md`）。用 brainstorming 與瀏覽器草圖（`.superpowers/brainstorm/2394-1793250586/`）討論後，寫成總體設計 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md`；沒有改程式。停在：`main` 未 push。下一步：專案 1（橫向戰鬥帶與關卡）的規格。
 
