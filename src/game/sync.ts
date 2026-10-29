@@ -22,6 +22,16 @@ export interface ActionPayloads {
 }
 export type ActionKind = keyof ActionPayloads;
 
+/** Lets a caller shape what an action sends and which of the returned state's client-owned fields to keep. */
+interface ActionHooks {
+  sendState?: (local: GameState) => GameState;
+  adopt?: (server: GameState, local: GameState) => GameState;
+}
+
+/** Waits this long (at most CLAIM_TRIES times) when another server action is in flight. */
+const CLAIM_WAIT_MS = 300;
+const CLAIM_TRIES = 10;
+
 interface Timers {
   setInterval: typeof setInterval;
   clearInterval: typeof clearInterval;
@@ -44,12 +54,20 @@ export class SyncController {
   private failures = 0;
   private statusListeners = new Set<(s: ConnStatus) => void>();
   private authListeners = new Set<() => void>();
+  /** stage claims run one at a time, in the order the stages were cleared */
+  private claims: Promise<unknown> = Promise.resolve();
+  private readonly unsubscribeEvents: () => void;
 
   constructor(
     private readonly runtime: GameRuntime,
     private readonly api: ApiClient,
     private readonly timers: Timers = defaultTimers,
-  ) {}
+  ) {
+    this.unsubscribeEvents = runtime.onEvents((events) => {
+      if (this.stopped) return;
+      for (const e of events) if (e.type === 'stageCleared') void this.claimStage(e.zoneId, e.stage);
+    });
+  }
 
   get status(): ConnStatus {
     return this._status;
@@ -70,6 +88,7 @@ export class SyncController {
     const id = this.timers.setInterval(() => void this.uploadNow(), UPLOAD_INTERVAL_MS);
     return () => {
       this.stopped = true;
+      this.unsubscribeEvents();
       this.timers.clearInterval(id);
     };
   }
@@ -159,7 +178,7 @@ export class SyncController {
    * result is returned for the UI to explain. Conflict / audit rejection: adopts the server state, returns
    * null. Busy, offline or auth failure: null. Other errors are thrown.
    */
-  async action<K extends ActionKind>(kind: K, payload: ActionPayloads[K]): Promise<ActionResult | null> {
+  async action<K extends ActionKind>(kind: K, payload: ActionPayloads[K], hooks: ActionHooks = {}): Promise<ActionResult | null> {
     if (this.retrying || this.runtime.getSnapshot().synthPending) return null;
     if (this.uploading) {
       await this.uploading;
@@ -168,12 +187,13 @@ export class SyncController {
     this.runtime.setSynthPending(true);
     try {
       const { game, revision } = this.runtime.getSnapshot();
-      const out = await this.send(kind, payload, game, revision);
+      const out = await this.send(kind, payload, hooks.sendState ? hooks.sendState(game) : game, revision);
       if (out.kind === 'refused') {
         this.runtime.setRevision(out.revision);
         return out.result;
       }
-      this.runtime.replaceState(out.state, out.revision);
+      const adopt = hooks.adopt && out.kind === 'ok' ? hooks.adopt(out.state, this.runtime.getSnapshot().game) : out.state;
+      this.runtime.replaceState(adopt, out.revision);
       return out.kind === 'ok' ? out.result : null;
     } catch (e) {
       if (e instanceof NetworkError) this.goOffline();
@@ -208,6 +228,33 @@ export class SyncController {
         return this.api.gmZones(game, revision, p.gmToken, p.op);
       }
     }
+  }
+
+  /**
+   * Asks the server to settle a cleared stage. The request carries the state as it was when the stage
+   * ended (current place = the cleared stage, which the audit measures against server progress); the
+   * runtime has already moved on, so the reply keeps the local place. A refusal (422) keeps the local
+   * state and is not retried. Claims run one at a time and wait for other in-flight actions.
+   */
+  claimStage(zoneId: string, stage: number): Promise<ActionResult | null> {
+    const run = async (): Promise<ActionResult | null> => {
+      for (let i = 0; i < CLAIM_TRIES; i++) {
+        if (this.stopped || this.retrying) return null;
+        if (!this.runtime.getSnapshot().synthPending) {
+          const result = await this.action('stageClear', { zoneId, stage }, {
+            sendState: (g) => ({ ...g, currentZone: zoneId, currentStage: stage }),
+            adopt: (server, local) => ({ ...server, currentZone: local.currentZone, currentStage: local.currentStage }),
+          });
+          if (result?.kind === 'cleared') this.runtime.setStageLoot(zoneId, stage, result.loot);
+          return result;
+        }
+        await new Promise<void>((resolve) => this.timers.setTimeout(resolve, CLAIM_WAIT_MS));
+      }
+      return null;
+    };
+    const p = this.claims.then(run, run);
+    this.claims = p.catch(() => undefined);
+    return p;
   }
 
   synthesize(inputs: ItemId[]): Promise<ActionResult | null> {

@@ -3,6 +3,8 @@ import { content } from '../engine/content';
 import { createRng } from '../engine/rng';
 import { createInitialState } from '../engine/persist';
 import { ApiError, AuthError, GmExpiredError, NetworkError, type ApiClient } from './api';
+import * as battleMod from '../engine/combat';
+import { STEP_MS } from '../engine/combat';
 import { GameRuntime } from './runtime';
 import { RETRY_MS, SyncController, UPLOAD_INTERVAL_MS } from './sync';
 
@@ -319,5 +321,90 @@ describe('SyncController', () => {
     expect(gmZones).toHaveBeenCalledWith(expect.anything(), 10, 'g1', 'unlock_all');
     expect(onAuth).not.toHaveBeenCalled();
     expect(rt.getSnapshot().synthPending).toBe(false);
+  });
+
+  describe('stage claims', () => {
+    const settled = { ...server, clearedStages: { mist_meadow: 1 }, lastClearAt: 99, inventory: { 'el:fire:1': 5 } };
+    /** the runtime reports stage 1 cleared on its next step */
+    const clearStage = (rt: GameRuntime) => {
+      const spy = vi.spyOn(battleMod, 'stepBattle').mockImplementationOnce((game, battle) => ({
+        game,
+        battle: { ...battle, phase: 'done' },
+        events: [{ type: 'stageCleared', zoneId: battle.zoneId, stage: battle.stage }],
+      }));
+      rt.advance(STEP_MS);
+      spy.mockRestore();
+    };
+    afterEach(() => vi.restoreAllMocks());
+
+    it('a stageCleared event claims the stage once', async () => {
+      const rt = mk();
+      const stageClear = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'cleared' as const, loot: ['el:fire:1'] }, state: settled, revision: 10 }));
+      const sync = new SyncController(rt, fakeApi({ stageClear }));
+      sync.start();
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(stageClear).toHaveBeenCalledTimes(1);
+      // the request describes the cleared stage even though the runtime already moved on
+      const [sent, baseRevision, zoneId, stage] = stageClear.mock.calls[0] as unknown as [{ currentStage: number }, number, string, number];
+      expect(sent.currentStage).toBe(1);
+      expect([baseRevision, zoneId, stage]).toEqual([7, 'mist_meadow', 1]);
+      const snap = rt.getSnapshot();
+      expect(snap.game.clearedStages).toEqual({ mist_meadow: 1 });
+      expect(snap.game.inventory).toEqual({ 'el:fire:1': 5 });
+      expect(snap.game.currentStage).toBe(2); // local place kept
+      expect(snap.battle.stage).toBe(2);
+      expect(snap.revision).toBe(10);
+      expect(snap.lastResult).toEqual({ kind: 'cleared', zoneId: 'mist_meadow', stage: 1, loot: ['el:fire:1'] });
+      expect(snap.synthPending).toBe(false);
+    });
+    it('a 422 tooFast claim keeps the local state and does not retry', async () => {
+      const rt = mk();
+      const stageClear = vi.fn(async () => ({ kind: 'refused' as const, result: { kind: 'rejected' as const, reason: 'tooFast' as const }, state: server, revision: 8 }));
+      const sync = new SyncController(rt, fakeApi({ stageClear }));
+      sync.start();
+      const before = rt.getSnapshot().game;
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(RETRY_MS * 3);
+      expect(stageClear).toHaveBeenCalledTimes(1);
+      const snap = rt.getSnapshot();
+      expect(snap.game.clearedStages).toBe(before.clearedStages);
+      expect(snap.revision).toBe(8);
+      expect(snap.battle.stage).toBe(2);
+      expect(snap.lastResult).toEqual({ kind: 'cleared', zoneId: 'mist_meadow', stage: 1, loot: [] });
+    });
+    it('a network error on claim goes offline and retries the upload like other actions', async () => {
+      const rt = mk();
+      const stageClear = vi.fn().mockRejectedValue(new NetworkError('x'));
+      const upload = vi.fn(async () => ({ kind: 'ok' as const, revision: 9 }));
+      const sync = new SyncController(rt, fakeApi({ stageClear, upload }));
+      sync.start();
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(sync.status).toBe('offline');
+      expect(rt.getSnapshot().paused).toBe(true);
+      expect(stageClear).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(RETRY_MS);
+      expect(upload).toHaveBeenCalledTimes(1);
+      expect(sync.status).toBe('online');
+      expect(rt.getSnapshot().paused).toBe(false);
+      expect(stageClear).toHaveBeenCalledTimes(1);
+    });
+    it('waits for another in-flight action instead of dropping the claim', async () => {
+      const rt = mk();
+      let finish!: (v: never) => void;
+      const synthesize = vi.fn(() => new Promise((r) => (finish = r as never)));
+      const stageClear = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'cleared' as const, loot: [] }, state: settled, revision: 11 }));
+      const sync = new SyncController(rt, fakeApi({ synthesize: synthesize as never, stageClear }));
+      sync.start();
+      const p = sync.synthesize(['el:fire:1', 'el:fire:1']);
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(stageClear).not.toHaveBeenCalled();
+      finish({ kind: 'ok', result: { kind: 'dormant' }, state: server, revision: 10 } as never);
+      await p;
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(stageClear).toHaveBeenCalledTimes(1);
+    });
   });
 });

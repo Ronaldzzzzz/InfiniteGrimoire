@@ -1,10 +1,17 @@
-import { createBattle, STEP_MS, stepBattle, type BattleEvent, type BattleState } from '../engine/combat';
+import { createBattle, enterStage, STEP_MS, stepBattle, type BattleEvent, type BattleState } from '../engine/combat';
 import { upgradeElement } from '../engine/inventory';
 import type { Content, GameState } from '../engine/model';
 import type { Rng } from '../engine/rng';
-import type { ElementId } from '../engine/types';
+import { highestPlayable, stageCount } from '../engine/stages';
+import type { ElementId, ItemId } from '../engine/types';
+import { loadAutoAdvance, saveAutoAdvance } from './auto-advance';
 
 export const MAX_CATCHUP_MS = 1000;
+
+/** The last stage settlement or failure, for the stage-end notice; cleared on travel and on entering the boss. */
+export type LastResult =
+  | { kind: 'cleared'; zoneId: string; stage: number; loot: ItemId[] }
+  | { kind: 'failed'; zoneId: string; stage: number; backTo: number };
 
 export interface Snapshot {
   game: GameState;
@@ -13,6 +20,9 @@ export interface Snapshot {
   paused: boolean;
   /** a server action (synthesis, empower, reveal, passive) is in flight; its reply replaces the game state */
   synthPending: boolean;
+  /** after a clear, move on to the next stage (otherwise the same stage restarts) */
+  autoAdvance: boolean;
+  lastResult: LastResult | null;
 }
 
 export class GameRuntime {
@@ -27,7 +37,15 @@ export class GameRuntime {
     revision: number,
     private readonly rng: Rng,
   ) {
-    this.snapshot = { game: state, battle: createBattle(state.currentZone, state.currentStage), revision, paused: false, synthPending: false };
+    this.snapshot = {
+      game: state, battle: this.newBattle(state.currentZone, state.currentStage), revision, paused: false, synthPending: false,
+      autoAdvance: loadAutoAdvance(), lastResult: null,
+    };
+  }
+
+  /** A fresh stage on this runtime's content; a boss stage always waits at the door. */
+  private newBattle(zoneId: string, stage: number): BattleState {
+    return createBattle(zoneId, stage, { held: true, content: this.content });
   }
 
   getSnapshot(): Snapshot {
@@ -58,7 +76,7 @@ export class GameRuntime {
   advance(elapsedMs: number): void {
     if (this.snapshot.paused || !(elapsedMs > 0)) return;
     this.leftoverMs += Math.min(elapsedMs, MAX_CATCHUP_MS);
-    let { game, battle } = this.snapshot;
+    let { game, battle, lastResult } = this.snapshot;
     const events: BattleEvent[] = [];
     let steps = 0;
     while (this.leftoverMs >= STEP_MS) {
@@ -68,10 +86,62 @@ export class GameRuntime {
       battle = r.battle;
       events.push(...r.events);
       steps++;
+      for (const e of r.events) {
+        if (e.type !== 'stageCleared' && e.type !== 'stageFailed') continue;
+        const next = this.afterStage(game, e);
+        if (!next) continue;
+        game = next.game;
+        battle = next.battle;
+        lastResult = next.lastResult;
+      }
     }
     if (steps === 0) return;
-    this.set({ game, battle });
+    this.set({ game, battle, lastResult });
     if (events.length > 0) for (const l of [...this.eventListeners]) l(events);
+  }
+
+  /**
+   * A stage ended: build the next one (auto-advance, or the same stage again) or send the player one stage
+   * back after a failure. `currentStage` follows; the server settles a clear separately (SyncController).
+   */
+  private afterStage(game: GameState, e: Extract<BattleEvent, { type: 'stageCleared' | 'stageFailed' }>): { game: GameState; battle: BattleState; lastResult: LastResult } | null {
+    const zone = this.content.zones.find((z) => z.id === e.zoneId);
+    if (!zone) return null;
+    if (e.type === 'stageCleared') {
+      const next = this.snapshot.autoAdvance ? Math.min(e.stage + 1, stageCount(zone)) : e.stage;
+      return {
+        game: { ...game, currentStage: next },
+        battle: this.newBattle(zone.id, next),
+        lastResult: { kind: 'cleared', zoneId: zone.id, stage: e.stage, loot: [] },
+      };
+    }
+    const backTo = Math.max(1, e.stage - 1);
+    return {
+      game: { ...game, currentStage: backTo },
+      battle: this.newBattle(zone.id, backTo),
+      lastResult: { kind: 'failed', zoneId: zone.id, stage: e.stage, backTo },
+    };
+  }
+
+  /** Fills in the loot the server settled for a clear, if that clear is still the one on display. */
+  setStageLoot(zoneId: string, stage: number, loot: ItemId[]): void {
+    const r = this.snapshot.lastResult;
+    if (!r || r.kind !== 'cleared' || r.zoneId !== zoneId || r.stage !== stage) return;
+    this.set({ lastResult: { ...r, loot } });
+  }
+
+  setAutoAdvance(on: boolean): void {
+    saveAutoAdvance(on);
+    if (this.snapshot.autoAdvance === on) return;
+    this.set({ autoAdvance: on });
+  }
+
+  /** Leaves the door of a held boss stage. */
+  enterBoss(): void {
+    const { battle } = this.snapshot;
+    const next = enterStage(battle);
+    if (next === battle) return;
+    this.set({ battle: next, lastResult: null });
   }
 
   setPaused(paused: boolean): void {
@@ -82,14 +152,18 @@ export class GameRuntime {
 
   /**
    * Adopts a server state (action result or upload conflict). The battle is client-side only and never
-   * saved, so it keeps running unless the server's state is in another zone; stage progress lives in
-   * `state.clearedStages`, which comes from the server either way.
+   * saved, so it keeps running unless the server's state is in another place (zone or stage); stage progress
+   * lives in `state.clearedStages`, which comes from the server either way.
    */
   replaceState(state: GameState, revision: number): void {
     const { battle } = this.snapshot;
-    const sameZone = battle.zoneId === state.currentZone;
-    if (!sameZone) this.leftoverMs = 0;
-    this.set({ game: state, battle: sameZone ? battle : createBattle(state.currentZone, state.currentStage), revision });
+    const samePlace = battle.zoneId === state.currentZone && battle.stage === state.currentStage;
+    if (samePlace) {
+      this.set({ game: state, revision });
+      return;
+    }
+    this.leftoverMs = 0;
+    this.set({ game: state, battle: this.newBattle(state.currentZone, state.currentStage), revision, lastResult: null });
   }
 
   setRevision(revision: number): void {
@@ -111,10 +185,14 @@ export class GameRuntime {
     this.set({ game: { ...g, equipped: spellId } });
   }
 
-  travel(zoneId: string): boolean {
+  /** Goes to a stage of an unlocked zone, up to the highest the server lets us play. Loot so far is kept; nothing is claimed. */
+  travel(zoneId: string, stage: number): boolean {
     const g = this.snapshot.game;
-    if (!g.unlockedZones.includes(zoneId)) return false;
-    this.set({ game: { ...g, currentZone: zoneId }, battle: createBattle(zoneId, 1) });
+    const zone = this.content.zones.find((z) => z.id === zoneId);
+    if (!zone || !g.unlockedZones.includes(zoneId)) return false;
+    if (!Number.isInteger(stage) || stage < 1 || stage > highestPlayable(g, zone)) return false;
+    this.leftoverMs = 0;
+    this.set({ game: { ...g, currentZone: zoneId, currentStage: stage }, battle: this.newBattle(zoneId, stage), lastResult: null });
     return true;
   }
 
