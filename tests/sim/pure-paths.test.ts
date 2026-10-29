@@ -39,7 +39,8 @@ function check(label: string, r: BotResult): void {
   const learnedMin = Object.fromEntries(Object.entries(r.learnedAt).map(([id, ms]) => [id, +(ms / MINUTE).toFixed(1)]));
   console.info(`[sim] ${label}: cleared=${r.clearedZones.length}/${content.zones.length} sim=${(r.simMs / MINUTE).toFixed(1)}min`
     + ` clearedAt=${JSON.stringify(minutes(r))} perZone=${JSON.stringify(r.summary.clearMinutes)}`
-    + ` revealed=${r.revealed.length}/${allRegions.length} learnedAt=${JSON.stringify(learnedMin)}`);
+    + ` revealed=${r.revealed.length}/${allRegions.length} stageClears=${r.stageClears} bossFailures=${r.bossFailures} rejected=${r.rejectedUploads}`
+    + ` learnedAt=${JSON.stringify(learnedMin)}`);
   const zones = content.zones;
   if (ENFORCE_CLEAR) {
     expect(r.clearedZones, JSON.stringify(r.summary)).toEqual(zones.map((z) => z.id));
@@ -59,8 +60,7 @@ function check(label: string, r: BotResult): void {
   }
 }
 
-// Task 7 rewrites (the bot no longer advances through stages)
-describe.skip('element routes', () => {
+describe('element routes', () => {
   for (const el of ELEMENT_ORDER) {
     it(`pure ${el} route follows Lv.2-9 through six zones with 0 rejections`, { timeout: TIMEOUT }, async () => {
       const r = await runBot({ route: el, seed: SEED, maxSimMs: SIX_HOURS });

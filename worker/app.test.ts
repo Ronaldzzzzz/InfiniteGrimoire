@@ -5,7 +5,7 @@ import { content } from '../src/engine/content';
 import { elementEquivalent } from '../src/engine/inventory';
 import type { Content, GameState } from '../src/engine/model';
 import { createInitialState } from '../src/engine/persist';
-import { stageCount } from '../src/engine/stages';
+import { minStageMs, stageCount } from '../src/engine/stages';
 import { createRng } from '../src/engine/rng';
 import { craftedId } from '../src/engine/spells';
 import { ELEMENT_ORDER } from '../src/engine/types';
@@ -788,8 +788,11 @@ describe('POST /api/stage-clear', () => {
     const t0 = clock;
     let state = body.state;
     let revision = 0;
-    // two settlements inside one anchor window (the anchor does not advance before ANCHOR_ADVANCE_MS)
-    for (const [stage, at] of [[1, 30_000], [2, 52_000]] as const) {
+    // two settlements inside one anchor window (the anchor does not advance before ANCHOR_ADVANCE_MS), the second just past
+    // stage 2's shortest time
+    const second = 30_000 + Math.ceil(minStageMs(content.zones[0]!, 2) / GAIN_TOLERANCE) + 1000;
+    expect(second).toBeLessThan(ANCHOR_ADVANCE_MS);
+    for (const [stage, at] of [[1, 30_000], [2, second]] as const) {
       clock = t0 + at;
       const { status, out } = await clear(body.token, { ...state, currentStage: stage }, revision, stage);
       expect(status, JSON.stringify(out)).toBe(200);

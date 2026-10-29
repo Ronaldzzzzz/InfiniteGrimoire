@@ -1,13 +1,13 @@
 /**
- * Shared DPS measurement for the spell tier curve (used by scripts/measure-dps.ts and tests/sim/tier-curve.test.ts).
- * Read-only: changes no game data. Damage counted is what actually came off foes' hit points (hit.dealt + burn).
+ * Shared measurement on the battle strip: DPS for the spell tier curve (tier-curve.test.ts) and stage / boss times for the
+ * pacing gate (stage-time.test.ts); scripts/measure-dps.ts prints both. Read-only: changes no game data. Damage counted is what actually came off foes' hit points (hit.dealt + burn).
  */
-import { createBattle, stepBattle, STEP_MS, STOP_X, ZONE_REACH, type ActiveFx, type BattleState, type Foe } from '../../src/engine/combat';
+import { createBattle, LANE_Y, stepBattle, STEP_MS, type BattleState } from '../../src/engine/combat';
 import { content } from '../../src/engine/content';
 import type { Content, GameState } from '../../src/engine/model';
 import { createInitialState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
-import { maxWaveSize } from '../../src/engine/stages';
+import { BOSS_LIMIT_MS } from '../../src/engine/stages';
 import { craftedId, MAX_SPELL_LEVEL, resolveSpell, TIER_STEP } from '../../src/engine/spells';
 
 export const HOME_ZONE: Record<number, string> = {
@@ -21,25 +21,33 @@ export const CURVE_OPTS = { seeds: [20261021, 7], soloMs: 60_000, crowdMs: 30_00
 /** Control / bad-affinity spells: only checked against the upper bound. */
 export const CURVE_EXEMPT = ['mire', 'sandstorm', 'steam', 'grounding', 'mana_overload'];
 
-/** The content `clean` fights in: its battle starts past the last wave, so a hand-placed set of foes is all there is. */
-export const quiet = (_zoneId: string): Content => content;
+/** A fresh save with only `spellId` learned and equipped at `level`, standing in `zoneId`, every zone unlocked. */
+const stageGame = (spellId: string, level: number, zoneId: string): GameState => ({
+  ...createInitialState(content),
+  learned: [spellId], equipped: spellId, levels: level > 1 ? { [spellId]: level } : {},
+  currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id),
+});
 
-/** Damage per second dealt to the given foes (hits plus burn) over `ms`, or until they all fall. */
+/**
+ * Damage per second dealt to the given foes (hits plus burn) over `ms`, or until they all fall. The foes stand in the lane
+ * in front of the mage (x 0.3-0.75, spread across it) and walk in from there; the battle starts past the last wave, so
+ * they are all there is.
+ */
 export function clean(spellId: string, level: number, zoneId: string, seed: number, foes: { defId: string; hpMul: number }[], ms: number): number {
-  const c = quiet(zoneId);
-  let game: GameState = {
-    ...createInitialState(content),
-    learned: [spellId], equipped: spellId, levels: level > 1 ? { [spellId]: level } : {},
-    currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id),
-  };
+  let game: GameState = stageGame(spellId, level, zoneId);
   const rng = createRng(seed);
-  let battle: BattleState = { ...createBattle(zoneId, 1), phase: "fight", wave: 1e9, nextUid: foes.length + 1 };
+  let battle: BattleState = { ...createBattle(zoneId, 1), phase: 'fight', wave: 1e9, nextUid: foes.length + 1 };
   battle.foes = foes.map((f, i) => {
     const def = content.monsters[f.defId]!;
-    const a = (i / foes.length) * 2 * Math.PI;
-    const r = foes.length === 1 ? 0.6 : 0.3 + 0.5 * ((i * 7) % 10) / 10;
-    return { uid: i + 1, defId: f.defId, x: r * Math.cos(a), y: r * Math.sin(a), hp: def.hp * f.hpMul, maxHp: def.hp * f.hpMul, statuses: [], kx: 0, ky: 0, wander: 0 };
+    const x = foes.length === 1 ? 0.6 : 0.3 + 0.45 * ((i * 7) % 10) / 9;
+    const y = foes.length === 1 ? 0 : (((i * 3) % 7) / 3 - 1) * LANE_Y;
+    return { uid: i + 1, defId: f.defId, x, y, hp: def.hp * f.hpMul, maxHp: def.hp * f.hpMul, statuses: [], kx: 0, ky: 0, wander: 0 };
   });
+  return dealtPerSec(game, battle, content, rng, ms);
+}
+
+/** Steps the battle for `ms` (or until no foe is left) and returns hit points removed per second (hit.dealt plus burn). */
+function dealtPerSec(game: GameState, battle: BattleState, c: Content, rng: ReturnType<typeof createRng>, ms: number): number {
   let t = 0, dealt = 0;
   while (t < ms) {
     const r = stepBattle(game, battle, c, rng);
@@ -48,7 +56,7 @@ export function clean(spellId: string, level: number, zoneId: string, seed: numb
       if (e.type === 'hit') dealt += e.dealt;
       if (e.type === 'dot') dealt += e.damage;
     }
-    if (battle.foes.length === 0) break;
+    if (battle.phase === 'fight' && battle.foes.length === 0) break;
   }
   return dealt / (t / 1000);
 }
@@ -65,10 +73,21 @@ export function soloBossDps(spellId: string, level: number, zoneId: string, opts
   return clean(spellId, level, zoneId, opts.seed, [{ defId: zone.bossId, hpMul: 1000 }], opts.ms);
 }
 
-/** Scenario B: 20 of the zone's toughest ordinary monsters, hit points x1000. */
+/** The zone's content with every ordinary monster's hit points x`mul` (the boss is left alone). */
+function toughened(zoneId: string, mul: number): Content {
+  const zone = content.zones.find((z) => z.id === zoneId)!;
+  const monsters = { ...content.monsters };
+  for (const id of zone.monsters) monsters[id] = { ...monsters[id]!, hp: monsters[id]!.hp * mul };
+  return { ...content, monsters };
+}
+
+/**
+ * Scenario B, the stage crowd: the real stage MEASURE_STAGE of the zone (its first wave walks in from the right edge across
+ * the lane), ordinary monsters' hit points x1000 so the wave never falls; damage per second over `ms`.
+ */
 export function crowdDps(spellId: string, level: number, zoneId: string, opts: { seed: number; ms: number }): number {
-  const tough = toughestNormal(zoneId);
-  return clean(spellId, level, zoneId, opts.seed, Array.from({ length: 20 }, () => ({ defId: tough, hpMul: 1000 })), opts.ms);
+  const c = toughened(zoneId, 1000);
+  return dealtPerSec(stageGame(spellId, level, zoneId), createBattle(zoneId, MEASURE_STAGE, { content: c }), c, createRng(opts.seed), opts.ms);
 }
 
 export interface SpellCurve {
@@ -218,113 +237,89 @@ export function curveReport(opts: { seeds: number[]; soloMs: number; crowdMs: nu
   return { perSpell, failures, medians, craftedFailures, crafted };
 }
 
-// ---- Crowd size on the field (spec 2 and 4.3) ----
+// ---- Stage time on the battle strip (battle-strip spec 3.7) ----
 
-/** Spec 4.3: the tier each zone is judged at. */
+/** The tier each zone is judged at (its home tier). */
 export const ZONE_TIER: Record<string, number> = {
   mist_meadow: 2, thunder_gorge: 4, ember_wastes: 6, sunken_temple: 7, starfall_plateau: 8, worlds_end: 9,
 };
-export interface CrowdStats { alive: number; touched: number; clearMs: number | null }
+/** The ordinary stage the stage-time checks measure (every zone has 9 of them before the boss). */
+export const MEASURE_STAGE = 5;
+/** Ordinary stages give up after this long; the boss stage fails by itself at BOSS_LIMIT_MS after the boss appears. */
+export const STAGE_LIMIT_MS = 600_000;
 
-/** Real battle in stage 1 of `zoneId`: the boss only comes in the last stage, so `alive` counts ordinary foes. */
-const crowdGame = (spellId: string, zoneId: string): GameState => ({
-  ...createInitialState(content),
-  learned: [spellId], equipped: spellId, levels: {},
-  currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id),
-});
-
-/**
- * Ruling C3: true when `f` is within the pull reach (radius x ZONE_REACH + the foe's radius, the engine's `within`) of a
- * pulling zone in `fx`. A foe there may have been dragged to the stop ring, so that step does not count as a touch.
- */
-export function inPull(fx: readonly ActiveFx[], f: Foe): boolean {
-  const fr = content.monsters[f.defId]!.radius;
-  return fx.some((x) => {
-    if (x.effect.kind !== 'zone' || !(x.effect.pull > 0)) return false;
-    const reach = x.effect.radius * ZONE_REACH + fr;
-    return (f.x - x.x) ** 2 + (f.y - x.y) ** 2 <= reach * reach;
-  });
-}
-
-/** A walked-in touch (spec 1, Ruling C3): a non-boss foe at STOP_X + radius + 0.01 that no pulling zone held before or after this step. */
-export function walkedTouch(f: Foe, before: readonly ActiveFx[], after: readonly ActiveFx[]): boolean {
-  const def = content.monsters[f.defId]!;
-  return !def.boss && f.x <= STOP_X + def.radius + 0.01 && !inPull(before, f) && !inPull(after, f);
-}
-
-/**
- * Real spawning, the spell equipped from t=0; alive = mean foe count over [warmMs, ms]; touched = distinct foes with a
- * walkedTouch at any step of the whole run, warm-up included (Ruling C2); clearMs from crowdClear.
- */
-export function crowdStats(spellId: string, zoneId: string, opts: { seed: number; ms: number; warmMs: number }): CrowdStats {
-  let game = crowdGame(spellId, zoneId);
-  let battle = createBattle(zoneId, 1);
+/** Plays one real stage (waves walking in, the boss last on a boss stage) with the spell equipped from t=0. */
+function playStage(
+  spellId: string, level: number, zoneId: string, stage: number, opts: { seed: number; limitMs: number }, c: Content = content,
+): { ms: number | null; bossMs: number | null } {
+  let game = stageGame(spellId, level, zoneId);
+  let battle = createBattle(zoneId, stage, { content: c });
   const rng = createRng(opts.seed);
-  const touched = new Set<number>();
-  let t = 0, sum = 0, n = 0;
-  while (t < opts.ms) {
-    const before = battle.fx;
-    const r = stepBattle(game, battle, content, rng);
-    game = r.game; battle = r.battle; t += STEP_MS;
-    for (const f of battle.foes) if (walkedTouch(f, before, battle.fx)) touched.add(f.uid);
-    if (t > opts.warmMs) { sum += battle.foes.length; n++; }
-  }
-  return { alive: n ? sum / n : 0, touched: touched.size, clearMs: crowdClear(spellId, zoneId, { seed: opts.seed, limitMs: 15_000 }) };
-}
-
-/**
- * Fill the zone to one largest wave with nothing equipped that casts (Ruling T2a: `equipped` is an id that resolves to no spell), then equip
- * `spellId`; ms until <= 5 foes remain, or null within limitMs.
- */
-export function crowdClear(spellId: string, zoneId: string, opts: { seed: number; limitMs: number }): number | null {
-  const zone = content.zones.find((z) => z.id === zoneId)!;
-  let game: GameState = { ...crowdGame(spellId, zoneId), equipped: '__none__' };
-  let battle = createBattle(zoneId, 1);
-  const rng = createRng(opts.seed);
-  for (let guard = 0; battle.foes.length < maxWaveSize(zone) && guard < 20_000; guard++) {
-    const r = stepBattle(game, battle, content, rng);
-    game = r.game; battle = r.battle;
-  }
-  game = { ...game, equipped: spellId };
-  let t = 0;
+  let t = 0, bossMs: number | null = null;
   while (t < opts.limitMs) {
-    const r = stepBattle(game, battle, content, rng);
+    const r = stepBattle(game, battle, c, rng);
     game = r.game; battle = r.battle; t += STEP_MS;
-    if (battle.foes.length <= 5) return t;
+    if (bossMs === null && r.events.some((e) => e.type === 'bossDefeated')) bossMs = battle.bossMs;
+    if (battle.phase === 'done') return { ms: t, bossMs };
+    if (battle.phase === 'failed') return { ms: null, bossMs: null };
   }
-  return null;
+  return { ms: null, bossMs };
 }
 
-export interface CrowdRow { zoneId: string; rel: -1 | 0 | 1; tier: number; spells: string[]; medianAlive: number; medianTouched: number; clearedShare: number }
+/** Simulated ms to clear stage `stage` of `zoneId` with the spell at `level`, or null when it is not done within limitMs (or fails). */
+export function stageTime(spellId: string, level: number, zoneId: string, stage: number, opts: { seed: number; limitMs: number }): number | null {
+  return playStage(spellId, level, zoneId, stage, opts).ms;
+}
 
-/** For each zone: named non-rare, non-CURVE_EXEMPT spells of ZONE_TIER-1, ZONE_TIER, ZONE_TIER+1 (worlds_end +1 = rare Lv.10; mist_meadow has no -1 row); stats averaged over seeds; clearedShare = share of rel +1 spells with clearMs <= 15000. */
-export function crowdReport(opts: { seeds: number[]; ms: number; warmMs: number }): CrowdRow[] {
-  const rows: CrowdRow[] = [];
-  const all = Object.values(content.spells).filter((s) => !CURVE_EXEMPT.includes(s.id));
+/** Simulated ms from the boss appearing to its fall on the zone's boss stage, or null when the stage fails (BOSS_LIMIT_MS) or runs out. */
+export function bossKillTime(spellId: string, level: number, zoneId: string, opts: { seed: number; limitMs: number }): number | null {
+  const zone = content.zones.find((z) => z.id === zoneId)!;
+  return playStage(spellId, level, zoneId, zone.stages.length, opts).bossMs;
+}
+
+/** Named non-rare spells of `tier` that the curve does not exempt (tier 10: the rares). */
+export function tierSpells(tier: number): string[] {
+  return Object.values(content.spells)
+    .filter((s) => s.tier === tier && !CURVE_EXEMPT.includes(s.id) && (tier === 10 ? s.rare : s.named && !s.rare))
+    .map((s) => s.id).sort();
+}
+
+/** Median where null (did not finish) counts as slower than anything; null when the median itself did not finish. */
+export function medianOrNull(xs: (number | null)[]): number | null {
+  if (!xs.length) return null;
+  const m = median(xs.map((x) => (x === null ? Infinity : x)));
+  return Number.isFinite(m) ? m : null;
+}
+
+export interface StageRow { zoneId: string; rel: -1 | 0 | 1; tier: number; medianMs: number | null }
+export interface BossRow { zoneId: string; tier: number; medianMs: number | null }
+
+/**
+ * For each zone: stage MEASURE_STAGE cleared by the tier ZONE_TIER - 1, ZONE_TIER and ZONE_TIER + 1 spells (worlds_end +1 = the
+ * rares). Each spell's time is the median over seeds; the row is the median over spells (null = did not finish in STAGE_LIMIT_MS).
+ */
+export function stageReport(opts: { seeds: number[] }): StageRow[] {
+  const rows: StageRow[] = [];
   for (const zone of content.zones) {
     const zt = ZONE_TIER[zone.id]!;
     for (const rel of [-1, 0, 1] as const) {
       const tier = zt + rel;
-      if (tier < 2 && rel === -1) continue; // mist_meadow: tier 1 is not tracked (spec 4.3)
-      const spells = all.filter((s) => s.tier === tier && (tier === 10 ? s.rare : s.named && !s.rare)).map((s) => s.id).sort();
+      const spells = tierSpells(tier);
       if (!spells.length) continue;
-      const per = spells.map((id) => {
-        const st = opts.seeds.map((seed) => {
-          const a = crowdStats(id, zone.id, { seed, ms: opts.ms, warmMs: opts.warmMs });
-          return a;
-        });
-        const m = (f: (x: CrowdStats) => number) => st.reduce((n, x) => n + f(x), 0) / st.length;
-        const clears = st.map((x) => x.clearMs);
-        return { alive: m((x) => x.alive), touched: m((x) => x.touched), cleared: clears.every((c) => c !== null && c <= 15_000) };
-      });
-      rows.push({
-        zoneId: zone.id, rel, tier, spells,
-        medianAlive: median(per.map((p) => p.alive)), medianTouched: median(per.map((p) => p.touched)),
-        clearedShare: per.filter((p) => p.cleared).length / per.length,
-      });
+      const per = spells.map((id) => medianOrNull(opts.seeds.map((seed) => stageTime(id, 1, zone.id, MEASURE_STAGE, { seed, limitMs: STAGE_LIMIT_MS }))));
+      rows.push({ zoneId: zone.id, rel, tier, medianMs: medianOrNull(per) });
     }
   }
   return rows;
 }
 
-export const CROWD_OPTS = { seeds: [20261021, 7], ms: 120_000, warmMs: 30_000 };
+/** For each zone: ms from the boss appearing to its fall, home-tier spells, median over seeds then spells (null = past BOSS_LIMIT_MS). */
+export function bossReport(opts: { seeds: number[] }): BossRow[] {
+  return content.zones.map((zone) => {
+    const tier = ZONE_TIER[zone.id]!;
+    const per = tierSpells(tier).map((id) => medianOrNull(opts.seeds.map((seed) => bossKillTime(id, 1, zone.id, { seed, limitMs: STAGE_LIMIT_MS + BOSS_LIMIT_MS }))));
+    return { zoneId: zone.id, tier, medianMs: medianOrNull(per) };
+  });
+}
+
+export const STAGE_OPTS = { seeds: [20261021, 7] };

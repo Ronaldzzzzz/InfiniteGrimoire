@@ -1,51 +1,21 @@
 /**
- * Read-only measurement for the spell tier curve (AGENTS.md 3.0, step 2): how fast every named spell kills
- * each zone's boss in the real battle flow (the boss appears after the last wave kill, normals keep spawning),
- * unempowered and at MAX_SPELL_LEVEL, plus two clean cases: the boss alone, and a crowd of 20 tough normals.
- * Changes no game data.
+ * Read-only measurement for the spell tier curve on the battle strip: for every named spell in every zone, the clean
+ * scenarios (the boss alone, and the stage crowd: stage MEASURE_STAGE's first wave walking in with hit points x1000),
+ * unempowered and at MAX_SPELL_LEVEL, plus the real stage flow: how long stage MEASURE_STAGE takes and how long the boss
+ * lives on the boss stage (from its arrival). Changes no game data.
  *
  * Run: npx esbuild scripts/measure-dps.ts --bundle --platform=node --format=esm --outfile=<tmp>/measure.mjs && node <tmp>/measure.mjs
  */
-import { createBattle, stepBattle, STEP_MS, type BattleState } from '../src/engine/combat';
-import { clean, CROWD_OPTS, crowdStats, CURVE_EXEMPT, CURVE_OPTS, curveReport, median } from '../tests/sim/measure';
+import {
+  bossKillTime, crowdDps, CURVE_EXEMPT, CURVE_OPTS, curveReport, MEASURE_STAGE, median, soloBossDps, STAGE_LIMIT_MS, stageTime,
+} from '../tests/sim/measure';
 import { content } from '../src/engine/content';
-import type { GameState } from '../src/engine/model';
-import { createInitialState } from '../src/engine/persist';
-import { createRng } from '../src/engine/rng';
 import { MAX_SPELL_LEVEL } from '../src/engine/spells';
-import { stageTotal } from '../src/engine/stages';
+import { BOSS_LIMIT_MS } from '../src/engine/stages';
 
-const SEEDS = [20261021, 7, 99];
-const BOSS_CAP_MS = 600_000;
-const CLEAR_CAP_MS = 600_000;
-
-interface Run { clearMs: number | null; bossMs: number | null }
-
-function run(spellId: string, level: number, zoneId: string, seed: number): Run {
-  const zone = content.zones.find((z) => z.id === zoneId)!;
-  let game: GameState = {
-    ...createInitialState(content),
-    learned: [spellId], equipped: spellId, levels: level > 1 ? { [spellId]: level } : {},
-    currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id),
-  };
-  let battle: BattleState = createBattle(zoneId, 1);
-  const rng = createRng(seed);
-  let t = 0, clearMs: number | null = null, bossAt: number | null = null;
-  while (t < CLEAR_CAP_MS + BOSS_CAP_MS) {
-    const r = stepBattle(game, battle, content, rng);
-    game = r.game; battle = r.battle; t += STEP_MS;
-    for (const e of r.events) {
-      if (e.type === 'spawn' && e.boss) { clearMs = t; bossAt = t; }
-      if (e.type === 'kill' && content.monsters[e.defId]?.boss && bossAt !== null) return { clearMs, bossMs: t - bossAt };
-    }
-    if (bossAt === null && t >= CLEAR_CAP_MS) return { clearMs: null, bossMs: null };
-    if (bossAt !== null && t - bossAt >= BOSS_CAP_MS) return { clearMs, bossMs: null };
-  }
-  return { clearMs, bossMs: null };
-}
-
-const avg = (xs: (number | null)[]): number | null => (xs.some((x) => x === null) ? null : xs.reduce((a, b) => a! + b!, 0)! / xs.length);
+const SEEDS = CURVE_OPTS.seeds;
 const sec = (ms: number | null) => (ms === null ? '—' : (ms / 1000).toFixed(1));
+const mins = (ms: number | null) => (ms === null ? '—' : (ms / 60_000).toFixed(2));
 
 const spells = Object.values(content.spells).filter((s) => s.id !== 'mana_overload').sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
 const out: string[] = [];
@@ -54,20 +24,18 @@ const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 for (const zone of content.zones) {
   const boss = content.monsters[zone.bossId]!;
-  const tough = [...zone.monsters].sort((a, b) => content.monsters[b]!.tier - content.monsters[a]!.tier || content.monsters[b]!.defense - content.monsters[a]!.defense)[0]!;
-  const td = content.monsters[tough]!;
-  out.push(`\n### ${zone.name}（魔王 ${boss.name} Lv.${boss.tier}，血量 ${boss.hp}，防禦 ${boss.defense}；群怪用 ${td.name} Lv.${td.tier} 防禦 ${td.defense}）\n`);
-  out.push('| 魔法 | Lv. | 單挑魔王 DPS +0 | +50 | 群怪 20 隻 DPS +0 | +50 | 實戰：清 ' + stageTotal(zone, 1) + ' 隻（秒） | 實戰：打倒魔王（秒） | 場上平均隻數 | 碰線隻數 |');
-  out.push('|---|---|---|---|---|---|---|---|---|---|');
+  const wave = zone.stages[MEASURE_STAGE - 1]!.waves;
+  out.push(`\n### ${zone.name}（魔王 ${boss.name} Lv.${boss.tier}，血量 ${boss.hp}，防禦 ${boss.defense}；第 ${MEASURE_STAGE} 關 ${wave.length} 波 × ${wave[0]} 隻）\n`);
+  out.push(`| 魔法 | Lv. | 單挑魔王 DPS +0 | +50 | 群怪（一波 ${wave[0]} 隻）DPS +0 | +50 | 實戰：第 ${MEASURE_STAGE} 關（分） | 實戰：打倒魔王（秒） |`);
+  out.push('|---|---|---|---|---|---|---|---|');
   for (const s of spells) {
-    const solo = (L: number) => mean(SEEDS.slice(0, 2).map((sd) => clean(s.id, L, zone.id, sd, [{ defId: zone.bossId, hpMul: 1000 }], 60_000)));
-    const crowd = (L: number) => mean(SEEDS.slice(0, 2).map((sd) => clean(s.id, L, zone.id, sd, Array.from({ length: 20 }, () => ({ defId: tough, hpMul: 1000 })), 30_000)));
+    const solo = (L: number) => mean(SEEDS.map((seed) => soloBossDps(s.id, L, zone.id, { seed, ms: CURVE_OPTS.soloMs })));
+    const crowd = (L: number) => mean(SEEDS.map((seed) => crowdDps(s.id, L, zone.id, { seed, ms: CURVE_OPTS.crowdMs })));
     const s1 = solo(1), s50 = solo(MAX_SPELL_LEVEL), c1 = crowd(1), c50 = crowd(MAX_SPELL_LEVEL);
-    const real = SEEDS.slice(0, 1).map((sd) => run(s.id, 1, zone.id, sd))[0]!;
-    const cs = CROWD_OPTS.seeds.map((seed) => crowdStats(s.id, zone.id, { seed, ...CROWD_OPTS }));
-    const alive = mean(cs.map((c) => c.alive)), touchedN = mean(cs.map((c) => c.touched));
+    const stageMs = stageTime(s.id, 1, zone.id, MEASURE_STAGE, { seed: SEEDS[0]!, limitMs: STAGE_LIMIT_MS });
+    const bossMs = bossKillTime(s.id, 1, zone.id, { seed: SEEDS[0]!, limitMs: STAGE_LIMIT_MS + BOSS_LIMIT_MS });
     const f = (x: number) => (x === 0 ? '無效' : Math.round(x).toString());
-    out.push(`| ${s.name}${s.rare ? '（稀有）' : ''} | ${s.tier} | ${f(s1)} | ${f(s50)} | ${f(c1)} | ${f(c50)} | ${sec(real.clearMs)} | ${sec(real.bossMs)} | ${alive.toFixed(1)} | ${touchedN.toFixed(1)} |`);
+    out.push(`| ${s.name}${s.rare ? '（稀有）' : ''} | ${s.tier} | ${f(s1)} | ${f(s50)} | ${f(c1)} | ${f(c50)} | ${mins(stageMs)} | ${sec(bossMs)} |`);
     const row = ((summary[zone.id] ??= {})[s.tier] ??= { solo: [], crowd: [] });
     // the summary below follows the curve checks: control spells (CURVE_EXEMPT) are left out
     if (s1 > 0 && !CURVE_EXEMPT.includes(s.id)) row.solo.push(s1);

@@ -1,4 +1,4 @@
-import { createBattle, stepBattle, STEP_MS, type BattleState } from '../../src/engine/combat';
+import { createBattle, stepBattle, STEP_MS, type BattleEvent, type BattleState } from '../../src/engine/combat';
 import { canDamage } from '../../src/engine/combat-rules';
 import { content } from '../../src/engine/content';
 import { requiredGrade } from '../../src/engine/crafting';
@@ -8,10 +8,12 @@ import type { Effect, GameState, Spell, Zone } from '../../src/engine/model';
 import { parseState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
 import { MAX_SPELL_LEVEL, resolveSpell, spellAtLevel } from '../../src/engine/spells';
+import { BOSS_LIMIT_MS, highestPlayable, isBossStage, stageCount } from '../../src/engine/stages';
 import { visibleRegions } from '../../src/engine/tree';
 import { ELEMENT_ORDER, elementItem, GRADE_UPGRADE_COST, gradeValue, type ElementId, type ItemId } from '../../src/engine/types';
 import { createApp } from '../../worker/app';
 import { MemoryStore } from '../../worker/store';
+import { soloBossDps } from './measure';
 
 /** A pure element route, the fire + wind combination route, or mana_bolt only (null). */
 export type Route = ElementId | 'mixed' | null;
@@ -30,10 +32,14 @@ export interface BotResult {
   clearedAt: Record<string, number>;
   /** simulated ms at which each spell was learned */
   learnedAt: Record<string, number>;
-  /** per element: cumulative grade-1 equivalents gained from drops (spending and upgrades not subtracted), sampled each simulated minute */
+  /** per element: cumulative grade-1 equivalents gained from kill drops and stage settlements (spending and upgrades not subtracted), sampled each simulated minute */
   gained: Record<ElementId, { atMs: number; eq: number }[]>;
-  /** per `mat:` item: cumulative count gained from drops, sampled each simulated minute (same loop as `gained`) */
+  /** per `mat:` item: cumulative count gained from kill drops and stage settlements, sampled each simulated minute (same loop as `gained`) */
   gainedItems: Record<ItemId, { atMs: number; n: number }[]>;
+  /** stages settled by POST /api/stage-clear */
+  stageClears: number;
+  /** boss stages that ran out of time */
+  bossFailures: number;
   /** requests sent to PUT /api/save and the action endpoints */
   serverCalls: number;
   /** non-200 responses from PUT /api/save and the action endpoints */
@@ -48,6 +54,10 @@ const UPLOAD_MS = 30_000;
 const EMPOWER_EVERY_MS = 5 * 60_000;
 
 const CLOCK_START = 1_000_000_000;
+/** The bot only enters a boss stage when its estimate kills the boss in this share of BOSS_LIMIT_MS (walk-in and adds included). */
+const BOSS_MARGIN = 0.6;
+
+const dropsOf = (events: BattleEvent[]): ItemId[] => events.flatMap((e) => (e.type === 'kill' ? e.drops : []));
 
 /** Rough single-target damage per second of a spell, to pick what to equip and empower. */
 function dps(spell: Spell): number {
@@ -76,6 +86,10 @@ function dps(spell: Spell): number {
  * hurricane and skyburner, then the fire trunk. Element inputs and fusion costs are upgraded from
  * lower grades on the client, like the element table. Every 5 simulated minutes the elements beyond
  * what the next recipe needs empower the strongest spell. Key items are used as soon as they drop.
+ *
+ * Stages: the bot auto-advances. A cleared stage is settled with POST /api/stage-clear, then the next stage starts; before
+ * the boss stage it estimates with soloBossDps whether the equipped spell kills the boss within BOSS_MARGIN x BOSS_LIMIT_MS,
+ * and if not it replays the stage before the boss. A boss stage that times out sends it one stage back, like the client.
  */
 export const ROUTE_RECIPES: Record<Exclude<Route, null>, string[]> = {
   ...(Object.fromEntries(
@@ -118,6 +132,8 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   let battle: BattleState = createBattle(game.currentZone, game.currentStage);
   let rejectedUploads = 0;
   let serverCalls = 0;
+  let stageClears = 0;
+  let bossFailures = 0;
   const rejectionReasons: string[] = [];
   const clearedAt: Record<string, number> = {};
   const learnedAt: Record<string, number> = {};
@@ -249,7 +265,33 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     }
   };
 
-  const blocked = new Map<string, string>();
+  /** Whether the spell at its level is expected to kill the zone's boss in time (cached; 0 DPS when it cannot hurt it). */
+  const bossEstimate = new Map<string, boolean>();
+  /** Boss stages that timed out, per zone: the spell@level that failed, so the bot does not retry until it changes. */
+  const failedWith = new Map<string, string>();
+  const sigOf = (id: string) => `${id}@${levelOf(id)}`;
+  const bossBeatable = (zone: Zone): boolean => {
+    const id = game.equipped, sig = sigOf(id);
+    if (failedWith.get(zone.id) === sig) return false;
+    const key = `${sig}@${zone.id}`;
+    let ok = bossEstimate.get(key);
+    if (ok === undefined) {
+      const dps = soloBossDps(id, levelOf(id), zone.id, { seed: opts.seed, ms: 30_000 });
+      ok = dps * (BOSS_LIMIT_MS / 1000) * BOSS_MARGIN >= content.monsters[zone.bossId]!.hp;
+      bossEstimate.set(key, ok);
+    }
+    return ok;
+  };
+  /** Where to play in `zone`: the furthest stage the server lets us play, short of a boss we do not expect to beat. */
+  const stageIn = (zone: Zone, wanted: number): number => {
+    const s = Math.min(wanted, highestPlayable(game, zone));
+    return isBossStage(zone, s) && !bossBeatable(zone) ? s - 1 : s;
+  };
+  const goTo = (zoneId: string, stage: number): void => {
+    game = { ...game, currentZone: zoneId, currentStage: stage };
+    battle = createBattle(zoneId, stage);
+  };
+
   const decide = async (doEmpower: boolean): Promise<void> => {
     await synthesizeStep();
     await revealStep();
@@ -257,27 +299,48 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     const best = bestSpell();
     if (game.equipped !== best) game = { ...game, equipped: best };
 
-    // a boss the equipped spell cannot hurt never dies: retreat and farm below until the spell changes
-    const spell = fightAs(game.equipped);
-    const sig = `${game.equipped}@${levelOf(game.equipped)}`;
-    for (const [z, s] of blocked) if (s !== sig) blocked.delete(z);
-    const here = zoneOf(game.currentZone);
-    if (battle.bossActive && !canDamage(spell, content.monsters[here.bossId]!)) blocked.set(here.id, sig);
     // go to the highest unlocked zone where the spell can damage every normal monster
+    const spell = fightAs(game.equipped);
     let dest = game.currentZone;
     for (const z of content.zones) {
-      if (game.unlockedZones.includes(z.id) && !blocked.has(z.id) && hitsAll(spell, z)) dest = z.id;
+      if (game.unlockedZones.includes(z.id) && hitsAll(spell, z)) dest = z.id;
     }
-    if (dest !== game.currentZone) {
-      game = { ...game, currentZone: dest };
-      battle = createBattle(dest, 1);
+    if (dest !== game.currentZone) goTo(dest, stageIn(zoneOf(dest), stageCount(zoneOf(dest))));
+  };
+
+  /** A stage ended (cleared or failed): settle a clear with the server, then start the next stage like auto-advance. */
+  const afterStage = async (): Promise<void> => {
+    const zone = zoneOf(battle.zoneId), stage = battle.stage;
+    if (battle.phase === 'failed') {
+      bossFailures++;
+      failedWith.set(zone.id, sigOf(game.equipped));
+      goTo(zone.id, Math.max(1, stage - 1));
+      return;
     }
+    serverCalls++;
+    const r = await call('POST', '/api/stage-clear', { state: game, baseRevision: revision, zoneId: zone.id, stage });
+    if (r.status !== 200) {
+      adoptServer(`POST /api/stage-clear ${zone.id} ${stage}`, r);
+      return;
+    }
+    game = serverState(r.body.state);
+    revision = r.body.revision as number;
+    stageClears++;
+    countGains((r.body.result as { loot: ItemId[] }).loot);
+    goTo(zone.id, stageIn(zone, Math.min(stage + 1, stageCount(zone))));
   };
 
   const gainedEq = Object.fromEntries(ELEMENT_ORDER.map((e) => [e, 0])) as Record<ElementId, number>;
   const gained = Object.fromEntries(ELEMENT_ORDER.map((e) => [e, [] as { atMs: number; eq: number }[]])) as BotResult['gained'];
   const gainedMat: Record<ItemId, number> = {};
   const gainedItems: BotResult['gainedItems'] = {};
+  /** Element items (as grade-1 equivalents) and materials gained, from kills and from stage settlements. */
+  const countGains = (items: ItemId[]): void => {
+    for (const id of items) {
+      if (id.startsWith('mat:')) gainedMat[id] = (gainedMat[id] ?? 0) + 1;
+      else if (id.startsWith('el:')) { const [, e, g] = id.split(':'); gainedEq[e as ElementId] += gradeValue(Number(g)); }
+    }
+  };
   let nextSample = 60_000;
   let nextDecision = DECISION_MS;
   let nextUpload = UPLOAD_MS;
@@ -285,20 +348,8 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   let lastClearedAt: number | null = null;
   while (simMs < opts.maxSimMs) {
     const r = stepBattle(game, battle, content, battleRng);
-    // nothing is spent inside a battle step, so any rise in an element item is a drop
-    for (const e of ELEMENT_ORDER) {
-      for (let g = 1; g <= GRADE_UPGRADE_COST.length + 1; g++) {
-        const id = elementItem(e, g);
-        const was = Object.hasOwn(game.inventory, id) ? game.inventory[id]! : 0;
-        const now = Object.hasOwn(r.game.inventory, id) ? r.game.inventory[id]! : 0;
-        if (now > was) gainedEq[e] += (now - was) * gradeValue(g);
-      }
-    }
-    for (const id of Object.keys(r.game.inventory)) {
-      if (!id.startsWith('mat:')) continue;
-      const was = Object.hasOwn(game.inventory, id) ? game.inventory[id]! : 0;
-      if (r.game.inventory[id]! > was) gainedMat[id] = (gainedMat[id] ?? 0) + (r.game.inventory[id]! - was);
-    }
+    // kill drops (stage settlements are counted when the server replies)
+    countGains(dropsOf(r.events));
     game = r.game;
     battle = r.battle;
     simMs += STEP_MS;
@@ -308,6 +359,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
       for (const id of Object.keys(gainedMat)) (gainedItems[id] ??= []).push({ atMs: simMs, n: gainedMat[id]! });
     }
     for (const z of content.zones) if (!(z.id in clearedAt) && game.defeatedBosses.includes(z.bossId)) clearedAt[z.id] = simMs;
+    if (battle.phase === 'done' || battle.phase === 'failed') await afterStage();
     if (lastClearedAt === null && game.defeatedBosses.includes(lastZone.bossId)) lastClearedAt = simMs;
     if (simMs >= nextDecision) {
       nextDecision += DECISION_MS;
@@ -343,8 +395,10 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     gained,
     gainedItems,
     serverCalls,
+    stageClears,
+    bossFailures,
     rejectedUploads,
     rejectionReasons,
-    summary: { simMs, clearedAt, clearMinutes, learned: game.learned, levels: game.levels, zone: game.currentZone, inventory: game.inventory },
+    summary: { simMs, clearedAt, clearMinutes, stageClears, bossFailures, learned: game.learned, levels: game.levels, zone: game.currentZone, inventory: game.inventory },
   };
 }
