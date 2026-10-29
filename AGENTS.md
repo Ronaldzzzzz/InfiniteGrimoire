@@ -58,7 +58,7 @@
 
 ### 3.0 接手先看這裡（2026-10-28 更新）
 
-**現在停在哪（2026-10-28）：** branch `feat/crowd-ttk`（從 `feat/rare-tuning` 分出，**未 push、未合併**），清怪節奏（TTK）與數字放大，規格 `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`、計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md`、帳本 `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md`。起因是使用者試玩 1.8 版：「換了一階魔法但畫面的怪物還是一堆」「怪物整體的TTK過長」。4 個任務中 4 個任務與最終審查修正都已完成（Task 4 畫面確認的結果見帳本）；之後依試玩回饋又做了三輪（都在這個 branch）：活動時間 DPS（規格第 8 節）、擊退邊界與魔王血量（第 9 節）、升階成本 3／5／10／20 與元素掉落重調（第 10 節）。`npm test` 69 個檔案 763 個測試全過、`npm run build` 通過（2026-10-29）。
+**現在停在哪（2026-10-29）：** 使用者試玩完畢，`feat/crowd-ttk` 與 `feat/rare-tuning` 已 fast-forward 合併到 **`main`**（兩個 branch 已刪除；`main` 比 `origin/main` 多 80 個 commit，**尚未 push**，push 由使用者 `! git push`）。**下一步：先和使用者討論遊戲性（使用者指示：0b 稀有落空保底暫停，先討論遊戲性）。** 以下是合併進來的清怪節奏（TTK）與數字放大，清怪節奏（TTK）與數字放大，規格 `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`、計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md`、帳本 `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md`。起因是使用者試玩 1.8 版：「換了一階魔法但畫面的怪物還是一堆」「怪物整體的TTK過長」。4 個任務中 4 個任務與最終審查修正都已完成（Task 4 畫面確認的結果見帳本）；之後依試玩回饋又做了三輪（都在這個 branch）：活動時間 DPS（規格第 8 節）、擊退邊界與魔王血量（第 9 節）、升階成本 3／5／10／20 與元素掉落重調（第 10 節）。`npm test` 69 個檔案 763 個測試全過、`npm run build` 通過（2026-10-29）。
 - **數字 ×10（Task 1）：** 魔法攻擊、魔物血量、防禦、回血全部 ×10（`DEFENSE_SCALE` 1000），比例不變；Lv.1 單發約 80、Lv.9 千位數。存檔不用 migration。
 - **血量依地點縮短（Task 3）：** 一般魔物與魔王乘同一個係數：迷霧草原 0.5、雷鳴峽谷 0.05、熔火荒原 0.10、沉沒神殿 0.15、星殞高原 0.14、世界盡頭 0.11（照規格「高一階壓制優先」）。
 - **場上隻數（`tests/sim/crowd.test.ts`，量測在 `tests/sim/measure.ts` 的 `crowdReport`）：** 只靠血量無法同時達成規格 4.3 原本的目標（帳本 Ruling T3-impossible），使用者選「維持現狀並先試玩」（Ruling C3，規格 4.3 有同日修訂）：保留血量係數；碰線改成不算被拉怪魔法（流沙、天穹風暴、絕空裂風等）拉到停止圈的魔物（`walkedTouch`）；把關改成同階 10～35 隻、高一階碰線 ≤ 2 且 15 秒清場過半（迷霧草原只要求高一階少於同階）、低一階多於同階，`ENFORCE_CROWD = true`。結果：高一階五個地點碰線 0、清場 55%～71%，迷霧草原 17.1 < 39.2；同階 13.6～27.6 隻；低一階多於同階。**兩列仍沒達到，列為已知缺口、只印不擋**（`KNOWN_GAPS`）：迷霧草原同階 39.2 隻（> 35）、雷鳴峽谷低一階 12.7 隻（少於同階 18.1）。**使用者試玩時要看：**「同階偏簡單」（同階魔法就把畫面壓到十幾、二十幾隻），以及低一階魔法能清掉前面的地點（雷鳴峽谷、熔火荒原）。
@@ -83,10 +83,11 @@
 
 | 順序 | 項目 | 狀態 | 去哪裡看 |
 |---|---|---|---|
-| 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers` 與 `feat/tier-step-18`）到 `main` | **等使用者在真實瀏覽器試玩後決定**（合併、push 都要先問；push 只能由使用者 `! git push`） | 本節 |
+| 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers`、`feat/tier-step-18`、`feat/crowd-ttk`）到 `main` | **已完成（2026-10-29，使用者試玩後同意）**；push 由使用者 `! git push` | 本節 |
+| **0.1（下一個）** | 遊戲性討論 | **使用者 2026-10-29 指示：0b 之前先暫停，先就遊戲性討論** | — |
 | 0.5 | 魔法深度拓展（名稱、類型、定義）剩下的部分 | 第一批（20 招、強度曲線、地圖）**已完成（在 `feat/rare-tuning`）**；Phase 1～3 文案的其餘招式、新施法形態、異變詞綴、Overdrive、禁忌殘頁等**都還沒做**，之後再討論 | `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md`、`2026-10-27-spell-expansion-green-items-review.md` |
 | 1 | 魔法階級強度曲線（含距離魔王還差幾隻、放回上次組合） | **已完成（在 `feat/rare-tuning`）**；`TIER_STEP` 使用者已定 1.8、強化滿 ×1.4；待使用者試玩 | 本節、規格與帳本 |
-| **1b（下一個要討論）** | 稀有魔法落空的保底／補償 | **使用者試玩決定合併後，主動提出來和使用者討論**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
+| 1b | 稀有魔法落空的保底／補償 | **暫停（使用者 2026-10-29），遊戲性討論之後再提**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
 | 1c | 學會新魔法時詢問是否裝備 | **已完成（在 `feat/rare-tuning`）**（待辦 0c） | 本節 |
 | 1d | 玩法與「奇幻中古世紀大魔法師」沉浸感擴充（Gemini 提案 7 項） | 使用者決定納入待辦；細節與排程於實作前走設計討論 → spec | 下方待辦 0d |
 | 1e | 實裝真正的光、暗元素 | 排程未定 | 下方待辦 0e |
@@ -105,7 +106,7 @@
 
 **接手者務必遵守（摘要，全文見第 6、7 節與記憶）：** 用繁體中文溝通；**不部署、不主動提部署**；**push、合併、部署前都要先問**；只改文件可以直接在 `main` commit（但目前文件都跟著 `feat/rare-tuning`，合併後就會到 `main`）；不要 commit `.dev.vars`；平衡數值現在是進行中的工作，但倍率、機率等數字的最終值要給使用者確認；結束前更新本節與第 10 節交接紀錄。
 
-- **Branch：** `main` 已整合 v0.2.0 並由使用者 push（遠端舊 branch 也已刪除）。目前在 `feat/rare-tuning`（從 `main` 分出；`feat/spell-tiers`、`feat/tier-step-18` 都已合併進來並刪除），尚未 push、尚未合併。新功能照慣例從 `main` 開 branch。
+- **Branch：** 只剩 `main`（2026-10-29 已合併 `feat/rare-tuning`，內含 `feat/spell-tiers`、`feat/tier-step-18`、`feat/crowd-ttk`，都已刪除），比 `origin/main` 多 80 個 commit、尚未 push。新功能照慣例從 `main` 開 branch。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -258,6 +259,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-29（Claude Code，Opus 5.5，macOS，合併）**：使用者試玩完畢並同意合併：`feat/crowd-ttk` → `feat/rare-tuning` → `main` 都是 fast-forward，兩個 branch 已刪除；`main` 上 `npm test` 69 檔 763 個全過。停在：`main` 比 `origin/main` 多 80 個 commit，未 push（使用者自己 push）。下一步：遊戲性討論（使用者指示 0b 先暫停）。
 
 - **2026-10-29（Claude Code，Opus 5.5，macOS，GM 登入與初階保底）**：使用者 GM 視窗一直「帳號或密碼錯誤」：原因是瀏覽器登入 `ron`，GM 名單只有 `jacky770123`（GM 登入要求帳號就是目前登入的帳號，錯誤訊息刻意不說明）；依使用者指示清掉本機 D1 `login_failures`、把 `ron` 加進本機 `.dev.vars` 的 `GM_USERNAMES`（未進版本庫，要重開 dev server）。接著依試玩回饋讓後段地點掉初階、中階（規格第 10.5 節，帳本 D3、D4，使用者選方案 B）：Lv.8 29.8、Lv.9 47.0、全清 49.5 模擬分鐘、0 次被拒。`npm test` 69 檔 763 個、build 通過。停在：`feat/crowd-ttk` 未 push、未合併。下一步：使用者試玩（3.0 清單），再決定合併；之後討論待辦 0b。
 
