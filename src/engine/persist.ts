@@ -8,10 +8,11 @@ export function createInitialState(content: Content): GameState {
   const first = content.zones[0]!.id;
   return {
     version: 2, inventory: {}, learned: [STARTING_SPELL], equipped: STARTING_SPELL, levels: {}, revealed: [], passives: [],
-    currentZone: first, unlockedZones: [first], defeatedBosses: [], zoneKills: {}, synthesisLog: {},
+    currentZone: first, unlockedZones: [first], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
   };
 }
 
+const MAX_STAGES = 10;
 const count = z.number().int().min(0);
 
 const synthLogEntry = z.strictObject({
@@ -32,6 +33,9 @@ const saveSchema = z.strictObject({
   unlockedZones: z.array(z.string()),
   defeatedBosses: z.array(z.string()),
   zoneKills: z.record(z.string(), count),
+  currentStage: z.number().int().min(1).max(MAX_STAGES),
+  clearedStages: z.record(z.string(), z.number().int().min(0).max(MAX_STAGES)),
+  lastClearAt: count,
   synthesisLog: z.record(z.string(), synthLogEntry),
 });
 
@@ -65,6 +69,7 @@ export function parseState(input: unknown, content: Content): GameState | null {
       s.unlockedZones.every(isZone) &&
       s.defeatedBosses.every((id) => bossIds.has(id)) &&
       Object.keys(s.zoneKills).every(isZone) &&
+      Object.keys(s.clearedStages).every(isZone) &&
       Object.keys(s.inventory).every((k) => ITEM_ID_RE.test(k));
     return ok ? (s as GameState) : null;
   } catch {

@@ -10,7 +10,7 @@ import type { ElementId } from './types';
 
 const mkGame = (o: Partial<GameState> = {}): GameState => ({
   version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
-  currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], zoneKills: {}, synthesisLog: {}, ...o,
+  currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {}, ...o,
 });
 
 const testSpell = (id: string, effects: Effect[], o: Partial<NamedSpellDef> = {}): NamedSpellDef => ({
@@ -24,7 +24,7 @@ const mon = (id: string, o: Partial<Monster> = {}): Monster => ({
 });
 const testZone: Zone = {
   id: 'test_zone', name: 't', nameEn: 't', order: 99, monsters: ['dummy'], bossId: 'test_boss', killsForBoss: 1e9,
-  maxAlive: 15, spawnIntervalMs: 1000, pack: { everyMs: 3000, size: 10 },
+  maxAlive: 15, spawnIntervalMs: 1000, pack: { everyMs: 3000, size: 10 }, stages: [],
 };
 
 /** The shipped content plus test-only spells, monsters and a test zone. */

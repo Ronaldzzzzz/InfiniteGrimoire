@@ -21,7 +21,7 @@ const mon = (o: Partial<Monster> & { id: string }): Monster => ({
 /** Packs off by default (size 0), so the arithmetic matches the MVP validator's. */
 const zone = (id: string, order: number, monsters: string[], bossId: string, extra: Partial<Zone> = {}): Zone => ({
   id, name: id, nameEn: id, order, monsters, bossId, killsForBoss: 5, maxAlive: 3, spawnIntervalMs: 1000,
-  pack: { everyMs: 3_600_000, size: 0 }, ...extra,
+  pack: { everyMs: 3_600_000, size: 0 }, stages: [], ...extra,
 });
 const fixture = (o: Partial<Content>): Content => ({
   spells: {}, recipes: [], monsters: {}, zones: [], materials: {}, keyItems: {}, passives: {}, regions: [],

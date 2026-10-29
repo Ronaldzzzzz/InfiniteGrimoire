@@ -7,7 +7,7 @@ import { OVERLOAD_SPELL, type Content, type GameState } from './model';
 
 const mkState = (inventory: Record<string, number>, learned: string[] = ['mana_bolt']): GameState => ({
   version: 2, inventory, learned, equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
-  currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], zoneKills: {}, synthesisLog: {},
+  currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
 });
 const run = (s: GameState, inputs: string[], depthCap = 8, c: Content = content, seed = 1) =>
   synthesize(s, inputs, c, createRng(seed), { depthCap });

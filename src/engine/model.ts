@@ -53,7 +53,9 @@ export interface TreeRegion { id: string; name: string; nameEn: string; order: n
 export interface Recipe { id: string; inputs: [string, string]; outcomes: { spellId: string | null; weight: number }[] }
 export interface DropDef { itemId: ItemId; chance: number; min: number; max: number }
 export interface Monster { id: string; name: string; nameEn: string; element: ElementId; tier: number; hp: number; defense: number; regenPerSec: number; speed: number; radius: number; boss: boolean; drops: DropDef[] }
-export interface Zone { id: string; name: string; nameEn: string; order: number; monsters: string[]; bossId: string; killsForBoss: number; maxAlive: number; spawnIntervalMs: number; pack: { everyMs: number; size: number } }
+/** One stage of a zone: each number is the size of one wave. A boss stage's boss comes on top of these. */
+export interface StageDef { waves: number[] }
+export interface Zone { id: string; name: string; nameEn: string; order: number; monsters: string[]; bossId: string; killsForBoss: number; maxAlive: number; spawnIntervalMs: number; pack: { everyMs: number; size: number }; stages: StageDef[] }
 export interface Content {
   spells: Record<string, NamedSpellDef>; recipes: Recipe[]; monsters: Record<string, Monster>; zones: Zone[];
   materials: Record<ItemId, Material>; keyItems: Record<ItemId, KeyItem>; passives: Record<string, Passive>; regions: TreeRegion[];
@@ -64,7 +66,14 @@ export interface SynthLogEntry { attempts: number; results: Record<string, numbe
 export interface GameState {
   version: 2; inventory: Inventory; learned: string[]; equipped: string; levels: Record<string, number>;
   revealed: string[]; passives: string[]; currentZone: string; unlockedZones: string[];
-  defeatedBosses: string[]; zoneKills: Record<string, number>; synthesisLog: Record<string, SynthLogEntry>;
+  defeatedBosses: string[]; zoneKills: Record<string, number>;
+  /** 1-based stage being played in currentZone */
+  currentStage: number;
+  /** highest stage cleared per zone (0 or missing = none) */
+  clearedStages: Record<string, number>;
+  /** server time (ms) of the last stage settlement */
+  lastClearAt: number;
+  synthesisLog: Record<string, SynthLogEntry>;
 }
 export const STARTING_SPELL = 'mana_bolt';
 export const OVERLOAD_SPELL = 'mana_overload';

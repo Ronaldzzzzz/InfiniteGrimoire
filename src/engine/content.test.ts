@@ -36,6 +36,22 @@ describe('content', () => {
     expect(() => loadContent(base() as never)).not.toThrow();
   });
 
+  it('every zone has 10 stages, each with at least one wave of 1+ foes', () => {
+    for (const z of content.zones) {
+      expect(z.stages).toHaveLength(10);
+      for (const st of z.stages) {
+        expect(st.waves.length).toBeGreaterThan(0);
+        for (const n of st.waves) expect(n).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('rejects a stage without waves', () => {
+    const raw = base();
+    raw.zones[0].stages[0].waves = [];
+    expect(issuesOf(raw)).toContain('waves');
+  });
+
   it('rejects duplicate ids', () => {
     const raw = base();
     raw.spells.push(structuredClone(raw.spells[0]));

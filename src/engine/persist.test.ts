@@ -35,7 +35,7 @@ describe('persist', () => {
   it('initial state: mana_bolt only, first zone, nothing else', () => {
     expect(createInitialState(content)).toEqual({
       version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
-      currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], zoneKills: {}, synthesisLog: {},
+      currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
     });
   });
 
@@ -136,5 +136,23 @@ describe('legacy saves after the x10 number scale', () => {
       for (const e of r.events) if (e.type === 'hit' && e.dealt > 0) dealt += e.dealt;
     }
     expect(dealt).toBeGreaterThan(0);
+  });
+});
+
+describe('stage fields', () => {
+  it('starts at stage 1 with nothing cleared', () => {
+    const s = createInitialState(content);
+    expect(s.currentStage).toBe(1);
+    expect(s.clearedStages).toEqual({});
+    expect(s.lastClearAt).toBe(0);
+  });
+  it('rejects out-of-range or unknown stage data', () => {
+    const s = createInitialState(content);
+    expect(parseState({ ...s, currentStage: 0 }, content)).toBeNull();
+    expect(parseState({ ...s, currentStage: 11 }, content)).toBeNull();
+    expect(parseState({ ...s, clearedStages: { nowhere: 1 } }, content)).toBeNull();
+    expect(parseState({ ...s, clearedStages: { [s.currentZone]: 11 } }, content)).toBeNull();
+    expect(parseState({ ...s, lastClearAt: -1 }, content)).toBeNull();
+    expect(parseState({ ...s, currentStage: 3, clearedStages: { [s.currentZone]: 2 }, lastClearAt: 5 }, content)).not.toBeNull();
   });
 });

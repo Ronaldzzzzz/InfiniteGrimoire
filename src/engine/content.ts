@@ -111,6 +111,7 @@ const zoneSchema = z.object({
   maxAlive: z.number().int().positive(),
   spawnIntervalMs: ms,
   pack: z.object({ everyMs: ms, size: z.number().int().positive() }),
+  stages: z.array(z.object({ waves: z.array(z.number().int().positive()).min(1) })).length(10),
 });
 
 const materialSchema = z.object({ id: itemId, name: str, nameEn: str, desc: str, elements: z.array(element), words, effect });

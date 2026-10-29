@@ -44,17 +44,38 @@ describe('migration 0004', () => {
     const v1 = '{"version":1,"inventory":{"el:fire:1":3},"learned":["mana_bolt","fireball"],"equipped":"fireball"}';
     raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 7, 5000, ?, 4000)').run('p1', v1, v1);
 
-    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0004'));
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0004' && f < '0007'));
+    // 0005 and 0006 keep saves; 0007 (tested below) resets them again, so stop before it
 
     const save = (await new D1Store(d1).getSave('p1'))!;
-    expect(parseState(JSON.parse(save.state), content)).toEqual(createInitialState(content));
-    // the literal in the migration is exactly what the server writes for a new player
-    expect(save.state).toBe(serialize(createInitialState(content)));
+    expect(JSON.parse(save.state)).toMatchObject({ version: 2, learned: ['mana_bolt'], zoneKills: {}, synthesisLog: {} });
+    // the 0004 literal is the initial state without the stage fields added in 0007
+    expect(save.state).toBe(JSON.stringify({ ...JSON.parse(serialize(createInitialState(content))), currentStage: undefined, clearedStages: undefined, lastClearAt: undefined }));
     expect(save.anchorState).toBe(save.state);
     expect(save.anchorAt).toBe(5000);
     expect(save.revision).toBe(8);
     // accounts and sessions are kept
     expect((await new D1Store(d1).findPlayerBySession('h1'))?.player.id).toBe('p1');
+  });
+});
+
+describe('migration 0007', () => {
+  it('resets saves to the stage-aware initial state and keeps players', async () => {
+    const { d1, raw } = createD1();
+    applyMigrations(raw, MIGRATIONS.filter((f) => f < '0007'));
+    raw.prepare('INSERT INTO players (id, display_name, created_at, suspicious) VALUES (?, ?, ?, 0)').run('p1', 'Old', 1234);
+    raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 7, 5000, ?, 4000)').run('p1', '{"v":1}', '{"v":1}');
+    const players = (raw.prepare('SELECT COUNT(*) AS n FROM players').get() as { n: number }).n;
+
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0007'));
+
+    expect((raw.prepare('SELECT COUNT(*) AS n FROM players').get() as { n: number }).n).toBe(players);
+    const save = (await new D1Store(d1).getSave('p1'))!;
+    expect(parseState(JSON.parse(save.state), content)?.currentStage).toBe(1);
+    expect(save.state).toBe(serialize(createInitialState(content)));
+    expect(save.anchorState).toBe(save.state);
+    expect(save.anchorAt).toBe(5000);
+    expect(save.revision).toBe(8);
   });
 });
 
@@ -65,7 +86,7 @@ describe('migration 0005', () => {
     raw.prepare('INSERT INTO players (id, display_name, created_at, suspicious) VALUES (?, ?, ?, 0)').run('p1', 'Old', 1234);
     raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 7, 5000, ?, 4000)').run('p1', '{"v":1}', '{"v":1}');
 
-    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0005'));
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0005' && f < '0006'));
 
     const save = (await new D1Store(d1).getSave('p1'))!;
     expect(save.state).toBe('{"v":1}');
@@ -81,7 +102,7 @@ describe('migration 0006', () => {
     raw.prepare('INSERT INTO players (id, display_name, created_at, suspicious) VALUES (?, ?, ?, 0)').run('p1', 'Old', 1234);
     raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 7, 5000, ?, 4000)').run('p1', '{"v":1}', '{"v":1}');
 
-    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0006'));
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0006' && f < '0007'));
 
     const store = new D1Store(d1);
     expect((await store.getSave('p1'))?.state).toBe('{"v":1}');

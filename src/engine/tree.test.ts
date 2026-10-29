@@ -6,7 +6,7 @@ import type { Content, GameState, Passive } from './model';
 
 const mkState = (over: Partial<GameState> = {}): GameState => ({
   version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
-  currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], zoneKills: {}, synthesisLog: {}, ...over,
+  currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {}, ...over,
 });
 const withPassives = (...ps: Passive[]): Content => ({
   ...content, passives: { ...content.passives, ...Object.fromEntries(ps.map((p) => [p.id, p])) },
