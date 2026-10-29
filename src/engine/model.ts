@@ -4,7 +4,7 @@ export type StatusKind = 'burn' | 'wet' | 'slow' | 'stun' | 'freeze' | 'blind' |
 /** burn: power = dps as a fraction of the hit; regen: power = max-hp fraction healed per second. */
 export interface StatusDef { kind: StatusKind; ms: number; power?: number }
 export type Target = 'nearest' | 'densest' | 'strongest' | 'center' | 'random';
-/** Arena units: the arena radius is 1, monsters stop at STOP_R = 0.15. mult scales the spell's attack. */
+/** Strip units: the field runs from the mage at x = 0 to x = 1, monsters stop at STOP_X = 0.08. mult scales the spell's attack. */
 export type Effect =
   | { kind: 'bolt'; mult: number; count: number; radius: number; target: Target; status?: StatusDef[] }
   | { kind: 'ring'; mult: number; radius: number; push: number; status?: StatusDef[] }

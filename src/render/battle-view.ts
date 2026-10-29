@@ -2,7 +2,7 @@ import {
   Application, BitmapFont, BitmapText, Container, Graphics, Particle, ParticleContainer, Rectangle, Sprite, Text, Texture,
 } from 'pixi.js';
 import {
-  BLADE_MS, BOLT_SPEED, METEOR_STAGGER_MS, RING_SPEED, STEP_MS, STOP_R, bladePositions,
+  BLADE_MS, BOLT_SPEED, METEOR_STAGGER_MS, RING_SPEED, STEP_MS, STOP_X, bladePositions,
   type ActiveFx, type BattleEvent, type BattleState, type Foe,
 } from '../engine/combat';
 import type { Content, Effect, Monster } from '../engine/model';
@@ -426,7 +426,7 @@ export class BattleView {
     this.ringKey = key;
     const a = this.arena;
     this.ring.clear();
-    this.ring.circle(a.center.x, a.center.y, STOP_R * a.radius).stroke({ width: 1, color: COLORS.rune, alpha: 0.18 });
+    this.ring.circle(a.center.x, a.center.y, STOP_X * a.radius).stroke({ width: 1, color: COLORS.rune, alpha: 0.18 });
   }
 
   private drawHp(v: FoeView, f: Foe): void {

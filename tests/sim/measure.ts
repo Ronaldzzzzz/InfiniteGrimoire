@@ -2,7 +2,7 @@
  * Shared DPS measurement for the spell tier curve (used by scripts/measure-dps.ts and tests/sim/tier-curve.test.ts).
  * Read-only: changes no game data. Damage counted is what actually came off foes' hit points (hit.dealt + burn).
  */
-import { createBattle, stepBattle, STEP_MS, STOP_R, ZONE_REACH, type ActiveFx, type BattleState, type Foe } from '../../src/engine/combat';
+import { createBattle, stepBattle, STEP_MS, STOP_X, ZONE_REACH, type ActiveFx, type BattleState, type Foe } from '../../src/engine/combat';
 import { content } from '../../src/engine/content';
 import type { Content, GameState } from '../../src/engine/model';
 import { createInitialState } from '../../src/engine/persist';
@@ -248,10 +248,10 @@ export function inPull(fx: readonly ActiveFx[], f: Foe): boolean {
   });
 }
 
-/** A walked-in touch (spec 1, Ruling C3): a non-boss foe at STOP_R + radius + 0.01 that no pulling zone held before or after this step. */
+/** A walked-in touch (spec 1, Ruling C3): a non-boss foe at STOP_X + radius + 0.01 that no pulling zone held before or after this step. */
 export function walkedTouch(f: Foe, before: readonly ActiveFx[], after: readonly ActiveFx[]): boolean {
   const def = content.monsters[f.defId]!;
-  return !def.boss && Math.hypot(f.x, f.y) <= STOP_R + def.radius + 0.01 && !inPull(before, f) && !inPull(after, f);
+  return !def.boss && f.x <= STOP_X + def.radius + 0.01 && !inPull(before, f) && !inPull(after, f);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STOP_R } from '../engine/combat';
+import { STOP_X } from '../engine/combat';
 import { floatTextStart, makeArena, toScreen } from './arena';
 
 describe('makeArena', () => {
@@ -37,9 +37,9 @@ describe('foe placement', () => {
     }
   });
 
-  it('puts the stop ring at STOP_R of the radius', () => {
+  it('puts the stop ring at STOP_X of the radius', () => {
     const a = makeArena(400, 400, 0.05);
-    expect(toScreen(a, STOP_R, 0).x - a.center.x).toBeCloseTo(STOP_R * a.radius);
+    expect(toScreen(a, STOP_X, 0).x - a.center.x).toBeCloseTo(STOP_X * a.radius);
   });
 });
 

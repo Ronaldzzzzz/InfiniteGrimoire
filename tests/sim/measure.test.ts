@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EMPOWER_MAX, MAX_SPELL_LEVEL } from '../../src/engine/spells';
 import { content } from '../../src/engine/content';
-import { STOP_R, type ActiveFx, type Foe } from '../../src/engine/combat';
+import { STOP_X, type ActiveFx, type Foe } from '../../src/engine/combat';
 import { crowdClear, crowdDps, crowdStats, HOME_ZONE, inPull, soloBossDps, walkedTouch, ZONE_TIER } from './measure';
 
 const opts = { seed: 20261021, ms: 10_000 };
@@ -41,7 +41,7 @@ describe('DPS measurement', () => {
 
   describe('touches exclude foes dragged in by a pull (Ruling C3)', () => {
     const def = content.monsters.doom_knight!;
-    const onRing: Foe = { uid: 1, defId: 'doom_knight', x: STOP_R + def.radius, y: 0, hp: 1, maxHp: 1, statuses: [], kx: 0, ky: 0, wander: 0 };
+    const onRing: Foe = { uid: 1, defId: 'doom_knight', x: STOP_X + def.radius, y: 0, hp: 1, maxHp: 1, statuses: [], kx: 0, ky: 0, wander: 0 };
     const zoneFx = (pull: number): ActiveFx => ({
       uid: 9, spellId: 'test', elements: ['wind'], x: 0, y: 0, ageMs: 0, hits: [],
       effect: { kind: 'zone', mult: 0, radius: 0.2, ms: 3000, tickMs: 500, target: 'center', pull, follow: false, strikes: 0 },

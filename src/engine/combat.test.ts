@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import {
-  DOT_REPORT_MS, ENGAGE_R, KNOCK_MAX_R, MAX_ACTIVE_FX, STEP_MS, STOP_R, createBattle, stepBattle,
+  BLADE_FAN, DOT_REPORT_MS, LANE_Y, MAX_ACTIVE_FX, RANGE, RIGHT_X, SPAWN_X, STEP_MS, STOP_X, bladePositions, createBattle, spawnPoint, stepBattle,
   type ActiveStatus, type BattleEvent, type BattleState, type Foe,
 } from './combat';
 import { createRng, type Rng } from './rng';
@@ -77,45 +77,85 @@ describe('stepBattle: crowd movement', () => {
     expect(first.battle.foes.length).toBe(13); // singles at 1 s, 2 s, 3 s plus a pack of 10 at 3 s
     const pack = first.perStep[59]!.filter((e) => e.type === 'spawn');
     expect(pack.length).toBe(11);
-    const packFoes = first.battle.foes.filter((f) => pack.slice(-10).some((e) => e.type === 'spawn' && e.uid === f.uid));
-    const angles = packFoes.map((f) => Math.atan2(f.y, f.x));
-    const spread = Math.max(...angles) - Math.min(...angles);
-    expect(Math.min(spread, 2 * Math.PI - spread)).toBeLessThanOrEqual(0.24 + 1e-9);
-    for (const f of first.battle.foes) expect(dist(f)).toBeCloseTo(1, 6);
+    for (const f of first.battle.foes) {
+      expect(f.x).toBeGreaterThanOrEqual(SPAWN_X);
+      expect(Math.abs(f.y)).toBeLessThanOrEqual(LANE_Y);
+    }
 
     let max = 0;
     run(game, first.battle, c, 400, createRng(2), (b) => { max = Math.max(max, b.foes.length); });
     expect(max).toBe(15);
   });
 
-  it('monsters walk in and stop at the stop ring', () => {
+  it('monsters walk in and stop at the stop line', () => {
     const r = run(mkGame({ equipped: '' }), createBattle('mist_meadow'), content, 1200);
     expect(r.battle.foes.length).toBeGreaterThan(10);
-    let atRing = 0;
+    let atLine = 0;
     for (const f of r.battle.foes) {
-      const stop = STOP_R + content.monsters[f.defId]!.radius;
-      expect(dist(f)).toBeGreaterThanOrEqual(stop - 1e-9);
-      expect(dist(f)).toBeLessThanOrEqual(1 + 1e-9);
-      if (Math.abs(dist(f) - stop) < 1e-6) atRing++;
+      const stop = STOP_X + content.monsters[f.defId]!.radius;
+      expect(f.x).toBeGreaterThanOrEqual(stop - 1e-9);
+      expect(Math.abs(f.y)).toBeLessThanOrEqual(LANE_Y + 1e-9);
+      if (Math.abs(f.x - stop) < 1e-6) atLine++;
     }
-    expect(atRing).toBeGreaterThan(5);
+    expect(atLine).toBeGreaterThan(5);
+  });
+
+  it('foes walk left to the stop line and never pass the mage', () => {
+    const c = withTest();
+    const b = staged([foe(1, 'walker', 1, 0.05, c)]);
+    const r = run(mkGame({ equipped: '' }), b, c, 1200);
+    const f = r.battle.foes[0]!;
+    expect(f.x).toBeGreaterThanOrEqual(STOP_X + c.monsters.walker!.radius - 1e-9);
+    expect(f.x).toBeLessThan(STOP_X + c.monsters.walker!.radius + 1e-6);
+    expect(f.y).toBe(0.05);
+  });
+
+  it('spawnPoint is off the right edge inside the lane', () => {
+    const rng = createRng(7);
+    for (let i = 0; i < 100; i++) {
+      const p = spawnPoint(rng);
+      expect(p.x).toBeGreaterThanOrEqual(SPAWN_X);
+      expect(p.x).toBeLessThanOrEqual(SPAWN_X + 0.15);
+      expect(Math.abs(p.y)).toBeLessThanOrEqual(LANE_Y);
+    }
+  });
+
+  it('foes stay inside the lane while blind or pulled', () => {
+    const c = withTest();
+    const zone = testSpell('t_pullz', [{ kind: 'zone', mult: 0, radius: 0.3, ms: 5000, tickMs: 250, target: 'center', pull: 1, follow: false, strikes: 0 }]);
+    const c2 = withTest([zone]);
+    const blind: ActiveStatus[] = [{ kind: 'blind', remainingMs: 1e6 }];
+    const b = staged([foe(1, 'walker', 0.98, 0.08, c, blind), foe(2, 'walker', 0.5, -0.08, c, blind), foe(3, 'walker', 0.3, 0, c)]);
+    run(mkGame({ equipped: '' }), b, c, 400, createRng(3), (s) => {
+      for (const f of s.foes) {
+        expect(Math.abs(f.y)).toBeLessThanOrEqual(LANE_Y + 1e-9);
+        expect(f.x).toBeLessThanOrEqual(RIGHT_X + 1e-9);
+      }
+    });
+    const bz = staged([foe(1, 'dummy', 0.4, 0.05, c2), foe(2, 'dummy', 0.7, -0.09, c2)]);
+    run(mkGame({ equipped: 't_pullz' }), bz, c2, 100, createRng(3), (s) => {
+      for (const f of s.foes) {
+        expect(Math.abs(f.y)).toBeLessThanOrEqual(LANE_Y + 1e-9);
+        expect(f.x).toBeLessThanOrEqual(RIGHT_X + 1e-9);
+      }
+    });
   });
 
   it('stun and freeze stop movement, slow slows', () => {
     const c = withTest();
     const long = (kind: ActiveStatus['kind']): ActiveStatus[] => [{ kind, remainingMs: 1e6 }];
     const b = staged([
-      foe(1, 'walker', 0.9, 0, c, long('stun')),
-      foe(2, 'walker', 0, 0.9, c, long('freeze')),
-      foe(3, 'walker', -0.9, 0, c, long('slow')),
-      foe(4, 'walker', 0, -0.9, c),
+      foe(1, 'walker', 0.9, 0.05, c, long('stun')),
+      foe(2, 'walker', 0.9, 0.02, c, long('freeze')),
+      foe(3, 'walker', 0.9, -0.02, c, long('slow')),
+      foe(4, 'walker', 0.9, -0.05, c),
     ]);
     const r = run(mkGame({ equipped: '' }), b, c, 20);
-    const moved = (uid: number) => 0.9 - dist(r.battle.foes.find((f) => f.uid === uid)!);
+    const moved = (uid: number) => 0.9 - r.battle.foes.find((f) => f.uid === uid)!.x;
     expect(moved(1)).toBeCloseTo(0, 9);
     expect(moved(2)).toBeCloseTo(0, 9);
-    expect(moved(4)).toBeCloseTo(0.1, 6);
-    expect(moved(3)).toBeCloseTo(0.025, 6);
+    expect(moved(4)).toBeCloseTo(0.4, 6); // 0.1 x LANE_SPEED per second
+    expect(moved(3)).toBeCloseTo(0.1, 6);
   });
 });
 
@@ -156,29 +196,35 @@ describe('stepBattle: area targeting aims at the visible fight', () => {
     expect(fx).toBeDefined();
     return fx!;
   };
-  /** a just-spawned pack of 8 around (0.98, 0) and a pair inside the engage radius */
-  const outerPack = (c: Content) => Array.from({ length: 8 }, (_, i) => foe(i + 1, 'dummy', 0.98, (i - 3.5) * 0.02, c));
-  const innerPair = (c: Content) => [foe(50, 'dummy', 0, 0.3, c), foe(51, 'dummy', 0.03, 0.3, c)];
+  /** a just-spawned pack of 8 around x = 1.0 and a pair well inside RANGE */
+  const outerPack = (c: Content) => Array.from({ length: 8 }, (_, i) => foe(i + 1, 'dummy', 1.0, (i - 3.5) * 0.02, c));
+  const innerPair = (c: Content) => [foe(50, 'dummy', 0.5, 0.03, c), foe(51, 'dummy', 0.53, 0.03, c)];
 
-  it('exports an engage radius inside the view', () => {
-    expect(ENGAGE_R).toBe(0.4);
+  it('exports a range inside the view', () => {
+    expect(RANGE).toBe(0.75);
   });
 
   it('densest picks the inner group over a bigger pack at the edge', () => {
     const fx = castFx('densest', (c) => [...outerPack(c), ...innerPair(c)]);
     expect([50, 51]).toContain(fx.hits[0]);
-    expect(Math.hypot(fx.x, fx.y)).toBeLessThan(ENGAGE_R);
+    expect(fx.x).toBeLessThanOrEqual(RANGE);
   });
 
-  it('densest still picks the outer pack when nobody is inside the engage radius', () => {
-    const fx = castFx('densest', (c) => [...outerPack(c), foe(60, 'dummy', -0.9, 0, c)]);
+  it('area spells aim only within RANGE when someone is', () => {
+    const fx = castFx('densest', (c) => [foe(1, 'dummy', 0.5, 0, c), ...[0, 1, 2].map((i) => foe(10 + i, 'dummy', 0.95, i * 0.01, c))]);
+    expect(fx.hits[0]).toBe(1);
+    expect(fx.x).toBe(0.5);
+  });
+
+  it('densest still picks the outer pack when nobody is within RANGE', () => {
+    const fx = castFx('densest', (c) => [...outerPack(c), foe(60, 'dummy', 0.9, 0.08, c)]);
     expect(fx.hits[0]).toBeLessThanOrEqual(8);
   });
 
   it('strongest and random only look inside the engage radius when someone is there', () => {
     const strong = castFx('strongest', (c) => [
       ...outerPack(c),
-      { ...foe(50, 'dummy', 0, 0.3, c), hp: 10 },
+      { ...foe(50, 'dummy', 0.4, 0.03, c), hp: 10 },
     ]);
     expect(strong.hits[0]).toBe(50);
     for (let i = 0; i < 5; i++) {
@@ -192,7 +238,7 @@ describe('stepBattle: effects', () => {
   it('bolt explodes on impact', () => {
     const bolt = testSpell('t_bolt', [{ kind: 'bolt', mult: 1, count: 1, radius: 0.2, target: 'nearest' }]);
     const c = withTest([bolt]);
-    const b = staged([foe(1, 'dummy', 0.5, 0, c), foe(2, 'dummy', 0.65, 0, c), foe(3, 'dummy', -0.6, 0, c)]);
+    const b = staged([foe(1, 'dummy', 0.5, 0, c), foe(2, 'dummy', 0.65, 0, c), foe(3, 'dummy', 0.95, 0.05, c)]);
     const r = run(mkGame({ equipped: 't_bolt' }), b, c, 40);
     const at = firstStep(r.perStep, (e) => e.type === 'hit');
     expect(at).toBeGreaterThan(2); // the bolt has to fly there first
@@ -215,18 +261,30 @@ describe('stepBattle: effects', () => {
     expect(stepOf(1)).toBeLessThan(stepOf(3));
   });
 
-  it('knockback never carries a foe past KNOCK_MAX_R, nor farther out than it already was', () => {
-    const ring = testSpell('t_push', [{ kind: 'ring', mult: 0.01, radius: 0.8, push: 5 }]);
+  it('knockback pushes right and never past RIGHT_X', () => {
+    const ring = testSpell('t_push', [{ kind: 'ring', mult: 0.01, radius: 0.8, push: 50 }]);
     const c = withTest([ring]);
-    const b = staged([foe(1, 'dummy', 0.2, 0, c), foe(2, 'dummy', 0, 0.6, c)]);
-    let far1 = 0, far2 = 0;
-    run(mkGame({ equipped: 't_push' }), b, c, 80, createRng(1), (s) => {
-      far1 = Math.max(far1, dist(s.foes.find((f) => f.uid === 1)!));
-      far2 = Math.max(far2, dist(s.foes.find((f) => f.uid === 2)!));
+    const b = staged([foe(1, 'dummy', 0.3, 0, c), foe(2, 'dummy', 0.9, 0.08, c)]);
+    let far1 = 0;
+    const r = run(mkGame({ equipped: 't_push' }), b, c, 80, createRng(1), (s) => {
+      far1 = Math.max(far1, s.foes.find((f) => f.uid === 1)!.x);
+      for (const f of s.foes) expect(Math.abs(f.y)).toBeLessThanOrEqual(LANE_Y + 1e-9);
     });
     expect(far1).toBeGreaterThan(0.3);
-    expect(far1).toBeLessThanOrEqual(KNOCK_MAX_R + 1e-9);
-    expect(far2).toBeLessThanOrEqual(0.6 + 1e-9);
+    expect(far1).toBeLessThanOrEqual(RIGHT_X + 1e-9);
+    expect(r.battle.foes.find((f) => f.uid === 2)!.x).toBeLessThanOrEqual(RIGHT_X + 1e-9);
+  });
+
+  it('blades fly forward', () => {
+    const fx = { uid: 5, spellId: 'x', elements: [], effect: { kind: 'blades' as const, mult: 1, count: 5, push: 0 }, x: 0, y: 0, ageMs: 600, hits: [] };
+    const ps = bladePositions(fx);
+    expect(ps).toHaveLength(5);
+    for (const p of ps) {
+      const a = Math.atan2(p.y, p.x);
+      expect(a).toBeGreaterThanOrEqual(-BLADE_FAN);
+      expect(a).toBeLessThanOrEqual(BLADE_FAN);
+      expect(p.x).toBeGreaterThan(0);
+    }
   });
 
   it('chain doubles on wet foes', () => {

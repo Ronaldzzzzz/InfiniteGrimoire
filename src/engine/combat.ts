@@ -7,28 +7,35 @@ import type { Content, Effect, GameState, Monster, Spell, StatusDef, StatusKind,
 import type { ElementId, ItemId } from './types';
 
 /**
- * 2D crowd battle. The arena is the unit circle around the mage at (0, 0); monsters spawn on its edge and
- * walk in to the stop ring. Each cast turns every effect of the equipped spell into an ActiveFx that runs
+ * Side-scrolling crowd battle. The field is a horizontal strip: the mage stands at (0, 0), monsters enter from the
+ * right (x about 1) and walk left along a lane of half-height LANE_Y until they reach the stop line at STOP_X.
+ * Each cast turns every effect of the equipped spell into an ActiveFx that runs
  * for a while (projectile flight, expanding ring, lingering zone...). Deterministic for a given Rng.
  */
 export const STEP_MS = 50;
 /** Burn and other damage over time is summed and reported as one 'dot' event this often (for the DPS readout). */
 export const DOT_REPORT_MS = 1000;
-export const STOP_R = 0.15;
 export const MAX_ACTIVE_FX = 24;
+/** The lane is y in [-LANE_Y, LANE_Y]. */
+export const LANE_Y = 0.09;
 /**
- * Area spells aimed at 'densest' / 'random' / 'strongest' pick among foes within this distance of the mage
+ * Area spells aimed at 'densest' / 'random' / 'strongest' pick among foes in front of the mage with x <= RANGE
  * (the visible fight); only when nobody is that close do they consider the whole field.
  */
-export const ENGAGE_R = 0.4;
-/**
- * Knockback never carries a foe past this distance (nor farther out than it already was): the arena edge is off-screen
- * by design, and a foe knocked out there would vanish from view.
- */
-export const KNOCK_MAX_R = ENGAGE_R;
+export const RANGE = 0.75;
+/** Foes stop when their centre reaches x = STOP_X + radius. */
+export const STOP_X = 0.08;
+/** Foes appear at SPAWN_X (plus up to SPAWN_JITTER), just off the right edge. */
+export const SPAWN_X = 1.05;
+const SPAWN_JITTER = 0.15;
+/** Knockback and blind wandering never carry a foe that is already in view past this x. */
+export const RIGHT_X = 1.0;
+/** Foes walk at def.speed x LANE_SPEED along the lane. */
+export const LANE_SPEED = 4;
+/** Blades fly forward in a fan of +-BLADE_FAN radians around +x. */
+export const BLADE_FAN = 0.7;
 
 const DT = STEP_MS / 1000;
-const PACK_SPREAD = 0.12;
 const KNOCK_KEEP = Math.pow(0.02, DT); // knockback velocity decays to 2% per second
 const SLOW_DEFAULT = 0.75; // slow power = fraction of speed taken away
 const REGEN_DEFAULT = 0.15; // regen power = max-hp fraction healed per second
@@ -38,7 +45,6 @@ export const BOLT_SPEED = 1.4;
 const BOLT_MAX_MS = 4000;
 export const RING_SPEED = 1;
 export const BLADE_SPEED = 1;
-export const BLADE_SPIN = 1.2;
 export const BLADE_MS = 1100;
 const BLADE_HIT_R = 0.07;
 const CHAIN_MS = 300;
@@ -81,6 +87,11 @@ export type BattleEvent =
   | { type: 'backfire'; stunMs: number }
   | { type: 'bossDefeated'; zoneId: string; unlockedZoneId: string | null };
 
+/** Where a new foe appears: just off the right edge, anywhere across the lane. */
+export function spawnPoint(rng: Rng): { x: number; y: number } {
+  return { x: SPAWN_X + rng.next() * SPAWN_JITTER, y: (rng.next() * 2 - 1) * LANE_Y };
+}
+
 export function createBattle(zoneId: string): BattleState {
   return {
     zoneId, foes: [], fx: [], mage: { cooldownMs: 0, hasteMs: 0, hasteFactor: 1, stunMs: 0 },
@@ -94,9 +105,8 @@ export const ringRadius = (fx: ActiveFx): number => (fx.ageMs / 1000) * RING_SPE
 export function bladePositions(fx: ActiveFx): { x: number; y: number }[] {
   if (fx.effect.kind !== 'blades') return [];
   const t = fx.ageMs / 1000, r = 0.03 + BLADE_SPEED * t, n = fx.effect.count;
-  const base = fx.uid * 2.399963; // golden angle: deterministic, no stored state
   return Array.from({ length: n }, (_, k) => {
-    const a = base + (k * 2 * Math.PI) / n + BLADE_SPIN * t;
+    const a = -BLADE_FAN + (2 * BLADE_FAN * (k + 0.5)) / n;
     return { x: Math.cos(a) * r, y: Math.sin(a) * r };
   });
 }
@@ -202,7 +212,7 @@ function push(f: Foe, fromX: number, fromY: number, power: number): void {
   if (power <= 0) return;
   const dx = f.x - fromX, dy = f.y - fromY, d = Math.hypot(dx, dy);
   if (d === 0) return;
-  f.kx += (dx / d) * power;
+  f.kx += Math.max(0, dx / d) * power; // knockback never sends a foe back toward (or behind) the mage
   f.ky += (dy / d) * power;
 }
 
@@ -239,12 +249,11 @@ function neighbourCounts(ctx: Ctx): Map<number, number> {
   return ctx.counts;
 }
 
-/** Live foes inside ENGAGE_R, or every live foe when none are (computed once per step). */
+/** Live foes with x <= RANGE, or every live foe when none are (computed once per step). */
 function engagedFoes(ctx: Ctx): Foe[] {
   if (ctx.engaged) return ctx.engaged;
   const live = ctx.foes.filter(alive);
-  const r2 = ENGAGE_R * ENGAGE_R;
-  const near = live.filter((f) => f.x * f.x + f.y * f.y <= r2);
+  const near = live.filter((f) => f.x <= RANGE);
   return (ctx.engaged = near.length > 0 ? near : live);
 }
 
@@ -264,7 +273,7 @@ function pickTargets(ctx: Ctx, target: Target, n: number): Foe[] {
   switch (target) {
     case 'center':
     case 'nearest':
-      return live.sort((a, b) => a.x * a.x + a.y * a.y - (b.x * b.x + b.y * b.y)).slice(0, n);
+      return live.sort((a, b) => a.x - b.x).slice(0, n);
     case 'strongest':
       return live.sort((a, b) => b.hp - a.hp).slice(0, n);
     case 'densest': {
@@ -474,34 +483,31 @@ function moveFoe(ctx: Ctx, f: Foe, def: Monster): void {
   }
   if (f.hp > 0) f.hp = Math.min(f.maxHp, f.hp + def.regenPerSec * DT);
 
-  if (f.kx !== 0 || f.ky !== 0) {
-    const limit = Math.max(KNOCK_MAX_R, Math.hypot(f.x, f.y));
-    f.x += f.kx * DT;
-    f.y += f.ky * DT;
-    const d = Math.hypot(f.x, f.y);
-    if (d > limit) { f.x *= limit / d; f.y *= limit / d; f.kx = 0; f.ky = 0; }
-  }
+  const inView = f.x <= RIGHT_X; // foes still walking in from SPAWN_X are not confined yet
+  f.x += f.kx * DT;
+  f.y += f.ky * DT;
   f.kx *= KNOCK_KEEP;
   f.ky *= KNOCK_KEEP;
 
   if (!hasStatus(f, 'stun') && !hasStatus(f, 'freeze')) {
     const slow = statusOf(f, 'slow');
-    const sp = def.speed * (slow ? 1 - (slow.power ?? SLOW_DEFAULT) : 1) * DT;
+    const sp = def.speed * LANE_SPEED * (slow ? 1 - (slow.power ?? SLOW_DEFAULT) : 1) * DT;
     if (hasStatus(f, 'blind')) {
       f.wander += (ctx.rng.next() * 2 - 1) * BLIND_TURN * DT;
       f.x += Math.cos(f.wander) * sp;
       f.y += Math.sin(f.wander) * sp;
     } else {
-      const d = Math.hypot(f.x, f.y), stop = STOP_R + def.radius;
-      if (d > stop) {
-        const k = Math.min(sp, d - stop) / d;
-        f.x -= f.x * k;
-        f.y -= f.y * k;
-      }
+      const stop = STOP_X + def.radius;
+      if (f.x > stop) f.x -= Math.min(sp, f.x - stop);
     }
   }
-  const d = Math.hypot(f.x, f.y);
-  if (d > 1) { f.x /= d; f.y /= d; }
+  // keep foes that are in view inside the lane: knockback, wandering and zone pulls cannot push them out of it
+  if (inView || f.x <= RIGHT_X) {
+    if (f.x > RIGHT_X) { f.x = RIGHT_X; f.kx = 0; }
+    if (f.y > LANE_Y) { f.y = LANE_Y; f.ky = 0; } else if (f.y < -LANE_Y) { f.y = -LANE_Y; f.ky = 0; }
+    const minX = STOP_X + def.radius;
+    if (f.x < minX) { f.x = minX; if (f.kx < 0) f.kx = 0; }
+  }
 
   for (const s of f.statuses) s.remainingMs -= STEP_MS;
   if (f.statuses.some((s) => s.remainingMs <= 0)) f.statuses = f.statuses.filter((s) => s.remainingMs > 0);
@@ -531,12 +537,12 @@ export function stepBattle(
   let unlockedZones = game.unlockedZones;
   let zoneKills = game.zoneKills;
 
-  const spawn = (defId: string, boss: boolean, angle: number): void => {
+  const spawn = (defId: string, boss: boolean): void => {
     const def = Object.hasOwn(content.monsters, defId) ? content.monsters[defId] : undefined;
     if (!def) return;
     const uid = ctx.nextUid++;
     const f: Foe = {
-      uid, defId, x: Math.cos(angle), y: Math.sin(angle), hp: def.hp, maxHp: def.hp, statuses: [],
+      uid, defId, ...spawnPoint(rng), hp: def.hp, maxHp: def.hp, statuses: [],
       kx: 0, ky: 0, wander: rng.next() * 2 * Math.PI,
     };
     foes.push(f);
@@ -551,7 +557,7 @@ export function stepBattle(
   if (normals < zone.maxAlive) {
     if (spawnTimerMs >= zone.spawnIntervalMs) {
       spawnTimerMs -= zone.spawnIntervalMs;
-      spawn(randomMonster(), false, rng.next() * 2 * Math.PI);
+      spawn(randomMonster(), false);
       normals++;
     }
   } else {
@@ -560,8 +566,7 @@ export function stepBattle(
   if (packTimerMs >= zone.pack.everyMs) {
     packTimerMs -= zone.pack.everyMs;
     const n = Math.min(zone.pack.size, zone.maxAlive - normals);
-    const angle = rng.next() * 2 * Math.PI;
-    for (let i = 0; i < n; i++) spawn(randomMonster(), false, angle + (rng.next() * 2 - 1) * PACK_SPREAD);
+    for (let i = 0; i < n; i++) spawn(randomMonster(), false);
   }
 
   // 2. running effects
@@ -656,7 +661,7 @@ export function stepBattle(
       if (kills >= zone.killsForBoss) {
         zoneKills = { ...zoneKills, [zone.id]: zone.killsForBoss };
         bossActive = true;
-        spawn(zone.bossId, true, rng.next() * 2 * Math.PI);
+        spawn(zone.bossId, true);
       } else {
         zoneKills = { ...zoneKills, [zone.id]: kills };
       }
