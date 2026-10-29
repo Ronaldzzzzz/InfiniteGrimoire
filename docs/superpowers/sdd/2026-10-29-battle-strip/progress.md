@@ -123,3 +123,9 @@ Final fix wave: done — f83ee02 removed killRate, ZONE_STATUS_LABEL, .boss-coun
 Final fix wave: npm test 73 files 835 tests pass (no suite skipped, sims 0 rejections); npm run build passes; items 1 and 4 not re-checked in a browser
 Ruling: final-fix: strip uses position: fixed, not sticky (html/body overflow-x: hidden makes body a non-scrolling scroll container, so sticky would not stick)
 Ruling: final-fix: foe room uses a y-only scale (Arena.yScale) because a uniform scale with 0.12h room would move x = 1 to 1080 px on a 1280x180 strip
+Final fix wave: done 464d4dc..1e014de (strip fixed + body padding; yScale lane; elsewhere/cannotDamage; next-zone advance; claims subscribe in start; cleanup; docs)
+Final re-review: 9/9 addressed, no new Critical/Important.
+Final: parked — drawBlades arc and ring/vortex/burst radii still use the uniform scale while foes use yScale (blade arc can sit ~21 px off at the lane edge) — Ruling: cosmetic, revisit with effect shapes in the balance pass — cost if wrong: blades look misaligned at the lane edges
+Final: parked — AGENTS.md 3.0 "接手者先做" line still says 72 files / 823 tests (now 73 / 835) — Ruling: fix in the hand-off commit — cost if wrong: stale number
+Final: parked — strip-float buttons/toasts float over scrolling panels at 601–1099 px (as on mobile) — Ruling: acceptable per spec 3.1 — cost if wrong: cosmetic
+Final: Ruling: keep the .superpowers workspace (acceptance screenshots) instead of deleting it; the ledger and acceptance report are copied into docs/ — AGENTS.md points at the screenshots — cost if wrong: local disk only
