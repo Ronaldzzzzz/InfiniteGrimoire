@@ -10,7 +10,7 @@ import { createRng } from '../engine/rng';
 import { resolveSpell } from '../engine/spells';
 import type { ElementId } from '../engine/types';
 import type { Snapshot } from '../game/runtime';
-import { floatTextStart, makeArena, toScreen, type Arena } from './arena';
+import { FOE_MAX_R_H, floatTextStart, makeArena, toScreen, type Arena } from './arena';
 import { ellipseArc, floatingText, jaggedPath, type Pt } from './effects';
 import { DpsReadout, formatDps, formatPrevDps } from './dps';
 import { blendForSpell, MULTI_KILL_WINDOW_MS, multiKillLabel, particleStyle, shakeFor, type ParticleShape, type ParticleStyle } from './element-fx';
@@ -418,8 +418,8 @@ export class BattleView {
         this.foes.set(f.uid, v);
       }
       const def = this.monster(f.defId);
-      // the strip is low: a foe never grows taller than a third of it, whatever its engine radius
-      v.r = Math.max(5, Math.min(this.h * 0.17, (def?.radius ?? 0.03) * this.arena.radius));
+      // the strip is low: a foe's radius stays within the room the arena leaves above and below the lane
+      v.r = Math.max(5, Math.min(this.h * FOE_MAX_R_H, (def?.radius ?? 0.03) * this.arena.radius));
       const prev = this.prevPos.get(f.uid);
       v.pos = toScreen(this.arena, interpolate(prev?.x ?? f.x, f.x, alpha), interpolate(prev?.y ?? f.y, f.y, alpha));
       const pop = Math.min(1, (this.time - v.born) / 200);

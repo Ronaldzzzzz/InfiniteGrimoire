@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LANE_Y, STOP_X } from '../engine/combat';
-import { floatTextStart, makeArena, toScreen } from './arena';
+import { FOE_MAX_R_H, floatTextStart, makeArena, toScreen } from './arena';
 
 describe('makeArena', () => {
   it('stands the mage at a quarter of the width, mid-height, and puts x = 1 on the right edge', () => {
@@ -9,14 +9,24 @@ describe('makeArena', () => {
     expect(Math.abs(toScreen(a, 1, 0).x - 1280)).toBeLessThanOrEqual(1);
   });
 
-  it('keeps the whole lane inside the view, shrinking the scale when the strip is low', () => {
-    for (const [w, h] of [[1280, 180], [390, 140], [1280, 60], [600, 400]] as [number, number][]) {
+  it('keeps the whole lane, and a foe of the largest drawn radius on its edge, inside the view', () => {
+    for (const [w, h] of [[1280, 180], [390, 140], [1280, 60], [600, 400], [2560, 180]] as [number, number][]) {
       const a = makeArena(w, h);
-      expect(toScreen(a, 0, -LANE_Y).y, `${w}x${h} top`).toBeGreaterThanOrEqual(0);
-      expect(toScreen(a, 0, LANE_Y).y, `${w}x${h} bottom`).toBeLessThanOrEqual(h);
+      const foe = FOE_MAX_R_H * h;
+      expect(toScreen(a, 0, -LANE_Y).y - foe, `${w}x${h} top`).toBeGreaterThanOrEqual(0);
+      expect(toScreen(a, 0, LANE_Y).y + foe, `${w}x${h} bottom`).toBeLessThanOrEqual(h);
       expect(a.radius).toBeLessThanOrEqual(0.75 * w);
+      expect(a.yScale).toBeLessThanOrEqual(a.radius);
     }
     expect(makeArena(1280, 60).radius).toBeLessThan(0.75 * 1280);
+  });
+
+  it('on the 180 px desktop strip only the y axis is squeezed: x = 1 stays on the right edge', () => {
+    for (const w of [1024, 1280]) {
+      const a = makeArena(w, 180);
+      expect(Math.abs(toScreen(a, 1, 0).x - w)).toBeLessThanOrEqual(1);
+      expect(a.yScale).toBeLessThan(a.radius);
+    }
   });
 
   it('scales both axes by the radius and puts the stop line at STOP_X', () => {
