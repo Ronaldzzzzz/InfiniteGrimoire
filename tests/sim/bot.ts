@@ -321,6 +321,8 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     const r = await call('POST', '/api/stage-clear', { state: game, baseRevision: revision, zoneId: zone.id, stage });
     if (r.status !== 200) {
       adoptServer(`POST /api/stage-clear ${zone.id} ${stage}`, r);
+      // a reply without a state leaves the battle 'done': replay the stage instead of resending every step
+      if (battle.phase === 'done') goTo(zone.id, stage);
       return;
     }
     game = serverState(r.body.state);

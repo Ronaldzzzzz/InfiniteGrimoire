@@ -4,7 +4,7 @@ import { content as realContent } from './content';
 import type { Content, Monster, NamedSpellDef, Zone } from './model';
 import { createInitialState } from './persist';
 import { createRng } from './rng';
-import { GAIN_SLACK, GAIN_TOLERANCE, killRate, maxGain, maxKills, validateUpload } from './audit';
+import { GAIN_SLACK, GAIN_TOLERANCE, maxGain, maxKills, validateUpload } from './audit';
 import { maxWaveSize, minStageMs, WALK_MS } from './stages';
 import { gradeValue } from './types';
 import type { GameState } from './model';
@@ -75,7 +75,6 @@ describe('maxKills', () => {
     expect(maxKills(z, 0)).toBe(maxWaveSize(z));
     expect(maxKills(z, 3 * WALK_MS)).toBe(4 * maxWaveSize(z));
     expect(maxKills(z, -5)).toBe(maxWaveSize(z));
-    expect(killRate(z)).toBe(5 / WALK_MS);
   });
 });
 

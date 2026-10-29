@@ -75,13 +75,6 @@ export function spellPickerGroups(game: GameState, content: Content, sort: Spell
 
 export type ZoneStatus = 'current' | 'cleared' | 'available' | 'locked';
 
-export const ZONE_STATUS_LABEL: Record<ZoneStatus, string> = {
-  current: '目前所在',
-  cleared: '已擊敗魔王',
-  available: '可前往',
-  locked: '未解鎖',
-};
-
 export interface ZoneRow {
   id: string;
   name: string;

@@ -207,7 +207,7 @@ describe('stepBattle: area targeting aims at the visible fight', () => {
     expect(fx.hits[0]).toBeLessThanOrEqual(8);
   });
 
-  it('strongest and random only look inside the engage radius when someone is there', () => {
+  it('strongest and random only look inside RANGE when someone is there', () => {
     const strong = castFx('strongest', (c) => [
       ...outerPack(c),
       { ...foe(50, 'dummy', 0.4, 0.03, c), hp: 10 },

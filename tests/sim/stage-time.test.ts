@@ -11,7 +11,8 @@ const HOME_MIN_MS = 120_000;
 const HOME_MAX_MS = 180_000;
 const TIER_UP_MAX = 0.75;
 /**
- * Rows that miss "one tier up is clearly faster" with the current monster hit points (printed, not asserted). Home-tier
+ * Rows that miss "one tier up is clearly faster" with the current monster hit points (printed; only "not slower than
+ * home" is asserted). Home-tier
  * spells already kill these zones' ordinary monsters in one or two hits, so a wave's time is the walk-in plus the spell's
  * reach, not its damage; a stronger spell only helps where it reaches further or hits more at once. Closing them needs
  * monster hit points (out of scope for the battle-strip calibration). Measured 2026-10-29: mist_meadow x0.84,
@@ -54,11 +55,12 @@ describe('stage time on the battle strip', { timeout: 300_000 }, () => {
     for (const z of content.zones) {
       const home = at(z.id, 0)!.medianMs!;
       const up = at(z.id, 1)!.medianMs, down = at(z.id, -1)!.medianMs;
-      if (KNOWN_GAPS.has(`${z.id} rel 1`)) console.warn(`[stage-time] known gap, not asserted: ${z.id} rel 1 ${min(up)} vs home ${min(home)}`);
-      else {
-        expect(up, `${z.id} rel 1`).not.toBeNull();
-        expect(up!, `${z.id} rel 1`).toBeLessThan(home * TIER_UP_MAX);
-      }
+      expect(up, `${z.id} rel 1`).not.toBeNull();
+      if (KNOWN_GAPS.has(`${z.id} rel 1`)) {
+        // a known gap still may not be slower than the home tier
+        console.warn(`[stage-time] known gap, only checked not slower than home: ${z.id} rel 1 ${min(up)} vs home ${min(home)}`);
+        expect(up!, `${z.id} rel 1 (known gap)`).toBeLessThanOrEqual(home);
+      } else expect(up!, `${z.id} rel 1`).toBeLessThan(home * TIER_UP_MAX);
       // null: one tier down never finishes (it cannot damage the zone's monsters), which is slower
       if (down !== null) expect(down, `${z.id} rel -1`).toBeGreaterThan(home);
     }

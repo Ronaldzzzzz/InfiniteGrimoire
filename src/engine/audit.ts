@@ -30,9 +30,6 @@ export function maxKills(zone: Zone, elapsedMs: number): number {
   return (Math.floor(elapsed / WALK_MS) + 1) * maxWaveSize(zone);
 }
 
-/** Fastest sustained kill rate of a zone, in kills per ms. */
-export const killRate = (zone: Zone): number => maxWaveSize(zone) / WALK_MS;
-
 /** Per-item maximum yield of one kill, with element grades converted to grade-1 equivalents. */
 function dropMaxima(drops: DropDef[]): Map<string, number> {
   const out = new Map<string, number>();
