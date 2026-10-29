@@ -167,6 +167,58 @@ describe('GameRuntime', () => {
       expect(rt.getSnapshot().battle.phase).toBe('held');
       spy.mockRestore();
     });
+    it('after a boss kill, auto-advance moves to the next unlocked zone at its highest playable stage', () => {
+      const next = content.zones.find((z) => z.order === zone.order + 1)!;
+      const rt = at(last, { unlockedZones: [zone.id, next.id], defeatedBosses: [zone.bossId] });
+      rt.setAutoAdvance(true);
+      const spy = endNext('stageCleared');
+      rt.advance(STEP_MS);
+      const s = rt.getSnapshot();
+      expect(s.game.currentZone).toBe(next.id);
+      expect(s.game.currentStage).toBe(1);
+      expect(s.battle.zoneId).toBe(next.id);
+      expect(s.battle.stage).toBe(1);
+      expect(s.battle.phase).toBe('walk');
+      expect(s.lastResult).toEqual({ kind: 'cleared', zoneId: zone.id, stage: last, loot: [], pending: true, claimed: false });
+      spy.mockRestore();
+      // a later kill goes to where the player had got to in the next zone
+      const again = at(last, { unlockedZones: [zone.id, next.id], defeatedBosses: [zone.bossId], clearedStages: { [zone.id]: last, [next.id]: 4 } });
+      const spy2 = endNext('stageCleared');
+      again.advance(STEP_MS);
+      expect(again.getSnapshot().game.currentZone).toBe(next.id);
+      expect(again.getSnapshot().battle.stage).toBe(5);
+      spy2.mockRestore();
+    });
+    it('after the last zone\'s boss, auto-advance repeats the boss stage held', () => {
+      const final = content.zones.reduce((a, b) => (b.order > a.order ? b : a));
+      const fl = stageCount(final);
+      const g = {
+        ...createInitialState(content), currentZone: final.id, currentStage: fl,
+        unlockedZones: content.zones.map((z) => z.id), clearedStages: { [final.id]: fl - 1 },
+      };
+      const rt = new GameRuntime(content, g, 3, createRng(1));
+      rt.setAutoAdvance(true);
+      const spy = endNext('stageCleared');
+      rt.advance(STEP_MS);
+      const s = rt.getSnapshot();
+      expect(s.game.currentZone).toBe(final.id);
+      expect(s.battle.stage).toBe(fl);
+      expect(s.battle.phase).toBe('held');
+      spy.mockRestore();
+    });
+    it('after a boss kill with auto-advance off, the boss stage repeats held', () => {
+      const next = content.zones.find((z) => z.order === zone.order + 1)!;
+      const rt = at(last, { unlockedZones: [zone.id, next.id], defeatedBosses: [zone.bossId] });
+      rt.setAutoAdvance(false);
+      const spy = endNext('stageCleared');
+      rt.advance(STEP_MS);
+      const s = rt.getSnapshot();
+      expect(s.game.currentZone).toBe(zone.id);
+      expect(s.battle.stage).toBe(last);
+      expect(s.battle.phase).toBe('held');
+      spy.mockRestore();
+      rt.setAutoAdvance(true);
+    });
     it('travel mid-stage keeps loot and does not claim', () => {
       const rt = at(3);
       const inv = { ...rt.getSnapshot().game.inventory, 'fire:1': 4 };

@@ -56,18 +56,12 @@ export class SyncController {
   private authListeners = new Set<() => void>();
   /** stage claims run one at a time, in the order the stages were cleared */
   private claims: Promise<unknown> = Promise.resolve();
-  private readonly unsubscribeEvents: () => void;
 
   constructor(
     private readonly runtime: GameRuntime,
     private readonly api: ApiClient,
     private readonly timers: Timers = defaultTimers,
-  ) {
-    this.unsubscribeEvents = runtime.onEvents((events) => {
-      if (this.stopped) return;
-      for (const e of events) if (e.type === 'stageCleared') void this.claimStage(e.zoneId, e.stage);
-    });
-  }
+  ) {}
 
   get status(): ConnStatus {
     return this._status;
@@ -86,9 +80,13 @@ export class SyncController {
   start(): () => void {
     this.stopped = false;
     const id = this.timers.setInterval(() => void this.uploadNow(), UPLOAD_INTERVAL_MS);
+    const unsubscribeEvents = this.runtime.onEvents((events) => {
+      if (this.stopped) return;
+      for (const e of events) if (e.type === 'stageCleared') void this.claimStage(e.zoneId, e.stage);
+    });
     return () => {
       this.stopped = true;
-      this.unsubscribeEvents();
+      unsubscribeEvents();
       this.timers.clearInterval(id);
     };
   }

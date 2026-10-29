@@ -2,7 +2,7 @@ import { createBattle, enterStage, STEP_MS, stepBattle, type BattleEvent, type B
 import { upgradeElement } from '../engine/inventory';
 import type { Content, GameState } from '../engine/model';
 import type { Rng } from '../engine/rng';
-import { highestPlayable, stageCount } from '../engine/stages';
+import { highestPlayable, isBossStage, stageCount } from '../engine/stages';
 import type { ElementId, ItemId } from '../engine/types';
 import { loadAutoAdvance, saveAutoAdvance } from './auto-advance';
 
@@ -105,19 +105,23 @@ export class GameRuntime {
   }
 
   /**
-   * A stage ended: build the next one (auto-advance, or the same stage again) or send the player one stage
-   * back after a failure. `currentStage` follows; the server settles a clear separately (SyncController).
+   * A stage ended: build the next one (auto-advance, or the same stage again; after a boss kill, the next
+   * unlocked zone at its highest playable stage) or send the player one stage back after a failure. `currentStage` follows; the server settles a clear separately (SyncController).
    */
   private afterStage(game: GameState, e: Extract<BattleEvent, { type: 'stageCleared' | 'stageFailed' }>): { game: GameState; battle: BattleState; lastResult: LastResult } | null {
     const zone = this.content.zones.find((z) => z.id === e.zoneId);
     if (!zone) return null;
     if (e.type === 'stageCleared') {
-      const next = this.snapshot.autoAdvance ? Math.min(e.stage + 1, stageCount(zone)) : e.stage;
-      return {
-        game: { ...game, currentStage: next },
-        battle: this.newBattle(zone.id, next),
-        lastResult: { kind: 'cleared', zoneId: zone.id, stage: e.stage, loot: [], pending: true, claimed: false },
-      };
+      const lastResult: LastResult = { kind: 'cleared', zoneId: zone.id, stage: e.stage, loot: [], pending: true, claimed: false };
+      const auto = this.snapshot.autoAdvance;
+      // a boss kill moves on to the next unlocked zone; the last zone (or a locked next one) repeats its boss stage held
+      const nextZone = auto && isBossStage(zone, e.stage) ? this.content.zones.find((z) => z.order === zone.order + 1) : undefined;
+      if (nextZone && game.unlockedZones.includes(nextZone.id)) {
+        const stage = highestPlayable(game, nextZone);
+        return { game: { ...game, currentZone: nextZone.id, currentStage: stage }, battle: this.newBattle(nextZone.id, stage), lastResult };
+      }
+      const next = auto ? Math.min(e.stage + 1, stageCount(zone)) : e.stage;
+      return { game: { ...game, currentStage: next }, battle: this.newBattle(zone.id, next), lastResult };
     }
     const backTo = Math.max(1, e.stage - 1);
     return {

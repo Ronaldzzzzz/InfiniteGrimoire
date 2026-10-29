@@ -358,6 +358,63 @@ describe('SyncController', () => {
       expect(snap.lastResult).toEqual({ kind: 'cleared', zoneId: 'mist_meadow', stage: 1, loot: ['el:fire:1'], pending: false, claimed: true });
       expect(snap.synthPending).toBe(false);
     });
+    it('a boss-stage claim describes the cleared boss stage while the runtime has moved to the next zone', async () => {
+      const [z1, z2] = [content.zones[0]!, content.zones[1]!];
+      const last = z1.stages.length;
+      const g = {
+        ...createInitialState(content), currentStage: last, clearedStages: { [z1.id]: last - 1 },
+        unlockedZones: [z1.id, z2.id], defeatedBosses: [z1.bossId],
+      };
+      const rt = new GameRuntime(content, g, 7, createRng(1));
+      rt.setAutoAdvance(true);
+      const won = { ...g, clearedStages: { [z1.id]: last }, lastClearAt: 99 };
+      const stageClear = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'cleared' as const, loot: [] }, state: won, revision: 10 }));
+      const sync = new SyncController(rt, fakeApi({ stageClear }));
+      sync.start();
+      clearStage(rt);
+      expect(rt.getSnapshot().game.currentZone).toBe(z2.id);
+      await vi.advanceTimersByTimeAsync(0);
+      const [sent, , zoneId, stage] = stageClear.mock.calls[0] as unknown as [{ currentZone: string; currentStage: number }, number, string, number];
+      expect([sent.currentZone, sent.currentStage, zoneId, stage]).toEqual([z1.id, last, z1.id, last]);
+      const snap = rt.getSnapshot();
+      expect(snap.game.currentZone).toBe(z2.id);
+      expect(snap.game.currentStage).toBe(1);
+      expect(snap.battle.zoneId).toBe(z2.id);
+      expect(snap.game.clearedStages[z1.id]).toBe(last);
+      expect(snap.lastResult).toMatchObject({ zoneId: z1.id, stage: last, claimed: true });
+    });
+    it('a refused boss-stage claim keeps the player in the next zone', async () => {
+      const [z1, z2] = [content.zones[0]!, content.zones[1]!];
+      const last = z1.stages.length;
+      const g = {
+        ...createInitialState(content), currentStage: last, clearedStages: { [z1.id]: last - 1 },
+        unlockedZones: [z1.id, z2.id], defeatedBosses: [z1.bossId],
+      };
+      const rt = new GameRuntime(content, g, 7, createRng(1));
+      rt.setAutoAdvance(true);
+      const stageClear = vi.fn(async () => ({ kind: 'refused' as const, result: { kind: 'rejected' as const, reason: 'tooFast' as const }, state: g, revision: 8 }));
+      const sync = new SyncController(rt, fakeApi({ stageClear }));
+      sync.start();
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rt.getSnapshot().game.currentZone).toBe(z2.id);
+      expect(rt.getSnapshot().battle.stage).toBe(1);
+    });
+    it('a controller stopped and started again still claims stages', async () => {
+      const rt = mk();
+      const stageClear = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'cleared' as const, loot: [] }, state: settled, revision: 10 }));
+      const sync = new SyncController(rt, fakeApi({ stageClear }));
+      const stop = sync.start();
+      stop();
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(stageClear).not.toHaveBeenCalled();
+      const stop2 = sync.start();
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(stageClear).toHaveBeenCalledTimes(1);
+      stop2();
+    });
     it('a 422 tooFast claim keeps the local state and does not retry', async () => {
       const rt = mk();
       const stageClear = vi.fn(async () => ({ kind: 'refused' as const, result: { kind: 'rejected' as const, reason: 'tooFast' as const }, state: server, revision: 8 }));
