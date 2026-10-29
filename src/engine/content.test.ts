@@ -311,6 +311,23 @@ describe('map expansion', () => {
     }
   });
 
+  it('Basic and Intermediate elements never drop less in a later zone, so no one walks back to farm empower costs', () => {
+    // per element: the lowest chance among a zone's regular monsters (0 when one does not drop it)
+    const floor = (z: (typeof zs)[number], id: string) =>
+      Math.min(...normals(z).map((m) => m.drops.find((d) => d.itemId === id)?.chance ?? 0));
+    for (const grade of [1, 2]) {
+      for (const e of ELEMENT_ORDER) {
+        for (let i = 1; i < zs.length; i++) {
+          const id = `el:${e}:${grade}`;
+          expect(floor(zs[i]!, id), `${zs[i]!.id} ${id}`).toBeGreaterThanOrEqual(floor(zs[i - 1]!, id));
+        }
+      }
+    }
+    // the late zones carry the empower floor (spec section 10)
+    for (const z of zs.slice(3)) expect(floor(z, 'el:fire:1'), z.id).toBe(0.05);
+    for (const z of zs.slice(4)) expect(floor(z, 'el:fire:2'), z.id).toBe(0.05);
+  });
+
   it('the new monsters have the specified elements and tiers', () => {
     const want: Record<string, [string, number]> = {
       meteor_golem: ['earth', 8], frost_griffin: ['wind', 9], astral_ray: ['water', 9], fallen_star_wyrm: ['fire', 9],
