@@ -4,7 +4,8 @@ import { content as realContent } from './content';
 import type { Content, Monster, NamedSpellDef, Zone } from './model';
 import { createInitialState } from './persist';
 import { createRng } from './rng';
-import { GAIN_SLACK, GAIN_TOLERANCE, maxGain, maxKills, validateUpload } from './audit';
+import { GAIN_SLACK, GAIN_TOLERANCE, killRate, maxGain, maxKills, validateUpload } from './audit';
+import { maxWaveSize, minStageMs, WALK_MS } from './stages';
 import { gradeValue } from './types';
 import type { GameState } from './model';
 
@@ -18,10 +19,10 @@ const mon = (o: Partial<Monster> & { id: string }): Monster => ({
   name: o.id, nameEn: o.id, element: 'fire', tier: 1, hp: 20, defense: 0, regenPerSec: 0, speed: 0.05, radius: 0.03,
   boss: false, drops: [], ...o,
 });
-/** Packs off by default (size 0), so the arithmetic matches the MVP validator's. */
+/** Ten stages of one wave of `wave` foes: maxWaveSize = wave, the boss stage takes 2 walks (3000 ms). */
+const stagesOf = (wave: number) => Array.from({ length: 10 }, () => ({ waves: [wave] }));
 const zone = (id: string, order: number, monsters: string[], bossId: string, extra: Partial<Zone> = {}): Zone => ({
-  id, name: id, nameEn: id, order, monsters, bossId, killsForBoss: 5, maxAlive: 3, spawnIntervalMs: 1000,
-  pack: { everyMs: 3_600_000, size: 0 }, stages: [], ...extra,
+  id, name: id, nameEn: id, order, monsters, bossId, stages: stagesOf(3), ...extra,
 });
 const fixture = (o: Partial<Content>): Content => ({
   spells: {}, recipes: [], monsters: {}, zones: [], materials: {}, keyItems: {}, passives: {}, regions: [],
@@ -68,30 +69,33 @@ const fail = (r: ReturnType<typeof validateUpload>): string[] => {
 };
 
 describe('maxKills', () => {
-  it('singles plus packs plus the standing crowd', () => {
-    const z = zone('p', 1, ['slime'], 'b1', { pack: { everyMs: 5000, size: 4 } });
-    expect(maxKills(z, 10_000)).toBe(10 + 2 * 4 + 3);
-    expect(maxKills(z, -5)).toBe(3);
+  it('maxKills is one wave per walk', () => {
+    const z = zone('p', 1, ['slime'], 'b1', { stages: [{ waves: [2, 5] }, ...stagesOf(3).slice(1)] });
+    expect(maxWaveSize(z)).toBe(5);
+    expect(maxKills(z, 0)).toBe(maxWaveSize(z));
+    expect(maxKills(z, 3 * WALK_MS)).toBe(4 * maxWaveSize(z));
+    expect(maxKills(z, -5)).toBe(maxWaveSize(z));
+    expect(killRate(z)).toBe(5 / WALK_MS);
   });
 });
 
 describe('maxGain', () => {
   it('counts kills, drop maxima, grade conversion and boss drops', () => {
-    // 10s: maxKills = 10 + 3 = 13; slime per kill: fire 2 + 3*1(grade 2) = 5; goo 1
+    // 10s: maxKills = (6 + 1) x 3 = 21; slime per kill: fire 2 + 3*1(grade 2) = 5; goo 1
     const g = maxGain(base(), 10_000, data);
-    expect(g.elements.fire).toBe(13 * 5);
-    expect(g.items['mat:goo']).toBe(13);
-    // boss drops: floor(13/5)+1 = 3 boss kills * 4
-    expect(g.elements.wind).toBe(12);
-    expect(g.items['key:k1']).toBe(3);
+    expect(g.elements.fire).toBe(21 * 5);
+    expect(g.items['mat:goo']).toBe(21);
+    // boss drops: floor(10000 / 3000 boss stage) + 1 = 4 boss kills * 4
+    expect(g.elements.wind).toBe(16);
+    expect(g.items['key:k1']).toBe(4);
     expect(g.elements.water).toBe(0);
   });
 
-  it('pack spawns raise the kill bound', () => {
-    const packed = fixture({ ...data, zones: data.zones.map((z) => (z.id === 'z1' ? { ...z, pack: { everyMs: 5000, size: 4 } } : z)) });
-    // 10s: 10 singles + 2 packs of 4 + 3 standing = 21 kills
-    expect(maxGain(base(), 10_000, packed).items['mat:goo']).toBe(21);
-    expect(maxGain(base(), 10_000, data).items['mat:goo']).toBe(13);
+  it('bigger waves raise the kill bound', () => {
+    const big = fixture({ ...data, zones: data.zones.map((z) => (z.id === 'z1' ? { ...z, stages: stagesOf(5) } : z)) });
+    // 10s: 7 walks of 5
+    expect(maxGain(base(), 10_000, big).items['mat:goo']).toBe(35);
+    expect(maxGain(base(), 10_000, data).items['mat:goo']).toBe(21);
   });
 
   it('converts every grade with gradeValue', () => {
@@ -101,7 +105,7 @@ describe('maxGain', () => {
       monsters: { ...data.monsters, slime: mon({ id: 'slime', drops: grades.map((g) => ({ itemId: `el:earth:${g}`, chance: 1, min: 1, max: 1 })) }) },
     });
     const sum = grades.reduce((a, g) => a + gradeValue(g), 0);
-    expect(maxGain(base(), 10_000, gd).elements.earth).toBe(13 * sum);
+    expect(maxGain(base(), 10_000, gd).elements.earth).toBe(21 * sum);
   });
 
   it('treats negative elapsed as zero', () => {
@@ -139,9 +143,9 @@ describe('validateUpload', () => {
   });
 
   it('key items are bounded by boss drops', () => {
-    // 10 s in z1: 3 possible b1 kills -> 3 x 1.25, no slack for key items
-    expect(validateUpload(base(), withInv(base(), { 'key:k1': 3 }), 10_000, data)).toEqual({ ok: true });
-    expect(fail(validateUpload(base(), withInv(base(), { 'key:k1': 4 }), 10_000, data)).join()).toContain('key:k1');
+    // 5 s in z1: 2 possible b1 kills -> 2 x 1.25, no slack for key items
+    expect(validateUpload(base(), withInv(base(), { 'key:k1': 2 }), 5000, data)).toEqual({ ok: true });
+    expect(fail(validateUpload(base(), withInv(base(), { 'key:k1': 3 }), 5000, data)).join()).toContain('key:k1');
     // b2 cannot be damaged by mana_bolt, and nothing drops key:zz
     expect(fail(validateUpload(base(), withInv(base(), { 'key:k2': 1 }), 600_000, data)).join()).toContain('key:k2');
     expect(fail(validateUpload(base(), withInv(base(), { 'key:zz': 1 }), 600_000, data)).join()).toContain('key:zz');
@@ -170,6 +174,20 @@ describe('validateUpload', () => {
     }
   });
 
+  it('an upload may not change clearedStages or lastClearAt', () => {
+    const prev: GameState = { ...base(), clearedStages: { z1: 3 }, lastClearAt: 5000 };
+    const cases: [Partial<GameState>, string][] = [
+      [{ clearedStages: { z1: 4 } }, 'clearedStages'],
+      [{ clearedStages: {} }, 'clearedStages'],
+      [{ lastClearAt: 0 }, 'lastClearAt'],
+      [{ lastClearAt: 9000 }, 'lastClearAt'],
+    ];
+    expect(validateUpload(prev, { ...prev, clearedStages: { z1: 3 } }, 1000, data)).toEqual({ ok: true });
+    for (const [change, word] of cases) {
+      expect(fail(validateUpload(prev, { ...prev, ...change }, 1000, data)).join(), word).toContain(word);
+    }
+  });
+
   it('learned, revealed and passives compare as sets', () => {
     const prev = { ...base(), learned: ['mana_bolt', 'strong'], revealed: ['a', 'b'] };
     const next = { ...prev, learned: ['strong', 'mana_bolt'], revealed: ['b', 'a'] };
@@ -181,44 +199,43 @@ describe('validateUpload', () => {
     expect(fail(validateUpload(base(), { ...base(), currentZone: 'z2' }, 0, data)).join()).toContain('currentZone');
   });
 
+  it('currentStage above highestPlayable is rejected', () => {
+    const prev: GameState = { ...base(), clearedStages: { z1: 3 } };
+    expect(validateUpload(prev, { ...prev, currentStage: 4 }, 1000, data)).toEqual({ ok: true });
+    expect(validateUpload(prev, { ...prev, currentStage: 2 }, 1000, data)).toEqual({ ok: true });
+    expect(fail(validateUpload(prev, { ...prev, currentStage: 5 }, 1000, data)).join()).toContain('currentStage');
+    expect(fail(validateUpload(base(), { ...base(), currentStage: 2 }, 1000, data)).join()).toContain('currentStage');
+  });
+
+  /** z1 with its first nine stages cleared, so its boss stage is open */
+  const ready = (o: Partial<GameState> = {}): GameState => ({ ...base(), clearedStages: { z1: 9 }, ...o });
+
   it('new boss with enough time is ok and unlocks the next zone', () => {
-    const next = { ...base(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'], inventory: { 'key:k1': 1 } };
-    expect(validateUpload(base(), next, 5000 / GAIN_TOLERANCE + 1, data)).toEqual({ ok: true });
+    const next = { ...ready(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'], inventory: { 'key:k1': 1 } };
+    expect(validateUpload(ready(), next, 3000 / GAIN_TOLERANCE + 1, data)).toEqual({ ok: true });
   });
 
-  it('boss defeated too fast rejected', () => {
-    const next = { ...base(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] };
-    expect(fail(validateUpload(base(), next, 1000, data)).join()).toContain('b1');
+  it('a boss defeated faster than its stage allows is rejected', () => {
+    const z1 = data.zones[0]!;
+    const need = minStageMs(z1, 10);
+    expect(need).toBe(3000);
+    const next = { ...ready(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] };
+    expect(fail(validateUpload(ready(), next, 1000, data)).join()).toContain('b1');
+    expect(validateUpload(ready(), next, need / GAIN_TOLERANCE - 1, data).ok).toBe(false);
+    expect(validateUpload(ready(), next, need / GAIN_TOLERANCE, data)).toEqual({ ok: true });
   });
 
-  it('packs shorten the minimum boss time', () => {
-    // 5 kills at 1/s + 4 per 5 s = 1.8 kills/s -> 2778 ms; the limit for a 2.4 s window is 3 s
-    const packed = fixture({ ...data, zones: data.zones.map((z) => (z.id === 'z1' ? { ...z, pack: { everyMs: 5000, size: 4 } } : z)) });
-    const next = { ...base(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] };
-    expect(validateUpload(base(), next, 2400, packed)).toEqual({ ok: true });
-    expect(validateUpload(base(), next, 2400, data).ok).toBe(false);
-    expect(validateUpload(base(), next, 2000, packed).ok).toBe(false);
+  it('a boss stage already underway when the window began needs no more time', () => {
+    const prev = ready({ currentStage: 10 });
+    const next = { ...prev, defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] };
+    expect(validateUpload(prev, next, 0, data)).toEqual({ ok: true });
   });
 
-  it('carried zoneKills shorten the required boss time', () => {
-    const next = { ...base(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] };
-    const carried = { ...base(), zoneKills: { z1: 4 } };
-    expect(validateUpload(carried, { ...next, zoneKills: { z1: 0 } }, 3000, data)).toEqual({ ok: true });
-    expect(fail(validateUpload({ ...base(), zoneKills: { z1: 0 } }, next, 3000, data)).join()).toContain('b1');
-  });
-
-  it('zoneKills jump of 1000 in 30 s rejected', () => {
-    expect(fail(validateUpload(base(), { ...base(), zoneKills: { z1: 1000 } }, 30_000, data)).join()).toContain('z1');
-  });
-
-  it('simultaneous multi-zone zoneKills inflation rejected', () => {
-    const next = { ...base(), unlockedZones: ['z1', 'z2', 'z3'], zoneKills: { z1: 8, z2: 8, z3: 8 } };
-    const prev = { ...base(), unlockedZones: ['z1', 'z2', 'z3'] };
-    expect(fail(validateUpload(prev, next, 1000, data)).join()).toContain('across zones');
-  });
-
-  it('zoneKills growth in a locked zone rejected', () => {
-    expect(fail(validateUpload(base(), { ...base(), zoneKills: { z2: 1 } }, 30_000, data)).join()).toContain('z2');
+  it('a boss may only fall after the first 9 stages are cleared', () => {
+    const early = { ...base(), clearedStages: { z1: 8 } };
+    const next = { ...early, defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] };
+    expect(fail(validateUpload(early, next, 600_000, data)).join()).toContain('stages of z1');
+    expect(fail(validateUpload(base(), { ...base(), defeatedBosses: ['b1'], unlockedZones: ['z1', 'z2'] }, 600_000, data)).join()).toContain('stages of z1');
   });
 
   it('boss in locked zone rejected', () => {
@@ -227,21 +244,21 @@ describe('validateUpload', () => {
   });
 
   it('chained bosses in one upload are allowed with enough combined time', () => {
-    const prev = { ...base(), learned: ['mana_bolt', 'strong'] };
+    const prev = { ...base(), learned: ['mana_bolt', 'strong'], clearedStages: { z1: 9, z2: 9 } };
     const next = { ...prev, defeatedBosses: ['b1', 'b2'], unlockedZones: ['z1', 'z2', 'z3'] };
-    expect(validateUpload(prev, next, 10_000 / GAIN_TOLERANCE + 1, data)).toEqual({ ok: true });
-    expect(validateUpload(prev, next, 7000, data).ok).toBe(false);
+    expect(validateUpload(prev, next, 6000 / GAIN_TOLERANCE + 1, data)).toEqual({ ok: true });
+    expect(validateUpload(prev, next, 4000, data).ok).toBe(false);
   });
 
   it('boss that no learned spell can damage rejected', () => {
-    const prev = { ...base(), unlockedZones: ['z1', 'z2'] };
+    const prev = { ...base(), unlockedZones: ['z1', 'z2'], clearedStages: { z2: 9 } };
     const next = { ...prev, defeatedBosses: ['b2'], unlockedZones: ['z1', 'z2', 'z3'] };
-    expect(fail(validateUpload(prev, next, 600_000, data)).join()).toContain('b2');
+    expect(fail(validateUpload(prev, next, 600_000, data)).join()).toContain('cannot be damaged');
   });
 
   it('boss hit check: spell levels raise attack, not tier', () => {
     // mana_bolt tier 1 cannot hurt the tier-3 bL, and empowering only raises its attack, never its tier
-    const prev = { ...base(), unlockedZones: ['zL'], currentZone: 'zL' };
+    const prev = { ...base(), unlockedZones: ['zL'], currentZone: 'zL', clearedStages: { zL: 9 } };
     const next = { ...prev, defeatedBosses: ['bL'] };
     expect(fail(validateUpload(prev, next, 600_000, data)).join()).toContain('cannot be damaged');
     const leveled = { mana_bolt: 11 };
@@ -295,7 +312,7 @@ describe('maxGain across zones', () => {
     },
     zones: [
       zone('A', 1, ['ma'], 'bA'),
-      zone('B', 2, ['mb1', 'mb2'], 'bB', { maxAlive: 2, spawnIntervalMs: 2000 }),
+      zone('B', 2, ['mb1', 'mb2'], 'bB', { stages: stagesOf(2) }),
     ],
   });
   const st = (unlocked: string[], extra: Partial<GameState> = {}): GameState => ({
@@ -303,28 +320,29 @@ describe('maxGain across zones', () => {
   });
 
   it('per-monster maximum, not sum and not per-entry maximum', () => {
-    // zone B: maxKills = 10000/2000 + 2 = 7; water mb1=3, mb2=1+3=4 -> 7*4
+    // zone B: maxKills = 7 walks x 2 = 14; water mb1=3, mb2=1+3=4 -> 14*4
     const g = maxGain(st(['B']), 10_000, data2);
-    expect(g.elements.water).toBe(28);
-    expect(g.items['mat:b']).toBe(14);
-    expect(g.elements.fire).toBe(7);
+    expect(g.elements.water).toBe(56);
+    expect(g.items['mat:b']).toBe(28);
+    expect(g.elements.fire).toBe(14);
   });
 
-  it('takes the max across zones and adds a maxAlive burst for the other zones', () => {
+  it('takes the max across zones and adds a one-wave burst for the other zones', () => {
+    // fire: A 21 kills x 2 = 42, plus a 2-foe wave of B x 1
     const g = maxGain(st(['A', 'B']), 10_000, data2);
-    expect(g.elements.fire).toBe(28);
-    expect(g.elements.water).toBe(28);
-    expect(g.items['mat:a']).toBe(13);
-    expect(g.items['mat:b']).toBe(14);
+    expect(g.elements.fire).toBe(44);
+    expect(g.elements.water).toBe(56);
+    expect(g.items['mat:a']).toBe(21);
+    expect(g.items['mat:b']).toBe(28);
   });
 
   it('zoneIds parameter overrides the unlocked zones', () => {
-    expect(maxGain(st(['A']), 10_000, data2, ['B']).elements.water).toBe(28);
+    expect(maxGain(st(['A']), 10_000, data2, ['B']).elements.water).toBe(56);
   });
 
   it('boss killed early, then farming the newly unlocked zone, is ok', () => {
     const next = st(['A', 'B'], { currentZone: 'B', defeatedBosses: ['bA'], inventory: { 'el:water:1': 20, 'mat:b': 10 } });
-    expect(validateUpload(st(['A']), next, 10_000, data2)).toEqual({ ok: true });
+    expect(validateUpload(st(['A'], { clearedStages: { A: 9 } }), { ...next, clearedStages: { A: 9 } }, 10_000, data2)).toEqual({ ok: true });
   });
 
   it('gain in a zone that is still locked is rejected', () => {

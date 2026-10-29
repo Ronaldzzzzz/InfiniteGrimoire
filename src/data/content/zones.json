@@ -11,13 +11,6 @@
       "meadow_sprite"
     ],
     "bossId": "mist_stag",
-    "killsForBoss": 40,
-    "maxAlive": 80,
-    "spawnIntervalMs": 1000,
-    "pack": {
-      "everyMs": 6000,
-      "size": 10
-    },
     "stages": [
       {
         "waves": [
@@ -271,13 +264,6 @@
       "thunder_lizard"
     ],
     "bossId": "storm_roc",
-    "killsForBoss": 80,
-    "maxAlive": 80,
-    "spawnIntervalMs": 1000,
-    "pack": {
-      "everyMs": 6000,
-      "size": 10
-    },
     "stages": [
       {
         "waves": [
@@ -531,13 +517,6 @@
       "magma_golem"
     ],
     "bossId": "volcano_drake",
-    "killsForBoss": 120,
-    "maxAlive": 80,
-    "spawnIntervalMs": 1000,
-    "pack": {
-      "everyMs": 6000,
-      "size": 10
-    },
     "stages": [
       {
         "waves": [
@@ -791,13 +770,6 @@
       "coral_colossus"
     ],
     "bossId": "sunken_titan",
-    "killsForBoss": 150,
-    "maxAlive": 80,
-    "spawnIntervalMs": 1000,
-    "pack": {
-      "everyMs": 6000,
-      "size": 10
-    },
     "stages": [
       {
         "waves": [
@@ -1051,13 +1023,6 @@
       "meteor_golem"
     ],
     "bossId": "fallen_star_wyrm",
-    "killsForBoss": 180,
-    "maxAlive": 80,
-    "spawnIntervalMs": 1000,
-    "pack": {
-      "everyMs": 6000,
-      "size": 10
-    },
     "stages": [
       {
         "waves": [
@@ -1311,13 +1276,6 @@
       "doom_knight"
     ],
     "bossId": "first_page_warden",
-    "killsForBoss": 220,
-    "maxAlive": 80,
-    "spawnIntervalMs": 1000,
-    "pack": {
-      "everyMs": 6000,
-      "size": 10
-    },
     "stages": [
       {
         "waves": [

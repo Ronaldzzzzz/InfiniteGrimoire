@@ -82,8 +82,8 @@ export class GameRuntime {
 
   /**
    * Adopts a server state (action result or upload conflict). The battle is client-side only and never
-   * saved, so it keeps running unless the server's state is in another zone; kill progress lives in
-   * `state.zoneKills`, which comes from the server either way.
+   * saved, so it keeps running unless the server's state is in another zone; stage progress lives in
+   * `state.clearedStages`, which comes from the server either way.
    */
   replaceState(state: GameState, revision: number): void {
     const { battle } = this.snapshot;

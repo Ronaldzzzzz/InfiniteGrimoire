@@ -21,7 +21,9 @@ function sample(): GameState {
     passives: ['ember_affinity'],
     unlockedZones: [zone0, zone1],
     defeatedBosses: [content.zones[0]!.bossId],
-    zoneKills: { [zone0]: 12 },
+    currentStage: 4,
+    clearedStages: { [zone0]: 3 },
+    lastClearAt: 123_456,
     synthesisLog: { k: { attempts: 2, results: { none: 1, fireball: 1 }, noReaction: true } },
   };
 }
@@ -35,7 +37,7 @@ describe('persist', () => {
   it('initial state: mana_bolt only, first zone, nothing else', () => {
     expect(createInitialState(content)).toEqual({
       version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
-      currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
+      currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
     });
   });
 
@@ -88,12 +90,13 @@ describe('persist', () => {
     expect(roundtrip((o) => o.passives.push('ember_affinity'))).toBeNull();
   });
 
-  it('zones, bosses, zoneKills and inventory keys are checked like the MVP', () => {
+  it('zones, bosses, stage fields and inventory keys are checked like the MVP', () => {
     expect(roundtrip((o) => (o.currentZone = 'nowhere'))).toBeNull();
     expect(roundtrip((o) => o.unlockedZones.push('nowhere'))).toBeNull();
     expect(roundtrip((o) => o.defeatedBosses.push('mist_slime'))).toBeNull();
-    expect(roundtrip((o) => (o.zoneKills.nowhere = 1))).toBeNull();
-    expect(roundtrip((o) => (o.zoneKills[zone0] = -1))).toBeNull();
+    expect(roundtrip((o) => (o.zoneKills = {}))).toBeNull();
+    expect(roundtrip((o) => (o.clearedStages.nowhere = 1))).toBeNull();
+    expect(roundtrip((o) => (o.clearedStages[zone0] = -1))).toBeNull();
     expect(roundtrip((o) => (o.inventory['el:fire:6'] = 1))).toBeNull();
     expect(roundtrip((o) => (o.inventory['fireball'] = 1))).toBeNull();
     expect(roundtrip((o) => (o.inventory['el:fire:1'] = 1.5))).toBeNull();

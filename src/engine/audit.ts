@@ -2,6 +2,7 @@ import { canDamage } from './combat-rules';
 import { elementEquivalent } from './inventory';
 import type { Content, DropDef, GameState, Spell, Zone } from './model';
 import { resolveSpell, spellAtLevel } from './spells';
+import { highestPlayable, maxWaveSize, minStageMs, stageCount, WALK_MS } from './stages';
 import { ELEMENT_ORDER, gradeValue, type ElementId } from './types';
 
 /**
@@ -23,14 +24,14 @@ export type ValidationResult = { ok: true } | { ok: false; reasons: string[] };
 const zeroElements = (): Record<ElementId, number> =>
   Object.fromEntries(ELEMENT_ORDER.map((e) => [e, 0])) as Record<ElementId, number>;
 
-/** Most kills possible in a zone: single spawns, packs, and the crowd already standing when the window began. */
+/** Most kills possible in a zone: one of its largest waves per walk, plus the wave already in range when the window began. */
 export function maxKills(zone: Zone, elapsedMs: number): number {
   const elapsed = Math.max(0, elapsedMs);
-  return Math.floor(elapsed / zone.spawnIntervalMs) + Math.floor(elapsed / zone.pack.everyMs) * zone.pack.size + zone.maxAlive;
+  return (Math.floor(elapsed / WALK_MS) + 1) * maxWaveSize(zone);
 }
 
 /** Fastest sustained kill rate of a zone, in kills per ms. */
-const killRate = (zone: Zone): number => 1 / zone.spawnIntervalMs + zone.pack.size / zone.pack.everyMs;
+export const killRate = (zone: Zone): number => maxWaveSize(zone) / WALK_MS;
 
 /** Per-item maximum yield of one kill, with element grades converted to grade-1 equivalents. */
 function dropMaxima(drops: DropDef[]): Map<string, number> {
@@ -100,15 +101,16 @@ export function maxGain(prev: GameState, elapsedMs: number, content: Content, zo
     const burst = newAcc();
     for (const e of ELEMENT_ORDER) {
       total.elements[e] = perKill.elements[e] * kills;
-      burst.elements[e] = perKill.elements[e] * zone.maxAlive;
+      burst.elements[e] = perKill.elements[e] * maxWaveSize(zone);
     }
     for (const [k, v] of Object.entries(perKill.items)) {
       total.items[k] = v * kills;
-      burst.items[k] = v * zone.maxAlive;
+      burst.items[k] = v * maxWaveSize(zone);
     }
     if (canHit(zone.bossId)) {
       const bossDrops = dropMaxima(monsterOf(content, zone.bossId)!.drops);
-      const bossKills = Math.floor(kills / zone.killsForBoss) + 1;
+      // a boss falls at most once per run of the boss stage, plus one already on its way down
+      const bossKills = Math.floor(elapsed / minStageMs(zone, stageCount(zone))) + 1;
       for (const [itemId, v] of bossDrops) add(total, itemId, v * bossKills);
       // the player may have killed this zone's boss before moving on
       for (const [itemId, v] of bossDrops) add(burst, itemId, v);
@@ -118,7 +120,7 @@ export function maxGain(prev: GameState, elapsedMs: number, content: Content, zo
   }
 
   // Per key: the player spent the window mostly in one zone (its full total) and
-  // possibly switched through the others (a burst of maxAlive kills each).
+  // possibly switched through the others (a burst of one largest wave each).
   const best = (get: (a: Acc) => number): number => {
     const burstSum = bursts.reduce((n, b) => n + get(b), 0);
     let out = 0;
@@ -154,8 +156,15 @@ export function validateUpload(prev: GameState, next: GameState, elapsedMs: numb
   if (!sameSet(prev.revealed, next.revealed)) reasons.push('revealed changed');
   if (!sameSet(prev.passives, next.passives)) reasons.push('passives changed');
   if (canonical(prev.synthesisLog) !== canonical(next.synthesisLog)) reasons.push('synthesisLog changed');
+  if (canonical(prev.clearedStages) !== canonical(next.clearedStages)) reasons.push('clearedStages changed');
+  if (prev.lastClearAt !== next.lastClearAt) reasons.push('lastClearAt changed');
   if (!next.learned.includes(next.equipped)) reasons.push(`equipped spell ${next.equipped} is not learned`);
   if (!next.unlockedZones.includes(next.currentZone)) reasons.push(`currentZone ${next.currentZone} is not unlocked`);
+  const here = content.zones.find((z) => z.id === next.currentZone);
+  // stage progress is server-owned, so the reachable stage is measured on prev's clearedStages
+  if (here && next.currentStage > highestPlayable(prev, here)) {
+    reasons.push(`currentStage ${next.currentStage} of ${here.id} is beyond stage ${highestPlayable(prev, here)}`);
+  }
 
   for (const b of prev.defeatedBosses) {
     if (!next.defeatedBosses.includes(b)) reasons.push(`defeatedBosses lost boss ${b}`);
@@ -190,38 +199,18 @@ export function validateUpload(prev: GameState, next: GameState, elapsedMs: numb
     }
   }
   let minMs = 0;
-  const seenZones = new Set<string>();
   for (const b of bossZones) {
     const z = b.zone;
     if (!available.has(z.id)) reasons.push(`boss ${b.boss} defeated in locked zone ${z.id}`);
     if (!hits(b.boss)) reasons.push(`boss ${b.boss} cannot be damaged by learned spells`);
-    // the first new boss in a zone may use kills carried over from earlier uploads
-    const carried = seenZones.has(z.id) || !prev.unlockedZones.includes(z.id) ? 0 : Math.min(Math.max(prev.zoneKills[z.id] ?? 0, 0), z.killsForBoss);
-    seenZones.add(z.id);
-    minMs += (z.killsForBoss - carried) / killRate(z);
+    // the boss stage opens only once every stage before it is cleared (server-owned)
+    if ((prev.clearedStages[z.id] ?? 0) < stageCount(z) - 1) reasons.push(`boss ${b.boss} defeated before the stages of ${z.id} were cleared`);
+    // a player already standing in the boss stage when the window began may have spent its time before it
+    const underway = prev.currentZone === z.id && prev.currentStage === stageCount(z);
+    if (!underway) minMs += minStageMs(z, stageCount(z));
     if (b.unlocks && available.has(z.id) && hits(b.boss)) expectedUnlocked.add(b.unlocks);
   }
   if (minMs > elapsed * GAIN_TOLERANCE) reasons.push(`boss ${newBosses.join(',')} defeated too fast: need ${Math.ceil(minMs)}ms, got ${elapsed}ms`);
-  // zoneKills is client-owned: bound its growth. Locked zones cannot grow, each zone is bounded
-  // by its own spawn rate, and since the player is in one zone at a time the total kill-time
-  // (jump / kill rate) is bounded by the elapsed time plus one full standing crowd.
-  let weighted = 0;
-  for (const z of content.zones) {
-    const jump = (next.zoneKills[z.id] ?? 0) - (prev.zoneKills[z.id] ?? 0);
-    if (jump <= 0) continue;
-    if (!available.has(z.id)) {
-      reasons.push(`zoneKills for ${z.id} grew by ${jump} in a locked zone`);
-      continue;
-    }
-    const limit = maxKills(z, elapsed) * GAIN_TOLERANCE + GAIN_SLACK;
-    if (jump > limit) reasons.push(`zoneKills for ${z.id} grew by ${jump}, exceeds limit ${limit}`);
-    weighted += jump / killRate(z);
-  }
-  const burstMs = Math.max(...content.zones.map((z) => z.maxAlive / killRate(z)));
-  const slackMs = GAIN_SLACK * Math.max(...content.zones.map((z) => 1 / killRate(z)));
-  if (weighted > elapsed * GAIN_TOLERANCE + burstMs + slackMs) {
-    reasons.push(`zoneKills grew too much across zones: ${Math.ceil(weighted)}ms of kills in ${elapsed}ms`);
-  }
   // inventory gains
   const bound = maxGain(prev, elapsed, content, [...available]);
   for (const e of ELEMENT_ORDER) {

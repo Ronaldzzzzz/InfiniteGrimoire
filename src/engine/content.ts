@@ -107,10 +107,6 @@ const zoneSchema = z.object({
   order: z.number().int(),
   monsters: z.array(z.string()).min(1),
   bossId: z.string(),
-  killsForBoss: z.number().int().positive(),
-  maxAlive: z.number().int().positive(),
-  spawnIntervalMs: ms,
-  pack: z.object({ everyMs: ms, size: z.number().int().positive() }),
   stages: z.array(z.object({ waves: z.array(z.number().int().positive()).min(1) })).length(10),
 });
 

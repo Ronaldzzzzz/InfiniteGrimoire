@@ -49,8 +49,8 @@ describe('migration 0004', () => {
 
     const save = (await new D1Store(d1).getSave('p1'))!;
     expect(JSON.parse(save.state)).toMatchObject({ version: 2, learned: ['mana_bolt'], zoneKills: {}, synthesisLog: {} });
-    // the 0004 literal is the initial state without the stage fields added in 0007
-    expect(save.state).toBe(JSON.stringify({ ...JSON.parse(serialize(createInitialState(content))), currentStage: undefined, clearedStages: undefined, lastClearAt: undefined }));
+    // the 0004 literal: the core-rework initial state (before 0007 replaced zoneKills with the stage fields)
+    expect(save.state).toBe('{"version":2,"inventory":{},"learned":["mana_bolt"],"equipped":"mana_bolt","levels":{},"revealed":[],"passives":[],"currentZone":"mist_meadow","unlockedZones":["mist_meadow"],"defeatedBosses":[],"zoneKills":{},"synthesisLog":{}}');
     expect(save.anchorState).toBe(save.state);
     expect(save.anchorAt).toBe(5000);
     expect(save.revision).toBe(8);

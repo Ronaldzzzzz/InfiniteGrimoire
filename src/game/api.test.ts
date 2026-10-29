@@ -113,6 +113,7 @@ describe('action api', () => {
     expect(await api.empower(state, 4, 'mana_bolt')).toEqual({ kind: 'ok', result: { kind: 'empowered', level: 2 }, state, revision: 5 });
     await api.reveal(state, 4, 'key:storm_heart');
     await api.unlockPassive(state, 4, 'ember_affinity');
+    await api.stageClear(state, 4, 'mist_meadow', 3);
     await api.synthesize(state, 4, ['el:fire:1', 'el:fire:1']);
     const calls = f.mock.calls.map((c) => {
       const [path, init] = c as unknown as [string, RequestInit];
@@ -123,6 +124,7 @@ describe('action api', () => {
       ['/api/empower', { baseRevision: 4, spellId: 'mana_bolt' }],
       ['/api/reveal', { baseRevision: 4, keyItem: 'key:storm_heart' }],
       ['/api/passive', { baseRevision: 4, passiveId: 'ember_affinity' }],
+      ['/api/stage-clear', { baseRevision: 4, zoneId: 'mist_meadow', stage: 3 }],
       ['/api/synthesize', { baseRevision: 4, inputs: ['el:fire:1', 'el:fire:1'] }],
     ]);
   });

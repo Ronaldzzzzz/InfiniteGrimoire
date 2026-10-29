@@ -15,6 +15,9 @@ describe('synthMessage', () => {
     expect(synthMessage({ kind: 'dormant' }, content)).toBe('似乎還缺少什麼……');
     expect(synthMessage({ kind: 'overload', spellId: 'mana_overload' }, content)).toBe('魔力過載！');
     expect(synthMessage({ kind: 'rejected', reason: 'insufficient' }, content)).toBe('材料不足');
+    expect(synthMessage({ kind: 'cleared', loot: ['el:fire:1'] }, content)).toBe('關卡結算：初階火');
+    expect(synthMessage({ kind: 'cleared', loot: [] }, content)).toBe('關卡結算：沒有獲得道具');
+    expect(synthMessage({ kind: 'rejected', reason: 'tooFast' }, content)).toBe('結算太快了，請稍後再試');
     expect(synthMessage({ kind: 'rejected', reason: 'slots' }, content)).toBe('請放入兩個素材');
   });
 

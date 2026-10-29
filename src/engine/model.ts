@@ -55,7 +55,7 @@ export interface DropDef { itemId: ItemId; chance: number; min: number; max: num
 export interface Monster { id: string; name: string; nameEn: string; element: ElementId; tier: number; hp: number; defense: number; regenPerSec: number; speed: number; radius: number; boss: boolean; drops: DropDef[] }
 /** One stage of a zone: each number is the size of one wave. A boss stage's boss comes on top of these. */
 export interface StageDef { waves: number[] }
-export interface Zone { id: string; name: string; nameEn: string; order: number; monsters: string[]; bossId: string; killsForBoss: number; maxAlive: number; spawnIntervalMs: number; pack: { everyMs: number; size: number }; stages: StageDef[] }
+export interface Zone { id: string; name: string; nameEn: string; order: number; monsters: string[]; bossId: string; stages: StageDef[] }
 export interface Content {
   spells: Record<string, NamedSpellDef>; recipes: Recipe[]; monsters: Record<string, Monster>; zones: Zone[];
   materials: Record<ItemId, Material>; keyItems: Record<ItemId, KeyItem>; passives: Record<string, Passive>; regions: TreeRegion[];
@@ -66,7 +66,7 @@ export interface SynthLogEntry { attempts: number; results: Record<string, numbe
 export interface GameState {
   version: 2; inventory: Inventory; learned: string[]; equipped: string; levels: Record<string, number>;
   revealed: string[]; passives: string[]; currentZone: string; unlockedZones: string[];
-  defeatedBosses: string[]; zoneKills: Record<string, number>;
+  defeatedBosses: string[];
   /** 1-based stage being played in currentZone */
   currentStage: number;
   /** highest stage cleared per zone (0 or missing = none) */

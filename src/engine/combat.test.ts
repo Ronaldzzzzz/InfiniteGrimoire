@@ -11,7 +11,7 @@ import type { ElementId } from './types';
 
 const mkGame = (o: Partial<GameState> = {}): GameState => ({
   version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
-  currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {}, ...o,
+  currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {}, ...o,
 });
 
 const testSpell = (id: string, effects: Effect[], o: Partial<NamedSpellDef> = {}): NamedSpellDef => ({
@@ -24,8 +24,8 @@ const mon = (id: string, o: Partial<Monster> = {}): Monster => ({
   boss: false, drops: [], ...o,
 });
 const testZone: Zone = {
-  id: 'test_zone', name: 't', nameEn: 't', order: 99, monsters: ['dummy'], bossId: 'test_boss', killsForBoss: 1e9,
-  maxAlive: 15, spawnIntervalMs: 1000, pack: { everyMs: 3000, size: 10 }, stages: [{ waves: [2, 2] }, { waves: [1] }],
+  id: 'test_zone', name: 't', nameEn: 't', order: 99, monsters: ['dummy'], bossId: 'test_boss',
+  stages: [{ waves: [2, 2] }, { waves: [1] }],
 };
 
 /** The shipped content plus test-only spells, monsters and a test zone. */
@@ -448,7 +448,7 @@ describe('stepBattle: progress and limits', () => {
     expect(r.game.defeatedBosses).toContain('mist_stag');
     expect(Object.keys(r.game.inventory).length).toBeGreaterThan(0);
     expect(r.battle.phase).toBe('done');
-    expect(r.game.zoneKills).toEqual({});
+    expect(r.game).not.toHaveProperty('zoneKills');
   });
 
   it('a boss always drops its key item, even to an overleveled spell', () => {

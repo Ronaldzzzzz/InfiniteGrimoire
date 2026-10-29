@@ -73,6 +73,10 @@ const REJECTED: Record<string, string> = {
   already: '已經解鎖了',
   hidden: '這個區域還被迷霧遮住',
   requirement: '還沒達成解鎖條件',
+  locked: '這個地點還沒開放',
+  notReached: '還沒打到這一關',
+  tooFast: '結算太快了，請稍後再試',
+  bossAlive: '魔王還沒倒下',
 };
 
 /** Message for a server action's result; `inputs` are the synthesis inputs (for the grade a refusal needed). */
@@ -99,6 +103,8 @@ export function synthMessage(result: ActionResult, content: Content, inputs?: st
       return '迷霧散開了';
     case 'unlocked':
       return '被動已解鎖';
+    case 'cleared':
+      return result.loot.length > 0 ? `關卡結算：${itemCounts(result.loot, content)}` : '關卡結算：沒有獲得道具';
     case 'gm':
       return '已套用';
     case 'rejected': {

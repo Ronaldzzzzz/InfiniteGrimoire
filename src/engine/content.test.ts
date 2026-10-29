@@ -305,7 +305,6 @@ describe('map expansion', () => {
 
   it('has six zones with non-decreasing boss tiers and the two new ones in order', () => {
     expect(zs.map((z) => z.id)).toEqual(['mist_meadow', 'thunder_gorge', 'ember_wastes', 'sunken_temple', 'starfall_plateau', 'worlds_end']);
-    expect(zs.map((z) => z.killsForBoss).slice(4)).toEqual([180, 220]);
     for (let i = 1; i < zs.length; i++) expect(boss(zs[i]!).tier).toBeGreaterThanOrEqual(boss(zs[i - 1]!).tier);
   });
 

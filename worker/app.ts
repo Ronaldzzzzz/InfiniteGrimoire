@@ -4,6 +4,8 @@ import { comboKey, synthesize, SYNTH_SLOTS } from '../src/engine/crafting';
 import { empower } from '../src/engine/empower';
 import type { Content, GameState } from '../src/engine/model';
 import { createInitialState, parseState, serialize } from '../src/engine/persist';
+import { claimStage } from '../src/engine/stage-clear';
+import { stageCount } from '../src/engine/stages';
 import type { Rng } from '../src/engine/rng';
 import { CRAFTED_MAX_LEN } from '../src/engine/spells';
 import { depthCap, revealRegion, unlockPassive } from '../src/engine/tree';
@@ -61,7 +63,7 @@ export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const USER_FAIL_LIMIT = 5;
 export const IP_FAIL_LIMIT = 20;
 const HOUR_MS = 60 * 60 * 1000;
-const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/discoveries'] as const;
+const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/stage-clear', '/api/discoveries'] as const;
 
 /** Client IP for rate limits: Cloudflare's header, or 'local' in tests and `wrangler dev` without it. */
 function clientIp(c: Ctx): string {
@@ -369,6 +371,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
       revealed: current.revealed,
       passives: current.passives,
       synthesisLog: current.synthesisLog,
+      clearedStages: current.clearedStages,
+      lastClearAt: current.lastClearAt,
     };
     const elapsed = Math.min(Math.max(0, t - save.anchorAt), MAX_WINDOW_MS);
     const verdict = validateUpload(baseline, next, elapsed, content);
@@ -511,6 +515,15 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return serverAction(c, body, (state) => unlockPassive(state, passiveId, content));
   });
 
+  /** The client reports a stage cleared; the server checks what it owns and rolls the settlement loot. */
+  app.post('/api/stage-clear', async (c) => {
+    const body = await readJson(c);
+    const zoneId = idField(body, 'zoneId');
+    const stage = body.stage;
+    if (typeof stage !== 'number' || !Number.isInteger(stage)) throw new HttpError(400, 'invalid stage');
+    return serverAction(c, body, (state) => claimStage(state, zoneId, stage, now(), content, deps.rng()));
+  });
+
   /** GM edits to the GM's own save: audited like any server action, then the anchor restarts from the result. */
   const gmEdit = (c: Ctx, body: Record<string, unknown>, apply: (s: GameState) => GameState, action: GmActionKind, detail: string | null) =>
     serverAction(
@@ -575,7 +588,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
         case 'boss_ready': {
           const zone = content.zones.find((z) => z.id === state.currentZone);
           if (!zone) return state;
-          return { ...state, zoneKills: { ...state.zoneKills, [zone.id]: zone.killsForBoss - 1 } };
+          const last = stageCount(zone);
+          return { ...state, clearedStages: { ...state.clearedStages, [zone.id]: Math.max(state.clearedStages[zone.id] ?? 0, last - 1) }, currentStage: last };
         }
       }
     };

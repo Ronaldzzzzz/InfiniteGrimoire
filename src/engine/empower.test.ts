@@ -6,7 +6,7 @@ import type { GameState } from './model';
 
 const mkState = (inventory: Record<string, number>, learned: string[], levels: Record<string, number> = {}): GameState => ({
   version: 2, inventory, learned, equipped: 'mana_bolt', levels, revealed: [], passives: [],
-  currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], zoneKills: {}, currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
+  currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
 });
 const spell = (id: string) => resolveSpell(id, content)!;
 

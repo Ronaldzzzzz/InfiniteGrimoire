@@ -16,6 +16,7 @@ export interface ActionPayloads {
   empower: { spellId: string };
   reveal: { keyItem: ItemId };
   passive: { passiveId: string };
+  stageClear: { zoneId: string; stage: number };
   gmInventory: { gmToken: string; items: Record<ItemId, number> };
   gmZones: { gmToken: string; op: 'unlock_all' | 'reveal_all' | 'boss_ready' };
 }
@@ -194,6 +195,10 @@ export class SyncController {
         return this.api.reveal(game, revision, (payload as ActionPayloads['reveal']).keyItem);
       case 'passive':
         return this.api.unlockPassive(game, revision, (payload as ActionPayloads['passive']).passiveId);
+      case 'stageClear': {
+        const p = payload as ActionPayloads['stageClear'];
+        return this.api.stageClear(game, revision, p.zoneId, p.stage);
+      }
       case 'gmInventory': {
         const p = payload as ActionPayloads['gmInventory'];
         return this.api.gmInventory(game, revision, p.gmToken, p.items);

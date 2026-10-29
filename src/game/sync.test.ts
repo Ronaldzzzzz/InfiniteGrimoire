@@ -6,7 +6,7 @@ import { ApiError, AuthError, GmExpiredError, NetworkError, type ApiClient } fro
 import { GameRuntime } from './runtime';
 import { RETRY_MS, SyncController, UPLOAD_INTERVAL_MS } from './sync';
 
-const server = { ...createInitialState(content), equipped: 'mana_bolt', zoneKills: { x: 5 } };
+const server = { ...createInitialState(content), equipped: 'mana_bolt', clearedStages: { mist_meadow: 5 } };
 function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
   return {
     recentDiscoveries: vi.fn(),
@@ -17,6 +17,7 @@ function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
     empower: vi.fn(),
     reveal: vi.fn(),
     unlockPassive: vi.fn(),
+    stageClear: vi.fn(),
     login: vi.fn(),
     bind: vi.fn(),
     getAccount: vi.fn(),
@@ -147,6 +148,15 @@ describe('SyncController', () => {
     expect(api.reveal).toHaveBeenCalledWith(expect.anything(), 7, 'key:storm_heart');
     expect(await sync.action('passive', { passiveId: 'ember_affinity' })).toEqual({ kind: 'unlocked' });
     expect(api.unlockPassive).toHaveBeenCalledWith(expect.anything(), 10, 'ember_affinity');
+  });
+  it('sends a stage-clear with its zone and stage', async () => {
+    const rt = mk();
+    const api = fakeApi({
+      stageClear: vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'cleared' as const, loot: ['el:fire:1'] }, state: server, revision: 8 })),
+    });
+    const sync = new SyncController(rt, api);
+    expect(await sync.action('stageClear', { zoneId: 'mist_meadow', stage: 1 })).toEqual({ kind: 'cleared', loot: ['el:fire:1'] });
+    expect(api.stageClear).toHaveBeenCalledWith(expect.anything(), 7, 'mist_meadow', 1);
   });
   it('a rejected action keeps the state and reports the result', async () => {
     const rt = mk();

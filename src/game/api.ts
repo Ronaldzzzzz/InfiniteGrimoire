@@ -3,6 +3,7 @@ import type { SynthResult } from '../engine/crafting';
 import type { EmpowerResult } from '../engine/empower';
 import type { GameState } from '../engine/model';
 import { parseState } from '../engine/persist';
+import type { StageClearResult } from '../engine/stage-clear';
 import type { RevealResult, UnlockResult } from '../engine/tree';
 import type { ItemId } from '../engine/types';
 import { clientPasswordHash } from './password-hash';
@@ -12,7 +13,7 @@ export type UploadOutcome =
   | { kind: 'conflict' | 'rejected'; state: GameState; revision: number; reasons?: string[] };
 /** 'gm': a GM edit to the GM's own save was applied. */
 export type GmResult = { kind: 'gm' };
-export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult | GmResult;
+export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult | StageClearResult | GmResult;
 /**
  * 'ok': the server applied the action. 'refused': the game rules said no (a 422 with a result); the server
  * wrote nothing and the local state stays. 'conflict' / 'rejected' (a 422 with audit reasons): adopt `state`.
@@ -72,6 +73,8 @@ export interface ApiClient {
   empower(state: GameState, baseRevision: number, spellId: string): Promise<ActionOutcome>;
   reveal(state: GameState, baseRevision: number, keyItem: ItemId): Promise<ActionOutcome>;
   unlockPassive(state: GameState, baseRevision: number, passiveId: string): Promise<ActionOutcome>;
+  /** The server settles a cleared stage: stage progress and the settlement loot. */
+  stageClear(state: GameState, baseRevision: number, zoneId: string, stage: number): Promise<ActionOutcome>;
   login(username: string, password: string): Promise<LoginResult>;
   bind(username: string, password: string): Promise<{ username: string }>;
   getAccount(): Promise<AccountInfo>;
@@ -227,6 +230,7 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
     empower: (state, baseRevision, spellId) => action('/api/empower', { state, baseRevision, spellId }),
     reveal: (state, baseRevision, keyItem) => action('/api/reveal', { state, baseRevision, keyItem }),
     unlockPassive: (state, baseRevision, passiveId) => action('/api/passive', { state, baseRevision, passiveId }),
+    stageClear: (state, baseRevision, zoneId, stage) => action('/api/stage-clear', { state, baseRevision, zoneId, stage }),
     async login(username, password) {
       const { body } = await request('POST', '/api/login', { username, password: await clientPasswordHash(username, password) });
       if (typeof body.token !== 'string') throw new ApiError('invalid token from server', 0);

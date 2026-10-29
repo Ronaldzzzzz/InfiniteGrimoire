@@ -13,6 +13,7 @@ import type { GameState } from '../src/engine/model';
 import { createInitialState } from '../src/engine/persist';
 import { createRng } from '../src/engine/rng';
 import { MAX_SPELL_LEVEL } from '../src/engine/spells';
+import { stageTotal } from '../src/engine/stages';
 
 const SEEDS = [20261021, 7, 99];
 const BOSS_CAP_MS = 600_000;
@@ -25,7 +26,7 @@ function run(spellId: string, level: number, zoneId: string, seed: number): Run 
   let game: GameState = {
     ...createInitialState(content),
     learned: [spellId], equipped: spellId, levels: level > 1 ? { [spellId]: level } : {},
-    currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
+    currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id),
   };
   let battle: BattleState = createBattle(zoneId, 1);
   const rng = createRng(seed);
@@ -56,7 +57,7 @@ for (const zone of content.zones) {
   const tough = [...zone.monsters].sort((a, b) => content.monsters[b]!.tier - content.monsters[a]!.tier || content.monsters[b]!.defense - content.monsters[a]!.defense)[0]!;
   const td = content.monsters[tough]!;
   out.push(`\n### ${zone.name}（魔王 ${boss.name} Lv.${boss.tier}，血量 ${boss.hp}，防禦 ${boss.defense}；群怪用 ${td.name} Lv.${td.tier} 防禦 ${td.defense}）\n`);
-  out.push('| 魔法 | Lv. | 單挑魔王 DPS +0 | +50 | 群怪 20 隻 DPS +0 | +50 | 實戰：清 ' + zone.killsForBoss + ' 隻（秒） | 實戰：打倒魔王（秒） | 場上平均隻數 | 碰線隻數 |');
+  out.push('| 魔法 | Lv. | 單挑魔王 DPS +0 | +50 | 群怪 20 隻 DPS +0 | +50 | 實戰：清 ' + stageTotal(zone, 1) + ' 隻（秒） | 實戰：打倒魔王（秒） | 場上平均隻數 | 碰線隻數 |');
   out.push('|---|---|---|---|---|---|---|---|---|---|');
   for (const s of spells) {
     const solo = (L: number) => mean(SEEDS.slice(0, 2).map((sd) => clean(s.id, L, zone.id, sd, [{ defId: zone.bossId, hpMul: 1000 }], 60_000)));

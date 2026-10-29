@@ -19,7 +19,7 @@ describe('GmMapTab', () => {
   it.each([
     ['開放所有地點', 'unlock_all'],
     ['散開所有迷霧', 'reveal_all'],
-    ['目前地點差 1 隻出魔王', 'boss_ready'],
+    ['目前地點直達魔王關', 'boss_ready'],
   ])('%s sends op %s', async (label, op) => {
     const { action } = setup();
     fireEvent.click(screen.getByRole('button', { name: label }));

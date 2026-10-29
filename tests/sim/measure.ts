@@ -7,6 +7,7 @@ import { content } from '../../src/engine/content';
 import type { Content, GameState } from '../../src/engine/model';
 import { createInitialState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
+import { maxWaveSize } from '../../src/engine/stages';
 import { craftedId, MAX_SPELL_LEVEL, resolveSpell, TIER_STEP } from '../../src/engine/spells';
 
 export const HOME_ZONE: Record<number, string> = {
@@ -20,11 +21,8 @@ export const CURVE_OPTS = { seeds: [20261021, 7], soloMs: 60_000, crowdMs: 30_00
 /** Control / bad-affinity spells: only checked against the upper bound. */
 export const CURVE_EXEMPT = ['mire', 'sandstorm', 'steam', 'grounding', 'mana_overload'];
 
-/** The zone with spawning switched off, so a hand-placed set of foes is all there is. */
-export const quiet = (zoneId: string): Content => ({
-  ...content,
-  zones: content.zones.map((z) => (z.id === zoneId ? { ...z, spawnIntervalMs: 1e12, pack: { ...z.pack, everyMs: 1e12 } } : z)),
-});
+/** The content `clean` fights in: its battle starts past the last wave, so a hand-placed set of foes is all there is. */
+export const quiet = (_zoneId: string): Content => content;
 
 /** Damage per second dealt to the given foes (hits plus burn) over `ms`, or until they all fall. */
 export function clean(spellId: string, level: number, zoneId: string, seed: number, foes: { defId: string; hpMul: number }[], ms: number): number {
@@ -32,7 +30,7 @@ export function clean(spellId: string, level: number, zoneId: string, seed: numb
   let game: GameState = {
     ...createInitialState(content),
     learned: [spellId], equipped: spellId, levels: level > 1 ? { [spellId]: level } : {},
-    currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
+    currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id),
   };
   const rng = createRng(seed);
   let battle: BattleState = { ...createBattle(zoneId, 1), phase: "fight", wave: 1e9, nextUid: foes.length + 1 };
@@ -45,7 +43,7 @@ export function clean(spellId: string, level: number, zoneId: string, seed: numb
   let t = 0, dealt = 0;
   while (t < ms) {
     const r = stepBattle(game, battle, c, rng);
-    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle; t += STEP_MS;
+    game = r.game; battle = r.battle; t += STEP_MS;
     for (const e of r.events) {
       if (e.type === 'hit') dealt += e.dealt;
       if (e.type === 'dot') dealt += e.damage;
@@ -228,11 +226,11 @@ export const ZONE_TIER: Record<string, number> = {
 };
 export interface CrowdStats { alive: number; touched: number; clearMs: number | null }
 
-/** Real battle in `zoneId`; zoneKills pinned to 0 every step so the boss never spawns (Ruling P1) and `alive` counts ordinary foes. */
+/** Real battle in stage 1 of `zoneId`: the boss only comes in the last stage, so `alive` counts ordinary foes. */
 const crowdGame = (spellId: string, zoneId: string): GameState => ({
   ...createInitialState(content),
   learned: [spellId], equipped: spellId, levels: {},
-  currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
+  currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id),
 });
 
 /**
@@ -267,7 +265,7 @@ export function crowdStats(spellId: string, zoneId: string, opts: { seed: number
   while (t < opts.ms) {
     const before = battle.fx;
     const r = stepBattle(game, battle, content, rng);
-    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle; t += STEP_MS;
+    game = r.game; battle = r.battle; t += STEP_MS;
     for (const f of battle.foes) if (walkedTouch(f, before, battle.fx)) touched.add(f.uid);
     if (t > opts.warmMs) { sum += battle.foes.length; n++; }
   }
@@ -275,7 +273,7 @@ export function crowdStats(spellId: string, zoneId: string, opts: { seed: number
 }
 
 /**
- * Fill the zone to maxAlive with nothing equipped that casts (Ruling T2a: `equipped` is an id that resolves to no spell), then equip
+ * Fill the zone to one largest wave with nothing equipped that casts (Ruling T2a: `equipped` is an id that resolves to no spell), then equip
  * `spellId`; ms until <= 5 foes remain, or null within limitMs.
  */
 export function crowdClear(spellId: string, zoneId: string, opts: { seed: number; limitMs: number }): number | null {
@@ -283,15 +281,15 @@ export function crowdClear(spellId: string, zoneId: string, opts: { seed: number
   let game: GameState = { ...crowdGame(spellId, zoneId), equipped: '__none__' };
   let battle = createBattle(zoneId, 1);
   const rng = createRng(opts.seed);
-  for (let guard = 0; battle.foes.length < zone.maxAlive && guard < 20_000; guard++) {
+  for (let guard = 0; battle.foes.length < maxWaveSize(zone) && guard < 20_000; guard++) {
     const r = stepBattle(game, battle, content, rng);
-    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle;
+    game = r.game; battle = r.battle;
   }
   game = { ...game, equipped: spellId };
   let t = 0;
   while (t < opts.limitMs) {
     const r = stepBattle(game, battle, content, rng);
-    game = { ...r.game, zoneKills: { [zoneId]: 0 } }; battle = r.battle; t += STEP_MS;
+    game = r.game; battle = r.battle; t += STEP_MS;
     if (battle.foes.length <= 5) return t;
   }
   return null;

@@ -248,7 +248,7 @@ describe('GrimoirePanel', () => {
     const before = onRender.mock.calls.length;
     // drops that touch neither a key item nor the empower cost (fireball 1->2 costs 4 初階火)
     act(() => rt.set({ game: { inventory: { 'el:fire:1': 1, 'el:wind:1': 7, 'mat:mist_dew': 2 } } }));
-    act(() => rt.set({ game: { zoneKills: { mist_meadow: 9 } } }));
+    act(() => rt.set({ game: { clearedStages: { mist_meadow: 9 } } }));
     expect(onRender.mock.calls.length).toBe(before);
     // ...but a drop the panel shows does
     act(() => rt.set({ game: { inventory: { 'el:fire:1': 4 } } }));

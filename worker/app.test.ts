@@ -5,6 +5,7 @@ import { content } from '../src/engine/content';
 import { elementEquivalent } from '../src/engine/inventory';
 import type { Content, GameState } from '../src/engine/model';
 import { createInitialState } from '../src/engine/persist';
+import { stageCount } from '../src/engine/stages';
 import { createRng } from '../src/engine/rng';
 import { craftedId } from '../src/engine/spells';
 import { ELEMENT_ORDER } from '../src/engine/types';
@@ -105,7 +106,7 @@ describe('auth', () => {
     expect((await app.request('/api/save')).status).toBe(401);
     expect((await app.request('/api/save', { headers: { authorization: 'Bearer nope' } })).status).toBe(401);
     expect((await app.request('/api/save', json({}, undefined, 'PUT'))).status).toBe(401);
-    for (const path of ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive']) {
+    for (const path of ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/stage-clear']) {
       expect((await app.request(path, json({}))).status, path).toBe(401);
     }
   });
@@ -136,7 +137,7 @@ describe('save', () => {
   it('valid upload advances revision and keeps the old file', async () => {
     const { body } = await guest();
     clock += 60_000;
-    const next = { ...body.state, zoneKills: { [body.state.currentZone]: 1 } };
+    const next = { ...body.state, inventory: { 'el:fire:1': 1 } };
     const res = await app.request('/api/save', json({ state: next, baseRevision: 0 }, body.token, 'PUT'));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ revision: 1 });
@@ -530,6 +531,7 @@ describe('anchor window', { timeout: 15_000 }, () => {
     const r = await playHonestly(body.token, body, { uploadEveryMs: 30_000, until: (_g, ms) => ms >= 600_000 });
     expect(r.statuses).toHaveLength(20);
     expect(r.statuses.every((s) => s === 200), r.statuses.join(',')).toBe(true);
+    expect(r.clears.every((s) => s === 200), r.clears.join(',')).toBe(true);
     expect(store.rejections).toHaveLength(0);
   });
 
@@ -538,12 +540,12 @@ describe('anchor window', { timeout: 15_000 }, () => {
     const { body } = await guest();
     const t0 = clock;
     clock += 30_000;
-    const s1 = { ...body.state, zoneKills: { [body.state.currentZone]: 3 } };
+    const s1 = { ...body.state, inventory: { 'el:fire:1': 1 } };
     expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
     expect(store.saves.get(body.playerId)).toMatchObject({ anchorAt: t0 });
     expect(JSON.parse(store.saves.get(body.playerId)!.anchorState)).toEqual(body.state);
     clock += 30_000;
-    const s2 = { ...body.state, zoneKills: { [body.state.currentZone]: 6 } };
+    const s2 = { ...body.state, inventory: { 'el:fire:1': 2 } };
     expect((await app.request('/api/save', json({ state: s2, baseRevision: 1 }, body.token, 'PUT'))).status).toBe(200);
     expect(store.saves.get(body.playerId)).toMatchObject({ anchorAt: clock });
     expect(JSON.parse(store.saves.get(body.playerId)!.anchorState)).toEqual(s2);
@@ -664,14 +666,28 @@ async function playHonestly(
   let revision = start.revision;
   let battle: BattleState = createBattle(game.currentZone, game.currentStage);
   const statuses: number[] = [];
+  /** statuses of the stage-clear actions, in order */
+  const clears: number[] = [];
   let sinceUpload = 0;
   let elapsed = 0;
   for (;;) {
     const r = stepBattle(game, battle, content, rng);
     game = r.game;
     battle = r.battle;
-    // a cleared stage is inert: carry on to the next one (the boss is the last stage of the zone)
-    if (battle.phase === 'done') battle = createBattle(game.currentZone, battle.stage + 1);
+    // a cleared stage is settled by the server, then the next one starts (the boss is the last stage of the zone)
+    if (battle.phase === 'done') {
+      const stage = battle.stage;
+      const res = await action('/api/stage-clear', { state: game, baseRevision: revision, zoneId: game.currentZone, stage }, token);
+      clears.push(res.status);
+      if (res.out.state) {
+        game = res.out.state;
+        revision = res.out.revision;
+      }
+      const zone = content.zones.find((z) => z.id === game.currentZone)!;
+      const next = Math.min(stage + 1, stageCount(zone));
+      game = { ...game, currentStage: next };
+      battle = createBattle(game.currentZone, next);
+    }
     clock += STEP_MS;
     elapsed += STEP_MS;
     sinceUpload += STEP_MS;
@@ -685,7 +701,7 @@ async function playHonestly(
         game = out.state;
         battle = createBattle(game.currentZone, game.currentStage);
       }
-      if (opts.until(game, elapsed)) return { statuses, game, revision };
+      if (opts.until(game, elapsed)) return { statuses, clears, game, revision };
     }
   }
 }
@@ -706,12 +722,97 @@ describe('honest play through the real engine', () => {
     });
     expect(r.game.defeatedBosses).toEqual([firstBoss]);
     expect(r.statuses.every((s) => s === 200), r.statuses.join(',')).toBe(true);
+    // stages 1..9 settled; the boss stage is settled after the boss upload below
+    expect(r.clears.length).toBeGreaterThanOrEqual(9);
+    expect(r.clears.every((s) => s === 200), r.clears.join(',')).toBe(true);
     // and one more upload on top of the boss save
     clock += 30_000;
     const res = await app.request('/api/save', json({ state: r.game, baseRevision: r.revision }, body.token, 'PUT'));
     expect(res.status).toBe(200);
     const load = await app.request('/api/save', { headers: { authorization: `Bearer ${body.token}` } });
     expect(((await load.json()) as { state: GameState }).state.defeatedBosses).toEqual([firstBoss]);
+  });
+});
+
+describe('POST /api/stage-clear', () => {
+  const zoneId = content.zones[0]!.id;
+  const clear = (token: string, state: GameState, baseRevision: number, stage = 1, extra: Record<string, unknown> = {}) =>
+    action('/api/stage-clear', { state, baseRevision, zoneId, stage, ...extra }, token);
+
+  it('POST /api/stage-clear grants loot and stores clearedStages', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const { status, out } = await clear(body.token, body.state, 0);
+    expect(status, JSON.stringify(out)).toBe(200);
+    expect(out.result.kind).toBe('cleared');
+    const loot = (out.result as unknown as { loot: string[] }).loot;
+    expect(loot.length).toBeGreaterThan(0);
+    expect(loot.some((id) => id.startsWith('key:'))).toBe(false);
+    expect(out.state.clearedStages).toEqual({ [zoneId]: 1 });
+    expect(out.state.lastClearAt).toBe(clock);
+    expect(out.revision).toBe(1);
+    const row = saved(body.playerId);
+    expect(row.clearedStages).toEqual({ [zoneId]: 1 });
+    expect(row.lastClearAt).toBe(clock);
+    const n = Object.values(row.inventory).reduce((x, y) => x + y, 0);
+    expect(n).toBe(loot.length);
+  });
+
+  it('a second identical request gets 422 tooFast and writes nothing', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const first = await clear(body.token, body.state, 0);
+    expect(first.status).toBe(200);
+    const before = store.saves.get(body.playerId)!;
+    const again = await clear(body.token, first.out.state, 1);
+    expect(again.status).toBe(422);
+    expect(again.out.result).toEqual({ kind: 'rejected', reason: 'tooFast' });
+    expect(store.saves.get(body.playerId)).toEqual(before);
+    expect(store.rejections).toHaveLength(0);
+  });
+
+  it('a stage the player has not reached is refused, and an upload cannot claim stages', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const far = await clear(body.token, body.state, 0, 3);
+    expect(far.status).toBe(422);
+    expect(far.out.result).toEqual({ kind: 'rejected', reason: 'notReached' });
+    const forged = { ...body.state, clearedStages: { [zoneId]: 9 } };
+    const res = await app.request('/api/save', json({ state: forged, baseRevision: 0 }, body.token, 'PUT'));
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { reasons: string[] }).reasons.join()).toContain('clearedStages');
+  });
+
+  it('stage-clear loot does not trip the next upload\'s audit', async () => {
+    const { body } = await guest();
+    const t0 = clock;
+    let state = body.state;
+    let revision = 0;
+    // two settlements inside one anchor window (the anchor does not advance before ANCHOR_ADVANCE_MS)
+    for (const [stage, at] of [[1, 30_000], [2, 52_000]] as const) {
+      clock = t0 + at;
+      const { status, out } = await clear(body.token, { ...state, currentStage: stage }, revision, stage);
+      expect(status, JSON.stringify(out)).toBe(200);
+      state = out.state;
+      revision = out.revision;
+      // chargeAnchor credits the loot to the anchor, so it is not counted as a fighting gain
+      const row = store.saves.get(body.playerId)!;
+      expect(row.anchorAt).toBe(t0);
+      expect(JSON.parse(row.anchorState).inventory).toEqual(state.inventory);
+    }
+    expect(state.clearedStages[zoneId]).toBe(2);
+    clock += 1000;
+    const res = await app.request('/api/save', json({ state: { ...state, currentStage: 3 }, baseRevision: revision }, body.token, 'PUT'));
+    expect(res.status, JSON.stringify(await res.clone().json())).toBe(200);
+    expect(store.rejections).toHaveLength(0);
+  });
+
+  it('rejects a bad zoneId or stage with 400', async () => {
+    const { body } = await guest();
+    for (const extra of [{ zoneId: 1 }, { zoneId: '' }, { stage: '1' }, { stage: 1.5 }, { stage: undefined }]) {
+      const { status } = await clear(body.token, body.state, 0, 1, extra);
+      expect(status, JSON.stringify(extra)).toBe(400);
+    }
   });
 });
 
@@ -1300,7 +1401,6 @@ describe('GM login and tokens', () => {
       const next: GameState = {
         ...out.state,
         inventory: { ...out.state.inventory, 'el:wind:1': 2, 'el:water:1': 1 },
-        zoneKills: { [out.state.currentZone]: 3 },
       };
       const res = await a.request('/api/save', json({ state: next, baseRevision: 1 }, g.token, 'PUT'));
       expect(res.status, JSON.stringify(await res.clone().json())).toBe(200);
@@ -1309,11 +1409,10 @@ describe('GM login and tokens', () => {
 
     it('keeps legal unsynced drops from the request state and applies the GM change on top', async () => {
       clock += 30_000;
-      const client: GameState = { ...g.state, inventory: { 'el:wind:1': 2 }, zoneKills: { [g.state.currentZone]: 3 } };
+      const client: GameState = { ...g.state, inventory: { 'el:wind:1': 2 } };
       const { status, out } = await gm('/api/gm/inventory', { state: client, baseRevision: 0, items: { 'el:fire:3': 50 } });
       expect(status).toBe(200);
       expect(out.state.inventory).toEqual({ 'el:wind:1': 2, 'el:fire:3': 50 });
-      expect(out.state.zoneKills).toEqual({ [g.state.currentZone]: 3 });
     });
 
     it('rejects unknown ids and bad counts with 400 and writes nothing', async () => {
@@ -1410,13 +1509,18 @@ describe('GM login and tokens', () => {
       expect((await a.request('/api/save', json({ state: out.state, baseRevision: 1 }, g.token, 'PUT'))).status).toBe(200);
     });
 
-    it('boss_ready puts the current zone one kill short of its boss', async () => {
+    it('boss_ready puts the current zone at its boss stage', async () => {
       const zone = content.zones[0]!;
       const { status, out } = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'boss_ready' });
       expect(status).toBe(200);
-      expect(out.state.zoneKills[zone.id]).toBe(zone.killsForBoss - 1);
-      expect(saved(g.playerId).zoneKills[zone.id]).toBe(zone.killsForBoss - 1);
+      expect(out.state.clearedStages[zone.id]).toBe(9);
+      expect(out.state.currentStage).toBe(10);
+      expect(saved(g.playerId).clearedStages[zone.id]).toBe(9);
+      expect(saved(g.playerId).currentStage).toBe(10);
       expect(store.gmActions.map((x) => [x.action, x.detail])).toEqual([['boss_ready', null]]);
+      // the edited save is the new baseline: an upload on top of it passes the audit
+      clock += 30_000;
+      expect((await a.request('/api/save', json({ state: out.state, baseRevision: 1 }, g.token, 'PUT'))).status).toBe(200);
     });
 
     it('rejects an unknown zones op with 400', async () => {
