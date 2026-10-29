@@ -47,6 +47,7 @@
 | `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md` | **清怪節奏（TTK）與數字放大規格（目前數字尺度與血量的最高依據）**：攻擊／血量／防禦／回血 ×10、依地點縮短魔物血量、場上隻數與碰線的驗收標準（第 4.3 節）、通關時間檢查暫時只印報告；第 8 節：戰鬥畫面 DPS 改「活動時間 DPS」並加「前一招」、詳情卡「每下傷害」與差值、飄字千分位；第 9 節：擊退邊界 `KNOCK_MAX_R` 與帶擊退魔法的傷害下修、魔王血量（主場約 30 秒）；第 10 節：升階成本 3／5／10／20 與元素掉落重調（各階取得時間） |
 | `docs/superpowers/plans/2026-10-28-crowd-ttk.md` | 上述規格的 4 個任務實作計畫（×10、量測工具、調血量、畫面確認） |
 | `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md` | 清怪節奏的帳本：Ruling（P1、P2、C2、C3、T2a～T2d、T3a～T3e、T3-impossible、T4r）、各地點血量係數、調整前後的場上隻數表、路線通關時間 |
+| `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` | **【目前最高依據】魔法研究改版總體設計**：使用者「體會不到自己是魔法師」→ 合成改為魔法陣（核心、環、五芒星、迴路分支、相生相剋、符文、預測詞條）、階級＝節點數、核心元素決定上限、共用規律＋每次合成的品質／熟練度／異變、名魔法＝教科書、戰鬥改成畫面下方的橫向長帶與關卡（小怪關、限時魔王關、失敗退回）、存檔重置；四個專案的順序 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼（用 GM 工具重設）、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
@@ -58,7 +59,7 @@
 
 ### 3.0 接手先看這裡（2026-10-28 更新）
 
-**現在停在哪（2026-10-29）：** 使用者試玩完畢，`feat/crowd-ttk` 與 `feat/rare-tuning` 已 fast-forward 合併到 **`main`**（兩個 branch 已刪除；`main` 比 `origin/main` 多 80 個 commit，**尚未 push**，push 由使用者 `! git push`）。**下一步：先和使用者討論遊戲性（使用者指示：0b 稀有落空保底暫停，先討論遊戲性）。** 以下是合併進來的清怪節奏（TTK）與數字放大，清怪節奏（TTK）與數字放大，規格 `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`、計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md`、帳本 `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md`。起因是使用者試玩 1.8 版：「換了一階魔法但畫面的怪物還是一堆」「怪物整體的TTK過長」。4 個任務中 4 個任務與最終審查修正都已完成（Task 4 畫面確認的結果見帳本）；之後依試玩回饋又做了三輪（都在這個 branch）：活動時間 DPS（規格第 8 節）、擊退邊界與魔王血量（第 9 節）、升階成本 3／5／10／20 與元素掉落重調（第 10 節）。`npm test` 69 個檔案 763 個測試全過、`npm run build` 通過（2026-10-29）。
+**現在停在哪（2026-10-29）：** 使用者試玩完畢，`feat/crowd-ttk` 與 `feat/rare-tuning` 已 fast-forward 合併到 **`main`**（兩個 branch 已刪除；`main` 比 `origin/main` 多 80 個 commit，**尚未 push**，push 由使用者 `! git push`）。**遊戲性討論已完成（2026-10-29）：** 結論寫在 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md`（魔法研究改版總體設計），使用者同意四個專案的順序：(1) 橫向戰鬥帶與關卡 → (2) 魔法陣合成 → (3) 每次合成的手氣（品質、熟練度、異變）→ (4) 教科書與解鎖；存檔直接重置。**下一步：寫專案 1（橫向戰鬥帶與關卡）的細規格**（總體設計第 6 節列了要決定的事），0b 併入專案 3。 以下是合併進來的清怪節奏（TTK）與數字放大，清怪節奏（TTK）與數字放大，規格 `docs/superpowers/specs/2026-10-28-crowd-ttk-and-number-scale-design.md`、計畫 `docs/superpowers/plans/2026-10-28-crowd-ttk.md`、帳本 `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md`。起因是使用者試玩 1.8 版：「換了一階魔法但畫面的怪物還是一堆」「怪物整體的TTK過長」。4 個任務中 4 個任務與最終審查修正都已完成（Task 4 畫面確認的結果見帳本）；之後依試玩回饋又做了三輪（都在這個 branch）：活動時間 DPS（規格第 8 節）、擊退邊界與魔王血量（第 9 節）、升階成本 3／5／10／20 與元素掉落重調（第 10 節）。`npm test` 69 個檔案 763 個測試全過、`npm run build` 通過（2026-10-29）。
 - **數字 ×10（Task 1）：** 魔法攻擊、魔物血量、防禦、回血全部 ×10（`DEFENSE_SCALE` 1000），比例不變；Lv.1 單發約 80、Lv.9 千位數。存檔不用 migration。
 - **血量依地點縮短（Task 3）：** 一般魔物與魔王乘同一個係數：迷霧草原 0.5、雷鳴峽谷 0.05、熔火荒原 0.10、沉沒神殿 0.15、星殞高原 0.14、世界盡頭 0.11（照規格「高一階壓制優先」）。
 - **場上隻數（`tests/sim/crowd.test.ts`，量測在 `tests/sim/measure.ts` 的 `crowdReport`）：** 只靠血量無法同時達成規格 4.3 原本的目標（帳本 Ruling T3-impossible），使用者選「維持現狀並先試玩」（Ruling C3，規格 4.3 有同日修訂）：保留血量係數；碰線改成不算被拉怪魔法（流沙、天穹風暴、絕空裂風等）拉到停止圈的魔物（`walkedTouch`）；把關改成同階 10～35 隻、高一階碰線 ≤ 2 且 15 秒清場過半（迷霧草原只要求高一階少於同階）、低一階多於同階，`ENFORCE_CROWD = true`。結果：高一階五個地點碰線 0、清場 55%～71%，迷霧草原 17.1 < 39.2；同階 13.6～27.6 隻；低一階多於同階。**兩列仍沒達到，列為已知缺口、只印不擋**（`KNOWN_GAPS`）：迷霧草原同階 39.2 隻（> 35）、雷鳴峽谷低一階 12.7 隻（少於同階 18.1）。**使用者試玩時要看：**「同階偏簡單」（同階魔法就把畫面壓到十幾、二十幾隻），以及低一階魔法能清掉前面的地點（雷鳴峽谷、熔火荒原）。
@@ -84,7 +85,7 @@
 | 順序 | 項目 | 狀態 | 去哪裡看 |
 |---|---|---|---|
 | 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers`、`feat/tier-step-18`、`feat/crowd-ttk`）到 `main` | **已完成（2026-10-29，使用者試玩後同意）**；push 由使用者 `! git push` | 本節 |
-| **0.1（下一個）** | 遊戲性討論 | **使用者 2026-10-29 指示：0b 之前先暫停，先就遊戲性討論** | — |
+| **0.1（進行中）** | 魔法研究改版（四個專案） | 遊戲性討論完成，總體設計已寫好；**下一步寫專案 1 規格** | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
 | 0.5 | 魔法深度拓展（名稱、類型、定義）剩下的部分 | 第一批（20 招、強度曲線、地圖）**已完成（在 `feat/rare-tuning`）**；Phase 1～3 文案的其餘招式、新施法形態、異變詞綴、Overdrive、禁忌殘頁等**都還沒做**，之後再討論 | `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md`、`2026-10-27-spell-expansion-green-items-review.md` |
 | 1 | 魔法階級強度曲線（含距離魔王還差幾隻、放回上次組合） | **已完成（在 `feat/rare-tuning`）**；`TIER_STEP` 使用者已定 1.8、強化滿 ×1.4；待使用者試玩 | 本節、規格與帳本 |
 | 1b | 稀有魔法落空的保底／補償 | **暫停（使用者 2026-10-29），遊戲性討論之後再提**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
@@ -259,6 +260,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-29（Claude Code，Opus 5.5，macOS，遊戲性討論）**：使用者試玩後表示「完全體會不到自己是魔法師的感覺」「在小人刷怪這部分著墨太多」，參考了 ChatGPT 的統整（專案根目錄 `魔法合成與掛機遊戲_完整聊天統整.md`）。用 brainstorming 與瀏覽器草圖（`.superpowers/brainstorm/2394-1793250586/`）討論後，寫成總體設計 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md`；沒有改程式。停在：`main` 未 push。下一步：專案 1（橫向戰鬥帶與關卡）的規格。
 
 - **2026-10-29（Claude Code，Opus 5.5，macOS，合併）**：使用者試玩完畢並同意合併：`feat/crowd-ttk` → `feat/rare-tuning` → `main` 都是 fast-forward，兩個 branch 已刪除；`main` 上 `npm test` 69 檔 763 個全過。停在：`main` 比 `origin/main` 多 80 個 commit，未 push（使用者自己 push）。下一步：遊戲性討論（使用者指示 0b 先暫停）。
 
