@@ -27,7 +27,7 @@ export class GameRuntime {
     revision: number,
     private readonly rng: Rng,
   ) {
-    this.snapshot = { game: state, battle: createBattle(state.currentZone), revision, paused: false, synthPending: false };
+    this.snapshot = { game: state, battle: createBattle(state.currentZone, state.currentStage), revision, paused: false, synthPending: false };
   }
 
   getSnapshot(): Snapshot {
@@ -89,7 +89,7 @@ export class GameRuntime {
     const { battle } = this.snapshot;
     const sameZone = battle.zoneId === state.currentZone;
     if (!sameZone) this.leftoverMs = 0;
-    this.set({ game: state, battle: sameZone ? battle : createBattle(state.currentZone), revision });
+    this.set({ game: state, battle: sameZone ? battle : createBattle(state.currentZone, state.currentStage), revision });
   }
 
   setRevision(revision: number): void {
@@ -114,7 +114,7 @@ export class GameRuntime {
   travel(zoneId: string): boolean {
     const g = this.snapshot.game;
     if (!g.unlockedZones.includes(zoneId)) return false;
-    this.set({ game: { ...g, currentZone: zoneId }, battle: createBattle(zoneId) });
+    this.set({ game: { ...g, currentZone: zoneId }, battle: createBattle(zoneId, 1) });
     return true;
   }
 

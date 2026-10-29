@@ -126,7 +126,7 @@ describe('legacy saves after the x10 number scale', () => {
     };
     let game = parseState(old, content)!;
     expect(game.currentZone).toBe('mist_meadow');
-    let battle = createBattle(game.currentZone);
+    let battle = createBattle(game.currentZone, game.currentStage);
     const rng = createRng(1234);
     let dealt = 0;
     for (let i = 0; i < 200; i++) {

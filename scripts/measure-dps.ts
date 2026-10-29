@@ -27,7 +27,7 @@ function run(spellId: string, level: number, zoneId: string, seed: number): Run 
     learned: [spellId], equipped: spellId, levels: level > 1 ? { [spellId]: level } : {},
     currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
   };
-  let battle: BattleState = createBattle(zoneId);
+  let battle: BattleState = createBattle(zoneId, 1);
   const rng = createRng(seed);
   let t = 0, clearMs: number | null = null, bossAt: number | null = null;
   while (t < CLEAR_CAP_MS + BOSS_CAP_MS) {

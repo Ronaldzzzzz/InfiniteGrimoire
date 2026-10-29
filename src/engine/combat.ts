@@ -1,7 +1,9 @@
+import { content as shippedContent } from './content';
 import { canDamage, computeDamage, overlevelEfficiency } from './combat-rules';
 import { addItems } from './inventory';
 import type { Rng } from './rng';
 import { resolveSpell, spellAtLevel } from './spells';
+import { BOSS_LIMIT_MS, WALK_MS, isBossStage, stageTotal } from './stages';
 import { passiveBonuses } from './tree';
 import type { Content, Effect, GameState, Monster, Spell, StatusDef, StatusKind, Target } from './model';
 import type { ElementId, ItemId } from './types';
@@ -67,8 +69,18 @@ export interface Foe { uid: number; defId: string; x: number; y: number; hp: num
  */
 export interface ActiveFx { uid: number; spellId: string; elements: ElementId[]; effect: Effect; x: number; y: number; ageMs: number; hits: number[] }
 export interface Mage { cooldownMs: number; hasteMs: number; hasteFactor: number; stunMs: number }
+/** walk: the next wave is on its way; fight: a wave is alive; held: boss stage waiting at the door; done/failed: over. */
+export type StagePhase = 'walk' | 'fight' | 'held' | 'done' | 'failed';
 export interface BattleState {
-  zoneId: string; foes: Foe[]; fx: ActiveFx[]; mage: Mage; spawnTimerMs: number; packTimerMs: number; bossActive: boolean; nextUid: number;
+  zoneId: string; foes: Foe[]; fx: ActiveFx[]; mage: Mage; bossActive: boolean; nextUid: number;
+  stage: number; phase: StagePhase;
+  /** simulated ms spent in the current phase */
+  phaseMs: number;
+  /** index of the next wave to send (the boss wave comes after the last listed wave) */
+  wave: number;
+  killed: number; total: number;
+  /** simulated ms since the boss appeared; null until then */
+  bossMs: number | null;
   /** damage over time not yet reported, and how long it has been collecting */
   dotDamage: number; dotMs: number;
 }
@@ -85,19 +97,37 @@ export type BattleEvent =
   | { type: 'chain'; points: { x: number; y: number }[]; elements: ElementId[] }
   | { type: 'strike'; x: number; y: number; elements: ElementId[] }
   | { type: 'backfire'; stunMs: number }
-  | { type: 'bossDefeated'; zoneId: string; unlockedZoneId: string | null };
+  | { type: 'bossDefeated'; zoneId: string; unlockedZoneId: string | null }
+  | { type: 'waveStart'; wave: number }
+  | { type: 'stageCleared'; zoneId: string; stage: number }
+  | { type: 'stageFailed'; zoneId: string; stage: number };
 
 /** Where a new foe appears: just off the right edge, anywhere across the lane. */
 export function spawnPoint(rng: Rng): { x: number; y: number } {
   return { x: SPAWN_X + rng.next() * SPAWN_JITTER, y: (rng.next() * 2 - 1) * LANE_Y };
 }
 
-export function createBattle(zoneId: string): BattleState {
+/**
+ * A fresh stage. `held` only applies to a boss stage: it waits at the door until `enterStage`.
+ * `content` is where the zone's stages are read from (the shipped content unless a test passes its own).
+ */
+export function createBattle(zoneId: string, stage: number, opts: { held?: boolean; content?: Content } = {}): BattleState {
+  const zone = (opts.content ?? shippedContent).zones.find((z) => z.id === zoneId);
+  const held = !!opts.held && !!zone && isBossStage(zone, stage);
   return {
     zoneId, foes: [], fx: [], mage: { cooldownMs: 0, hasteMs: 0, hasteFactor: 1, stunMs: 0 },
-    spawnTimerMs: 0, packTimerMs: 0, bossActive: false, nextUid: 1, dotDamage: 0, dotMs: 0,
+    bossActive: false, nextUid: 1, dotDamage: 0, dotMs: 0,
+    stage, phase: held ? 'held' : 'walk', phaseMs: 0, wave: 0, killed: 0, total: zone ? stageTotal(zone, stage) : 0, bossMs: null,
   };
 }
+
+/** Leaves the door of a held boss stage and starts walking; any other phase is returned as it is. */
+export function enterStage(battle: BattleState): BattleState {
+  return battle.phase === 'held' ? { ...battle, phase: 'walk', phaseMs: 0 } : battle;
+}
+
+/** How much of the stage's foes are down, 0..1. */
+export const stageProgress = (b: BattleState): number => (b.total > 0 ? Math.min(1, b.killed / b.total) : 0);
 
 // Geometry shared with the renderer.
 export const boltTravel = (fx: ActiveFx): number => (fx.ageMs / 1000) * BOLT_SPEED;
@@ -522,6 +552,7 @@ export function stepBattle(
   const events: BattleEvent[] = [];
   const zone = content.zones.find((z) => z.id === battle.zoneId);
   if (!zone) return { game, battle, events };
+  if (battle.phase === 'held' || battle.phase === 'done' || battle.phase === 'failed') return { game, battle, events };
 
   const foes: Foe[] = battle.foes.map((f) => ({ ...f, statuses: f.statuses.map((s) => ({ ...s })) }));
   const ctx: Ctx = {
@@ -529,13 +560,15 @@ export function stepBattle(
     nextUid: battle.nextUid, spells: new Map(), bonus: null, densest: undefined, counts: null, engaged: null, dot: 0,
   };
   const mage: Mage = { ...battle.mage };
-  let spawnTimerMs = battle.spawnTimerMs + STEP_MS;
-  let packTimerMs = battle.packTimerMs + STEP_MS;
+  let phase: StagePhase = battle.phase;
+  let phaseMs = battle.phaseMs + STEP_MS;
+  let wave = battle.wave;
+  let killed = battle.killed;
+  let bossMs = battle.bossMs === null ? null : battle.bossMs + STEP_MS;
   let bossActive = battle.bossActive;
   let inventory = game.inventory;
   let defeatedBosses = game.defeatedBosses;
   let unlockedZones = game.unlockedZones;
-  let zoneKills = game.zoneKills;
 
   const spawn = (defId: string, boss: boolean): void => {
     const def = Object.hasOwn(content.monsters, defId) ? content.monsters[defId] : undefined;
@@ -551,22 +584,20 @@ export function stepBattle(
   };
   const randomMonster = () => zone.monsters[rng.int(0, zone.monsters.length - 1)]!;
 
-  // 1. spawning: singles and packs, normals capped at maxAlive (the boss does not count)
-  let normals = 0;
-  for (const f of foes) if (!monsterOf(ctx, f)?.boss) normals++;
-  if (normals < zone.maxAlive) {
-    if (spawnTimerMs >= zone.spawnIntervalMs) {
-      spawnTimerMs -= zone.spawnIntervalMs;
-      spawn(randomMonster(), false);
-      normals++;
+  // 1. waves: after a walk the whole next wave appears at once; the boss comes alone after the last listed wave
+  if (phase === 'walk' && phaseMs >= WALK_MS) {
+    const sizes = zone.stages[battle.stage - 1]?.waves ?? [];
+    events.push({ type: 'waveStart', wave });
+    if (wave < sizes.length) {
+      for (let i = 0; i < sizes[wave]!; i++) spawn(randomMonster(), false);
+    } else {
+      bossActive = true;
+      bossMs = 0;
+      spawn(zone.bossId, true);
     }
-  } else {
-    spawnTimerMs = Math.min(spawnTimerMs, zone.spawnIntervalMs);
-  }
-  if (packTimerMs >= zone.pack.everyMs) {
-    packTimerMs -= zone.pack.everyMs;
-    const n = Math.min(zone.pack.size, zone.maxAlive - normals);
-    for (let i = 0; i < n; i++) spawn(randomMonster(), false);
+    wave++;
+    phase = 'fight';
+    phaseMs = 0;
   }
 
   // 2. running effects
@@ -614,7 +645,6 @@ export function stepBattle(
   // 5. kills
   const dead = foes.filter((f) => !alive(f)).sort((a, b) => a.uid - b.uid);
   const efficiencyOf = (def: Monster): number => (equipped ? overlevelEfficiency(equipped.tier, def.tier) : 1);
-  const bossWasActive = bossActive;
   for (const f of dead) {
     const burn = statusOf(f, 'burn');
     // spread fire, but never onto foes the equipped spell cannot damage (immune foes take no statuses)
@@ -651,21 +681,11 @@ export function stepBattle(
     if (def?.boss) {
       bossActive = false;
       if (!defeatedBosses.includes(zone.bossId)) defeatedBosses = [...defeatedBosses, zone.bossId];
-      // the counter stays at killsForBoss while the boss lives (so the validator sees the carried kills)
-      if ((zoneKills[zone.id] ?? 0) !== 0) zoneKills = { ...zoneKills, [zone.id]: 0 };
       const next = content.zones.find((z) => z.order === zone.order + 1);
       if (next && !unlockedZones.includes(next.id)) unlockedZones = [...unlockedZones, next.id];
       events.push({ type: 'bossDefeated', zoneId: zone.id, unlockedZoneId: next?.id ?? null });
-    } else if (!bossWasActive && !bossActive) {
-      const kills = (zoneKills[zone.id] ?? 0) + 1;
-      if (kills >= zone.killsForBoss) {
-        zoneKills = { ...zoneKills, [zone.id]: zone.killsForBoss };
-        bossActive = true;
-        spawn(zone.bossId, true);
-      } else {
-        zoneKills = { ...zoneKills, [zone.id]: kills };
-      }
     }
+    killed++;
   }
 
   let dotDamage = battle.dotDamage + ctx.dot;
@@ -676,13 +696,28 @@ export function stepBattle(
     dotMs -= DOT_REPORT_MS;
   }
 
-  const changed = inventory !== game.inventory || defeatedBosses !== game.defeatedBosses ||
-    unlockedZones !== game.unlockedZones || zoneKills !== game.zoneKills;
+  // 6. stage flow: a cleared wave sends us walking again; nothing left to send ends the stage; a slow boss fails it
+  const remaining = dead.length > 0 ? foes.filter(alive) : foes;
+  if (phase === 'fight' && !remaining.some(alive)) {
+    const waveCount = zone.stages[battle.stage - 1]?.waves.length ?? 0;
+    if (wave < waveCount || (isBossStage(zone, battle.stage) && bossMs === null)) {
+      phase = 'walk';
+      phaseMs = 0;
+    } else {
+      phase = 'done';
+      events.push({ type: 'stageCleared', zoneId: zone.id, stage: battle.stage });
+    }
+  } else if (phase === 'fight' && bossActive && bossMs !== null && bossMs >= BOSS_LIMIT_MS) {
+    phase = 'failed';
+    events.push({ type: 'stageFailed', zoneId: zone.id, stage: battle.stage });
+  }
+
+  const changed = inventory !== game.inventory || defeatedBosses !== game.defeatedBosses || unlockedZones !== game.unlockedZones;
   return {
-    game: changed ? { ...game, inventory, defeatedBosses, unlockedZones, zoneKills } : game,
+    game: changed ? { ...game, inventory, defeatedBosses, unlockedZones } : game,
     battle: {
-      zoneId: battle.zoneId, foes: dead.length > 0 ? foes.filter(alive) : foes, fx, mage,
-      spawnTimerMs, packTimerMs, bossActive, nextUid: ctx.nextUid, dotDamage, dotMs,
+      zoneId: battle.zoneId, foes: remaining, fx, mage, bossActive, nextUid: ctx.nextUid, dotDamage, dotMs,
+      stage: battle.stage, phase, phaseMs, wave, killed, total: battle.total, bossMs,
     },
     events,
   };

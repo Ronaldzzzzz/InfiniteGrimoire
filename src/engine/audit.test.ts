@@ -117,7 +117,7 @@ describe('validateUpload', () => {
   it('normal play through the real engine is within the bound', () => {
     const prev = createInitialState(realContent);
     let game = prev;
-    let battle = createBattle(prev.currentZone);
+    let battle = createBattle(prev.currentZone, prev.currentStage);
     const rng = createRng(7);
     for (let t = 0; t < 60_000; t += STEP_MS) {
       const r = stepBattle(game, battle, realContent, rng);

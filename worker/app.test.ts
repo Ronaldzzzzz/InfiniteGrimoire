@@ -662,7 +662,7 @@ async function playHonestly(
   const rng = createRng(7);
   let game = start.state;
   let revision = start.revision;
-  let battle: BattleState = createBattle(game.currentZone);
+  let battle: BattleState = createBattle(game.currentZone, game.currentStage);
   const statuses: number[] = [];
   let sinceUpload = 0;
   let elapsed = 0;
@@ -670,6 +670,8 @@ async function playHonestly(
     const r = stepBattle(game, battle, content, rng);
     game = r.game;
     battle = r.battle;
+    // a cleared stage is inert: carry on to the next one (the boss is the last stage of the zone)
+    if (battle.phase === 'done') battle = createBattle(game.currentZone, battle.stage + 1);
     clock += STEP_MS;
     elapsed += STEP_MS;
     sinceUpload += STEP_MS;
@@ -681,7 +683,7 @@ async function playHonestly(
       revision = out.revision;
       if (res.status !== 200 && out.state) {
         game = out.state;
-        battle = createBattle(game.currentZone);
+        battle = createBattle(game.currentZone, game.currentStage);
       }
       if (opts.until(game, elapsed)) return { statuses, game, revision };
     }

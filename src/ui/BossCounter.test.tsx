@@ -23,7 +23,7 @@ describe('bossCounterText', () => {
   it('says the boss is here while it is alive', () => {
     const rt = fakeRuntime({ currentZone: 'mist_meadow' });
     const zone = content.zones.find((z) => z.id === 'mist_meadow')!;
-    const battle = createBattle('mist_meadow');
+    const battle = createBattle('mist_meadow', 1);
     const foe = { ...(battle.foes[0] ?? ({} as never)), defId: zone.bossId };
     rt.set({ battle: { ...battle, bossActive: true, foes: [foe as never] } });
     expect(bossCounterText(rt.getSnapshot(), content)).toBe('魔王現身！');

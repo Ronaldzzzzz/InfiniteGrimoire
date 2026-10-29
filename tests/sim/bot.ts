@@ -115,7 +115,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   token = created.body.token as string;
   let game: GameState = serverState(created.body.state);
   let revision = created.body.revision as number;
-  let battle: BattleState = createBattle(game.currentZone);
+  let battle: BattleState = createBattle(game.currentZone, game.currentStage);
   let rejectedUploads = 0;
   let serverCalls = 0;
   const rejectionReasons: string[] = [];
@@ -130,7 +130,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     if (r.body.state) {
       game = serverState(r.body.state);
       revision = r.body.revision as number;
-      battle = createBattle(game.currentZone);
+      battle = createBattle(game.currentZone, game.currentStage);
     }
   };
   const upload = async (): Promise<void> => {
@@ -270,7 +270,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     }
     if (dest !== game.currentZone) {
       game = { ...game, currentZone: dest };
-      battle = createBattle(dest);
+      battle = createBattle(dest, 1);
     }
   };
 

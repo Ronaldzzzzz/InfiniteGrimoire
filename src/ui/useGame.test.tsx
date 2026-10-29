@@ -27,7 +27,7 @@ function fakeStore(initial: Snapshot) {
 
 function initial(): Snapshot {
   const game = createInitialState(content);
-  return { game, battle: createBattle(game.currentZone), revision: 1, paused: false, synthPending: false };
+  return { game, battle: createBattle(game.currentZone, game.currentStage), revision: 1, paused: false, synthPending: false };
 }
 
 describe('useRuntime', () => {
@@ -41,7 +41,7 @@ describe('useRuntime', () => {
     }
     render(<Probe />);
     const before = renders;
-    act(() => store.set({ ...store.getSnapshot(), battle: { ...store.getSnapshot().battle, spawnTimerMs: 999 } }));
+    act(() => store.set({ ...store.getSnapshot(), battle: { ...store.getSnapshot().battle, killed: 999 } }));
     expect(renders).toBe(before);
     act(() => store.set({ ...store.getSnapshot(), game: { ...store.getSnapshot().game, equipped: 'fireball' } }));
     expect(renders).toBe(before + 1);

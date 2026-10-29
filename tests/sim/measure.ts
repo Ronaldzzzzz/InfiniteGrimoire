@@ -35,7 +35,7 @@ export function clean(spellId: string, level: number, zoneId: string, seed: numb
     currentZone: zoneId, unlockedZones: content.zones.map((z) => z.id), zoneKills: { [zoneId]: 0 },
   };
   const rng = createRng(seed);
-  let battle: BattleState = { ...createBattle(zoneId), spawnTimerMs: -1e12, packTimerMs: -1e12, nextUid: foes.length + 1 };
+  let battle: BattleState = { ...createBattle(zoneId, 1), phase: "fight", wave: 1e9, nextUid: foes.length + 1 };
   battle.foes = foes.map((f, i) => {
     const def = content.monsters[f.defId]!;
     const a = (i / foes.length) * 2 * Math.PI;
@@ -260,7 +260,7 @@ export function walkedTouch(f: Foe, before: readonly ActiveFx[], after: readonly
  */
 export function crowdStats(spellId: string, zoneId: string, opts: { seed: number; ms: number; warmMs: number }): CrowdStats {
   let game = crowdGame(spellId, zoneId);
-  let battle = createBattle(zoneId);
+  let battle = createBattle(zoneId, 1);
   const rng = createRng(opts.seed);
   const touched = new Set<number>();
   let t = 0, sum = 0, n = 0;
@@ -281,7 +281,7 @@ export function crowdStats(spellId: string, zoneId: string, opts: { seed: number
 export function crowdClear(spellId: string, zoneId: string, opts: { seed: number; limitMs: number }): number | null {
   const zone = content.zones.find((z) => z.id === zoneId)!;
   let game: GameState = { ...crowdGame(spellId, zoneId), equipped: '__none__' };
-  let battle = createBattle(zoneId);
+  let battle = createBattle(zoneId, 1);
   const rng = createRng(opts.seed);
   for (let guard = 0; battle.foes.length < zone.maxAlive && guard < 20_000; guard++) {
     const r = stepBattle(game, battle, content, rng);

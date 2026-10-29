@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import {
-  BLADE_FAN, DOT_REPORT_MS, LANE_Y, MAX_ACTIVE_FX, RANGE, RIGHT_X, SPAWN_X, STEP_MS, STOP_X, bladePositions, createBattle, spawnPoint, stepBattle,
+  BLADE_FAN, DOT_REPORT_MS, LANE_Y, MAX_ACTIVE_FX, RANGE, RIGHT_X, SPAWN_X, STEP_MS, STOP_X, bladePositions, createBattle, enterStage, spawnPoint, stageProgress, stepBattle,
   type ActiveStatus, type BattleEvent, type BattleState, type Foe,
 } from './combat';
 import { createRng, type Rng } from './rng';
+import { BOSS_LIMIT_MS, WALK_MS } from './stages';
 import type { Content, Effect, GameState, Monster, NamedSpellDef, Zone } from './model';
 import type { ElementId } from './types';
 
@@ -24,7 +25,7 @@ const mon = (id: string, o: Partial<Monster> = {}): Monster => ({
 });
 const testZone: Zone = {
   id: 'test_zone', name: 't', nameEn: 't', order: 99, monsters: ['dummy'], bossId: 'test_boss', killsForBoss: 1e9,
-  maxAlive: 15, spawnIntervalMs: 1000, pack: { everyMs: 3000, size: 10 }, stages: [],
+  maxAlive: 15, spawnIntervalMs: 1000, pack: { everyMs: 3000, size: 10 }, stages: [{ waves: [2, 2] }, { waves: [1] }],
 };
 
 /** The shipped content plus test-only spells, monsters and a test zone. */
@@ -48,9 +49,9 @@ const foe = (uid: number, defId: string, x: number, y: number, c: Content, statu
   const hp = c.monsters[defId]!.hp;
   return { uid, defId, x, y, hp, maxHp: hp, statuses, kx: 0, ky: 0, wander: 0 };
 };
-/** A battle with hand-placed foes and spawning switched off. */
+/** A battle with hand-placed foes: mid-fight, no wave left to send. */
 const staged = (foes: Foe[], zoneId = 'test_zone'): BattleState => ({
-  ...createBattle(zoneId), foes, spawnTimerMs: -1e12, packTimerMs: -1e12, nextUid: 1000,
+  ...createBattle(zoneId, 1), foes, phase: 'fight', wave: 99, nextUid: 1000,
 });
 
 interface Run { game: GameState; battle: BattleState; events: BattleEvent[]; perStep: BattleEvent[][] }
@@ -70,26 +71,11 @@ const hitsOn = (events: BattleEvent[], uid: number) =>
 const dist = (f: { x: number; y: number }) => Math.hypot(f.x, f.y);
 
 describe('stepBattle: crowd movement', () => {
-  it('spawns singles and packs up to maxAlive', () => {
-    const c = withTest();
-    const game = mkGame({ equipped: '', currentZone: 'test_zone' });
-    const first = run(game, createBattle('test_zone'), c, 60);
-    expect(first.battle.foes.length).toBe(13); // singles at 1 s, 2 s, 3 s plus a pack of 10 at 3 s
-    const pack = first.perStep[59]!.filter((e) => e.type === 'spawn');
-    expect(pack.length).toBe(11);
-    for (const f of first.battle.foes) {
-      expect(f.x).toBeGreaterThanOrEqual(SPAWN_X);
-      expect(Math.abs(f.y)).toBeLessThanOrEqual(LANE_Y);
-    }
-
-    let max = 0;
-    run(game, first.battle, c, 400, createRng(2), (b) => { max = Math.max(max, b.foes.length); });
-    expect(max).toBe(15);
-  });
-
-  it('monsters walk in and stop at the stop line', () => {
-    const r = run(mkGame({ equipped: '' }), createBattle('mist_meadow'), content, 1200);
-    expect(r.battle.foes.length).toBeGreaterThan(10);
+  it('waves spawn off the right edge inside the lane, then walk in and stop at the stop line', () => {
+    const r = run(mkGame({ equipped: '' }), createBattle('mist_meadow', 1), content, 1200);
+    expect(r.battle.foes.length).toBeGreaterThanOrEqual(4);
+    const spawned = r.events.filter((e) => e.type === 'spawn');
+    expect(spawned.length).toBe(r.battle.foes.length);
     let atLine = 0;
     for (const f of r.battle.foes) {
       const stop = STOP_X + content.monsters[f.defId]!.radius;
@@ -97,7 +83,7 @@ describe('stepBattle: crowd movement', () => {
       expect(Math.abs(f.y)).toBeLessThanOrEqual(LANE_Y + 1e-9);
       if (Math.abs(f.x - stop) < 1e-6) atLine++;
     }
-    expect(atLine).toBeGreaterThan(5);
+    expect(atLine).toBeGreaterThan(2);
   });
 
   it('foes walk left to the stop line and never pass the mage', () => {
@@ -400,7 +386,7 @@ describe('stepBattle: effects', () => {
 
     it('counts only the hit points a burn actually removes', () => {
       const c = withTest();
-      const b = staged([foe(1, 'weak', 0.5, 0, c, [{ kind: 'burn', remainingMs: 5000, power: 1e3 }])]);
+      const b = staged([foe(1, 'weak', 0.5, 0, c, [{ kind: 'burn', remainingMs: 5000, power: 1e3 }]), foe(2, 'dummy', 0.9, 0, c)]);
       const r = run(mkGame({ equipped: '' }), b, c, stepsPerReport);
       expect(dots(r.events)).toEqual([{ type: 'dot', damage: 10 }]); // weak has 10 hp
     });
@@ -452,7 +438,8 @@ describe('stepBattle: progress and limits', () => {
   it('kills drop items, reach the boss and unlock the next zone', () => {
     const nuke = testSpell('t_nuke', [{ kind: 'field', mult: 100, delayMs: 0 }], { cooldownMs: 300, attack: 1000 });
     const c = withTest([nuke]);
-    const r = run(mkGame({ equipped: 't_nuke' }), createBattle('mist_meadow'), c, 4000);
+    const last = c.zones.find((z) => z.id === 'mist_meadow')!.stages.length;
+    const r = run(mkGame({ equipped: 't_nuke' }), createBattle('mist_meadow', last), c, 4000);
     expect(r.events.some((e) => e.type === 'spawn' && e.boss)).toBe(true);
     const kill = r.events.find((e) => e.type === 'kill');
     expect(kill && kill.type === 'kill' && typeof kill.x).toBe('number');
@@ -460,16 +447,19 @@ describe('stepBattle: progress and limits', () => {
     expect(r.game.unlockedZones).toContain('thunder_gorge');
     expect(r.game.defeatedBosses).toContain('mist_stag');
     expect(Object.keys(r.game.inventory).length).toBeGreaterThan(0);
+    expect(r.battle.phase).toBe('done');
+    expect(r.game.zoneKills).toEqual({});
   });
 
   it('a boss always drops its key item, even to an overleveled spell', () => {
     // tier 9 vs the tier-2 mist_stag: element drops shrink to 0.5 + 0.5 * 0.5^6, the key item does not
     const nuke = testSpell('t_nuke', [{ kind: 'field', mult: 100, delayMs: 0 }], { cooldownMs: 300, attack: 1000, tier: 9 });
     const c = withTest([nuke]);
+    const last = c.zones.find((z) => z.id === 'mist_meadow')!.stages.length;
     for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
       const rng = createRng(seed);
       let game = mkGame({ equipped: 't_nuke' });
-      let battle = createBattle('mist_meadow');
+      let battle = createBattle('mist_meadow', last);
       for (let i = 0; i < 4000 && !game.defeatedBosses.includes('mist_stag'); i++) ({ game, battle } = stepBattle(game, battle, c, rng));
       expect(game.defeatedBosses, String(seed)).toContain('mist_stag');
       // checked on the step of the first kill
@@ -484,14 +474,14 @@ describe('stepBattle: progress and limits', () => {
     ], { cooldownMs: 50 });
     const c = withTest([spam]);
     let max = 0;
-    run(mkGame({ equipped: 't_spam' }), createBattle('mist_meadow'), c, 2000, createRng(3), (b) => { max = Math.max(max, b.fx.length); });
+    run(mkGame({ equipped: 't_spam' }), createBattle('mist_meadow', 1), c, 2000, createRng(3), (b) => { max = Math.max(max, b.fx.length); });
     expect(max).toBe(MAX_ACTIVE_FX);
   });
 
   it('same seed gives the same events', () => {
     const game = mkGame({ learned: ['mana_bolt', 'fire_tornado'], equipped: 'fire_tornado', currentZone: 'thunder_gorge', unlockedZones: ['mist_meadow', 'thunder_gorge'] });
-    const a = run(game, createBattle('thunder_gorge'), content, 600, createRng(42));
-    const b = run(game, createBattle('thunder_gorge'), content, 600, createRng(42));
+    const a = run(game, createBattle('thunder_gorge', 1), content, 600, createRng(42));
+    const b = run(game, createBattle('thunder_gorge', 1), content, 600, createRng(42));
     expect(a.events.length).toBeGreaterThan(100);
     expect(a.events.some((e) => e.type === 'kill')).toBe(true);
     expect(b.events).toEqual(a.events);
@@ -500,7 +490,7 @@ describe('stepBattle: progress and limits', () => {
 
   it('does not mutate the previous battle state', () => {
     const game = mkGame({ equipped: 'fire_tornado', currentZone: 'thunder_gorge' });
-    let battle = createBattle('thunder_gorge');
+    let battle = createBattle('thunder_gorge', 1);
     const rng = createRng(5);
     for (let i = 0; i < 200; i++) battle = stepBattle(game, battle, content, rng).battle;
     const snapshot = structuredClone(battle);
@@ -510,9 +500,119 @@ describe('stepBattle: progress and limits', () => {
 
   it('uses element types the renderer can colour', () => {
     const game = mkGame({ equipped: 'fire_tornado', currentZone: 'thunder_gorge' });
-    const r = run(game, createBattle('thunder_gorge'), content, 200);
+    const r = run(game, createBattle('thunder_gorge', 1), content, 200);
     const els = new Set<ElementId | null>(r.events.flatMap((e) => (e.type === 'hit' ? [e.element] : [])));
     expect([...els].every((e) => e === 'fire' || e === 'wind')).toBe(true);
     expect(r.battle.fx.every((f) => f.elements.join() === 'fire,wind')).toBe(true);
+  });
+});
+
+describe('stepBattle: stages', () => {
+  const nuke = testSpell('t_nuke', [{ kind: 'field', mult: 100, delayMs: 0 }], { cooldownMs: 100, attack: 1000 });
+  const ghost = testSpell('t_ghost', [{ kind: 'field', mult: 1, delayMs: 0 }], { cooldownMs: 100, attack: 1, tier: 1 });
+  const types = (events: BattleEvent[], t: BattleEvent['type']) => events.filter((e) => e.type === t);
+  const weakContent = () => {
+    const c = withTest([nuke, ghost]);
+    c.zones = c.zones.map((z) => (z.id === 'test_zone' ? { ...z, monsters: ['weak'] } : z));
+    return c;
+  };
+
+  it('a stage walks, fights each wave in order and ends cleared', () => {
+    const c = weakContent();
+    const r = run(mkGame({ equipped: 't_nuke', currentZone: 'test_zone' }), createBattle('test_zone', 1, { content: c }), c, 400);
+    expect(r.battle.phase).toBe('done');
+    expect(r.battle.killed).toBe(4);
+    expect(r.battle.total).toBe(4);
+    expect(stageProgress(r.battle)).toBe(1);
+    const order = r.events.filter((e) => e.type === 'waveStart' || e.type === 'stageCleared').map((e) => (e.type === 'waveStart' ? `w${e.wave}` : e.type));
+    expect(order).toEqual(['w0', 'w1', 'stageCleared']);
+    expect(r.events).toContainEqual({ type: 'stageCleared', zoneId: 'test_zone', stage: 1 });
+    const w = firstStep(r.perStep, (e) => e.type === 'waveStart' && e.wave === 0);
+    const w1 = firstStep(r.perStep, (e) => e.type === 'waveStart' && e.wave === 1);
+    expect(w * STEP_MS).toBeGreaterThanOrEqual(WALK_MS - STEP_MS);
+    expect((w1 - w) * STEP_MS).toBeGreaterThanOrEqual(WALK_MS);
+  });
+
+  it('no foe spawns while walking, the next wave waits for the last foe', () => {
+    const c = withTest();
+    const game = mkGame({ equipped: '', currentZone: 'test_zone' });
+    const r = run(game, createBattle('test_zone', 1, { content: c }), c, 20_000 / STEP_MS);
+    expect(r.perStep.slice(0, WALK_MS / STEP_MS - 1).flat()).toEqual([]);
+    expect(types(r.events, 'waveStart')).toHaveLength(1); // dummies never die, so wave 1 never comes
+    expect(types(r.events, 'spawn')).toHaveLength(2);
+    expect(r.battle.phase).toBe('fight');
+  });
+
+  it('the boss comes after the boss stage waves and the timer starts only then', () => {
+    const c = weakContent();
+    const r = run(mkGame({ equipped: 't_nuke', currentZone: 'test_zone' }), createBattle('test_zone', 2, { content: c }), c, 200);
+    const waveStep = firstStep(r.perStep, (e) => e.type === 'waveStart' && e.wave === 0);
+    const bossStep = firstStep(r.perStep, (e) => e.type === 'spawn' && e.boss);
+    expect(bossStep).toBeGreaterThan(waveStep);
+    expect(types(r.perStep[bossStep]!.filter((e) => e.type !== 'spawn'), 'waveStart')).toHaveLength(1);
+    // the very step the boss appears has bossMs 0
+    let b = createBattle('test_zone', 2, { content: c });
+    const game = mkGame({ equipped: 't_nuke', currentZone: 'test_zone' });
+    const rng = createRng(1);
+    let sawBoss = false;
+    for (let i = 0; i < 400; i++) {
+      const rr = stepBattle(game, b, c, rng);
+      b = rr.battle;
+      if (rr.events.some((e) => e.type === 'spawn' && e.boss)) { expect(b.bossMs).toBe(0); sawBoss = true; break; }
+      expect(b.bossMs).toBeNull();
+    }
+    expect(sawBoss).toBe(true);
+  });
+
+  it('boss timer counts simulated steps', () => {
+    const c = withTest();
+    const game = mkGame({ equipped: '', currentZone: 'test_zone' });
+    const boss = foe(1, 'test_boss', 0.5, 0, c);
+    const b: BattleState = { ...staged([boss]), stage: 2, bossActive: true, bossMs: 0 };
+    const steps = BOSS_LIMIT_MS / STEP_MS;
+    const r = run(game, b, c, steps);
+    expect(r.perStep[steps - 1]).toContainEqual({ type: 'stageFailed', zoneId: 'test_zone', stage: 2 });
+    expect(types(r.perStep.slice(0, steps - 1).flat(), 'stageFailed')).toHaveLength(0);
+    expect(r.battle.phase).toBe('failed');
+    const after = run(game, r.battle, c, 200);
+    expect(after.events).toEqual([]);
+    expect(after.battle.foes.length).toBe(r.battle.foes.length);
+  });
+
+  it('an immune boss still times out', () => {
+    const c = withTest([ghost]);
+    c.monsters.test_boss = mon('test_boss', { boss: true, tier: 9, defense: 1e9 });
+    const game = mkGame({ equipped: 't_ghost', currentZone: 'test_zone' });
+    const boss = foe(1, 'test_boss', 0.5, 0, c);
+    const steps = BOSS_LIMIT_MS / STEP_MS;
+    const r = run(game, { ...staged([boss]), stage: 2, bossActive: true, bossMs: 0 }, c, steps);
+    expect(r.events.some((e) => e.type === 'hit' && e.immune)).toBe(true);
+    expect(r.perStep[steps - 1]).toContainEqual({ type: 'stageFailed', zoneId: 'test_zone', stage: 2 });
+    expect(r.battle.phase).toBe('failed');
+  });
+
+  it('a held boss stage spawns nothing until entered', () => {
+    const c = withTest();
+    const game = mkGame({ equipped: '', currentZone: 'test_zone' });
+    const held = createBattle('test_zone', 2, { held: true, content: c });
+    expect(held.phase).toBe('held');
+    const r = run(game, held, c, 10_000 / STEP_MS);
+    expect(r.events).toEqual([]);
+    expect(r.battle.phase).toBe('held');
+    const entered = enterStage(r.battle);
+    expect(entered.phase).toBe('walk');
+    expect(enterStage(entered)).toBe(entered);
+    const after = run(game, entered, c, WALK_MS / STEP_MS + 2);
+    expect(after.events.some((e) => e.type === 'spawn')).toBe(true);
+    // held only applies to a boss stage
+    expect(createBattle('test_zone', 1, { held: true, content: c }).phase).toBe('walk');
+  });
+
+  it('a finished stage is inert', () => {
+    const c = weakContent();
+    const r = run(mkGame({ equipped: 't_nuke', currentZone: 'test_zone' }), createBattle('test_zone', 1, { content: c }), c, 400);
+    expect(r.battle.phase).toBe('done');
+    const more = run(r.game, r.battle, c, 200);
+    expect(more.events).toEqual([]);
   });
 });
