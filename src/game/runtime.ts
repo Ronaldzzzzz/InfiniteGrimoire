@@ -10,7 +10,11 @@ export const MAX_CATCHUP_MS = 1000;
 
 /** The last stage settlement or failure, for the stage-end notice; cleared on travel and on entering the boss. */
 export type LastResult =
-  | { kind: 'cleared'; zoneId: string; stage: number; loot: ItemId[] }
+  /**
+   * `pending`: the server has not answered the claim yet. After the answer `claimed` says whether the server
+   * settled it (loot is the server's) or not (refused or lost: loot is empty, nothing was saved).
+   */
+  | { kind: 'cleared'; zoneId: string; stage: number; loot: ItemId[]; pending: boolean; claimed: boolean }
   | { kind: 'failed'; zoneId: string; stage: number; backTo: number };
 
 export interface Snapshot {
@@ -112,7 +116,7 @@ export class GameRuntime {
       return {
         game: { ...game, currentStage: next },
         battle: this.newBattle(zone.id, next),
-        lastResult: { kind: 'cleared', zoneId: zone.id, stage: e.stage, loot: [] },
+        lastResult: { kind: 'cleared', zoneId: zone.id, stage: e.stage, loot: [], pending: true, claimed: false },
       };
     }
     const backTo = Math.max(1, e.stage - 1);
@@ -127,7 +131,35 @@ export class GameRuntime {
   setStageLoot(zoneId: string, stage: number, loot: ItemId[]): void {
     const r = this.snapshot.lastResult;
     if (!r || r.kind !== 'cleared' || r.zoneId !== zoneId || r.stage !== stage) return;
-    this.set({ lastResult: { ...r, loot } });
+    this.set({ lastResult: { ...r, loot, pending: false, claimed: true } });
+  }
+
+  /**
+   * The claim for a cleared stage did not end in a settlement (refused, lost, offline, conflict). Progress
+   * is server-owned, so a player who moved past the frontier goes back to the highest playable stage now,
+   * before any upload can carry a currentStage the server would reject.
+   */
+  claimFailed(zoneId: string, stage: number): void {
+    const r = this.snapshot.lastResult;
+    const lastResult = r && r.kind === 'cleared' && r.zoneId === zoneId && r.stage === stage ? { ...r, loot: [], pending: false, claimed: false } : r;
+    const g = this.snapshot.game;
+    const zone = this.content.zones.find((z) => z.id === g.currentZone);
+    const hp = zone ? highestPlayable(g, zone) : g.currentStage;
+    if (g.currentStage <= hp) {
+      if (lastResult !== r) this.set({ lastResult });
+      return;
+    }
+    this.leftoverMs = 0;
+    this.set({ game: { ...g, currentStage: hp }, battle: this.newBattle(g.currentZone, hp), lastResult });
+  }
+
+  /** The game state with currentStage clamped to what the server lets us play; this is what goes on the wire. */
+  clampedGame(): GameState {
+    const g = this.snapshot.game;
+    const zone = this.content.zones.find((z) => z.id === g.currentZone);
+    if (!zone) return g;
+    const hp = highestPlayable(g, zone);
+    return g.currentStage > hp ? { ...g, currentStage: hp } : g;
   }
 
   setAutoAdvance(on: boolean): void {

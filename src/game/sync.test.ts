@@ -355,7 +355,7 @@ describe('SyncController', () => {
       expect(snap.game.currentStage).toBe(2); // local place kept
       expect(snap.battle.stage).toBe(2);
       expect(snap.revision).toBe(10);
-      expect(snap.lastResult).toEqual({ kind: 'cleared', zoneId: 'mist_meadow', stage: 1, loot: ['el:fire:1'] });
+      expect(snap.lastResult).toEqual({ kind: 'cleared', zoneId: 'mist_meadow', stage: 1, loot: ['el:fire:1'], pending: false, claimed: true });
       expect(snap.synthPending).toBe(false);
     });
     it('a 422 tooFast claim keeps the local state and does not retry', async () => {
@@ -370,8 +370,50 @@ describe('SyncController', () => {
       const snap = rt.getSnapshot();
       expect(snap.game.clearedStages).toBe(before.clearedStages);
       expect(snap.revision).toBe(8);
-      expect(snap.battle.stage).toBe(2);
-      expect(snap.lastResult).toEqual({ kind: 'cleared', zoneId: 'mist_meadow', stage: 1, loot: [] });
+      // the frontier stage was not settled: back on it, not one past it
+      expect(snap.battle.stage).toBe(1);
+      expect(snap.game.currentStage).toBe(1);
+      expect(snap.lastResult).toEqual({ kind: 'cleared', zoneId: 'mist_meadow', stage: 1, loot: [], pending: false, claimed: false });
+    });
+    it('pending is true until the reply, then false with the server loot', async () => {
+      const rt = mk();
+      let reply!: (v: never) => void;
+      const stageClear = vi.fn(() => new Promise((r) => (reply = r as never)));
+      const sync = new SyncController(rt, fakeApi({ stageClear: stageClear as never }));
+      sync.start();
+      clearStage(rt);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rt.getSnapshot().lastResult).toMatchObject({ kind: 'cleared', pending: true, claimed: false });
+      reply({ kind: 'ok', result: { kind: 'cleared', loot: ['el:fire:1'] }, state: settled, revision: 10 } as never);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rt.getSnapshot().lastResult).toMatchObject({ pending: false, claimed: true, loot: ['el:fire:1'] });
+    });
+    it('a lost claim on the frontier clamps back before the retried upload, which never exceeds highestPlayable', async () => {
+      const rt = mk();
+      const stageClear = vi.fn().mockRejectedValue(new NetworkError('x'));
+      const upload = vi.fn(async () => ({ kind: 'ok' as const, revision: 9 }));
+      const sync = new SyncController(rt, fakeApi({ stageClear, upload }));
+      sync.start();
+      clearStage(rt);
+      expect(rt.getSnapshot().game.currentStage).toBe(2); // optimistic until the claim fails
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rt.getSnapshot().game.currentStage).toBe(1);
+      expect(rt.getSnapshot().battle.stage).toBe(1);
+      expect(rt.getSnapshot().lastResult).toMatchObject({ pending: false, claimed: false, loot: [] });
+      await vi.advanceTimersByTimeAsync(RETRY_MS);
+      expect(upload).toHaveBeenCalledTimes(1);
+      const sent = (upload.mock.calls[0] as unknown as [{ currentStage: number }])[0];
+      expect(sent.currentStage).toBeLessThanOrEqual(1);
+    });
+    it('uploads clamp currentStage even while the claim is still waiting', async () => {
+      const rt = mk();
+      const upload = vi.fn(async () => ({ kind: 'ok' as const, revision: 9 }));
+      const sync = new SyncController(rt, fakeApi({ upload, stageClear: vi.fn(() => new Promise(() => {})) as never }));
+      sync.start();
+      clearStage(rt);
+      await sync.uploadNow();
+      const sent = (upload.mock.calls[0] as unknown as [{ currentStage: number }])[0];
+      expect(sent.currentStage).toBe(1);
     });
     it('a network error on claim goes offline and retries the upload like other actions', async () => {
       const rt = mk();

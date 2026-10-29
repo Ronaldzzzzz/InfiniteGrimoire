@@ -139,8 +139,8 @@ export class SyncController {
   private doUpload(opts?: { keepalive?: boolean }): Promise<UploadResult> {
     const run = async (): Promise<UploadResult> => {
       try {
-        const { game, revision } = this.runtime.getSnapshot();
-        const out = await this.api.upload(game, revision, opts);
+        const { revision } = this.runtime.getSnapshot();
+        const out = await this.api.upload(this.runtime.clampedGame(), revision, opts);
         if (out.kind === 'ok') this.runtime.setRevision(out.revision);
         else this.runtime.replaceState(out.state, out.revision);
         return 'done';
@@ -186,7 +186,8 @@ export class SyncController {
     }
     this.runtime.setSynthPending(true);
     try {
-      const { game, revision } = this.runtime.getSnapshot();
+      const { revision } = this.runtime.getSnapshot();
+      const game = this.runtime.clampedGame();
       const out = await this.send(kind, payload, hooks.sendState ? hooks.sendState(game) : game, revision);
       if (out.kind === 'refused') {
         this.runtime.setRevision(out.revision);
@@ -237,7 +238,7 @@ export class SyncController {
    * state and is not retried. Claims run one at a time and wait for other in-flight actions.
    */
   claimStage(zoneId: string, stage: number): Promise<ActionResult | null> {
-    const run = async (): Promise<ActionResult | null> => {
+    const attempt = async (): Promise<ActionResult | null> => {
       for (let i = 0; i < CLAIM_TRIES; i++) {
         if (this.stopped || this.retrying) return null;
         if (!this.runtime.getSnapshot().synthPending) {
@@ -251,6 +252,15 @@ export class SyncController {
         await new Promise<void>((resolve) => this.timers.setTimeout(resolve, CLAIM_WAIT_MS));
       }
       return null;
+    };
+    const run = async (): Promise<ActionResult | null> => {
+      let result: ActionResult | null = null;
+      try {
+        result = await attempt();
+      } finally {
+        if (result?.kind !== 'cleared') this.runtime.claimFailed(zoneId, stage);
+      }
+      return result;
     };
     const p = this.claims.then(run, run);
     this.claims = p.catch(() => undefined);

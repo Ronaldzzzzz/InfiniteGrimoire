@@ -123,7 +123,7 @@ describe('GameRuntime', () => {
       const s = rt.getSnapshot();
       expect(s.battle.stage).toBe(3);
       expect(s.game.currentStage).toBe(3);
-      expect(s.lastResult).toEqual({ kind: 'cleared', zoneId: zone.id, stage: 2, loot: [] });
+      expect(s.lastResult).toEqual({ kind: 'cleared', zoneId: zone.id, stage: 2, loot: [], pending: true, claimed: false });
       spy.mockRestore();
     });
     it('auto-advance off restarts the same stage', () => {
