@@ -74,7 +74,9 @@ const REJECTED: Record<string, string> = {
   hidden: '這個區域還被迷霧遮住',
   requirement: '還沒達成解鎖條件',
   locked: '這個地點還沒開放',
+  elsewhere: '你已經不在這個地點了',
   notReached: '還沒打到這一關',
+  cannotDamage: '裝備中的魔法打不動這裡的魔物',
   tooFast: '結算太快了，請稍後再試',
   bossAlive: '魔王還沒倒下',
 };

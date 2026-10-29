@@ -810,6 +810,21 @@ describe('POST /api/stage-clear', () => {
     expect(store.rejections).toHaveLength(0);
   });
 
+  it('an equipped spell that cannot damage the zone gets 422 cannotDamage and writes nothing', async () => {
+    const z0 = content.zones[0]!;
+    // the first zone with a monster the starting spell cannot touch
+    const hard: Content = { ...content, zones: content.zones.map((z) => (z === z0 ? { ...z, monsters: [...z.monsters, 'doom_knight'] } : z)) };
+    app = makeApp(hard);
+    const { body } = await guest();
+    clock += 30_000;
+    const before = store.saves.get(body.playerId)!;
+    const { status, out } = await clear(body.token, body.state, 0);
+    expect(status).toBe(422);
+    expect(out.result).toEqual({ kind: 'rejected', reason: 'cannotDamage' });
+    expect(store.saves.get(body.playerId)).toEqual(before);
+    expect(store.rejections).toHaveLength(0);
+  });
+
   it('rejects a bad zoneId or stage with 400', async () => {
     const { body } = await guest();
     for (const extra of [{ zoneId: 1 }, { zoneId: '' }, { stage: '1' }, { stage: 1.5 }, { stage: undefined }]) {

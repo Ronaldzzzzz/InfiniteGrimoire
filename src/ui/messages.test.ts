@@ -18,6 +18,8 @@ describe('synthMessage', () => {
     expect(synthMessage({ kind: 'cleared', loot: ['el:fire:1'] }, content)).toBe('關卡結算：初階火');
     expect(synthMessage({ kind: 'cleared', loot: [] }, content)).toBe('關卡結算：沒有獲得道具');
     expect(synthMessage({ kind: 'rejected', reason: 'tooFast' }, content)).toBe('結算太快了，請稍後再試');
+    expect(synthMessage({ kind: 'rejected', reason: 'cannotDamage' }, content)).toBe('裝備中的魔法打不動這裡的魔物');
+    expect(synthMessage({ kind: 'rejected', reason: 'elsewhere' }, content)).toBe('你已經不在這個地點了');
     expect(synthMessage({ kind: 'rejected', reason: 'slots' }, content)).toBe('請放入兩個素材');
   });
 

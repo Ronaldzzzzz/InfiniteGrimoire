@@ -28,8 +28,9 @@ const data: Content = {
     bat: mon({ id: 'bat', drops: [{ itemId: 'el:wind:1', chance: 1, min: 1, max: 1 }] }),
     b1: mon({ id: 'b1', boss: true, drops: [{ itemId: 'el:fire:2', chance: 1, min: 2, max: 2 }, { itemId: 'key:k1', chance: 1, min: 1, max: 1 }] }),
     b2: mon({ id: 'b2', boss: true }),
+    golem: mon({ id: 'golem', tier: 5, defense: 1000 }),
   },
-  zones: [zone('z1', 1, 'b1'), zone('z2', 2, 'b2')],
+  zones: [zone('z1', 1, 'b1'), zone('z2', 2, 'b2'), { ...zone('z3', 3, 'b2'), monsters: ['slime', 'golem'] }],
   materials: {}, keyItems: {}, passives: {}, regions: [], baseSpells: {} as Content['baseSpells'],
 };
 
@@ -76,6 +77,27 @@ describe('claimStage', () => {
     const won = claimStage({ ...s, defeatedBosses: ['b1'] }, 'z1', 10, T, data, createRng(1));
     expect(won.result.kind).toBe('cleared');
     expect(won.state.clearedStages.z1).toBe(10);
+  });
+
+  it('rejects a claim for a zone the player is not in', () => {
+    const s = base({ unlockedZones: ['z1', 'z2'] });
+    const r = claimStage(s, 'z2', 1, T, data, createRng(1));
+    expect(r.result).toEqual({ kind: 'rejected', reason: 'elsewhere' });
+    expect(r.state).toBe(s);
+    expect(claimStage({ ...s, currentZone: 'z2' }, 'z2', 1, T, data, createRng(1)).result.kind).toBe('cleared');
+  });
+
+  it('rejects cannotDamage when the equipped spell cannot damage every monster of the zone', () => {
+    const s = base({ unlockedZones: ['z1', 'z2', 'z3'], currentZone: 'z3' });
+    const r = claimStage(s, 'z3', 1, T, data, createRng(1));
+    expect(r.result).toEqual({ kind: 'rejected', reason: 'cannotDamage' });
+    expect(r.state).toBe(s);
+    // a tier 5 spell is within one tier of the golem
+    expect(claimStage({ ...s, learned: [...s.learned, 'big'], equipped: 'big' }, 'z3', 1, T, data, createRng(1)).result.kind).toBe('cleared');
+    // checked before the clock: a fast repeat with a weak spell is cannotDamage, not tooFast
+    expect(claimStage({ ...s, lastClearAt: T }, 'z3', 1, T, data, createRng(1)).result).toEqual({ kind: 'rejected', reason: 'cannotDamage' });
+    // and after the reach check
+    expect(claimStage(s, 'z3', 2, T, data, createRng(1)).result).toEqual({ kind: 'rejected', reason: 'notReached' });
   });
 
   it('re-claiming an already cleared stage gives loot but keeps cleared', () => {
