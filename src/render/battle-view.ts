@@ -2,7 +2,7 @@ import {
   Application, BitmapFont, BitmapText, Container, Graphics, Particle, ParticleContainer, Rectangle, Sprite, Text, Texture,
 } from 'pixi.js';
 import {
-  BLADE_MS, BOLT_SPEED, METEOR_STAGGER_MS, RING_SPEED, STEP_MS, STOP_X, bladePositions,
+  BLADE_MS, BOLT_SPEED, LANE_Y, METEOR_STAGGER_MS, RING_SPEED, STEP_MS, STOP_X, bladePositions,
   type ActiveFx, type BattleEvent, type BattleState, type Foe,
 } from '../engine/combat';
 import type { Content, Effect, Monster } from '../engine/model';
@@ -33,6 +33,7 @@ const MAX_IMMUNE_TEXTS = 24;
 const MAX_PARTICLES = 1500;
 const POOL_GRAPHICS = 64;
 const BANNER_MS = 1200;
+const BOSS_BANNER_MS = 2000;
 const CAST_LABEL_MS = 1200;
 const FLASH_MS = 300;
 const SHAKE_DECAY = 0.01; // shake keeps 1% of its size after a second
@@ -47,6 +48,9 @@ const NEUTRAL_STYLE: ParticleStyle = { color: COLORS.element.none, vy: -20, size
 const LAVA = '#ff7a3d';
 const MUD = '#6b4f2e';
 const FOG = '#cfd6e0';
+/** The ground and the far hills slide left at this many px per second while the mage walks to the next wave. */
+const WALK_SCROLL_PX = 90;
+const TICK_SPACING = 48;
 const FROST = '#d8f0ff';
 const CLOUD = '#4a5266';
 
@@ -128,7 +132,6 @@ export class BattleView {
   private readonly effects: OneShot[] = [];
   private readonly frameCbs = new Set<() => void>();
   private readonly rng = createRng((Date.now() ^ 0x9e3779b9) >>> 0);
-  private readonly maxFoeR: number;
   private readonly looks = new WeakMap<readonly ElementId[], Look>();
   /** shaken: everything in the arena */
   private readonly shakeRoot = new Container();
@@ -176,8 +179,13 @@ export class BattleView {
   private frameDt = 16;
   private unit = 1;
   private alpha = 1;
-  private arena: Arena = makeArena(1, 1, 0);
+  private arena: Arena = makeArena(1, 1);
+  private readonly backdrop = new Graphics();
+  private scrollPx = 0;
   private ring = new Graphics();
+  private bossBanner: Text | null = null;
+  private bossBannerAge = BANNER_MS;
+  private bossAnnounced = false;
   private ringKey = '';
   /** engine position of each foe at the previous fixed step, for interpolation */
   private prevPos = new Map<number, Pt>();
@@ -189,7 +197,6 @@ export class BattleView {
     private readonly content: Content,
     private readonly textures: Map<string, Texture>,
   ) {
-    this.maxFoeR = Math.max(0, ...Object.values(content.monsters).map((m) => m.radius));
     this.ready = this.init();
   }
 
@@ -202,7 +209,7 @@ export class BattleView {
     this.host.appendChild(this.app.canvas);
     this.makeParticleAtlas();
     this.glowParticles.blendMode = 'add';
-    this.world.addChild(this.ring, this.groundFx, this.foeLayer);
+    this.world.addChild(this.backdrop, this.ring, this.groundFx, this.foeLayer);
     this.hero = this.makeHero();
     this.world.addChild(this.hero);
     this.shakeRoot.addChild(this.world, this.airFx, this.fxLayer, this.solidParticles, this.glowParticles);
@@ -213,6 +220,12 @@ export class BattleView {
     });
     this.banner.anchor.set(0.5);
     this.banner.visible = false;
+    this.bossBanner = new Text({
+      text: '魔王現身！',
+      style: { fill: COLORS.element.fire, fontSize: 30, fontWeight: '900', fontFamily: 'system-ui, sans-serif', stroke: { color: '#000000', width: 5 } },
+    });
+    this.bossBanner.anchor.set(0.5);
+    this.bossBanner.visible = false;
     this.castLabel = new Text({
       text: '',
       style: { fill: '#ffffff', fontSize: 20, fontWeight: 'bold', fontFamily: 'system-ui, sans-serif', stroke: { color: '#000000', width: 4 } },
@@ -223,14 +236,14 @@ export class BattleView {
       text: formatDps(0),
       style: { fill: COLORS.amber, fontSize: 13, fontWeight: 'bold', fontFamily: 'system-ui, sans-serif', stroke: { color: '#000000', width: 3 } },
     });
-    this.dpsLabel.position.set(8, 6);
+    this.dpsLabel.position.set(8, 0);
     this.dpsPrevLabel = new Text({
       text: '',
       style: { fill: COLORS.amber, fontSize: 11, fontFamily: 'system-ui, sans-serif', stroke: { color: '#000000', width: 3 } },
     });
     this.dpsPrevLabel.alpha = 0.75;
-    this.dpsPrevLabel.position.set(8, 23);
-    this.uiLayer.addChild(this.banner, this.castLabel, this.dpsLabel, this.dpsPrevLabel);
+    this.dpsPrevLabel.position.set(8, 0);
+    this.uiLayer.addChild(this.banner, this.bossBanner, this.castLabel, this.dpsLabel, this.dpsPrevLabel);
     ensureDamageFont();
     this.ready_ = true;
     this.app.ticker.add((t) => this.tick(t.deltaMS));
@@ -375,13 +388,20 @@ export class BattleView {
     this.alpha = alpha;
     this.unit = Math.max(0.6, Math.min(1.6, Math.min(this.w, this.h) / 360));
     const u = this.unit;
-    this.arena = makeArena(this.w, this.h, this.maxFoeR);
+    this.arena = makeArena(this.w, this.h);
     const c = this.arena.center;
     const hero = this.hero!;
     hero.position.set(c.x, c.y);
     hero.scale.set(u);
     hero.tint = this.time < this.heroFlash.until ? this.heroFlash.color : this.heroTint;
     this.drawRing();
+    this.drawBackdrop(battle.phase === 'walk');
+    if (battle.bossMs !== null && !this.bossAnnounced) {
+      this.bossAnnounced = true;
+      this.bossBannerAge = 0;
+    } else if (battle.bossMs === null) {
+      this.bossAnnounced = false;
+    }
 
     const alive = new Set<number>();
     for (const f of battle.foes) {
@@ -398,7 +418,8 @@ export class BattleView {
         this.foes.set(f.uid, v);
       }
       const def = this.monster(f.defId);
-      v.r = Math.max(5, (def?.radius ?? 0.03) * this.arena.radius);
+      // the strip is low: a foe never grows taller than a third of it, whatever its engine radius
+      v.r = Math.max(5, Math.min(this.h * 0.17, (def?.radius ?? 0.03) * this.arena.radius));
       const prev = this.prevPos.get(f.uid);
       v.pos = toScreen(this.arena, interpolate(prev?.x ?? f.x, f.x, alpha), interpolate(prev?.y ?? f.y, f.y, alpha));
       const pop = Math.min(1, (this.time - v.born) / 200);
@@ -426,7 +447,29 @@ export class BattleView {
     this.ringKey = key;
     const a = this.arena;
     this.ring.clear();
-    this.ring.circle(a.center.x, a.center.y, STOP_X * a.radius).stroke({ width: 1, color: COLORS.rune, alpha: 0.18 });
+    const r = STOP_X * a.radius;
+    this.ring.moveTo(a.center.x, a.center.y - r);
+    this.ring.arc(a.center.x, a.center.y, r, -Math.PI / 2, Math.PI / 2).stroke({ width: 1, color: COLORS.rune, alpha: 0.18 });
+  }
+
+  /** Ground line with ticks and a few far hills; they slide left while `walking`. */
+  private drawBackdrop(walking: boolean): void {
+    if (walking) this.scrollPx += (this.frameDt / 1000) * WALK_SCROLL_PX;
+    const { w, center } = this.arena;
+    const u = this.unit;
+    const ground = center.y + (HERO_H / 2) * u;
+    const g = this.backdrop;
+    g.clear();
+    g.moveTo(0, ground).lineTo(w, ground).stroke({ width: 1, color: COLORS.rune, alpha: 0.22 });
+    const spacing = TICK_SPACING * u;
+    for (let x = -(this.scrollPx % spacing); x < w; x += spacing) {
+      g.moveTo(x, ground).lineTo(x - 6 * u, ground + 5 * u).stroke({ width: 1, color: COLORS.rune, alpha: 0.18 });
+    }
+    // far hills move at 40% of the ground's speed
+    const far = 150 * u;
+    for (let x = -((this.scrollPx * 0.4) % far); x < w + far; x += far) {
+      g.poly([x, ground, x + far * 0.4, ground - 26 * u, x + far * 0.8, ground]).fill({ color: COLORS.rune, alpha: 0.05 });
+    }
   }
 
   private drawHp(v: FoeView, f: Foe): void {
@@ -550,10 +593,12 @@ export class BattleView {
           this.drawMeteor(fx, e, L);
           break;
         case 'field': {
+          // the charge fills the whole strip, sweeping out from the mage
           const a = this.arena;
           const k = clamp01(this.smoothAge(fx) / Math.max(1, e.delayMs));
-          air.circle(a.center.x, a.center.y, a.radius * k).stroke({ width: 2 * this.unit, color: L.primary, alpha: 0.5 });
-          ground.circle(a.center.x, a.center.y, a.radius * k).fill({ color: L.primary, alpha: 0.08 });
+          const edge = a.center.x + (a.w - a.center.x) * k;
+          air.moveTo(edge, 0).lineTo(edge, a.h).stroke({ width: 2 * this.unit, color: L.primary, alpha: 0.5 });
+          ground.rect(0, 0, edge, a.h).fill({ color: L.primary, alpha: 0.08 });
           break;
         }
         case 'chain':
@@ -613,17 +658,26 @@ export class BattleView {
     const max = e.radius * a.radius;
     const r = Math.min((this.smoothAge(fx) / 1000) * RING_SPEED * a.radius, max);
     const fade = 1 - (r / Math.max(1, max)) * 0.7;
-    g.circle(a.center.x, a.center.y, r).stroke({ width: 6 * u, color: L.primary, alpha: fade });
-    if (L.secondary) g.circle(a.center.x, a.center.y, Math.max(1, r - 6 * u)).stroke({ width: 2 * u, color: L.secondary, alpha: fade });
+    // a half circle spreading ahead of the mage
+    const half = (rr: number): void => {
+      g.moveTo(a.center.x, a.center.y - rr);
+      g.arc(a.center.x, a.center.y, rr, -Math.PI / 2, Math.PI / 2);
+    };
+    half(r);
+    g.stroke({ width: 6 * u, color: L.primary, alpha: fade });
+    if (L.secondary) {
+      half(Math.max(1, r - 6 * u));
+      g.stroke({ width: 2 * u, color: L.secondary, alpha: fade });
+    }
     if (L.has('fire') && L.has('water')) {
       // steam: soft puffs ride the ring
       for (let i = 0; i < 12; i++) {
-        const t = fx.uid * 1.7 + (i * Math.PI * 2) / 12;
+        const t = -Math.PI / 2 + ((i + 0.5) * Math.PI) / 12;
         g.circle(a.center.x + Math.cos(t) * r, a.center.y + Math.sin(t) * r, 16 * u).fill({ color: FOG, alpha: 0.16 * fade });
       }
     }
     for (let n = this.emitCount(90 * fade); n > 0; n--) {
-      const t = this.rng.next() * Math.PI * 2;
+      const t = (this.rng.next() - 0.5) * Math.PI;
       const cx = Math.cos(t), cy = Math.sin(t);
       this.spawn(this.pick(L), a.center.x + cx * r, a.center.y + cy * r, cx * 50 * u, cy * 50 * u);
     }
@@ -638,12 +692,14 @@ export class BattleView {
     for (const b of bladePositions({ ...fx, ageMs: age })) {
       const r = Math.hypot(b.x, b.y) * a.radius;
       const t = Math.atan2(b.y, b.x);
-      g.moveTo(a.center.x + Math.cos(t - 0.2) * r, a.center.y + Math.sin(t - 0.2) * r);
-      g.arc(a.center.x, a.center.y, r, t - 0.2, t + 0.2).stroke({ width: 4 * u, color: L.primary, alpha: fade });
+      // the radius is hundreds of px: a fixed angle would make a blade far longer than the strip is high
+      const da = Math.min(0.2, (22 * u) / Math.max(r, 1));
+      g.moveTo(a.center.x + Math.cos(t - da) * r, a.center.y + Math.sin(t - da) * r);
+      g.arc(a.center.x, a.center.y, r, t - da, t + da).stroke({ width: 4 * u, color: L.primary, alpha: fade });
       if (L.secondary) {
         const r2 = Math.max(1, r - 4 * u);
-        g.moveTo(a.center.x + Math.cos(t - 0.12) * r2, a.center.y + Math.sin(t - 0.12) * r2);
-        g.arc(a.center.x, a.center.y, r2, t - 0.12, t + 0.12).stroke({ width: 2 * u, color: L.secondary, alpha: fade });
+        g.moveTo(a.center.x + Math.cos(t - da * 0.6) * r2, a.center.y + Math.sin(t - da * 0.6) * r2);
+        g.arc(a.center.x, a.center.y, r2, t - da * 0.6, t + da * 0.6).stroke({ width: 2 * u, color: L.secondary, alpha: fade });
       }
       if (this.chance(25)) {
         const p = toScreen(a, b.x, b.y);
@@ -740,16 +796,15 @@ export class BattleView {
     const u = this.unit;
     const age = this.smoothAge(fx);
     const fade = clamp01(Math.min(age / 200, (e.ms - age) / 400));
-    const R = a.radius;
-    // the arena reaches past the view (spawns are off-screen), so the cloud hangs from the top of the view
-    const cx = a.center.x + Math.cos(this.time / 2500 + fx.uid) * a.w * 0.2;
-    const cy = Math.max(a.center.y - R * 0.78, 40 * u);
-    this.groundFx.circle(a.center.x, a.center.y, R).fill({ color: COLORS.element.thunder, alpha: (this.rng.next() < 0.1 ? 0.07 : 0.025) * fade });
+    // the cloud drifts across the top of the strip and the storm covers all of it
+    const cx = a.w / 2 + Math.cos(this.time / 2500 + fx.uid) * a.w * 0.3;
+    const cy = 16 * u;
+    this.groundFx.rect(0, 0, a.w, a.h).fill({ color: COLORS.element.thunder, alpha: (this.rng.next() < 0.1 ? 0.07 : 0.025) * fade });
     if (L.has('water')) {
       for (let i = 0; i < 36; i++) {
-        const hx = ((i * 0.6180339 + fx.uid * 0.13) % 1) * 2 - 1;
-        const hy = ((this.time / 600 + i * 0.37) % 1) * 2 - 1;
-        const x = a.center.x + hx * R * 0.9, y = a.center.y + hy * R * 0.9;
+        const hx = (i * 0.6180339 + fx.uid * 0.13) % 1;
+        const hy = (this.time / 600 + i * 0.37) % 1;
+        const x = hx * a.w, y = hy * a.h;
         g.moveTo(x, y).lineTo(x - 3 * u, y + 11 * u).stroke({ width: 1.5 * u, color: COLORS.element.water, alpha: 0.55 * fade });
       }
     }
@@ -797,10 +852,8 @@ export class BattleView {
     const g = this.takeG();
     let started = false;
     this.addEffect(g, OVERLAY_MS, (p) => {
-      const a = this.arena;
+      const { w, h } = this.arena;
       const u = this.unit;
-      const R = a.radius;
-      const c = a.center;
       g.clear();
       const k = 1 - p;
       if (!started) {
@@ -808,43 +861,39 @@ export class BattleView {
         const style = mode === 'frost' ? { ...particleStyle('water'), color: FROST, shape: 'shard' as const, vy: 30 }
           : mode === 'sand' ? particleStyle('earth') : mode === 'sea' ? particleStyle('water') : this.pick(L);
         for (let i = 0; i < 60; i++) {
-          const t = this.rng.next() * Math.PI * 2, rr = Math.sqrt(this.rng.next()) * R;
           const vx = mode === 'sand' ? 220 * u : (this.rng.next() - 0.5) * 60 * u;
-          this.spawn(i % 3 === 2 ? this.pick(L) : style, c.x + Math.cos(t) * rr, c.y + Math.sin(t) * rr, vx, (this.rng.next() - 0.5) * 40 * u);
+          this.spawn(i % 3 === 2 ? this.pick(L) : style, this.rng.next() * w, this.rng.next() * h, vx, (this.rng.next() - 0.5) * 40 * u);
         }
       }
+      // every wash covers the whole strip
       switch (mode) {
         case 'frost':
-          g.circle(c.x, c.y, R).fill({ color: FROST, alpha: 0.32 * k });
-          g.circle(c.x, c.y, R).stroke({ width: 4 * u, color: '#ffffff', alpha: 0.6 * k });
+          g.rect(0, 0, w, h).fill({ color: FROST, alpha: 0.32 * k });
+          g.rect(0, 0, w, h).stroke({ width: 4 * u, color: '#ffffff', alpha: 0.6 * k });
           for (let i = 0; i < 12; i++) {
-            const t = (i * Math.PI * 2) / 12;
-            g.moveTo(c.x + Math.cos(t) * R * 0.2, c.y + Math.sin(t) * R * 0.2)
-              .lineTo(c.x + Math.cos(t + 0.08) * R * 0.95, c.y + Math.sin(t + 0.08) * R * 0.95)
-              .stroke({ width: 1.5 * u, color: '#ffffff', alpha: 0.45 * k });
+            const x = (i / 11) * w;
+            g.moveTo(x, h * 0.1).lineTo(x + 0.08 * w, h * 0.9).stroke({ width: 1.5 * u, color: '#ffffff', alpha: 0.45 * k });
           }
           break;
         case 'sand':
-          g.circle(c.x, c.y, R).fill({ color: COLORS.element.earth, alpha: 0.28 * k });
+          g.rect(0, 0, w, h).fill({ color: COLORS.element.earth, alpha: 0.28 * k });
           for (let i = 0; i < 14; i++) {
-            const y = c.y - R * 0.85 + (i / 13) * R * 1.7;
-            const half = Math.sqrt(Math.max(0, R * R - (y - c.y) ** 2));
-            const x = c.x - half + ((p * 1.6 + i * 0.29) % 1) * half * 2;
-            g.moveTo(x, y).lineTo(Math.min(c.x + half, x + 40 * u), y + 3 * u).stroke({ width: 2 * u, color: '#e8d2a0', alpha: 0.5 * k });
+            const y = h * 0.08 + (i / 13) * h * 0.84;
+            const x = ((p * 1.6 + i * 0.29) % 1) * w;
+            g.moveTo(x, y).lineTo(Math.min(w, x + 40 * u), y + 3 * u).stroke({ width: 2 * u, color: '#e8d2a0', alpha: 0.5 * k });
           }
           break;
         case 'sea':
-          g.circle(c.x, c.y, R).fill({ color: COLORS.element.water, alpha: 0.26 * k });
-          for (let w = 0; w < 4; w++) {
-            const y0 = c.y - R * 0.6 + w * R * 0.4;
-            const half = Math.sqrt(Math.max(0, R * R - (y0 - c.y) ** 2)) * 0.95;
-            g.moveTo(c.x - half, y0);
-            for (let x = -half; x <= half; x += 8 * u) g.lineTo(c.x + x, y0 + Math.sin(x / (14 * u) + p * 10 + w) * 5 * u);
+          g.rect(0, 0, w, h).fill({ color: COLORS.element.water, alpha: 0.26 * k });
+          for (let n = 0; n < 4; n++) {
+            const y0 = h * (0.2 + n * 0.2);
+            g.moveTo(0, y0);
+            for (let x = 0; x <= w; x += 8 * u) g.lineTo(x, y0 + Math.sin(x / (14 * u) + p * 10 + n) * 5 * u);
             g.stroke({ width: 2 * u, color: L.secondary && L.primary === COLORS.element.water ? L.secondary : '#bfe8ff', alpha: 0.55 * k });
           }
           break;
         case 'flash':
-          g.circle(c.x, c.y, R).fill({ color: L.primary, alpha: 0.25 * k });
+          g.rect(0, 0, w, h).fill({ color: L.primary, alpha: 0.25 * k });
           break;
       }
     }, 0, waitMs);
@@ -860,7 +909,8 @@ export class BattleView {
       const k = Math.min(1, p * 6) * (1 - p);
       for (const q of seeds) {
         const drift = q.t + p * 0.8;
-        g.circle(a.center.x + Math.cos(drift) * q.d * a.radius, a.center.y + Math.sin(drift) * q.d * a.radius, a.radius * 0.22 * q.s)
+        // a bank hugging the mage, sized by the strip's height (the engine unit is hundreds of px here)
+        g.circle(a.center.x + Math.cos(drift) * q.d * a.h * 2, a.center.y + Math.sin(drift) * q.d * a.h * 0.6, a.h * 0.3 * q.s)
           .fill({ color: FOG, alpha: 0.22 * k });
       }
     });
@@ -1101,7 +1151,18 @@ export class BattleView {
       const fit = Math.max(0, this.w - 2 * TEXT_MARGIN) / this.bannerW;
       b.scale.set(Math.min(u * (1 + pop * 0.6), fit));
       b.alpha = Math.min(1, ((BANNER_MS - this.bannerAge) / BANNER_MS) * 2);
-      b.position.set(a.center.x, Math.max(28 * u, a.center.y - a.radius + 40 * u));
+      b.position.set(a.w / 2, Math.max(28 * u, a.h * 0.28));
+    }
+    const bb = this.bossBanner;
+    if (bb) {
+      this.bossBannerAge += dtMs;
+      bb.visible = this.bossBannerAge < BOSS_BANNER_MS;
+      if (bb.visible) {
+        const p = this.bossBannerAge / BOSS_BANNER_MS;
+        bb.scale.set(Math.min(u * (1 + Math.max(0, 1 - this.bossBannerAge / 250) * 0.5), Math.max(0, this.w - 2 * TEXT_MARGIN) / Math.max(1, bb.width / bb.scale.x)));
+        bb.alpha = Math.min(1, (1 - p) * 3);
+        bb.position.set(a.w / 2, Math.max(28 * u, a.h * 0.4));
+      }
     }
     const cl = this.castLabel;
     if (cl) {
@@ -1156,6 +1217,9 @@ export class BattleView {
     }
     this.updateParticles(this.frameDt);
     this.updateBanner(dtMs);
+    // the readout sits at the strip's lower left (the stage bar owns the upper left)
+    this.dpsLabel?.position.set(8, this.h - 38);
+    this.dpsPrevLabel?.position.set(8, this.h - 21);
     if (this.dpsLabel && this.time >= this.dpsRefreshAt) {
       this.dpsLabel.text = formatDps(this.dps.value(this.time));
       if (this.dpsPrevLabel) this.dpsPrevLabel.text = formatPrevDps(this.dps.previous);

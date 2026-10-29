@@ -35,6 +35,15 @@ describe('TopBar', () => {
     expect(screen.getByText(/越級：掉落效益 75%/)).toBeTruthy();
   });
 
+  it('travels to a chosen stage and keeps stages past the cleared ones disabled', () => {
+    const rt = runtime({ ...createInitialState(content), clearedStages: { mist_meadow: 1 } });
+    render(<TopBar runtime={rt} content={content} status="online" bound={true} onOpenAccount={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: '選擇地點' }));
+    expect(screen.getByRole('option', { name: '迷霧草原 1-3' }).getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(screen.getByRole('option', { name: '迷霧草原 1-2' }));
+    expect(rt.travel).toHaveBeenCalledWith('mist_meadow', 2);
+  });
+
   it('locks zone and spell changes while a synthesis is in flight (its result would undo them)', () => {
     render(<TopBar runtime={runtime(createInitialState(content), {}, true)} content={content} status="online" bound={true} onOpenAccount={() => {}} />);
     expect((screen.getByRole('button', { name: '選擇地點' }) as HTMLButtonElement).disabled).toBe(true);

@@ -21,6 +21,9 @@ export function fakeRuntime(game: Partial<GameState> = {}, synthPending = false)
       return () => void listeners.delete(cb);
     },
     equip: vi.fn((id: string) => set({ game: { equipped: id } })),
+    travel: vi.fn((_zoneId: string, _stage: number) => true),
+    enterBoss: vi.fn((): void => undefined),
+    setAutoAdvance: vi.fn((on: boolean) => set({ autoAdvance: on })),
     set,
   };
 }

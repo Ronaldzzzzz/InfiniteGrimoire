@@ -12,11 +12,11 @@ import { EquipToasts, pushToast, type EquipToast } from './EquipToasts';
 import { ElementTable } from './ElementTable';
 import { GmWindow } from './GmWindow';
 import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
-import { BossCounter } from './BossCounter';
 import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
 import { RareReveal } from './RareReveal';
+import { StageBar } from './StageBar';
 import { emptySlots, fillSlot, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { TopBar } from './TopBar';
 import { useDiscoveryFeed } from './useDiscoveryFeed';
@@ -131,15 +131,6 @@ export function App({
         ownName={account?.displayName ?? ''}
       />
       <main className="main">
-        <div className="battle">
-          <BattleCanvas runtime={runtime} />
-          <BossCounter runtime={runtime} content={content} />
-          <EquipToasts toasts={toasts} paused={rareQueue.length > 0} onEquip={equipToast} onExpire={dropToast} />
-          {discovery && (
-            <DiscoveryBanner key={discovery.n} spell={discovery.spell} isNew={discovery.isNew} onDone={endDiscovery} />
-          )}
-          <KeyItemBar runtime={runtime} sync={sync} content={content} onRevealed={onRevealed} />
-        </div>
         <div className="side">
           <section className="workbench" aria-label="元素與合成">
             <SynthesisAltar
@@ -175,6 +166,19 @@ export function App({
           </section>
         </div>
       </main>
+      <section className="battle-strip" aria-label="戰鬥">
+        <div className="strip-canvas">
+          <BattleCanvas runtime={runtime} />
+        </div>
+        <StageBar runtime={runtime} content={content} />
+        <div className="strip-float">
+          <EquipToasts toasts={toasts} paused={rareQueue.length > 0} onEquip={equipToast} onExpire={dropToast} />
+          <KeyItemBar runtime={runtime} sync={sync} content={content} onRevealed={onRevealed} />
+        </div>
+        {discovery && (
+          <DiscoveryBanner key={discovery.n} spell={discovery.spell} isNew={discovery.isNew} onDone={endDiscovery} />
+        )}
+      </section>
       {accountOpen && (
         <AccountDialog
           api={api}

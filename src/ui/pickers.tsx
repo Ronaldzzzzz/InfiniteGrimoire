@@ -1,4 +1,5 @@
 import type { Content, GameState } from '../engine/model';
+import { highestPlayable, isBossStage } from '../engine/stages';
 import { COLORS } from '../render/palette';
 import { Picker, type PickerItem } from './Picker';
 import {
@@ -6,7 +7,6 @@ import {
   SHAPE_LABEL,
   spellPickerGroups,
   tierRangeLabel,
-  ZONE_STATUS_LABEL,
   zonePickerRows,
   type SpellRow,
   type SpellSort,
@@ -98,6 +98,7 @@ export function SpellPicker({
   );
 }
 
+/** Option keys are 「zoneId:stage」; locked zones get one disabled row keyed 「lock:zoneId」. */
 export function ZonePicker({
   game,
   content,
@@ -106,38 +107,69 @@ export function ZonePicker({
 }: {
   game: GameState;
   content: Content;
-  onTravel: (id: string) => void;
+  onTravel: (zoneId: string, stage: number) => void;
   disabled?: boolean;
 }) {
   const rows = zonePickerRows(game, content);
   const current = rows.find((r) => r.status === 'current');
-  const items: PickerItem[] = rows.map((r) => ({
-    key: r.id,
-    label: r.name,
-    selected: r.status === 'current',
-    disabled: r.status === 'current' || r.status === 'locked',
-    content: (
-      <div className="zone-row">
-        <div>
-          <span className="zone-row-name">{r.status === 'locked' ? '🔒 ' : ''}{r.name}</span>{' '}
-          <span className="spell-row-tier">{tierRangeLabel(r)}</span>
-        </div>
-        <div className="muted">魔王 {r.bossName} Lv.{r.bossTier}</div>
-        <div className={r.status === 'locked' ? 'muted' : 'zone-row-status'}>{r.lockText ?? ZONE_STATUS_LABEL[r.status]}</div>
-      </div>
-    ),
-  }));
+  const items: PickerItem[] = rows.flatMap((r): PickerItem[] => {
+    const zone = content.zones.find((z) => z.id === r.id)!;
+    if (r.status === 'locked') {
+      return [{
+        key: `lock:${r.id}`,
+        label: r.name,
+        disabled: true,
+        content: (
+          <div className="zone-row">
+            <div>
+              <span className="zone-row-name">🔒 {r.name}</span> <span className="spell-row-tier">{tierRangeLabel(r)}</span>
+            </div>
+            <div className="muted">魔王 {r.bossName} Lv.{r.bossTier}</div>
+            <div className="muted">{r.lockText}</div>
+          </div>
+        ),
+      }];
+    }
+    const group = `${r.name} ${tierRangeLabel(r)}・魔王 ${r.bossName}${r.status === 'cleared' ? '（已擊敗）' : ''}`;
+    const reach = highestPlayable(game, zone);
+    const cleared = game.clearedStages[zone.id] ?? 0;
+    return zone.stages.map((_, i): PickerItem => {
+      const n = i + 1;
+      const here = r.status === 'current' && game.currentStage === n;
+      const boss = isBossStage(zone, n);
+      return {
+        key: `${zone.id}:${n}`,
+        label: `${r.name} ${zone.order}-${n}`,
+        group,
+        selected: here,
+        disabled: here || n > reach,
+        content: (
+          <div className="zone-row">
+            <div>
+              <span className="zone-row-name">{zone.order}-{n}</span>{boss && <span className="tag warn">魔王關</span>}
+            </div>
+            <div className={n > reach ? 'muted' : 'zone-row-status'}>{here ? '目前所在' : n > reach ? `先通過 ${zone.order}-${n - 1}` : n <= cleared ? '已通過' : '可挑戰'}</div>
+          </div>
+        ),
+      };
+    });
+  });
   return (
     <Picker
       buttonLabel="選擇地點"
       disabled={disabled}
       buttonContent={
         <>
-          📍 {current?.name ?? game.currentZone} {current && <span className="muted">{tierRangeLabel(current)}</span>}
+          📍 {current?.name ?? game.currentZone} {current && <span className="muted">{content.zones.find((z) => z.id === current.id)?.order}-{game.currentStage}</span>}
         </>
       }
       items={items}
-      onSelect={onTravel}
+      onSelect={(key) => {
+        const i = key.lastIndexOf(':');
+        const stage = Number(key.slice(i + 1));
+        if (key.startsWith('lock:') || !Number.isInteger(stage)) return;
+        onTravel(key.slice(0, i), stage);
+      }}
     />
   );
 }

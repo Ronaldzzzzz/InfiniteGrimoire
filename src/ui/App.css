@@ -104,10 +104,27 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .zone-row-status { color: var(--rune); font-size: 13px; }
 .picker-sort { min-height: 32px; padding: 4px 10px; font-size: 13px; }
 
-/* Layout (R1): >=1100 three columns, 768-1099 battle on top + panel in two columns, <768 stacked */
+/* Layout: panels on top (>=1100 two columns, 768-1099 two columns in a page, <768 stacked), the battle strip below; <=600px the strip is fixed */
 .app { display: flex; flex-direction: column; height: 100vh; }
-.main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
-.battle { position: relative; min-width: 0; min-height: 0; border-right: 1px solid var(--line); overflow: hidden; }
+.main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+/* the battle is a strip below the main panels; its floating pieces sit above its upper right */
+.battle-strip { position: relative; flex: 0 0 180px; height: 180px; min-width: 0; border-top: 1px solid var(--line); background: var(--bg); }
+.strip-canvas { position: absolute; inset: 0; overflow: hidden; }
+.strip-float { position: absolute; right: 8px; bottom: calc(100% + 8px); z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
+.strip-float > * { pointer-events: auto; }
+.strip-float .key-bar, .strip-float .equip-toasts { position: static; transform: none; }
+.stage-bar { position: absolute; left: 0; right: 0; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 6px 8px; pointer-events: none; }
+.stage-bar > * { pointer-events: auto; }
+.stage-bar-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; width: min(220px, 50%); }
+.stage-title { font-size: 14px; font-weight: 700; text-shadow: 0 1px 3px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage-progress { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.stage-progress-fill { height: 100%; background: var(--rune); transition: width 0.2s linear; }
+.stage-boss-clock { font-size: 12px; color: var(--gold); text-shadow: 0 1px 3px #000; }
+.stage-bar-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.stage-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; text-shadow: 0 1px 3px #000; }
+.stage-enter-boss { padding: 3px 12px; font-size: 13px; font-weight: 700; color: #1a1305; border: 1px solid var(--gold); background: linear-gradient(180deg, #f3cf72, #c8962a); border-radius: 6px; cursor: pointer; }
+.stage-result { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); max-width: 60%; padding: 4px 10px; font-size: 13px; text-align: center; color: var(--rune); background: rgba(13, 15, 20, 0.88); border: 1px solid var(--rune); border-radius: 6px; pointer-events: none; }
+.stage-result.warn { color: var(--fire); border-color: var(--fire); }
 .side { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, 1fr); min-width: 0; min-height: 0; }
 .grimoire-col > :not(.grimoire-tabs):not(.grimoire) { flex: 1; min-height: 0; overflow-y: auto; }
 .grimoire-col { order: 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 12px; border-right: 1px solid var(--line); }
@@ -117,7 +134,6 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 @media (max-width: 1099px) {
   .app { height: auto; min-height: 100vh; }
   .main { display: flex; flex-direction: column; }
-  .battle { flex: 0 0 auto; height: 40vh; border-right: 0; border-bottom: 1px solid var(--line); }
   .side { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .grimoire-col, .workbench { overflow: visible; }
   .grimoire-col { display: block; }
@@ -127,8 +143,13 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 
 }
 
+@media (max-width: 600px) {
+  /* the strip is fixed to the bottom of the window; the page leaves room for it */
+  body { padding-bottom: 140px; }
+  .battle-strip { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; flex-basis: auto; height: 140px; }
+}
+
 @media (max-width: 767px) {
-  .battle { height: 25vh; min-height: 140px; }
   .side { display: flex; flex-direction: column; }
   .workbench { order: 0; }
   .grimoire-col { order: 1; border-right: 0; border-top: 1px solid var(--line); }
@@ -508,9 +529,8 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .boss-counter { position: absolute; left: 8px; top: 28px; z-index: 4; padding: 2px 8px; font-size: 12px; color: var(--gold); background: rgba(13, 15, 20, 0.6); border: 1px solid var(--line); border-radius: 4px; pointer-events: none; }
 .altar-putback { align-self: flex-start; padding: 4px 10px; font-size: 13px; }
 
-/* equip-this-spell toasts: top right of the battle view (clear of the DPS line and boss counter at top left and the
-   centred banners), newest on top; at most 60% wide so they never reach the left HUD */
-.equip-toasts { position: absolute; right: 8px; top: 8px; z-index: 6; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; width: max-content; max-width: min(60%, 320px); }
+/* equip-this-spell toasts: stacked above the strip's upper right (inside .strip-float, clear of the stage bar), newest on top */
+.equip-toasts { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; width: max-content; max-width: min(100%, 320px); }
 .equip-toast { display: flex; align-items: center; gap: 10px; padding: 5px 6px 5px 12px; font-size: 13px; color: var(--gold); background: rgba(13, 15, 20, 0.92); border: 1px solid var(--gold); border-radius: 8px; animation: toast-in 0.25s ease-out; }
 .equip-toast button { padding: 2px 10px; font-size: 13px; color: #0d0f14; background: var(--gold); border: 0; border-radius: 5px; cursor: pointer; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }

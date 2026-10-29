@@ -80,32 +80,48 @@ describe('spell sort preference', () => {
 });
 
 describe('ZonePicker', () => {
-  const g = game({ currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'] });
+  const g = game({ currentZone: 'mist_meadow', currentStage: 1, unlockedZones: ['mist_meadow'], clearedStages: { mist_meadow: 2 } });
 
-  it('shows the current zone and tier range on the button', () => {
+  it('shows the current zone and stage on the button', () => {
     render(<ZonePicker game={g} content={content} onTravel={() => {}} />);
     const button = screen.getByRole('button', { name: '選擇地點' });
     expect(button.textContent).toContain('迷霧草原');
-    expect(button.textContent).toContain('Lv.1–2');
+    expect(button.textContent).toContain('1-1');
   });
 
-  it('lists boss, status and unlock text; locked and current zones are not selectable', () => {
+  it('lists stages: only up to one past the cleared ones, and not the stage you are on, are selectable', () => {
+    const onTravel = vi.fn();
+    render(<ZonePicker game={g} content={content} onTravel={onTravel} />);
+    fireEvent.click(screen.getByRole('button', { name: '選擇地點' }));
+    const stage = (n: number) => screen.getByRole('option', { name: `迷霧草原 1-${n}` });
+    expect(stage(1).getAttribute('aria-disabled')).toBe('true');
+    expect(stage(3).getAttribute('aria-disabled')).toBe('false');
+    expect(stage(4).getAttribute('aria-disabled')).toBe('true');
+    expect(stage(10).textContent).toContain('魔王關');
+    fireEvent.click(stage(4));
+    fireEvent.click(stage(1));
+    expect(onTravel).not.toHaveBeenCalled();
+    fireEvent.click(stage(2));
+    expect(onTravel).toHaveBeenCalledWith('mist_meadow', 2);
+  });
+
+  it('shows a locked zone as one disabled row with its unlock text', () => {
     const onTravel = vi.fn();
     render(<ZonePicker game={g} content={content} onTravel={onTravel} />);
     fireEvent.click(screen.getByRole('button', { name: '選擇地點' }));
     const locked = screen.getByRole('option', { name: '雷鳴峽谷' });
     expect(locked.getAttribute('aria-disabled')).toBe('true');
     expect(locked.textContent).toContain('擊敗迷霧雄鹿後解鎖');
-    expect(within(screen.getByRole('option', { name: '迷霧草原' })).getByText(/迷霧雄鹿/)).toBeTruthy();
     fireEvent.click(locked);
-    fireEvent.click(screen.getByRole('option', { name: '迷霧草原' }));
     expect(onTravel).not.toHaveBeenCalled();
-    cleanup();
-    const cleared = game({ currentZone: 'thunder_gorge', unlockedZones: ['mist_meadow', 'thunder_gorge'], defeatedBosses: ['mist_stag'] });
+  });
+
+  it('opens another unlocked zone at its first stage', () => {
+    const onTravel = vi.fn();
+    const cleared = game({ currentZone: 'thunder_gorge', currentStage: 1, unlockedZones: ['mist_meadow', 'thunder_gorge'], defeatedBosses: ['mist_stag'], clearedStages: { mist_meadow: 10 } });
     render(<ZonePicker game={cleared} content={content} onTravel={onTravel} />);
     fireEvent.click(screen.getByRole('button', { name: '選擇地點' }));
-    expect(screen.getByRole('option', { name: '迷霧草原' }).textContent).toContain('已擊敗魔王');
-    fireEvent.click(screen.getByRole('option', { name: '迷霧草原' }));
-    expect(onTravel).toHaveBeenCalledWith('mist_meadow');
+    fireEvent.click(screen.getByRole('option', { name: '迷霧草原 1-10' }));
+    expect(onTravel).toHaveBeenCalledWith('mist_meadow', 10);
   });
 });

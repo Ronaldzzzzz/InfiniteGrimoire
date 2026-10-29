@@ -109,6 +109,16 @@ describe('App layout', () => {
     expect(api.getAccount).toHaveBeenCalledTimes(2);
   });
 
+  it('puts the battle strip after the main panels, with a stage bar and without the old boss counter', () => {
+    setup();
+    const strip = document.querySelector('.battle-strip')!;
+    const main = document.querySelector('.main')!;
+    expect(strip).toBeTruthy();
+    expect(main.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(strip as HTMLElement).getByRole('progressbar')).toBeTruthy();
+    expect(screen.queryByText(/魔王出現還差/)).toBeNull();
+  });
+
   it('the altar and the key item bar do not re-render when only unrelated inventory changes', () => {
     const { runtime } = setup();
     const altar = renders.altar.mock.calls.length;

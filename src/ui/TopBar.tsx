@@ -51,7 +51,7 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="topbar-row">
-        <ZonePicker game={game} content={content} onTravel={(id) => runtime.travel(id, 1)} disabled={locked} />
+        <ZonePicker game={game} content={content} onTravel={(id, stage) => runtime.travel(id, stage)} disabled={locked} />
         <span className="topbar-equipped only-wide">
           裝備：<b>{spell?.name ?? game.equipped}</b> <span className="muted">Lv.{spell?.tier ?? '-'}</span>
         </span>

@@ -1,21 +1,25 @@
+import { LANE_Y } from '../engine/combat';
 import type { Pt } from './effects';
 
 export interface Arena {
+  /** screen position of the mage, the engine origin */
   center: Pt;
-  /** screen pixels per engine arena unit (the engine's arena is the unit circle around the mage) */
+  /** screen pixels per engine unit along x (and y): 0.75 of the width, less when the lane would not fit the height */
   radius: number;
   w: number;
   h: number;
 }
 
+/** Space kept between the lane's edge and the top/bottom of the view. */
+const LANE_MARGIN = 3;
+
 /**
- * A true circle centred on the view. Its radius makes a foe of arena radius `maxFoeR` standing on the edge
- * (distance 1) clear the half-diagonal of the view (+1px for rounding), so spawns are fully off-screen in
- * every direction.
+ * The side-scrolling strip: the mage stands at x = 0.25w, halfway down the view; engine x = 1 is the right edge.
+ * The lane (engine y within +-LANE_Y) must fit the height, otherwise the height sets the scale.
  */
-export function makeArena(w: number, h: number, maxFoeR: number): Arena {
-  const reach = Math.hypot(w / 2, h / 2) + 1;
-  return { center: { x: w / 2, y: h / 2 }, radius: reach / (1 - Math.min(0.5, Math.max(0, maxFoeR))), w, h };
+export function makeArena(w: number, h: number): Arena {
+  const radius = Math.min(0.75 * w, Math.max(1, h / 2 - LANE_MARGIN) / LANE_Y);
+  return { center: { x: 0.25 * w, y: h / 2 }, radius, w, h };
 }
 
 /** Engine arena coordinates (mage at 0, 0; y down like the screen) to view pixels. */
