@@ -84,7 +84,7 @@ async function inject(reply: (r: ActionResult | null) => void, result: ActionRes
 
 const placeFromTree = (name: string) => {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }));
-  fireEvent.click(within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }));
+  fireEvent.click(within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放到牛皮紙上' }));
 };
 
 describe('App layout', () => {
@@ -145,14 +145,6 @@ describe('App layout', () => {
     expect(renders.keys.mock.calls.length).toBe(keys);
   });
 
-  it('using a key item from the battle view switches back to the tree tab', async () => {
-    setup({ 'key:storm_heart': 1 }, ['mana_bolt'], { kind: 'circleOpened', tier: 4 });
-    fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
-    expect(screen.getByRole('tab', { name: '魔法筆記' }).getAttribute('aria-selected')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: /使用風暴之心/ }));
-    await waitFor(() => expect(screen.getByRole('tab', { name: '五元素' }).getAttribute('aria-selected')).toBe('true'));
-  });
-
   it('opens the account dialog from the top bar', async () => {
     setup();
     // the first full App render plus the mocked account lookup can pass 1 s when the suite runs under load
@@ -165,7 +157,7 @@ describe('App layout', () => {
     setup();
     expect(screen.queryByRole('button', { name: '魔導書' })).toBeNull();
     expect(screen.queryByRole('button', { name: '地圖' })).toBeNull();
-    expect(screen.getByRole('tab', { name: '五元素' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: '星圖' }).getAttribute('aria-selected')).toBe('true');
     fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
     expect(screen.getByText(/還沒有自創魔法/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '合成' })).toBeTruthy(); // the synth action button, not a tab
@@ -173,16 +165,17 @@ describe('App layout', () => {
     expect(document.querySelector('.altar')).toBeNull();
   });
 
-  it('switches between the three grimoire tabs without clearing the circle', () => {
+  it('switches between the star map and the notebook without clearing the circle; the old tree tabs are gone', () => {
     setup();
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    for (const name of ['光與暗', '魔法筆記', '五元素']) {
+    for (const name of ['魔法筆記', '星圖']) {
       fireEvent.click(screen.getByRole('tab', { name }));
       expect(screen.getByRole('tab', { name }).getAttribute('aria-selected')).toBe('true');
       expect(coreText()).toBe('核心：火・初階');
     }
-    fireEvent.click(screen.getByRole('tab', { name: '光與暗' }));
-    expect(screen.getByRole('button', { name: new RegExp(content.spells.holy_judgment!.name) })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: '五元素' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: '光與暗' })).toBeNull();
+    expect(screen.getByRole('group', { name: '魔導書星圖' })).toBeTruthy();
   });
 
   it('puts a clicked element cell into the core, then the first open ring slot', () => {
@@ -201,29 +194,13 @@ describe('App layout', () => {
     expect(coreText()).toBe('核心：火・初階');
   });
 
-  it('放入合成 on a spell puts its circle on the parchment', () => {
+  it('放到牛皮紙上 on a spell puts its circle on the parchment', () => {
     setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball']);
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
-    fireEvent.click(within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放到牛皮紙上' }));
     expect(coreText()).toBe('核心：火・初階');
     expect(circleTexts()[5]).toBe('一環 第5格：火・初階');
     expect(screen.getByRole('button', { name: '一環符文：射' })).toBeTruthy();
-  });
-
-  it('shows a locked spell hint next to the parchment, and clears it when a learned spell is clicked', () => {
-    setup();
-    const hint = content.spells.fireball!.hint;
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${content.spells.fireball!.name}（未學會）`) }));
-    expect(screen.getByLabelText('殘卷線索').textContent).toContain(hint);
-    fireEvent.click(screen.getByRole('button', { name: content.spells.mana_bolt!.name }));
-    expect(screen.queryByText(hint)).toBeNull();
-  });
-
-  it('also shows the hint in the grimoire node details (narrow screens stack the grimoire below the parchment)', () => {
-    setup();
-    const hint = content.spells.fireball!.hint;
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${content.spells.fireball!.name}（未學會）`) }));
-    expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(hint);
   });
 
   const FIREWIND = 'm:fire.2.----w.-----.bolt';
@@ -313,14 +290,14 @@ describe('App layout', () => {
     expect(screen.queryByRole('status', { name: '新發現' })).toBeNull();
   });
 
-  it('while a circle is pending, element cells and 放入合成 change nothing', () => {
+  it('while a circle is pending, element cells and 放到牛皮紙上 change nothing', () => {
     const { pending } = setup({ 'el:fire:1': 3, 'el:wind:1': 1 }, ['mana_bolt', 'fireball']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     pending(true);
     fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
     expect(circleTexts()[1]).toBe('一環 第1格：空');
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
-    expect((within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放到牛皮紙上' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.doubleClick(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
     expect(circleTexts()[5]).toBe('一環 第5格：空');
   });

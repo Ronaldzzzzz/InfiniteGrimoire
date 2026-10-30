@@ -13,7 +13,7 @@ import { DiscoveryBanner } from './DiscoveryBanner';
 import { EquipToasts, pushToast, type EquipToast } from './EquipToasts';
 import { ElementTable } from './ElementTable';
 import { GmWindow } from './GmWindow';
-import { FOG_LIFT_MS, GrimoirePanel } from './GrimoirePanel';
+import { GrimoirePanel } from './GrimoirePanel';
 import { KeyItemBar } from './KeyItemBar';
 import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
@@ -42,10 +42,9 @@ export function App({
   const game = useGameState(runtime);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
   const circle = useRef<CircleTableHandle>(null);
-  const [hintId, setHintId] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [tab, setTab] = useState<'tree' | 'lightdark' | 'notebook'>('tree');
+  const [tab, setTab] = useState<'stars' | 'notebook'>('stars');
   // `n` restarts the banner when the same spell comes out twice in a row
   const [discovery, setDiscovery] = useState<{ spell: Spell; isNew: boolean; n: number } | null>(null);
   // rare spells play one full-screen reveal at a time; one arriving mid-reveal waits its turn (`n` keys each one)
@@ -54,16 +53,6 @@ export function App({
   useEffect(() => sync.onOfflineReport((r) => setAwayReport((prev) => mergeReports(prev, r))), [sync]);
   const [toasts, setToasts] = useState<EquipToast[]>([]);
   const toastN = useRef(0);
-  const [lifting, setLifting] = useState<string | null>(null);
-  useEffect(() => {
-    if (!lifting) return;
-    const t = setTimeout(() => setLifting(null), FOG_LIFT_MS);
-    return () => clearTimeout(t);
-  }, [lifting]);
-  const onRevealed = useCallback((region: string): void => {
-    setLifting(region);
-    setTab('tree'); // so the fog lifting is in view
-  }, []);
   const endDiscovery = useCallback(() => setDiscovery(null), []);
   // the bell shows the new rare discovery as soon as the reveal ends
   const { entries: feed, refresh: refreshFeed } = useDiscoveryFeed(api, status === 'online');
@@ -122,8 +111,6 @@ export function App({
     }
     setDiscovery((d) => ({ spell, isNew: result.kind === 'learned', n: (d?.n ?? 0) + 1 }));
   }, [content]);
-  // The hint stays until another node is clicked or the spell is learned.
-  const hint = hintId && !game.learned.includes(hintId) ? (content.spells[hintId]?.hint ?? null) : null;
 
   return (
     <div className="app">
@@ -139,7 +126,7 @@ export function App({
       <main className="main">
         <div className="side">
           <section className="workbench" aria-label="元素與魔法陣">
-            <CircleTable ref={circle} runtime={runtime} sync={sync} content={content} hint={hint} onResult={onSynthResult} />
+            <CircleTable ref={circle} runtime={runtime} sync={sync} content={content} onResult={onSynthResult} />
             <ElementTable
               inventory={game.inventory}
               onPick={pick}
@@ -151,13 +138,11 @@ export function App({
           </section>
           <section className="grimoire-col" aria-label="魔導書">
             <div className="grimoire-tabs" role="tablist" aria-label="魔導書">
-              <button type="button" role="tab" aria-selected={tab === 'tree'} onClick={() => setTab('tree')}>五元素</button>
-              <button type="button" role="tab" aria-selected={tab === 'lightdark'} onClick={() => setTab('lightdark')}>光與暗</button>
+              <button type="button" role="tab" aria-selected={tab === 'stars'} onClick={() => setTab('stars')}>星圖</button>
               <button type="button" role="tab" aria-selected={tab === 'notebook'} onClick={() => setTab('notebook')}>魔法筆記</button>
             </div>
-            {/* <768px the parchment is scrolled out of view above the grimoire; the node bubble repeats the hint */}
-            {tab !== 'notebook' ? (
-              <GrimoirePanel key={tab} tree={tab === 'lightdark' ? 'lightdark' : 'elements'} runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={false} lifting={lifting} content={content} />
+            {tab === 'stars' ? (
+              <GrimoirePanel runtime={runtime} sync={sync} onPick={pick} content={content} />
             ) : (
               <Notebook runtime={runtime} sync={sync} content={content} onPick={pick} />
             )}
@@ -171,7 +156,7 @@ export function App({
         <StageBar runtime={runtime} content={content} />
         <div className="strip-float">
           <EquipToasts toasts={toasts} paused={rareQueue.length > 0} onEquip={equipToast} onExpire={dropToast} />
-          <KeyItemBar runtime={runtime} sync={sync} content={content} onRevealed={onRevealed} />
+          <KeyItemBar runtime={runtime} sync={sync} content={content} />
         </div>
         {discovery && (
           <DiscoveryBanner key={discovery.n} spell={discovery.spell} isNew={discovery.isNew} onDone={endDiscovery} />

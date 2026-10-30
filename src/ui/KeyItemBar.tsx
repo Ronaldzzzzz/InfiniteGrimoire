@@ -9,17 +9,15 @@ import { useRuntime, type RuntimeStore } from './useGame';
 /** How long the line under the key item buttons stays. */
 export const KEY_MESSAGE_MS = 3000;
 
-/** The glowing "use key item" buttons on the battle view. */
+/** The glowing "use key item" buttons on the battle view: each opens the magic circle to a higher tier. */
 export const KeyItemBar = memo(function KeyItemBar({
   runtime,
   sync,
   content,
-  onRevealed,
 }: {
   runtime: RuntimeStore;
   sync: Pick<SyncController, 'action'>;
   content: Content;
-  onRevealed: (region: string) => void;
 }) {
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
   // a joined string, so drops that don't add a usable key item don't re-render the bar; usable = opens a higher circle tier
@@ -38,10 +36,8 @@ export const KeyItemBar = memo(function KeyItemBar({
   }, [message]);
 
   const useKey = async (keyItem: string): Promise<void> => {
-    const { result, message: text } = await runAction(() => sync.action('keyItem', { keyItem }), content);
-    setMessage(text);
-    // until the star map (plan Task 6) the app still reacts by showing the tree; the region is the key's old one
-    if (result?.kind === 'circleOpened') onRevealed(content.keyItems[keyItem]!.reveals);
+    // success reads 「魔法陣開放到 Lv.N」; the parchment picks the new tier up from the state
+    setMessage((await runAction(() => sync.action('keyItem', { keyItem }), content)).message);
   };
 
   if (keys.length === 0 && !message) return null;

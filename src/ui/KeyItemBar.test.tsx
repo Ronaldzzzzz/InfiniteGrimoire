@@ -15,26 +15,23 @@ afterEach(() => {
 
 function setup(game: Partial<GameState>, synthPending = false, action = vi.fn(async (): Promise<ActionResult | null> => null)) {
   const rt = fakeRuntime(game, synthPending);
-  const onRevealed = vi.fn();
-  render(<KeyItemBar runtime={rt} sync={{ action }} content={content} onRevealed={onRevealed} />);
-  return { rt, onRevealed, action };
+  render(<KeyItemBar runtime={rt} sync={{ action }} content={content} />);
+  return { rt, action };
 }
 
 describe('KeyItemBar', () => {
-  it('uses a key item: opens the circle tier, tells the app, shows a message that fades, and the button goes away', async () => {
+  it('uses a key item: opens the circle tier, shows a message that fades, and the button goes away', async () => {
     vi.useFakeTimers();
     let rt: ReturnType<typeof fakeRuntime>;
     const action = vi.fn(async (): Promise<ActionResult | null> => {
       rt.set({ game: { circleTier: 4, inventory: {} } });
       return { kind: 'circleOpened', tier: 4 };
     });
-    let onRevealed: ReturnType<typeof vi.fn>;
-    ({ rt, onRevealed } = setup({ inventory: { 'key:storm_heart': 1 } }, false, action));
+    ({ rt } = setup({ inventory: { 'key:storm_heart': 1 } }, false, action));
     const button = screen.getByRole('button', { name: /使用風暴之心/ });
     expect(button.textContent).toContain(content.keyItems['key:storm_heart']!.desc);
     await act(async () => { fireEvent.click(button); });
     expect(action).toHaveBeenCalledWith('keyItem', { keyItem: 'key:storm_heart' });
-    expect(onRevealed).toHaveBeenCalledWith('outer');
     expect(screen.getByText('魔法陣開放到 Lv.4')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /使用風暴之心/ })).toBeNull();
     act(() => { vi.advanceTimersByTime(KEY_MESSAGE_MS); });
@@ -57,7 +54,7 @@ describe('KeyItemBar', () => {
     const onRender = vi.fn();
     render(
       <Profiler id="keys" onRender={onRender}>
-        <KeyItemBar runtime={rt} sync={{ action: vi.fn() }} content={content} onRevealed={vi.fn()} />
+        <KeyItemBar runtime={rt} sync={{ action: vi.fn() }} content={content} />
       </Profiler>,
     );
     const before = onRender.mock.calls.length;

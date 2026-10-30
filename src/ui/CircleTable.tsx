@@ -117,14 +117,12 @@ export const CircleTable = memo(function CircleTable({
   runtime,
   sync,
   content,
-  hint = null,
   onResult,
   ref,
 }: {
   runtime: RuntimeStore;
   sync: Sync;
   content: Content;
-  hint?: string | null;
   /** called with an applied result (learned / known / failed) when the progress ring has filled */
   onResult?: (r: ActionResult) => void;
   ref?: Ref<CircleTableHandle>;
@@ -418,9 +416,6 @@ export const CircleTable = memo(function CircleTable({
         {why && <span className="circle-why">{why}</span>}
       </div>
       <p className="synth-message" role="status">{message}</p>
-      <div className="synth-hint" aria-label="殘卷線索" aria-live="polite">
-        {hint ?? <span className="muted">在魔導書點未學會的魔法，殘卷線索會顯示在這裡</span>}
-      </div>
     </div>
   );
 });

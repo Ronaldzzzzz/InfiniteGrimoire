@@ -27,27 +27,21 @@ function setup(
   game: Partial<GameState> = {},
   synthPending = false,
   action = vi.fn(async (): Promise<ActionResult | null> => null),
-  slotsFull = false,
 ) {
   const rt = fakeRuntime(game, synthPending);
-  const onHint = vi.fn();
   const onPick = vi.fn();
   const sync = { action };
-  const ui = (lifting: string | null) => (
-    <GrimoirePanel runtime={rt} sync={sync} onHint={onHint} onPick={onPick} slotsFull={slotsFull} lifting={lifting} content={content} />
-  );
-  const { rerender } = render(ui(null));
-  return { rt, onHint, onPick, sync, rerender: (lifting: string | null) => rerender(ui(lifting)) };
+  render(<GrimoirePanel runtime={rt} sync={sync} onPick={onPick} content={content} />);
+  return { rt, onPick, sync };
 }
 
 describe('GrimoirePanel', () => {
-  it('clicking a learned spell opens a bubble: put into the altar, equip, details', () => {
-    const { rt, onHint, onPick } = setup({ learned: ['mana_bolt', 'fireball'], levels: { fireball: 4 } });
+  it('clicking a learned spell opens a bubble: put on the parchment, equip, details', () => {
+    const { rt, onPick } = setup({ learned: ['mana_bolt', 'fireball'], levels: { fireball: 4 } });
     fireEvent.click(node(content.spells.fireball!.name));
-    expect(onHint).toHaveBeenCalledWith(null);
     const bubble = screen.getByRole('group', { name: '魔法操作' });
     expect(bubble.textContent).toContain('強化 +3');
-    fireEvent.click(within(bubble).getByRole('button', { name: '放入合成' }));
+    fireEvent.click(within(bubble).getByRole('button', { name: '放到牛皮紙上' }));
     expect(onPick).toHaveBeenCalledWith('fireball');
     expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
     fireEvent.click(node(content.spells.fireball!.name));
@@ -86,66 +80,46 @@ describe('GrimoirePanel', () => {
     expect(card.querySelector('.spell-chant')!.textContent).toContain(content.spells.worldfire!.chant!);
   });
 
-  it('a locked spell bubble shows the hint and no buttons', () => {
-    const { rt, onHint } = setup();
-    fireEvent.click(node(`${content.spells.fireball!.name}（未學會）`));
-    expect(onHint).toHaveBeenCalledWith('fireball');
-    const bubble = screen.getByRole('group', { name: '魔法操作' });
-    expect(bubble.textContent).toContain(content.spells.fireball!.hint);
-    expect(within(bubble).queryByRole('button')).toBeNull();
-    expect(rt.equip).not.toHaveBeenCalled();
-  });
-
-  it('放入合成 is disabled when the altar is full', () => {
-    setup({ learned: ['mana_bolt', 'fireball'] }, false, undefined, true);
-    fireEvent.click(node(content.spells.fireball!.name));
-    expect((screen.getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
   it('does not equip while an action is in flight', () => {
     setup({ learned: ['mana_bolt', 'fireball'] }, true);
     fireEvent.click(node(content.spells.fireball!.name));
     expect((screen.getByRole('button', { name: '裝備' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('double-click puts a learned spell into the altar without a bubble, and the toast fades', () => {
+  it('double-click puts a learned spell circle on the parchment without a bubble, and the toast fades', () => {
     vi.useFakeTimers();
     try {
       const { onPick } = setup({ learned: ['mana_bolt', 'fireball'] });
       fireEvent.doubleClick(node(content.spells.fireball!.name));
       expect(onPick).toHaveBeenCalledWith('fireball');
       expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
-      expect(screen.getByRole('status').textContent).toBe(`已放入合成台：${content.spells.fireball!.name}`);
+      expect(screen.getByRole('status').textContent).toBe(`已擺到牛皮紙上：${content.spells.fireball!.name}`);
       act(() => void vi.advanceTimersByTime(PLACED_TOAST_MS + 10));
-      expect(screen.queryByText(/已放入合成台/)).toBeNull();
+      expect(screen.queryByText(/已擺到牛皮紙上/)).toBeNull();
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('double-click does nothing on a locked spell or when the altar is full', () => {
-    const a = setup();
-    fireEvent.doubleClick(node(`${content.spells.fireball!.name}（未學會）`));
-    expect(a.onPick).not.toHaveBeenCalled();
-    expect(screen.queryByText(/已放入合成台/)).toBeNull();
-    cleanup();
-    const b = setup({ learned: ['mana_bolt', 'fireball'] }, false, undefined, true);
-    fireEvent.doubleClick(node(content.spells.fireball!.name));
-    expect(b.onPick).not.toHaveBeenCalled();
-    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+  it('a spell without a circle (魔力彈) has no 放到牛皮紙上, and double-click does nothing', () => {
+    const { onPick } = setup({ learned: ['mana_bolt'] });
+    fireEvent.doubleClick(node(content.spells.mana_bolt!.name));
+    expect(onPick).not.toHaveBeenCalled();
+    fireEvent.click(node(content.spells.mana_bolt!.name));
+    expect(within(screen.getByRole('group', { name: '魔法操作' })).queryByRole('button', { name: '放到牛皮紙上' })).toBeNull();
   });
 
-  it('while a synthesis is pending, 放入合成 is disabled in the bubble and the card, and double-click does nothing', () => {
+  it('while a synthesis is pending, 放到牛皮紙上 is disabled in the bubble and the card, and double-click does nothing', () => {
     const { onPick } = setup({ learned: ['mana_bolt', 'fireball'] }, true);
     fireEvent.doubleClick(node(content.spells.fireball!.name));
     expect(onPick).not.toHaveBeenCalled();
-    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+    expect(screen.queryByText(/已擺到牛皮紙上/)).toBeNull();
     fireEvent.click(node(content.spells.fireball!.name));
-    expect((screen.getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: '放到牛皮紙上' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: '詳情' }));
-    expect((within(screen.getByLabelText('節點詳情')).getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(screen.getByLabelText('節點詳情')).getByRole('button', { name: '放到牛皮紙上' }) as HTMLButtonElement).disabled).toBe(true);
     expect(onPick).not.toHaveBeenCalled();
-    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+    expect(screen.queryByText(/已擺到牛皮紙上/)).toBeNull();
   });
 
   it('a drag that ends on a node opens nothing', () => {
@@ -199,13 +173,6 @@ describe('GrimoirePanel', () => {
     expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(content.spells.mana_bolt!.name);
   });
 
-  it('there is no fog any more: every region shows its nodes (until the star map replaces this tree)', () => {
-    setup({ inventory: {} });
-    expect(screen.getByRole('button', { name: new RegExp(content.spells.inferno!.name) })).toBeTruthy();
-    expect(screen.getByRole('button', { name: new RegExp(content.passives.ember_affinity!.name) })).toBeTruthy();
-    expect(screen.queryByLabelText('迷霧')).toBeNull();
-  });
-
   it('passive unlock button only when the requirement is met', async () => {
     const name = content.passives.ember_affinity!.name;
     const action = vi.fn(async (): Promise<ActionResult | null> => ({ kind: 'unlocked' }));
@@ -224,12 +191,12 @@ describe('GrimoirePanel', () => {
     expect(screen.getByRole('region', { name: '節點詳情' }).textContent).toContain('已解鎖');
   });
 
-  it('the tree, bubble and card do not re-render when only the inventory changes', () => {
+  it('the star map, bubble and card do not re-render when only the inventory changes', () => {
     const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], inventory: { 'el:fire:1': 1 } });
     const onRender = vi.fn();
     render(
       <Profiler id="grimoire" onRender={onRender}>
-        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} lifting={null} content={content} />
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onPick={vi.fn()} content={content} />
       </Profiler>,
     );
     fireEvent.click(node(content.spells.fireball!.name));
@@ -256,12 +223,12 @@ describe('GrimoirePanel', () => {
     expect(svg.getAttribute('viewBox')!.split(' ').map(Number)[2]).toBeCloseTo(before / 1.1);
   });
 
-  it('dragging pans without re-rendering the tree, and the home button goes back', () => {
+  it('dragging pans without re-rendering the star map, and the home button goes back', () => {
     const rt = fakeRuntime({ learned: ['mana_bolt'] });
     const onRender = vi.fn();
     render(
       <Profiler id="grimoire" onRender={onRender}>
-        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onHint={vi.fn()} onPick={vi.fn()} slotsFull={false} lifting={null} content={content} />
+        <GrimoirePanel runtime={rt} sync={{ action: vi.fn() }} onPick={vi.fn()} content={content} />
       </Profiler>,
     );
     const svg = document.querySelector('svg.grimoire-svg')!;
@@ -293,20 +260,6 @@ describe('GrimoirePanel', () => {
     const x1 = Number(svg.getAttribute('viewBox')!.split(' ')[0]);
     expect(x0 - x1).toBeCloseTo((40 * w) / 400);
   });
-  it('the altar-full hint shows (bubble and card) only when the altar is actually full', () => {
-    setup({ learned: ['mana_bolt', 'fireball'] }, false, undefined, true);
-    fireEvent.click(node(content.spells.fireball!.name));
-    expect(within(screen.getByRole('group', { name: '魔法操作' })).getByText('合成台已滿')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
-    expect(within(screen.getByLabelText('節點詳情')).getByText('合成台已滿')).toBeTruthy();
-    cleanup();
-    setup({ learned: ['mana_bolt', 'fireball'] }, true); // pending, altar not full
-    fireEvent.click(node(content.spells.fireball!.name));
-    expect(screen.queryByText('合成台已滿')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: '詳情' }));
-    expect(screen.queryByText('合成台已滿')).toBeNull();
-  });
-
   it('wheel: zero delta changes nothing, a small delta zooms a little, a notch is x1.1', () => {
     setup();
     const svg = document.querySelector('svg.grimoire-svg')!;
@@ -358,24 +311,5 @@ describe('GrimoirePanel', () => {
     expect(n.getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(document.querySelector('svg.grimoire-svg')!);
     expect(n.getAttribute('aria-pressed')).toBe('false');
-  });
-
-  describe('tree="lightdark"', () => {
-    const holy = content.spells.holy_judgment!.name;
-    function lightDark(game: Partial<GameState>) {
-      const rt = fakeRuntime(game);
-      const onPick = vi.fn();
-      render(<GrimoirePanel runtime={rt} sync={{ action: vi.fn(async () => null) }} onHint={vi.fn()} onPick={onPick} slotsFull={false} lifting={null} content={content} tree="lightdark" />);
-      return { onPick };
-    }
-    it('click opens the bubble, double click puts a learned spell into the altar', () => {
-      const { onPick } = lightDark({ learned: ['mana_bolt', 'holy_judgment'] });
-      expect(screen.queryByLabelText('迷霧')).toBeNull();
-      fireEvent.click(node(holy));
-      expect(screen.getByRole('group', { name: '魔法操作' })).toBeTruthy();
-      fireEvent.doubleClick(node(holy));
-      expect(onPick).toHaveBeenCalledWith('holy_judgment');
-      expect(screen.queryByRole('button', { name: /^火球/ })).toBeNull(); // elements tree spells are not here
-    });
   });
 });
