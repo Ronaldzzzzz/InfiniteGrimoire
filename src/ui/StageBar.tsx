@@ -1,4 +1,5 @@
 import { memo, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { stageProgress } from '../engine/combat';
 import type { Content } from '../engine/model';
 import { BOSS_LIMIT_MS, highestPlayable, stageCount } from '../engine/stages';
@@ -68,11 +69,14 @@ export const StageBar = memo(function StageBar({
           </button>
         )}
       </div>
-      {away && (
-        <div className="stage-away" role="status" aria-label="離線中">
-          離線中：戰鬥已暫停，收益每 30 秒以 5 折計算。回到遊戲視窗即可繼續。
-        </div>
-      )}
+      {away &&
+        // in the middle of the screen, outside the strip's stacking context so no panel covers it
+        createPortal(
+          <div className="stage-away" role="status" aria-label="離線中">
+            離線中：戰鬥已暫停，收益每 30 秒以 5 折計算。回到遊戲視窗即可繼續。
+          </div>,
+          document.body,
+        )}
       {lastResult && lastResult !== dismissed && <ResultNotice result={lastResult} content={content} />}
     </div>
   );
