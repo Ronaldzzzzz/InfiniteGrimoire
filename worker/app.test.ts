@@ -1670,3 +1670,83 @@ describe('GM login and tokens', () => {
     expect(excludedFromRecords({ ...p, gmUsed: true })).toBe(true);
   });
 });
+
+describe('POST /api/away and /api/offline', () => {
+  const zoneId = content.zones[0]!.id;
+  const MIN = 60_000;
+
+  /** a guest whose stored save (and anchor) already has cleared stages and a recorded clear time */
+  async function seeded() {
+    const { body } = await guest();
+    const row = store.saves.get(body.playerId)!;
+    const state: GameState = { ...JSON.parse(row.state), clearedStages: { [zoneId]: 3 }, clearTimes: { [`${zoneId}:3`]: [60_000] } };
+    row.state = JSON.stringify(state);
+    row.anchorState = JSON.stringify(state);
+    return { token: body.token, state, playerId: body.playerId };
+  }
+  const post = (path: string, token: string, state: GameState, baseRevision: number) =>
+    action(path, { state, baseRevision }, token);
+  const put = (token: string, state: GameState, baseRevision: number) =>
+    app.request('/api/save', json({ state, baseRevision }, token, 'PUT'));
+  const total = (s: GameState) => Object.values(s.inventory).reduce((a, b) => a + b, 0);
+
+  it('away then offline pays the window', async () => {
+    const g = await seeded();
+    const t0 = clock;
+    expect((await put(g.token, g.state, 0)).status).toBe(200);
+    const away = await post('/api/away', g.token, g.state, 1);
+    expect(away.status).toBe(200);
+    expect(away.out.result.kind).toBe('away');
+    expect(away.out.state.awayAt).toBe(t0);
+    clock = t0 + 10 * MIN;
+    const paid = await post('/api/offline', g.token, away.out.state, away.out.revision);
+    expect(paid.status, JSON.stringify(paid.out)).toBe(200);
+    expect(paid.out.result.kind).toBe('offline');
+    expect((paid.out.result as unknown as { runs: number }).runs).toBe(10);
+    expect(total(paid.out.state)).toBeGreaterThan(total(g.state));
+    expect(paid.out.state.awayAt).toBe(0);
+    clock = t0 + 11 * MIN;
+    const next = await put(g.token, paid.out.state, paid.out.revision);
+    expect(next.status, await next.clone().text()).toBe(200);
+    expect(store.rejections).toHaveLength(0);
+  });
+
+  it('closed game uses the last save time', async () => {
+    const g = await seeded();
+    const t0 = clock;
+    expect((await put(g.token, g.state, 0)).status).toBe(200);
+    clock = t0 + 10 * MIN;
+    const paid = await post('/api/offline', g.token, g.state, 1);
+    expect(paid.status).toBe(200);
+    expect((paid.out.result as unknown as { runs: number }).runs).toBe(10);
+  });
+
+  it('offline twice pays once', async () => {
+    const g = await seeded();
+    const t0 = clock;
+    expect((await put(g.token, g.state, 0)).status).toBe(200);
+    clock = t0 + 10 * MIN;
+    const first = await post('/api/offline', g.token, g.state, 1);
+    expect(first.out.result.kind).toBe('offline');
+    const again = await post('/api/offline', g.token, first.out.state, first.out.revision);
+    expect(again.status).toBe(200);
+    expect(again.out.result.kind).toBe('none');
+    expect(total(again.out.state)).toBe(total(first.out.state));
+  });
+
+  it('upload cannot set offline fields', async () => {
+    const g = await seeded();
+    const res = await put(g.token, { ...g.state, offlineUntil: clock + 99_999 }, 0);
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { reasons: string[] }).reasons).toContain('offlineUntil changed');
+  });
+
+  it('nothing to pay is 200 with kind none', async () => {
+    const { body } = await guest();
+    clock += 10 * MIN;
+    const r = await post('/api/offline', body.token, body.state, 0);
+    expect(r.status).toBe(200);
+    expect(r.out.result.kind).toBe('none');
+    expect(store.rejections).toHaveLength(0);
+  });
+});

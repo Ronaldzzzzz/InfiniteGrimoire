@@ -4,6 +4,7 @@ import { comboKey, synthesize, SYNTH_SLOTS } from '../src/engine/crafting';
 import { empower } from '../src/engine/empower';
 import type { Content, GameState } from '../src/engine/model';
 import { createInitialState, parseState, serialize } from '../src/engine/persist';
+import { claimOffline, markAway } from '../src/engine/offline';
 import { claimStage } from '../src/engine/stage-clear';
 import { stageCount } from '../src/engine/stages';
 import type { Rng } from '../src/engine/rng';
@@ -63,7 +64,7 @@ export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const USER_FAIL_LIMIT = 5;
 export const IP_FAIL_LIMIT = 20;
 const HOUR_MS = 60 * 60 * 1000;
-const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/stage-clear', '/api/discoveries'] as const;
+const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/stage-clear', '/api/away', '/api/offline', '/api/discoveries'] as const;
 
 /** Client IP for rate limits: Cloudflare's header, or 'local' in tests and `wrangler dev` without it. */
 function clientIp(c: Ctx): string {
@@ -345,6 +346,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
         advanceAnchor: boolean;
         anchor: GameState;
         anchorAt: number;
+        savedAt: number;
       }
     | { ok: false; res: Response };
 
@@ -403,6 +405,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       advanceAnchor: t - save.anchorAt >= ANCHOR_ADVANCE_MS,
       anchor,
       anchorAt: save.anchorAt,
+      savedAt: save.savedAt,
     };
   }
 
@@ -432,13 +435,13 @@ export function createApp(deps: AppDeps): Hono<Env> {
   async function serverAction<R extends { kind: string }>(
     c: Ctx,
     body: Record<string, unknown>,
-    apply: (state: GameState) => { state: GameState; result: R },
+    apply: (state: GameState, ctx: { savedAt: number }) => { state: GameState; result: R },
     onCommit?: (playerId: string, t: number, result: R) => Promise<R | void>,
     opts: { resetAnchor?: boolean; beforeCommit?: (playerId: string, t: number) => Promise<void> } = {},
   ): Promise<Response> {
     const checked = await checkUpload(c, body);
     if (!checked.ok) return checked.res;
-    const { state, result } = apply(checked.state);
+    const { state, result } = apply(checked.state, { savedAt: checked.savedAt });
     if (result.kind === 'rejected') {
       return c.json({ reason: 'rejected', result, state: checked.current, revision: checked.revision }, 422);
     }
@@ -525,6 +528,18 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const stage = body.stage;
     if (typeof stage !== 'number' || !Number.isInteger(stage)) throw new HttpError(400, 'invalid stage');
     return serverAction(c, body, (state) => claimStage(state, zoneId, stage, now(), content, deps.rng()));
+  });
+
+  /** The client reports the game went into the background; the server stamps the time. */
+  app.post('/api/away', async (c) => {
+    const body = await readJson(c);
+    return serverAction(c, body, (state) => markAway(state, now()));
+  });
+
+  /** Settles the time since the player left. Nothing to pay is a normal 200 with kind 'none'. */
+  app.post('/api/offline', async (c) => {
+    const body = await readJson(c);
+    return serverAction(c, body, (state, ctx) => claimOffline(state, ctx.savedAt, now(), content, deps.rng()));
   });
 
   /** GM edits to the GM's own save: audited like any server action, then the anchor restarts from the result. */
