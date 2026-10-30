@@ -289,7 +289,7 @@ describe('stepBattle: effects', () => {
     const c = withTest([zone]);
     const b = staged([foe(1, 'dummy', 0.4, 0, c)]);
     const r = run(mkGame({ equipped: 't_zone' }), b, c, 20);
-    expect(dist(r.battle.foes[0]!)).toBeLessThan(0.25); // stop line is 0.16 + radius
+    expect(dist(r.battle.foes[0]!)).toBeLessThan(STOP_X + c.monsters.dummy!.radius + 0.09); // same margin over the stop line as before
     expect(r.battle.fx.length).toBe(1);
   });
 

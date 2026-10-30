@@ -298,12 +298,12 @@ export interface BossRow { zoneId: string; tier: number; medianMs: number | null
  * For each zone: stage `opts.stage` (default MEASURE_STAGE) cleared by the tier ZONE_TIER - 1, ZONE_TIER and ZONE_TIER + 1 spells (worlds_end +1 = the
  * rares). Each spell's time is the median over seeds; the row is the median over spells (null = did not finish in STAGE_LIMIT_MS).
  */
-export function stageReport(opts: { seeds: number[]; stage?: number }): StageRow[] {
+export function stageReport(opts: { seeds: number[]; stage?: number; rels?: readonly (-1 | 0 | 1)[] }): StageRow[] {
   const stage = opts.stage ?? MEASURE_STAGE;
   const rows: StageRow[] = [];
   for (const zone of content.zones) {
     const zt = ZONE_TIER[zone.id]!;
-    for (const rel of [-1, 0, 1] as const) {
+    for (const rel of opts.rels ?? ([-1, 0, 1] as const)) {
       const tier = zt + rel;
       const spells = tierSpells(tier);
       if (!spells.length) continue;
