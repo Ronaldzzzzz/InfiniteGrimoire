@@ -4,6 +4,9 @@ import { BattleView } from '../render/battle-view';
 import { content } from '../engine/content';
 import type { GameRuntime } from '../game/runtime';
 
+/** The tab title while away, so a glance at the tab bar shows the game is earning offline. */
+export const AWAY_TITLE = '💤 離線收益中 - 無限魔導書';
+
 export function BattleCanvas({ runtime }: { runtime: GameRuntime }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -20,12 +23,14 @@ export function BattleCanvas({ runtime }: { runtime: GameRuntime }) {
       const offFrame = view.onFrame(() => view.sync(runtime.getSnapshot(), runtime.stepAlpha()));
       // away: the strip stops dead (no scrolling, effects or motion) and the whole page turns grey
       let wasAway: boolean | null = null;
+      const title = document.title;
       const applyAway = (): void => {
         const away = runtime.getSnapshot().away;
         if (away === wasAway) return; // the runtime notifies every step; act only on a change
         wasAway = away;
         view.setFrozen(away);
         document.documentElement.classList.toggle('away', away);
+        document.title = away ? AWAY_TITLE : title;
       };
       applyAway();
       const offAway = runtime.subscribe(applyAway);
@@ -34,6 +39,7 @@ export function BattleCanvas({ runtime }: { runtime: GameRuntime }) {
         offFrame();
         offAway();
         document.documentElement.classList.remove('away');
+        document.title = title;
         view.destroy();
       };
     });

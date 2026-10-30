@@ -24,6 +24,7 @@ afterEach(() => {
 
 describe('BattleCanvas while away', () => {
   it('freezes the battle view and greys the whole page while away, and thaws on return', async () => {
+    document.title = '無限魔導書';
     const rt = fakeRuntime();
     render(<BattleCanvas runtime={rt as unknown as GameRuntime} />);
     await act(async () => {});
@@ -32,7 +33,9 @@ describe('BattleCanvas while away', () => {
     act(() => rt.set({ away: true }));
     expect(frozen.at(-1)).toBe(true);
     expect(document.documentElement.classList.contains('away')).toBe(true);
+    expect(document.title).toBe('💤 離線收益中 - 無限魔導書');
     act(() => rt.set({ away: false }));
+    expect(document.title).toBe('無限魔導書');
     expect(frozen.at(-1)).toBe(false);
     expect(document.documentElement.classList.contains('away')).toBe(false);
   });
