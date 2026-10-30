@@ -280,6 +280,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
+- **2026-10-30（Claude Code，Opus 5.5，macOS，魔王關按鈕與離線改成「使用中的視窗」）**：試玩回饋：(1) 自動前進會走進魔王關門口停住 → 改成打完第 9 關重複刷第 9 關、長帶右上顯示「進入魔王關」（`GameRuntime.goToBoss`，74065ca）；(2) 使用者要「視窗上面有東西就算離線」，網頁偵測不到部分遮蓋，改成「遊戲不是使用中的視窗」滿 10 秒就凍結戰鬥並顯示「離線中」，收益以 30 秒一個 tick 計、不足一次通過也照比例給（29e845a）；審查後把「離開」「回來」改成依序排隊、絕不丟掉，關卡結算遇到忙碌改成等待重試，卡片顯示秒數與「不到 0.1 次」（d63be08 與之後一個 commit）。`npm test` 76 檔 896 個、build 通過。停在：`feat/battle-strip` 未 push、未合併；都沒有在瀏覽器實測。下一步：使用者試玩。
+
 - **2026-10-30（Claude Code，Opus 5.5，macOS，試玩 bug：上傳一直被拒）**：使用者回報離線收益沒觸發、畫面不時重整且裝備的魔法被蓋回、魔王關進不去。原因：加離線收益之前建立的存檔沒有 `clearTimes`／`awayAt`／`offlineUntil`，伺服器讀存檔時沒補預設值（上傳的 `parseState` 有補），每次上傳與伺服器動作都被當成「伺服器欄位被改動」拒絕（本機 142 次），用戶端收到 422 就採用伺服器存檔。修正：`persist.ts` 新增 `readStored`，worker 讀存檔與錨點一律經過它（cb71c10，含重現測試）。依使用者指示清掉本機 D1 該帳號的 `rejections` 並把 `suspicious` 歸零；新增待辦 0f（GM 工具觀看紀錄，上線前完成）。`npm test` 76 檔 876 個、build 通過。停在：`feat/battle-strip` 未 push、未合併。下一步：使用者重開 dev server 試玩。
 
 - **2026-10-30（Claude Code，Opus 5.5，macOS，手感、關卡由簡至難與離線收益）**：branch `feat/battle-strip` 依計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md` 做 5 個任務（帳本 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/progress.md`）：怪變慢、停止線前移、小人畫大；每地點第 1～9 關波數逐關遞增（量到主場階級第 1 關約 58～62 秒、第 9 關約 181～191 秒）；離線收益（伺服器計算、5 折、8 小時上限、只刷最遠已通過的小怪關、`/api/away`、`/api/offline`、`AwayReport` 卡片）。審查裁定：stage-time 缺口改用每列記錄的比值上限（不用整體放寬）；離開或離線的時間不算進通關時間紀錄。最終審查的 Important 已修正（跨過離線時段的通關不記時間）。已知缺口與延後的小問題見 3.0。`npm test` 76 檔 875 個、build 通過。停在：未 push、未合併；平衡數字是提案、沒有在真實瀏覽器看過。下一步：使用者試玩並確認數字 → 決定合併。

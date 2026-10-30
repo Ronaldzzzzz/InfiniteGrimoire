@@ -32,6 +32,9 @@ interface ActionHooks {
   adopt?: (server: GameState, local: GameState) => GameState;
 }
 
+/** tryAction(): refused only because another action was in flight */
+const BUSY = Symbol('busy');
+
 /** Waits this long (at most CLAIM_TRIES times) when another server action is in flight. */
 const CLAIM_WAIT_MS = 300;
 const CLAIM_TRIES = 10;
@@ -116,8 +119,6 @@ export class SyncController {
   /** the server holds an away mark from this controller that no claim has settled yet */
   private awayDelivered = false;
   private flushing = false;
-  /** set when action() returned null only because another action or upload was in flight */
-  private droppedBusy = false;
 
   /** Delivers the queued presence messages in order; returns the last claim's result (null when none was answered). */
   private async flushPresence(): Promise<OfflineResult | null> {
@@ -129,9 +130,9 @@ export class SyncController {
         // the message on the wire leaves the queue, so a return cannot cancel it; it goes back if not delivered
         const kind = this.presenceQueue.shift()!;
         this.presenceInFlight = kind;
-        let result: ActionResult | null;
+        let result: ActionResult | null | typeof BUSY;
         try {
-          result = await this.action(kind, {});
+          result = await this.tryAction(kind, {});
         } catch (e) {
           // the server refused it outright (not a network or auth problem): resending would only repeat that
           console.warn(`${kind} failed:`, e instanceof Error ? e.message : 'unknown error');
@@ -139,22 +140,24 @@ export class SyncController {
         } finally {
           this.presenceInFlight = null;
         }
-        if (result?.kind === 'away' || result?.kind === 'offline' || result?.kind === 'none') {
+        if (result !== BUSY && (result?.kind === 'away' || result?.kind === 'offline' || result?.kind === 'none')) {
           busy = 0;
           if (result.kind === 'away') {
             this.awayDelivered = true;
           } else {
             this.awayDelivered = false;
             out = result;
-            if (result.kind === 'offline') for (const l of [...this.offlineListeners]) l(result);
+            // after an account switch the old player's income is not this player's to show
+            if (result.kind === 'offline' && !this.stopped) for (const l of [...this.offlineListeners]) l(result);
           }
           continue;
         }
-        // not delivered: back to the front, unless a return already made this away pointless
-        if (!(kind === 'away' && this.presenceQueue[0] === 'offline' && !this.awayDelivered)) this.presenceQueue.unshift(kind);
+        // not delivered: back to the front. An away that hit the network may still have reached the server,
+        // so a claim queued behind it is always kept (it pays nothing if the away never arrived).
+        if (!(kind === 'away' && result === BUSY && this.presenceQueue[0] === 'offline' && !this.awayDelivered)) this.presenceQueue.unshift(kind);
         else this.presenceQueue.shift();
         // busy: wait for the other action and try again; offline or auth: the tick / reconnect retries
-        if (!this.droppedBusy || ++busy > CLAIM_TRIES) break;
+        if (result !== BUSY || ++busy > CLAIM_TRIES) break;
         await new Promise<void>((resolve) => this.timers.setTimeout(resolve, CLAIM_WAIT_MS));
       }
     } finally {
@@ -230,6 +233,7 @@ export class SyncController {
     // done, or a non-network error (server is reachable): resume
     this.setStatus(this.reachableStatus(result));
     this.runtime.setPaused(false);
+    void this.flushPresence(); // anything the loop saw blocked by the retry goes now, not at the next tick
   }
 
   /** Runs one upload. Never throws. */
@@ -276,13 +280,18 @@ export class SyncController {
    * null. Busy, offline or auth failure: null. Other errors are thrown.
    */
   async action<K extends ActionKind>(kind: K, payload: ActionPayloads[K], hooks: ActionHooks = {}): Promise<ActionResult | null> {
-    this.droppedBusy = false;
+    const r = await this.tryAction(kind, payload, hooks);
+    return r === BUSY ? null : r;
+  }
+
+  /** action(), but tells "another action was in flight" (BUSY) apart from every other null. */
+  private async tryAction<K extends ActionKind>(kind: K, payload: ActionPayloads[K], hooks: ActionHooks = {}): Promise<ActionResult | null | typeof BUSY> {
     if (this.retrying) return null;
-    if (this.runtime.getSnapshot().synthPending) return this.busy();
+    if (this.runtime.getSnapshot().synthPending) return BUSY;
     if (this.uploading) {
       await this.uploading;
       if (this.retrying) return null;
-      if (this.runtime.getSnapshot().synthPending) return this.busy();
+      if (this.runtime.getSnapshot().synthPending) return BUSY;
     }
     this.runtime.setSynthPending(true);
     try {
@@ -303,13 +312,9 @@ export class SyncController {
       return null;
     } finally {
       this.runtime.setSynthPending(false);
+      // a presence message that gave up waiting on this action goes now (flushPresence ignores a re-entry)
+      if (this.presenceQueue.length > 0) void this.flushPresence();
     }
-  }
-
-  /** action() refuses because another action is in flight; callers that must not lose their request wait and retry. */
-  private busy(): null {
-    this.droppedBusy = true;
-    return null;
   }
 
   private send(kind: ActionKind, payload: ActionPayloads[ActionKind], game: GameState, revision: number): Promise<ActionOutcome> {
@@ -352,12 +357,12 @@ export class SyncController {
       for (let i = 0; i < CLAIM_TRIES; i++) {
         if (this.stopped || this.retrying) return null;
         if (!this.runtime.getSnapshot().synthPending) {
-          const result = await this.action('stageClear', { zoneId, stage }, {
+          const result = await this.tryAction('stageClear', { zoneId, stage }, {
             sendState: (g) => ({ ...g, currentZone: zoneId, currentStage: stage }),
             adopt: (server, local) => ({ ...server, currentZone: local.currentZone, currentStage: local.currentStage }),
           });
           // another action won the race after the same upload: wait and try again rather than lose the clear
-          if (result === null && this.droppedBusy) {
+          if (result === BUSY) {
             await new Promise<void>((resolve) => this.timers.setTimeout(resolve, CLAIM_WAIT_MS));
             continue;
           }

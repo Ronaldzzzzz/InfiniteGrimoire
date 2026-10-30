@@ -640,6 +640,36 @@ describe('SyncController', () => {
     expect(offline).toHaveBeenCalledTimes(1);
     stop();
   });
+  it('an away lost on the network may have arrived: the claim behind it is kept', async () => {
+    const rt = mk();
+    const away = vi
+      .fn()
+      .mockRejectedValueOnce(new NetworkError('x'))
+      .mockResolvedValue({ kind: 'ok', result: { kind: 'away' }, state: rt.getSnapshot().game, revision: 9 });
+    const offline = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 10 }));
+    const sync = new SyncController(rt, fakeApi({ away, offline } as never));
+    const leaving = sync.goAway();
+    void sync.claimOffline(); // back while the away is on the wire
+    await leaving;
+    await vi.advanceTimersByTimeAsync(RETRY_MS);
+    expect(offline).toHaveBeenCalledTimes(1);
+  });
+  it('income that comes back after an account switch is not shown', async () => {
+    const rt = mk();
+    let answer!: () => void;
+    const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, ticks: 2, runs: 5, awayMs: 60_000, capped: false, loot: {} };
+    const offline = vi.fn(() => new Promise((resolve) => { answer = () => resolve({ kind: 'ok', result, state: rt.getSnapshot().game, revision: 10 }); }));
+    const sync = new SyncController(rt, fakeApi({ offline } as never));
+    const seen = vi.fn();
+    sync.onOfflineReport(seen);
+    const stop = sync.start();
+    const claim = sync.claimOffline();
+    await vi.advanceTimersByTimeAsync(0);
+    stop();
+    answer();
+    await claim;
+    expect(seen).not.toHaveBeenCalled();
+  });
   it('a failed claim does not throw', async () => {
     const sync = new SyncController(mk(), fakeApi({ offline: vi.fn(async () => { throw new ApiError('x', 400); }) }));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
