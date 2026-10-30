@@ -4,7 +4,7 @@
 
 **Goal:** Apply the 2026-10-30 playtest feedback (slower foes, stop line further out, bigger hero, stages ramping from easy to hard) and add server-computed offline income.
 
-**Architecture:** Feel and ramp are constants in `src/engine/combat.ts`, the hero size in `src/render/battle-view.ts`, and wave lists in `src/data/content/zones.json`, calibrated with the existing `tests/sim/measure.ts` stage measurement. Offline income is a pure engine module (`src/engine/offline.ts`) driven by three new server-owned save fields, exposed as two server actions (`POST /api/away`, `POST /api/offline`) through the existing `serverAction` pipeline; the client watches focus, pauses the battle while away, claims on return and shows a card.
+**Architecture:** Feel and ramp are constants in `src/engine/combat.ts`, the hero size in `src/render/battle-view.ts`, and wave lists in `src/data/content/zones.json`, calibrated with the existing `tests/sim/measure.ts` stage measurement. Offline income is a pure engine module (`src/engine/offline.ts`) driven by three new server-owned save fields, exposed as two server actions (`POST /api/away`, `POST /api/offline`) through the existing `serverAction` pipeline; the client watches page visibility (hidden only; an unfocused but visible window is not away), claims on return and shows a card.
 
 **Tech Stack:** TypeScript, Vitest, Hono (Cloudflare Worker), React, Pixi; zod for save parsing.
 
@@ -28,7 +28,7 @@
 1. A return with no recorded clear of the farmed stage (or a spell that cannot damage the zone) gives nothing and shows no card — Task 2 test `none without clear times` / `none when the spell cannot damage`.
 2. Two returns in a row (two tabs, a retried request) must not pay the same time twice — Task 2 test `second claim pays nothing` (via `offlineUntil`).
 3. On page load the offline claim must be the first upload; a PUT before it would move `savedAt` and erase the closed-game window — Task 4 test `boot claims offline before the first upload`.
-4. A window that is visible but unfocused keeps rendering; after `AWAY_DELAY_MS` the battle must pause so online and offline income never overlap — Task 4 test `pauses the runtime when away fires`.
+4. A window that is visible but unfocused (second monitor) keeps fighting online and must never send away, so online and offline income never overlap — Task 4 test `blur while visible never fires onAway`.
 5. Clock edge cases: `now` earlier than the start gives 0; more than 8 h is capped and flagged — Task 2 tests `clamps negative time` / `caps at 8 hours`.
 
 ---
@@ -132,34 +132,32 @@ Rules (spec 3.8, exact):
 
 ---
 
-### Task 4: Client presence, pause, claim on return, report card
+### Task 4: Client presence, claim on return, report card
 
 **Files:**
 - Create: `src/game/presence.ts`, `src/game/presence.test.ts`, `src/ui/AwayReport.tsx`, `src/ui/AwayReport.test.tsx`
-- Modify: `src/game/api.ts` (`away`, `offline`), `src/game/sync.ts` (`goAway`, `claimOffline`, `onOfflineReport`), `src/game/runtime.ts` (`setPaused`), `src/game/boot.ts` and/or `src/game/loop.ts` (wire presence; boot claim), `src/ui/App.tsx` (render card), `src/ui/StageBar.tsx` (away label)
+- Modify: `src/game/api.ts` (`away`, `offline`), `src/game/sync.ts` (`goAway`, `claimOffline`, `onOfflineReport`), `src/game/boot.ts` and/or `src/game/loop.ts` (wire presence; boot claim), `src/ui/App.tsx` (render card)
 
 **Interfaces:**
 - Consumes: Task 3 routes; `OfflineResult`, `AWAY_DELAY_MS` from `src/engine/offline.ts`.
 - Produces:
-  - `watchPresence(opts: { delayMs: number; onAway: () => void; onReturn: () => void }, env?: { doc: Document; win: Window }): () => void` — "unfocused" = `document.visibilityState === 'hidden'` or the window lost focus (`blur`); after `delayMs` continuously unfocused it calls `onAway` once; on regaining focus/visibility after `onAway` fired it calls `onReturn`; regaining focus before the delay cancels the timer. Returns a disposer.
-  - `GameRuntime.setPaused(paused: boolean): void` — while paused `advance` does nothing (no catch-up on resume) and the runtime snapshot exposes `paused: boolean`.
+  - `watchPresence(opts: { delayMs: number; onAway: () => void; onReturn: () => void }, doc?: Document): () => void` — away means `document.visibilityState === 'hidden'` only (focus/blur is ignored: a visible unfocused window keeps fighting); after `delayMs` continuously hidden it calls `onAway` once; on becoming visible after `onAway` fired it calls `onReturn`; becoming visible before the delay cancels the timer. Returns a disposer.
+  - No runtime pause: a hidden page gets no animation frames and `loop.ts` already resets its clock on return (no catch-up), so the battle does not advance while away.
   - `SyncController.goAway(): Promise<void>` (uploads via `/api/away`), `SyncController.claimOffline(): Promise<OfflineResult | null>` (via `/api/offline`; adopts the returned state like other actions), `SyncController.onOfflineReport(cb: (r: Extract<OfflineResult, { kind: 'offline' }>) => void): () => void`.
 
 Behaviour:
-- `onAway`: `runtime.setPaused(true)` then `sync.goAway()`. `onReturn`: `sync.claimOffline()` then `runtime.setPaused(false)` (unpause even if the claim fails).
+- `onAway`: `sync.goAway()`. `onReturn`: `sync.claimOffline()`.
 - Boot: right after the save is loaded and before the periodic upload starts, call `sync.claimOffline()` once (this is how a closed game is paid).
 - `AwayReport` card (modal over the main UI, not over the strip's stage info): title「離開期間的收穫」; 「離開 {X 小時 Y 分}」(under 1 h:「離開 Y 分」); 「在 {地點名稱} {zoneIndex}-{stage} 刷了 {runs} 次」; the loot list with the existing item-name/element display used elsewhere (`ElementTable` / settlement notice — reuse, don't re-invent); when `capped`:「已達上限（8 小時），超過的時間不計」; one button「知道了」that closes it. No auto-dismiss. `kind: 'none'` shows nothing. If several reports arrive before the player closes the card, merge into one (sum runs and loot, keep the latest stage).
-- `StageBar` shows「離開中」while `paused`.
 
 - [ ] **Step 1: Write failing tests:**
-  - `presence.test.ts` with fake timers and a stub doc/window: `hidden for 30 s fires onAway once`; `blur 29 s then focus fires nothing`; `onReturn only after onAway`; `disposer removes listeners`.
-  - runtime test: `pauses the runtime when away fires` — paused `advance(10_000)` leaves battle time unchanged; unpaused resumes without catch-up.
+  - `presence.test.ts` with fake timers and a stub doc: `hidden for 30 s fires onAway once`; `hidden 29 s then visible fires nothing`; `blur while visible never fires onAway`; `onReturn only after onAway`; `disposer removes listeners`.
   - sync test: `boot claims offline before the first upload` — the first request after load is `/api/offline`, not `PUT /api/save`; `onOfflineReport` fires for `kind 'offline'` and not for `none`.
   - `AwayReport.test.tsx`: renders the copy above for a 2 h 5 m report (「離開 2 小時 5 分」), shows the cap line only when `capped`, stays until「知道了」is clicked.
 - [ ] **Step 2: Run to see them fail** — `npx vitest run src/game src/ui/AwayReport.test.tsx`.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** `npm test`, `npm run build`. Expected: all pass.
-- [ ] **Step 5: Commit** — `feat(game): pause while away, claim offline income on return, show the report`.
+- [ ] **Step 5: Commit** — `feat(game): claim offline income on return and show the report`.
 
 ---
 
