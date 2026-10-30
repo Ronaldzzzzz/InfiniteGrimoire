@@ -140,8 +140,8 @@ describe('stepBattle: crowd movement', () => {
     const moved = (uid: number) => 0.9 - r.battle.foes.find((f) => f.uid === uid)!.x;
     expect(moved(1)).toBeCloseTo(0, 9);
     expect(moved(2)).toBeCloseTo(0, 9);
-    expect(moved(4)).toBeCloseTo(0.4, 6); // 0.1 x LANE_SPEED per second
-    expect(moved(3)).toBeCloseTo(0.1, 6);
+    expect(moved(4)).toBeCloseTo(0.25, 6); // 0.1 x LANE_SPEED per second
+    expect(moved(3)).toBeCloseTo(0.0625, 6);
   });
 });
 
@@ -289,7 +289,7 @@ describe('stepBattle: effects', () => {
     const c = withTest([zone]);
     const b = staged([foe(1, 'dummy', 0.4, 0, c)]);
     const r = run(mkGame({ equipped: 't_zone' }), b, c, 20);
-    expect(dist(r.battle.foes[0]!)).toBeLessThan(0.2);
+    expect(dist(r.battle.foes[0]!)).toBeLessThan(0.25); // stop line is 0.16 + radius
     expect(r.battle.fx.length).toBe(1);
   });
 

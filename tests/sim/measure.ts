@@ -295,10 +295,11 @@ export interface StageRow { zoneId: string; rel: -1 | 0 | 1; tier: number; media
 export interface BossRow { zoneId: string; tier: number; medianMs: number | null }
 
 /**
- * For each zone: stage MEASURE_STAGE cleared by the tier ZONE_TIER - 1, ZONE_TIER and ZONE_TIER + 1 spells (worlds_end +1 = the
+ * For each zone: stage `opts.stage` (default MEASURE_STAGE) cleared by the tier ZONE_TIER - 1, ZONE_TIER and ZONE_TIER + 1 spells (worlds_end +1 = the
  * rares). Each spell's time is the median over seeds; the row is the median over spells (null = did not finish in STAGE_LIMIT_MS).
  */
-export function stageReport(opts: { seeds: number[] }): StageRow[] {
+export function stageReport(opts: { seeds: number[]; stage?: number }): StageRow[] {
+  const stage = opts.stage ?? MEASURE_STAGE;
   const rows: StageRow[] = [];
   for (const zone of content.zones) {
     const zt = ZONE_TIER[zone.id]!;
@@ -306,7 +307,7 @@ export function stageReport(opts: { seeds: number[] }): StageRow[] {
       const tier = zt + rel;
       const spells = tierSpells(tier);
       if (!spells.length) continue;
-      const per = spells.map((id) => medianOrNull(opts.seeds.map((seed) => stageTime(id, 1, zone.id, MEASURE_STAGE, { seed, limitMs: STAGE_LIMIT_MS }))));
+      const per = spells.map((id) => medianOrNull(opts.seeds.map((seed) => stageTime(id, 1, zone.id, stage, { seed, limitMs: STAGE_LIMIT_MS }))));
       rows.push({ zoneId: zone.id, rel, tier, medianMs: medianOrNull(per) });
     }
   }

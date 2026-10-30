@@ -26,14 +26,14 @@ export const LANE_Y = 0.09;
  */
 export const RANGE = 0.75;
 /** Foes stop when their centre reaches x = STOP_X + radius. */
-export const STOP_X = 0.08;
+export const STOP_X = 0.16;
 /** Foes appear at SPAWN_X (plus up to SPAWN_JITTER), just off the right edge. */
 export const SPAWN_X = 1.05;
 const SPAWN_JITTER = 0.15;
 /** Knockback and blind wandering never carry a foe that is already in view past this x. */
 export const RIGHT_X = 1.0;
 /** Foes walk at def.speed x LANE_SPEED along the lane. */
-export const LANE_SPEED = 4;
+export const LANE_SPEED = 2.5;
 /** Blades fly forward in a fan of +-BLADE_FAN radians around +x. */
 export const BLADE_FAN = 0.7;
 

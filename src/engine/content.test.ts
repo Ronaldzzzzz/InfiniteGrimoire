@@ -8,6 +8,7 @@ import materials from '../data/content/materials.json';
 import keyItems from '../data/content/key-items.json';
 import passives from '../data/content/passives.json';
 import regions from '../data/content/regions.json';
+import { stageTotal } from './stages';
 import { craftedId, inputToken, resolveSpell } from './spells';
 import { ELEMENT_ORDER } from './types';
 import baseline from './content-baseline.json';
@@ -43,6 +44,15 @@ describe('content', () => {
         expect(st.waves.length).toBeGreaterThan(0);
         for (const n of st.waves) expect(n).toBeGreaterThanOrEqual(1);
       }
+    }
+  });
+
+  it('ordinary stages ramp up', () => {
+    for (const z of content.zones) {
+      for (let s = 2; s <= 9; s++) expect(stageTotal(z, s), `${z.id} stage ${s}`).toBeGreaterThan(stageTotal(z, s - 1));
+      const w9 = z.stages[8]!.waves.length, w10 = z.stages[9]!.waves.length;
+      expect(w10, z.id).toBeGreaterThanOrEqual(0.25 * w9);
+      expect(w10, z.id).toBeLessThanOrEqual(0.45 * w9);
     }
   });
 

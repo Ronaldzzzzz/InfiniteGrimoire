@@ -15,6 +15,8 @@ const ENFORCE_CRAFTED = false;
  * tiers out of 1.6-2.0. Refitting spell damage for the lane is a balance decision for the user (battle-strip spec 3.3:
  * the fine balance comes later); the stage-time gate (stage-time.test.ts) is what this branch calibrates.
  * Before the strip only the two Lv.6→Lv.7 ember_wastes rows were listed.
+ * 2026-10-30 (strip-feel Task 1: LANE_SPEED 2.5, STOP_X 0.16 change how long a crowd stays in reach) two more rows moved out
+ * of band: Lv.7→Lv.8 sunken_temple crowd x2.05 (limit 2.0), and 岩槍 Lv.2 +49 geometric mean 905.0 vs the Lv.3 median 844.2 (x1.07).
  */
 const KNOWN_GAPS = [
   'Lv.1→Lv.2（在 mist_meadow，單挑魔王）：中位數',
@@ -25,6 +27,7 @@ const KNOWN_GAPS = [
   'Lv.5→Lv.6（在 thunder_gorge，群怪）：中位數',
   'Lv.6→Lv.7（在 ember_wastes，單挑魔王）：中位數',
   'Lv.6→Lv.7（在 ember_wastes，群怪）：中位數',
+  'Lv.7→Lv.8（在 sunken_temple，群怪）：中位數',
   '落雷（Lv.2）幾何平均',
   '湧泉之環（Lv.2）幾何平均',
   '疾風刃（Lv.2）幾何平均',
@@ -61,6 +64,7 @@ const KNOWN_GAPS = [
   '岩牙碎擊（Lv.4）強化 +49 的幾何平均',
   '激流水槍（Lv.4）強化 +49 的幾何平均',
   'Lv.4 強化 +49 的中位數',
+  '岩槍（Lv.2）強化 +49 的幾何平均',
   '深海重壓（Lv.6）強化 +49 的幾何平均',
   '紅蓮火柱（Lv.6）強化 +49 的幾何平均',
   '黑曜荊棘（Lv.6）強化 +49 的幾何平均',

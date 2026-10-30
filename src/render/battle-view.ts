@@ -19,8 +19,8 @@ import { COLORS } from './palette';
 
 /** Foe bodies are drawn at this size and scaled to their engine radius. */
 const BODY_PX = 32;
-const HERO_W = 22;
-const HERO_H = 38;
+const HERO_W = 34;
+const HERO_H = 58;
 const TEXT_MS = 600;
 const IMMUNE_FONT_PX = 16; // fixed, readable at any arena size (spec 4.3)
 const TEXT_MARGIN = 24;
@@ -327,8 +327,8 @@ export class BattleView {
     this.heroTint = tint(COLORS.rune);
     const g = new Graphics();
     g.rect(-HERO_W / 2, -HERO_H / 2, HERO_W, HERO_H).fill(0xffffff);
-    g.rect(-HERO_W / 2 + 4, -HERO_H / 2 + 8, 4, 4).fill(COLORS.bg);
-    g.rect(HERO_W / 2 - 8, -HERO_H / 2 + 8, 4, 4).fill(COLORS.bg);
+    g.rect(-HERO_W / 2 + 6, -HERO_H / 2 + 12, 6, 6).fill(COLORS.bg);
+    g.rect(HERO_W / 2 - 12, -HERO_H / 2 + 12, 6, 6).fill(COLORS.bg);
     g.tint = this.heroTint;
     return g;
   }
