@@ -56,3 +56,15 @@ Task 6: review — spec ✅, approved. ⚠️ label overlap in crowded sectors �
 Task 6: minor (deferred): links O(n²) uncapped (measure fps with many learned in Task 7); StarMap test re-implements App pick (App.test covers); NodeCard chant type assertion; BUBBLE_SIZE.locked unused; key-items.json desc still fog-era copy shown on KeyItemBar; no star-map label layout test; RED by moving the file.
 Task 6: complete (commits e45d958..210b2e2, review clean)
 Task 7: dispatched (base 210b2e2, implementer sonnet)
+Task 7: acceptance — spec 5 items 1–9 pass in headless Chrome; problems routed to the final fix wave: P1 parchment guide path no fill:none (black pentagram); P2 390 px element picker shows ~3.5 of 7 options, 關閉 only by inner scroll; P3 390 px star map small, detail card clipped; P5 key-items desc fog-era copy. P4 hairball with ~100 random learned circles → user decision (links ruling). P6 local discoveries already had a 焚世之焰 first finder (local data, not a bug).
+Task 7: review — docs need fixes (stale rare-recipe rule in §6, deploy migrations 0001～0006, old altar/tree todos, GM recipes tab description, heading date) → fix round 1 dispatched
+Task 7: fix round 1/5 (4 addressed, 1 partly — minor leftovers routed to the final fix wave: AGENTS.md:175 stale "0001→…→0006 / 0006 一定要先套用" parenthetical; AGENTS.md:277 降級落空 and :275 魔導書過載 items still read as live; fix report wrongly claims a recipe-table.ts change; commits a43145c..9f49874)
+Task 7: complete (commits 210b2e2..9f49874, minors routed to final fix wave)
+Final review: dispatched (range e7c28de..9f49874, opus)
+Final review: fix before merge — 0 Critical; Important: P1 guide fill, P5 key-item copy, P2 390 px picker actions, synthesisLog unbounded (save > 64 KB after ~300 circles → 413, account stuck).
+Final review: Ruling: synthesisLog compacted to an attempts count per canonical circle (project 3 proficiency needs only that; the DB keeps recordSynthesis detail) with a cap of 1000 entries (drop the least-attempted); persist/audit follow — cost if wrong: per-result history in the save is lost.
+Final review: Ruling: runes derive from the audited upload's defeatedBosses (a boss kill is audited: key items and boss-before-stages checks) instead of a separate server-only field — accepted; spec 3.9 "server-owned" satisfied by the audit — cost if wrong: a forged boss kill would also unlock runes (already blocked by audit).
+Final review: fix wave dispatched (P1, P5, P2, synthesisLog cap, GM recipe table shows 90% after FAIL_BASE, AGENTS.md:175/:275/:277 leftovers, stale fog comments in audit.ts/content.ts).
+Final review: minor (deferred): resolveSpell('fireball') returns old hand-tuned numbers (unused path); parseCanonical accepts non-minimal tier ids; dead named spells / mana_overload / rare effects data still in per-tier content check; P3 phone star map/card size (playtest); P6 local discoveries leftover.
+Final review: fix wave 3dad160 re-reviewed — 6/6 addressed, no new Critical/Important.
+Final review: minor (deferred): persist.ts now imports SYNTH_LOG_CAP from circle-synth; AGENTS.md:175 repeats the 0007/0008 reset note.
