@@ -46,6 +46,15 @@ export function serialize(state: GameState): string {
   return JSON.stringify(state);
 }
 
+/**
+ * Reads a state the server stored itself (already validated when written). Saves written before the
+ * offline fields existed lack them; fill the same defaults parseState gives an upload, so the audit
+ * compares like with like.
+ */
+export function readStored(json: string): GameState {
+  return { clearTimes: {}, awayAt: 0, offlineUntil: 0, ...(JSON.parse(json) as Partial<GameState>) } as GameState;
+}
+
 const unique = (xs: string[]): boolean => new Set(xs).size === xs.length;
 
 /** Validates untrusted input. Never throws, never repairs: any problem yields null. */

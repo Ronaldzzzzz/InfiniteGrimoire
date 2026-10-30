@@ -3,7 +3,7 @@ import { validateUpload } from '../src/engine/audit';
 import { comboKey, synthesize, SYNTH_SLOTS } from '../src/engine/crafting';
 import { empower } from '../src/engine/empower';
 import type { Content, GameState } from '../src/engine/model';
-import { createInitialState, parseState, serialize } from '../src/engine/persist';
+import { createInitialState, parseState, readStored, serialize } from '../src/engine/persist';
 import { claimOffline, markAway } from '../src/engine/offline';
 import { claimStage } from '../src/engine/stage-clear';
 import { stageCount } from '../src/engine/stages';
@@ -228,7 +228,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (!player || !save) return c.json({ error: 'internal error' }, 500);
     const token = newToken();
     await store.createSession(await hashToken(token), player.id, t);
-    return c.json({ token, playerId: player.id, state: JSON.parse(save.state), revision: save.revision });
+    return c.json({ token, playerId: player.id, state: readStored(save.state), revision: save.revision });
   });
 
   app.get('/api/account', async (c) => {
@@ -332,7 +332,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const player = c.get('player');
     const save = await store.getSave(player.id);
     if (!save) return c.json({ error: 'not found' }, 404);
-    return c.json({ state: JSON.parse(save.state), revision: save.revision });
+    return c.json({ state: readStored(save.state), revision: save.revision });
   });
 
   type Checked =
@@ -359,12 +359,12 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (!next) throw new HttpError(400, 'invalid state');
     const save = await store.getSave(player.id);
     if (!save) return { ok: false, res: c.json({ error: 'not found' }, 404) };
-    const current = JSON.parse(save.state) as GameState;
+    const current = readStored(save.state);
     if (base !== save.revision) {
       return { ok: false, res: c.json({ reason: 'conflict', state: current, revision: save.revision }, 409) };
     }
     const t = now();
-    const anchor = JSON.parse(save.anchorState) as GameState;
+    const anchor = readStored(save.anchorState);
     // server-owned fields come from the current save; everything client-owned is measured from the anchor
     const baseline: GameState = {
       ...anchor,
@@ -412,7 +412,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
   async function conflict(c: Ctx, playerId: string): Promise<Response> {
     const latest = await store.getSave(playerId);
     return c.json(
-      { reason: 'conflict', state: latest ? JSON.parse(latest.state) : null, revision: latest?.revision ?? 0 },
+      { reason: 'conflict', state: latest ? readStored(latest.state) : null, revision: latest?.revision ?? 0 },
       409,
     );
   }

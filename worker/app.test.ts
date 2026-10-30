@@ -1711,6 +1711,27 @@ describe('POST /api/away and /api/offline', () => {
     expect(store.rejections).toHaveLength(0);
   });
 
+  it('a save stored before the offline fields existed still uploads and claims', async () => {
+    const g = await seeded();
+    const row = store.saves.get(g.playerId)!;
+    const legacy = (s: string) => {
+      const { clearTimes: _c, awayAt: _a, offlineUntil: _o, ...rest } = JSON.parse(s);
+      return JSON.stringify(rest);
+    };
+    row.state = legacy(row.state);
+    row.anchorState = legacy(row.anchorState);
+    // the client got the defaults (GET /api/save) and uploads them back
+    const got = (await (await app.request('/api/save', json(undefined, g.token, 'GET'))).json()) as { state: GameState };
+    expect(got.state.clearTimes).toEqual({});
+    const saved = await put(g.token, got.state, 0);
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    clock += 10 * MIN;
+    const paid = await post('/api/offline', g.token, got.state, 1);
+    expect(paid.status, JSON.stringify(paid.out)).toBe(200);
+    expect(paid.out.result.kind).toBe('none');
+    expect(store.rejections).toHaveLength(0);
+  });
+
   it('closed game uses the last save time', async () => {
     const g = await seeded();
     const t0 = clock;
