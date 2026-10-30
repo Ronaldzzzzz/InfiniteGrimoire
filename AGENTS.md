@@ -228,7 +228,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - **自創魔法 id 只有一種寫法**：`c(<a>|<b>)`，兩個輸入 token 依字串排序（`craftedId`）；不照順序或只有素材的 id 解析成 null（R4）。深度上限 `HARD_MAX_DEPTH`，強化等級上限 `MAX_SPELL_LEVEL`，攻擊上限 `CEILING_FACTOR`。
 - **特效上限**：場上同時存在的特效 `MAX_ACTIVE_FX = 24`（`combat.ts`），畫面與引擎共用；新增特效不要繞過它。
 - **範圍魔法的瞄準**：最密、隨機、最強等目標只考慮小人前方射程 `RANGE` 內的魔物（長帶座標 `x <= RANGE`），沒有才退回全部；擊退一律往右、不推出右緣 `RIGHT_X`；怪停在停止線 `STOP_X` 前、不會穿過小人；一網打盡一定要在畫面裡看得到。
-- **關卡與結算**：每個地點 10 關，第 10 關是魔王關；一波清完才出下一波；魔王關要玩家按「進入魔王關」（自動前進會停在魔王關前），**遇到魔王波才開始倒數 180 秒（`BOSS_LIMIT_MS`）**，時間到失敗並退回前一關。打完小怪關後用戶端送 `POST /api/stage-clear` 結算（伺服器擲骰、`stageLoot` 約兩倍掉落、檢查 `minStageMs`、魔王關要魔王真的倒下）。**`clearedStages`、`lastClearAt` 只能由伺服器改變**（上傳被改會被 `audit.ts` 拒絕；錨點窗口照舊）；`zoneKills` 已不存在，`maxKills` 改依「到目前為止能出現的波數」。
+- **關卡與結算**：每個地點 10 關，第 10 關是魔王關；一波清完才出下一波；魔王關要玩家按「進入魔王關」（自動前進不進魔王關：打完第 9 關就重複刷第 9 關，同時顯示「進入魔王關」按鈕，`GameRuntime.goToBoss` 前往並立刻開始；手動選到第 10 關則停在門口等按鈕），**遇到魔王波才開始倒數 180 秒（`BOSS_LIMIT_MS`）**，時間到失敗並退回前一關。打完小怪關後用戶端送 `POST /api/stage-clear` 結算（伺服器擲骰、`stageLoot` 約兩倍掉落、檢查 `minStageMs`、魔王關要魔王真的倒下）。**`clearedStages`、`lastClearAt` 只能由伺服器改變**（上傳被改會被 `audit.ts` 拒絕；錨點窗口照舊）；`zoneKills` 已不存在，`maxKills` 改依「到目前為止能出現的波數」。
 - **防作弊錨點窗口**：上傳以「錨點存檔 + 目前的伺服器欄位」為基準檢查增益（`audit.ts`）；錨點每 60 秒前進一次，最多採計 180 秒；合成時把扣掉的材料也記到錨點（可為負，代表欠量）；`key:` 道具不給 `GAIN_SLACK`，必須來自真的魔王擊殺（R8）。改動 `audit.ts` 或 `worker/app.ts` 時，必須保持 `tests/sim` 各條路線 0 次被拒，以及 worker 的對抗測試全部通過。
 - **React 效能**：魔導書與節點詳情用窄 selector 訂閱，不能訂閱整個 `game` 或背包（戰鬥中每次掉落會讓整個 SVG 重畫）；有 Profiler 測試把關。
 - **「Lv.」永遠是魔法／魔物階級**；強化等級顯示成「強化 +N」（R17）。

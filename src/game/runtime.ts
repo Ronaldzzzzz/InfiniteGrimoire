@@ -114,13 +114,14 @@ export class GameRuntime {
     if (e.type === 'stageCleared') {
       const lastResult: LastResult = { kind: 'cleared', zoneId: zone.id, stage: e.stage, loot: [], pending: true, claimed: false };
       const auto = this.snapshot.autoAdvance;
-      // a boss kill moves on to the next unlocked zone; the last zone (or a locked next one) repeats its boss stage held
+      // a boss kill moves on to the next unlocked zone; the last zone (or a locked next one) farms its last ordinary stage
       const nextZone = auto && isBossStage(zone, e.stage) ? this.content.zones.find((z) => z.order === zone.order + 1) : undefined;
       if (nextZone && game.unlockedZones.includes(nextZone.id)) {
         const stage = highestPlayable(game, nextZone);
         return { game: { ...game, currentZone: nextZone.id, currentStage: stage }, battle: this.newBattle(nextZone.id, stage), lastResult };
       }
-      const next = auto ? Math.min(e.stage + 1, stageCount(zone)) : e.stage;
+      // auto-advance never walks into the boss stage: entering it is the player's call (goToBoss), so it farms the stage before
+      const next = auto ? Math.min(e.stage + 1, stageCount(zone) - 1) : e.stage;
       return { game: { ...game, currentStage: next }, battle: this.newBattle(zone.id, next), lastResult };
     }
     const backTo = Math.max(1, e.stage - 1);
@@ -170,6 +171,15 @@ export class GameRuntime {
     saveAutoAdvance(on);
     if (this.snapshot.autoAdvance === on) return;
     this.set({ autoAdvance: on });
+  }
+
+  /** The player chose to fight the boss: go to this zone's boss stage and start it at once. False while it is not playable. */
+  goToBoss(): boolean {
+    const g = this.snapshot.game;
+    const zone = this.content.zones.find((z) => z.id === g.currentZone);
+    if (!zone || !this.travel(zone.id, stageCount(zone))) return false;
+    this.enterBoss();
+    return true;
   }
 
   /** Leaves the door of a held boss stage. */

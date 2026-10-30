@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import { stageProgress } from '../engine/combat';
 import type { Content } from '../engine/model';
-import { BOSS_LIMIT_MS } from '../engine/stages';
+import { BOSS_LIMIT_MS, highestPlayable, stageCount } from '../engine/stages';
 import type { GameRuntime, LastResult } from '../game/runtime';
 import { itemCounts } from './messages';
 import { useRuntime, type RuntimeStore } from './useGame';
@@ -14,12 +14,17 @@ export const StageBar = memo(function StageBar({
   runtime,
   content,
 }: {
-  runtime: RuntimeStore & Pick<GameRuntime, 'enterBoss' | 'setAutoAdvance'>;
+  runtime: RuntimeStore & Pick<GameRuntime, 'enterBoss' | 'goToBoss' | 'setAutoAdvance'>;
   content: Content;
 }) {
   const zoneId = useRuntime(runtime, (s) => s.game.currentZone);
   const stage = useRuntime(runtime, (s) => s.game.currentStage);
   const held = useRuntime(runtime, (s) => s.battle.phase === 'held');
+  // farming an ordinary stage while this zone's boss stage is open: the player may go and fight it
+  const bossOpen = useRuntime(runtime, (s) => {
+    const z = content.zones.find((x) => x.id === s.game.currentZone);
+    return !!z && s.game.currentStage < stageCount(z) && highestPlayable(s.game, z) === stageCount(z);
+  });
   const percent = useRuntime(runtime, (s) => Math.round(stageProgress(s.battle) * 100));
   const bossSec = useRuntime(runtime, (s) => (s.battle.bossMs === null ? null : Math.max(0, Math.ceil((BOSS_LIMIT_MS - s.battle.bossMs) / 1000))));
   const autoAdvance = useRuntime(runtime, (s) => s.autoAdvance);
@@ -56,8 +61,8 @@ export const StageBar = memo(function StageBar({
         <label className="stage-auto">
           <input type="checkbox" checked={autoAdvance} onChange={(e) => runtime.setAutoAdvance(e.target.checked)} /> 自動前進
         </label>
-        {held && (
-          <button type="button" className="stage-enter-boss" onClick={() => runtime.enterBoss()}>
+        {(held || bossOpen) && (
+          <button type="button" className="stage-enter-boss" onClick={() => (held ? runtime.enterBoss() : runtime.goToBoss())}>
             進入魔王關
           </button>
         )}

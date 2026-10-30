@@ -47,6 +47,21 @@ describe('StageBar', () => {
     expect(screen.queryByRole('button', { name: '進入魔王關' })).toBeNull();
   });
 
+  it('offers 進入魔王關 while farming once the boss stage is open, and goes there', () => {
+    const rt = fakeRuntime({ currentZone: 'mist_meadow', currentStage: 9, clearedStages: { mist_meadow: 9 } });
+    rt.set({ battle: createBattle('mist_meadow', 9) });
+    bar(rt);
+    fireEvent.click(screen.getByRole('button', { name: '進入魔王關' }));
+    expect(rt.goToBoss).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides 進入魔王關 while the boss stage is not open yet', () => {
+    const rt = fakeRuntime({ currentZone: 'mist_meadow', currentStage: 9, clearedStages: { mist_meadow: 8 } });
+    rt.set({ battle: createBattle('mist_meadow', 9) });
+    bar(rt);
+    expect(screen.queryByRole('button', { name: '進入魔王關' })).toBeNull();
+  });
+
   it('mirrors autoAdvance in the checkbox and toggles it', () => {
     const rt = fakeRuntime();
     bar(rt);
