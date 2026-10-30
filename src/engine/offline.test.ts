@@ -46,9 +46,9 @@ const away = (o: Partial<GameState> = {}) => base({
 
 describe('offlineStage', () => {
   it('picks the last zone with a cleared stage, never the boss stage', () => {
-    expect(offlineStage(base({ clearedStages: { mist_meadow: 10, thunder_gorge: 5 } }), data)).toEqual({ zoneId: 'thunder_gorge', stage: 5 });
-    expect(offlineStage(base({ clearedStages: { mist_meadow: 10, thunder_gorge: 0 } }), data)).toEqual({ zoneId: 'mist_meadow', stage: 9 });
-    expect(offlineStage(base({ unlockedZones: ['mist_meadow', 'thunder_gorge'], clearedStages: { mist_meadow: 10 } }), data)).toEqual({ zoneId: 'mist_meadow', stage: 9 });
+    expect(offlineStage(base({ clearedStages: { mist_meadow: 10, thunder_gorge: 5 } }), data)).toMatchObject({ zoneId: 'thunder_gorge', stage: 5 });
+    expect(offlineStage(base({ clearedStages: { mist_meadow: 10, thunder_gorge: 0 } }), data)).toMatchObject({ zoneId: 'mist_meadow', stage: 9 });
+    expect(offlineStage(base({ unlockedZones: ['mist_meadow', 'thunder_gorge'], clearedStages: { mist_meadow: 10 } }), data)).toMatchObject({ zoneId: 'mist_meadow', stage: 9 });
     expect(offlineStage(base(), data)).toBeNull();
   });
 });
@@ -148,12 +148,31 @@ describe('offlineLoot', () => {
     expect(Math.abs(total - want) / want).toBeLessThan(0.05);
   });
 
-  it('the rate halves the payout versus full rate, and key items are omitted', () => {
-    const drop = { chance: 0.5, min: 1, max: 3 };
-    expect(expectedOf(100, 1, 'x', drop, 1) / expectedOf(100, OFFLINE_RATE, 'x', drop, 1)).toBeCloseTo(2);
+  it('pays OFFLINE_RATE of the full-rate expectation, and omits key items and zeros', () => {
     expect(OFFLINE_RATE).toBe(0.5);
+    const drop = { chance: 0.5, min: 1, max: 3 };
+    const runs = 400;
+    const total = offlineLoot(mist, 3, runs, 1, data, createRng(3))['el:fire:1']!;
+    const full = expectedOf(runs, 1, 'x', drop, 1);
+    expect(Math.abs(total - full / 2) / (full / 2)).toBeLessThan(0.05);
     const loot = offlineLoot(mist, 3, 100, 1, data, createRng(3));
     expect(Object.keys(loot).every((k) => !k.startsWith('key:'))).toBe(true);
     expect(Object.values(loot).every((n) => n > 0)).toBe(true);
+  });
+
+  it('rounds a fractional expectation up or down at random, averaging to the expectation', () => {
+    // 1 run: 7 foes over 2 monsters = 3.5 foes of bat; 3.5 * 3 * 0.25 * 1 * 0.5 = 1.3125 el:wind:1
+    const want = expectedOf(1, OFFLINE_RATE, 'el:wind:1', { chance: 0.25, min: 1, max: 1 }, 1);
+    expect(want % 1).toBeGreaterThan(0);
+    const seen = new Set<number>();
+    let sum = 0;
+    const n = 2000;
+    for (let seed = 1; seed <= n; seed++) {
+      const q = offlineLoot(mist, 3, 1, 1, data, createRng(seed))['el:wind:1'] ?? 0;
+      seen.add(q);
+      sum += q;
+    }
+    expect([...seen].sort()).toEqual([Math.floor(want), Math.floor(want) + 1]);
+    expect(Math.abs(sum / n - want)).toBeLessThan(0.05);
   });
 });

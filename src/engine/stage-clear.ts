@@ -77,11 +77,11 @@ export function claimStage(
   const loot = stageLoot(zone, stage, spell.tier, content, rng);
   const cleared = Math.max(state.clearedStages[zoneId] ?? 0, stage);
   const key = `${zoneId}:${stage}`;
-  const clearTimes = isBossStage(zone, stage) || state.lastClearAt <= 0 ? state.clearTimes : {
+  const clearTimes = isBossStage(zone, stage) || state.lastClearAt <= 0 || state.awayAt > 0 ? state.clearTimes : {
     ...state.clearTimes,
     [key]: [
       ...(Object.hasOwn(state.clearTimes, key) ? state.clearTimes[key]! : []),
-      Math.max(minStageMs(zone, stage), Math.min(now - state.lastClearAt, OFFLINE_CAP_MS)),
+      Math.max(minStageMs(zone, stage), Math.min(now - Math.max(state.lastClearAt, state.offlineUntil), OFFLINE_CAP_MS)),
     ].slice(-CLEAR_TIMES_KEEP),
   };
   return {

@@ -73,7 +73,7 @@ export function parseState(input: unknown, content: Content): GameState | null {
       s.defeatedBosses.every((id) => bossIds.has(id)) &&
       Object.keys(s.clearedStages).every(isZone) &&
       Object.keys(s.clearTimes).every((k) => {
-        const m = /^([^:]+):(\d+)$/.exec(k);
+        const m = /^([^:]+):([1-9]\d*)$/.exec(k);
         const zone = m && content.zones.find((z) => z.id === m[1]);
         return !!zone && Number(m[2]) >= 1 && Number(m[2]) < zone.stages.length;
       }) &&

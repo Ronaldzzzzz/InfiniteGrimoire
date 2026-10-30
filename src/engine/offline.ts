@@ -20,11 +20,11 @@ export type OfflineResult =
   | { kind: 'offline'; zoneId: string; stage: number; runs: number; awayMs: number; capped: boolean; loot: Record<ItemId, number> };
 
 /** The stage offline time is spent on: the last cleared zone's highest ordinary stage. */
-export function offlineStage(state: GameState, content: Content): { zoneId: string; stage: number } | null {
-  let found: { zoneId: string; stage: number } | null = null;
+export function offlineStage(state: GameState, content: Content): { zoneId: string; stage: number; zone: Zone } | null {
+  let found: { zoneId: string; stage: number; zone: Zone } | null = null;
   for (const zone of content.zones) {
     const cleared = Object.hasOwn(state.clearedStages, zone.id) ? state.clearedStages[zone.id]! : 0;
-    if (cleared > 0) found = { zoneId: zone.id, stage: Math.min(cleared, stageCount(zone) - 1) };
+    if (cleared > 0) found = { zoneId: zone.id, stage: Math.min(cleared, stageCount(zone) - 1), zone };
   }
   return found;
 }
@@ -71,7 +71,7 @@ export function claimOffline(
   const none = { state: state.awayAt === 0 ? state : { ...state, awayAt: 0 }, result: { kind: 'none' } as const };
   const target = offlineStage(state, content);
   if (!target) return none;
-  const zone = content.zones.find((z) => z.id === target.zoneId)!;
+  const { zone } = target;
   const key = `${target.zoneId}:${target.stage}`;
   const times = Object.hasOwn(state.clearTimes, key) ? state.clearTimes[key]! : [];
   if (times.length === 0) return none;

@@ -117,6 +117,14 @@ describe('claimStage', () => {
     expect(s.clearTimes['z1:1']).toEqual([2, 3, 4, 5, 10_000]);
   });
 
+  it('measures from offlineUntil after an offline claim, and records nothing while away', () => {
+    const afterOffline = base({ lastClearAt: 5, offlineUntil: T - 20_000 });
+    expect(claimStage(afterOffline, 'z1', 1, T, data, createRng(1)).state.clearTimes['z1:1']).toEqual([20_000]);
+    const gone = claimStage(base({ lastClearAt: T - 20_000, awayAt: T - 10_000 }), 'z1', 1, T, data, createRng(1));
+    expect(gone.result.kind).toBe('cleared');
+    expect(gone.state.clearTimes).toEqual({});
+  });
+
   it('re-claiming an already cleared stage gives loot but keeps cleared', () => {
     const { state, result } = claimStage(base({ clearedStages: { z1: 6 } }), 'z1', 3, T, data, createRng(1));
     expect(result.kind).toBe('cleared');

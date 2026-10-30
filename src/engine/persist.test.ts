@@ -158,6 +158,7 @@ describe('stage fields', () => {
     const z = content.zones[0]!;
     expect(parseState({ ...s, clearTimes: { [`${z.id}:3`]: [1000, 2000] }, awayAt: 5, offlineUntil: 9 }, content)).not.toBeNull();
     expect(parseState({ ...s, clearTimes: { [`${z.id}:${z.stages.length}`]: [1000] } }, content)).toBeNull();
+    expect(parseState({ ...s, clearTimes: { [`${z.id}:03`]: [1000] } }, content)).toBeNull();
     expect(parseState({ ...s, clearTimes: { [`${z.id}:0`]: [1000] } }, content)).toBeNull();
     expect(parseState({ ...s, clearTimes: { 'nowhere:1': [1000] } }, content)).toBeNull();
     expect(parseState({ ...s, clearTimes: { [`${z.id}:1`]: [1, 2, 3, 4, 5, 6] } }, content)).toBeNull();
