@@ -44,3 +44,13 @@ Task 4: minor (deferred): a refused / 400 offline claim stays pending and is re-
 Task 4: minor (deferred): boot test restarts the same controller after stop() (relies on start() resetting stopped).
 Task 4: complete (commits 4bbd84c..285f478, review clean)
 Task 5: dispatched (base 285f478, implementer sonnet)
+Task 5: review — spec ❌ (2 Important doc gaps: stale 83～134 route time in §6, §6 missing full offline rules; 3 minor) → fix round 1 dispatched (all 5)
+Task 5: fix round 1/5 (5 addressed, 0 open; commits 24d5cc7..03d3f0b)
+Task 5: minor (deferred): AGENTS.md:57 garbled sentence "2026-10-29 橫向戰鬥帶量到2026-10-30 手感…"; AGENTS.md:31 3.0 heading still 2026-10-29.
+Task 5: complete (commits 285f478..03d3f0b, review clean)
+Final review: dispatched (range f46aa87..03d3f0b, opus)
+Final review: With fixes — 0 Critical, 1 Important, 5 Minor (final-review.md)
+Final review: Ruling: supersedes the Task 2 ruling — claimStage records no clear time when offlineUntil > lastClearAt (the interval straddles an offline window, measuring from offlineUntil undercounts the stage, median collapses to minStageMs and the next 8 h window pays ~12x) — cost if wrong: the first clear after each return is never recorded, so clear-time history refreshes one clear slower.
+Final review: fix wave dispatched (Important + sync resume order + claimStage clears awayAt + AGENTS.md text + worker tests for intervening PUT and 8 h cap)
+Final review: fix wave e1635b8 re-reviewed — 5/5 addressed, retry() race judged harmless (synthPending set synchronously; flush→upload in one microtask chain); 0 new Critical/Important.
+Final: npm test 76 files / 875 tests (3 runs: one run had 1 failing test, not reproduced in the next two — consistent with the known load timeout); npm run build OK.

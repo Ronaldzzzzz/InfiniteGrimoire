@@ -60,7 +60,7 @@
 
 ### 3.0 接手先看這裡（2026-10-30 更新）
 
-**現在停在哪（2026-10-30，專案 1 續：手感、關卡由簡至難、離線收益）：** branch `feat/battle-strip`（**未 push、未合併**）。規格第 3.8、3.9 節（已實作）、計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、帳本與 Task 1 量測 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/`。Task 1～5 已完成並各自審查；最終全 branch 審查尚未做（由 controller 做完後更新）。`npm test` 76 個檔案 871 個測試全過、`npm run build` 通過（2026-10-30）。
+**現在停在哪（2026-10-30，專案 1 續：手感、關卡由簡至難、離線收益）：** branch `feat/battle-strip`（**未 push、未合併**）。規格第 3.8、3.9 節（已實作）、計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、帳本與 Task 1 量測 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/`。Task 1～5 已完成並各自審查；最終全 branch 審查找到 1 個 Important（離線回來後第一次通關只量到回來後的時間，會讓下一次離線多給約 12 倍）已修正並複審通過：跨過離開或離線時段的那次通關不記時間、成功通關會結束「離開」、重新連線先送離線結算再上傳。`npm test` 76 個檔案 875 個測試全過（連跑三次有一次 1 個測試逾時，另兩次全過，與已知的負載逾時相同）、`npm run build` 通過（2026-10-30）。
 - **手感（Task 1，以下數值都是提案，待使用者確認）：** `LANE_SPEED` 4 → 2.5、`STOP_X` 0.08 → 0.16、小人 22×38 → 34×58（`HERO_W`／`HERO_H`，眼睛 6 px）；`WALK_MS` 不變。
 - **關卡由簡至難（Task 1，數字是提案，待使用者確認）：** `zones.json` 每個地點第 1／5／9 關線性內插波數（每波約 15～17 隻）；魔王關波數＝第 9 關的 1/3。每地點第 1／5／9 關小怪數：迷霧草原 10／20／30、雷鳴峽谷 15／31／46、熔火荒原 16／32／49、沉沒神殿 12／24／36、星殞高原 10／19／29、世界盡頭 12／24／37。主場階級清關時間中位數（模擬秒，第 1／5／9 關）：迷霧 59.5／125.8／181.4、雷鳴 58.3／117.8／190.9、熔火 57.7／116.2／182.2、沉沒 59.5／118.0／180.8、星殞 61.8／115.8／189.5、世界盡頭 57.5／118.7／183.2；主場魔王 14.3～28.3 秒。路線全清（只印報告，0 次被拒、6／6 清完）：火 97.5、風 100.5、雷 110.0、土 112.5、水 73.5、混合 107.5 模擬分鐘。
 - **離線收益（Task 2～4，規格第 3.8 節）：** `src/engine/offline.ts`（`OFFLINE_RATE` 0.5、`OFFLINE_CAP_MS` 8 小時、`AWAY_DELAY_MS` 30 秒、`offlineStage`、`offlineLoot`、`markAway`、`claimOffline`）；`POST /api/away`、`POST /api/offline`；用戶端 `src/game/presence.ts`（分頁隱藏滿 30 秒送離開）與 `AwayReport` 卡片（按「知道了」才關）。三個伺服器擁有的新欄位：`clearTimes`、`awayAt`、`offlineUntil`（`persist.ts` 有預設值，**migration 不用新增**；`audit.ts` 拒絕用戶端改它們）。離線只刷最遠已通過的小怪關、不推關、不打魔王、不掉關鍵道具。
@@ -279,7 +279,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
 
-- **2026-10-30（Claude Code，Opus 5.5，macOS，手感、關卡由簡至難與離線收益）**：branch `feat/battle-strip` 依計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md` 做 5 個任務（帳本 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/progress.md`）：怪變慢、停止線前移、小人畫大；每地點第 1～9 關波數逐關遞增（量到主場階級第 1 關約 58～62 秒、第 9 關約 181～191 秒）；離線收益（伺服器計算、5 折、8 小時上限、只刷最遠已通過的小怪關、`/api/away`、`/api/offline`、`AwayReport` 卡片）。審查裁定：stage-time 缺口改用每列記錄的比值上限（不用整體放寬）；離開或離線的時間不算進通關時間紀錄。已知缺口與延後的小問題見 3.0。`npm test` 76 檔 871 個、build 通過。停在：未 push、未合併；平衡數字是提案、沒有在真實瀏覽器看過。下一步：最終複審 → 使用者試玩並確認數字 → 決定合併。
+- **2026-10-30（Claude Code，Opus 5.5，macOS，手感、關卡由簡至難與離線收益）**：branch `feat/battle-strip` 依計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md` 做 5 個任務（帳本 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/progress.md`）：怪變慢、停止線前移、小人畫大；每地點第 1～9 關波數逐關遞增（量到主場階級第 1 關約 58～62 秒、第 9 關約 181～191 秒）；離線收益（伺服器計算、5 折、8 小時上限、只刷最遠已通過的小怪關、`/api/away`、`/api/offline`、`AwayReport` 卡片）。審查裁定：stage-time 缺口改用每列記錄的比值上限（不用整體放寬）；離開或離線的時間不算進通關時間紀錄。最終審查的 Important 已修正（跨過離線時段的通關不記時間）。已知缺口與延後的小問題見 3.0。`npm test` 76 檔 875 個、build 通過。停在：未 push、未合併；平衡數字是提案、沒有在真實瀏覽器看過。下一步：使用者試玩並確認數字 → 決定合併。
 
 - **2026-10-29（Claude Code，Opus 5.5，macOS，專案 1 最終修正）**：依最終全 branch 審查修正：601～1099 px 長帶固定在視窗底部；怪的畫面大小上限 0.12 倍長帶高度、跑道上下留空間（只壓 y 軸）；打倒魔王後自動前進到下一個已開放地點；`/api/stage-clear` 拒絕 `elsewhere` 與 `cannotDamage`；SyncController 在 `start()` 訂閱；清掉死碼；模擬機器人與關卡時間測試的小修正；帳本與驗收報告複製到 `docs/superpowers/sdd/2026-10-29-battle-strip/`。`npm test` 73 檔 835 個、build 通過。停在：`feat/battle-strip` 未 push、未合併；長帶與怪的外觀沒有在瀏覽器重看。下一步：複審 → 使用者試玩 → 決定合併。
 
