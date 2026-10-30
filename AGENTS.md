@@ -60,14 +60,16 @@
 
 ### 3.0 接手先看這裡（2026-10-30 更新）
 
-**現在停在哪（2026-10-30，專案 1 續：手感、關卡由簡至難、離線收益）：** branch `feat/battle-strip`（**未 push、未合併**）。規格第 3.8、3.9 節（已實作）、計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、帳本與 Task 1 量測 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/`。Task 1～5 已完成並各自審查；最終全 branch 審查找到 1 個 Important（離線回來後第一次通關只量到回來後的時間，會讓下一次離線多給約 12 倍）已修正並複審通過：跨過離開或離線時段的那次通關不記時間、成功通關會結束「離開」、重新連線先送離線結算再上傳。`npm test` 76 個檔案 875 個測試全過（連跑三次有一次 1 個測試逾時，另兩次全過，與已知的負載逾時相同）、`npm run build` 通過（2026-10-30）。
+**現在停在哪（2026-10-30 晚，專案 1 收尾）：** 專案 1（橫向戰鬥帶與關卡＋手感、關卡由簡至難、離線收益）連同使用者試玩後的修正都做完了，branch `feat/battle-strip` 比 `main` 多 38 個 commit，**未 push、未合併**（合併要先問使用者，push 由使用者 `! git push`）。試玩後的修正：舊存檔缺離線欄位導致上傳一直被拒（`readStored`）；自動前進不進魔王關、改成重複刷第 9 關並顯示「進入魔王關」（`goToBoss`）；離線改成「遊戲不是使用中的視窗」滿 10 秒就凍結（`setAway`、`BattleView.setFrozen`）、整頁灰階（`html.away`）、畫面正中間顯示「離線中」、分頁標題「💤 離線收益中 - 無限魔導書」（使用者確認維持 💤），收益每 30 秒一個 tick；「離開」「回來」依序排隊、絕不丟掉。`npm test` 77 個檔案 897 個測試全過、`npm run build` 通過。**下一步：** 使用者決定合併 → 專案 2（魔法陣合成）的設計討論（總體設計 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` 第 4.1、4.2、4.4 節與第 6 節「專案 2」要決定的事）。平衡數值（下方手感與關卡波數）仍是提案、使用者尚未逐項確認。
+
+**之前停在哪（2026-10-30，專案 1 續：手感、關卡由簡至難、離線收益）：** branch `feat/battle-strip`（**未 push、未合併**）。規格第 3.8、3.9 節（已實作）、計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、帳本與 Task 1 量測 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/`。Task 1～5 已完成並各自審查；最終全 branch 審查找到 1 個 Important（離線回來後第一次通關只量到回來後的時間，會讓下一次離線多給約 12 倍）已修正並複審通過：跨過離開或離線時段的那次通關不記時間、成功通關會結束「離開」、重新連線先送離線結算再上傳。`npm test` 76 個檔案 875 個測試全過（連跑三次有一次 1 個測試逾時，另兩次全過，與已知的負載逾時相同）、`npm run build` 通過（2026-10-30）。
 - **手感（Task 1，以下數值都是提案，待使用者確認）：** `LANE_SPEED` 4 → 2.5、`STOP_X` 0.08 → 0.16、小人 22×38 → 34×58（`HERO_W`／`HERO_H`，眼睛 6 px）；`WALK_MS` 不變。
 - **關卡由簡至難（Task 1，數字是提案，待使用者確認）：** `zones.json` 每個地點第 1／5／9 關線性內插波數（每波約 15～17 隻）；魔王關波數＝第 9 關的 1/3。每地點第 1／5／9 關小怪數：迷霧草原 10／20／30、雷鳴峽谷 15／31／46、熔火荒原 16／32／49、沉沒神殿 12／24／36、星殞高原 10／19／29、世界盡頭 12／24／37。主場階級清關時間中位數（模擬秒，第 1／5／9 關）：迷霧 59.5／125.8／181.4、雷鳴 58.3／117.8／190.9、熔火 57.7／116.2／182.2、沉沒 59.5／118.0／180.8、星殞 61.8／115.8／189.5、世界盡頭 57.5／118.7／183.2；主場魔王 14.3～28.3 秒。路線全清（只印報告，0 次被拒、6／6 清完）：火 97.5、風 100.5、雷 110.0、土 112.5、水 73.5、混合 107.5 模擬分鐘。
 - **離線收益（Task 2～4，規格第 3.8 節）：** `src/engine/offline.ts`（`OFFLINE_RATE` 0.5、`OFFLINE_CAP_MS` 8 小時、`AWAY_DELAY_MS` 10 秒、`OFFLINE_TICK_MS` 30 秒、`offlineStage`、`offlineLoot`、`markAway`、`claimOffline`）；`POST /api/away`、`POST /api/offline`；用戶端 `src/game/presence.ts`（遊戲不是使用中的視窗——失去焦點或頁面隱藏——滿 10 秒：`runtime.setAway(true)` 凍結戰鬥、長帶顯示「離線中」並送離開；回到視窗即結算並解凍）與 `AwayReport` 卡片（按「知道了」才關）。三個伺服器擁有的新欄位：`clearTimes`、`awayAt`、`offlineUntil`（`persist.ts` 有預設值，**migration 不用新增**；`audit.ts` 拒絕用戶端改它們）。離線只刷最遠已通過的小怪關、不推關、不打魔王、不掉關鍵道具。
 - **已知缺口（只印不擋）：** 速度變慢後走進場的時間變成主導，高一階（rel +1）在 5 個地點不比主場快，`tests/sim/stage-time.test.ts` 的 `KNOWN_GAPS` 記下每列的 up/home 比值並釘住上限（迷霧 ×1.00、熔火 ×1.07、沉沒 ×1.10、星殞 ×0.79、世界盡頭 ×0.76；要明顯變快需要重調魔物血量，不在這一輪）；`tier-curve` 新增兩個缺口：沉沒神殿 Lv.7→Lv.8 群怪倍率 ×2.05（上限 2.0）、岩槍 Lv.2 +49（905）高於 Lv.3 中位數（844，×1.07）。
 - **沒有在真實瀏覽器確認：** 小人大小與長帶比例、離開回來的卡片版面與位置、離開／回來流程（測試只用假的 visibility 事件）。使用者試玩時請看。
 - **延後的小問題（帳本）：** 兩次長離開合併報告會把時間相加且不顯示上限行；被拒絕的離線申請每 60 秒重送（無害）；`offline.ts` 與 `stage-clear.ts` 函式內互相引用；偽造用戶端輪詢 `/api/offline` 最多拿到上次存檔之後的 50%（上傳每 30 秒、通關時間中位數以分鐘計，等於 0；接受）；`combat.test.ts` 拉怪邊界含魔物半徑。
-- **接手者先做：** 最終複審 → 使用者在真實瀏覽器試玩並確認上面的平衡提案 → 決定合併。
+- **接手者先做（當時）：** 最終複審 → 使用者在真實瀏覽器試玩並確認上面的平衡提案 → 決定合併。
 
 **之前停在哪（2026-10-29，專案 1：橫向戰鬥帶與關卡）：** branch `feat/battle-strip`（從 `main` 分出，**未 push、未合併**）。規格 `docs/superpowers/specs/2026-10-29-side-scroll-battle-strip-design.md`、計畫 `docs/superpowers/plans/2026-10-29-battle-strip.md`；帳本 `docs/superpowers/sdd/2026-10-29-battle-strip/progress.md`、驗收報告 `docs/superpowers/sdd/2026-10-29-battle-strip/task-8-report.md`（其餘任務報告與截圖仍在 `.superpowers/sdd/2026-10-29-battle-strip/`，gitignore）。Task 1～7（程式）與 Task 8（瀏覽器驗收＋文件）已完成；**驗收與最終全 branch 審查發現的問題（長帶在 601～1099 px 看不到、打倒魔王後停在 X-10、結算可以用打不動的魔法刷、怪的方塊太大互疊等）已在最終修正一輪解決**（見帳本末段）。**待使用者確認的平衡提案**（關卡波次、血量、各階清關時間）尚未決定；Task 9（離線收益）已在 2026-10-30 討論並實作（見上）。
 - **這個 branch 做了什麼：** 圓形戰場換成主介面下方的橫向長帶（`src/render` 的 `makeArena(w, h)`；`combat.ts` 的 `RANGE`／`LANE_Y`／`STOP_X`／`RIGHT_X`）：小人固定在左、怪從右緣進場往左走、停在停止線、擊退一律往右且不出右緣。推圖改成關卡：每個地點 10 關（1～9 小怪關、第 10 關魔王關；`zones.json` 的 `stages[].waves`；`src/engine/stages.ts`）；一波清完才出下一波；魔王關最後一波是魔王，**遇到魔王波才開始倒數 `BOSS_LIMIT_MS` = 180 秒**，時間到失敗並退回前一關。`StageBar`（`src/ui/StageBar.tsx`）顯示「地點 關卡」、進度條、魔王倒數、「自動前進」勾選（`localStorage`）、魔王關前的「進入魔王關」與結算／失敗通知；`BossCounter`、`zoneKills`、`ENGAGE_R`／`KNOCK_MAX_R`／`walkedTouch` 都已移除。**結算：** 打完小怪關，用戶端送 `POST /api/stage-clear`（`src/engine/stage-clear.ts`，`stageLoot` 約為這關掉落的兩倍；伺服器擲骰、檢查最快時間 `minStageMs`、魔王關要魔王真的被打倒）；`clearedStages`、`lastClearAt` 是**伺服器擁有**的欄位；`audit.ts` 的 `maxKills` 改看「到目前為止能出現的波數」，魔王擊殺要先清完前 9 關。migration `0007_stages.sql` **會重置所有存檔**（本機已套用，遠端未套用）。
@@ -101,7 +103,7 @@
 | 順序 | 項目 | 狀態 | 去哪裡看 |
 |---|---|---|---|
 | 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers`、`feat/tier-step-18`、`feat/crowd-ttk`）到 `main` | **已完成（2026-10-29，使用者試玩後同意）**；push 由使用者 `! git push` | 本節 |
-| **0.1（進行中）** | 魔法研究改版（四個專案） | 遊戲性討論完成，總體設計已寫好；**下一步寫專案 1 規格** | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
+| **0.1（進行中）** | 魔法研究改版（四個專案） | 專案 1（橫向戰鬥帶、關卡、離線收益）**已完成，在 `feat/battle-strip` 待合併**；**下一步：專案 2 魔法陣合成的設計討論** | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
 | 0.5 | 魔法深度拓展（名稱、類型、定義）剩下的部分 | 第一批（20 招、強度曲線、地圖）**已完成（在 `feat/rare-tuning`）**；Phase 1～3 文案的其餘招式、新施法形態、異變詞綴、Overdrive、禁忌殘頁等**都還沒做**，之後再討論 | `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md`、`2026-10-27-spell-expansion-green-items-review.md` |
 | 1 | 魔法階級強度曲線（含距離魔王還差幾隻、放回上次組合） | **已完成（在 `feat/rare-tuning`）**；`TIER_STEP` 使用者已定 1.8、強化滿 ×1.4；待使用者試玩 | 本節、規格與帳本 |
 | 1b | 稀有魔法落空的保底／補償 | **暫停（使用者 2026-10-29），遊戲性討論之後再提**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
@@ -279,6 +281,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-30（Claude Code，Opus 5.5，macOS，整理交接）**：使用者確認分頁標題維持 💤，指示整理後進入下一階段。更新 3.0「現在停在哪」與順序表。停在：`feat/battle-strip` 未 push、未合併。下一步：使用者決定合併 → 專案 2（魔法陣合成）設計討論。
 
 - **2026-10-30（Claude Code，Opus 5.5，macOS，魔王關按鈕與離線改成「使用中的視窗」）**：試玩回饋：(1) 自動前進會走進魔王關門口停住 → 改成打完第 9 關重複刷第 9 關、長帶右上顯示「進入魔王關」（`GameRuntime.goToBoss`，74065ca）；(2) 使用者要「視窗上面有東西就算離線」，網頁偵測不到部分遮蓋，改成「遊戲不是使用中的視窗」滿 10 秒就凍結戰鬥並顯示「離線中」，收益以 30 秒一個 tick 計、不足一次通過也照比例給（29e845a）；審查後把「離開」「回來」改成依序排隊、絕不丟掉，關卡結算遇到忙碌改成等待重試，卡片顯示秒數與「不到 0.1 次」（d63be08 與之後一個 commit）。`npm test` 76 檔 896 個、build 通過。停在：`feat/battle-strip` 未 push、未合併；都沒有在瀏覽器實測。下一步：使用者試玩。
 
