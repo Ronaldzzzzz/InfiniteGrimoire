@@ -7,6 +7,7 @@ import type { OfflineReport, SyncController } from '../game/sync';
 import './App.css';
 import { AccountDialog } from './AccountDialog';
 import { AwayReport, mergeReports } from './AwayReport';
+import { CircleTable, placementOfSpell, type CircleTableHandle } from './CircleTable';
 import { BattleCanvas } from './BattleCanvas';
 import { DiscoveryBanner } from './DiscoveryBanner';
 import { EquipToasts, pushToast, type EquipToast } from './EquipToasts';
@@ -18,7 +19,6 @@ import { Notebook } from './Notebook';
 import { OfflineOverlay } from './OfflineOverlay';
 import { RareReveal } from './RareReveal';
 import { StageBar } from './StageBar';
-import { emptySlots, fillSlot, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { TopBar } from './TopBar';
 import { useDiscoveryFeed } from './useDiscoveryFeed';
 import { useConnStatus, useGameState, useRuntime } from './useGame';
@@ -41,7 +41,7 @@ export function App({
   const status = useConnStatus(sync);
   const game = useGameState(runtime);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
-  const [slots, setSlots] = useState<Slots>(emptySlots);
+  const circle = useRef<CircleTableHandle>(null);
   const [hintId, setHintId] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -96,13 +96,16 @@ export function App({
     };
   }, [api, runtime]);
 
-  // a synthesis in flight owns both sides: placing anything now would be wiped by the reveal
+  // an element from the table goes into the next open slot; a spell puts its whole circle on the parchment
+  // (the parchment ignores both while a circle is being injected)
   const pick = useCallback((id: string): void => {
     if (runtime.getSnapshot().synthPending) return;
-    setSlots((s) => fillSlot(s, id));
-  }, [runtime]);
+    if (/^el:/.test(id)) return circle.current?.placeItem(id);
+    const p = placementOfSpell(id, content);
+    if (p) circle.current?.loadPlacement(p);
+  }, [runtime, content]);
   const onSynthResult = useCallback((result: ActionResult): void => {
-    if (result.kind !== 'learned' && result.kind !== 'duplicate') return;
+    if (result.kind !== 'learned' && result.kind !== 'known') return;
     const spell = resolveSpell(result.spellId, content);
     if (!spell) return;
     // no auto-equip: a toast (or the rare reveal) asks first, since swapping spells zeroes the DPS
@@ -135,16 +138,8 @@ export function App({
       />
       <main className="main">
         <div className="side">
-          <section className="workbench" aria-label="元素與合成">
-            <SynthesisAltar
-              runtime={runtime}
-              sync={sync}
-              content={content}
-              slots={slots}
-              onSlotsChange={setSlots}
-              hint={hint}
-              onResult={onSynthResult}
-            />
+          <section className="workbench" aria-label="元素與魔法陣">
+            <CircleTable ref={circle} runtime={runtime} sync={sync} content={content} hint={hint} onResult={onSynthResult} />
             <ElementTable
               inventory={game.inventory}
               onPick={pick}
@@ -160,9 +155,9 @@ export function App({
               <button type="button" role="tab" aria-selected={tab === 'lightdark'} onClick={() => setTab('lightdark')}>光與暗</button>
               <button type="button" role="tab" aria-selected={tab === 'notebook'} onClick={() => setTab('notebook')}>魔法筆記</button>
             </div>
-            {/* <768px the altar is scrolled out of view above the grimoire; the node bubble repeats the hint */}
+            {/* <768px the parchment is scrolled out of view above the grimoire; the node bubble repeats the hint */}
             {tab !== 'notebook' ? (
-              <GrimoirePanel key={tab} tree={tab === 'lightdark' ? 'lightdark' : 'elements'} runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={!slots.includes(null)} lifting={lifting} content={content} />
+              <GrimoirePanel key={tab} tree={tab === 'lightdark' ? 'lightdark' : 'elements'} runtime={runtime} sync={sync} onHint={setHintId} onPick={pick} slotsFull={false} lifting={lifting} content={content} />
             ) : (
               <Notebook runtime={runtime} sync={sync} content={content} onPick={pick} />
             )}

@@ -17,20 +17,8 @@ export type UploadOutcome =
 export type GmResult = { kind: 'gm' };
 /** 'away': the server noted the player left. */
 export type AwayResult = { kind: 'away' };
-/**
- * Results of the retired two-input altar. The server no longer makes them (POST /api/synthesize is gone); they stay only
- * so the old SynthesisAltar compiles until the magic circle parchment (plan Task 5) replaces it.
- * @deprecated removed with SynthesisAltar
- */
-export type LegacySynthResult =
-  | { kind: 'learned'; spellId: string; crafted: boolean; rare?: { first: boolean } }
-  | { kind: 'duplicate'; spellId: string; refunded: ItemId[] }
-  | { kind: 'noReaction' }
-  | { kind: 'dormant' }
-  | { kind: 'overload'; spellId: string }
-  | { kind: 'rejected'; reason: 'slots' | 'unknownInput' | 'insufficient' | 'grade' | 'retired' };
 export type ActionResult =
-  | CircleReply | LegacySynthResult | EmpowerResult | KeyItemResult | UnlockResult | StageClearResult | GmResult | AwayResult | OfflineResult;
+  | CircleReply | EmpowerResult | KeyItemResult | UnlockResult | StageClearResult | GmResult | AwayResult | OfflineResult;
 /**
  * 'ok': the server applied the action. 'refused': the game rules said no (a 422 with a result); the server
  * wrote nothing and the local state stays. 'conflict' / 'rejected' (a 422 with audit reasons): adopt `state`.

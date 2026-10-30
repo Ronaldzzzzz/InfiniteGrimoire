@@ -392,12 +392,4 @@ export class SyncController {
   synthesizeCircle(placement: Placement): Promise<ActionResult | null> {
     return this.action('circle', { placement });
   }
-
-  /**
-   * The retired two-input altar: the server has no endpoint for it any more, so this refuses at once without a request.
-   * @deprecated kept only until the magic circle parchment replaces SynthesisAltar (plan Task 5)
-   */
-  async synthesize(_inputs: ItemId[]): Promise<ActionResult | null> {
-    return { kind: 'rejected', reason: 'retired' };
-  }
 }

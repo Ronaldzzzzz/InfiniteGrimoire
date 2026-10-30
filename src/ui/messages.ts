@@ -45,15 +45,8 @@ export function spellLabel(id: string, content: Content): string {
   return resolveSpell(id, content)?.name ?? id;
 }
 
-/** What a synthesis slot shows: an item name, or the name of the spell put in it. */
-export function slotLabel(id: string, content: Content): string {
-  return /^(el|mat|key):/.test(id) ? itemName(id, content) : spellLabel(id, content);
-}
-
 const REJECTED: Record<string, string> = {
   insufficient: '材料不足',
-  slots: '請放入兩個素材',
-  unknownInput: '這個素材不能拿來合成',
   notLearned: '還沒學會這個魔法',
   maxLevel: '已經強化到最高等級',
   noElements: '無屬性魔法不能強化',
@@ -68,7 +61,6 @@ const REJECTED: Record<string, string> = {
   cannotDamage: '裝備中的魔法打不動這裡的魔物',
   tooFast: '結算太快了，請稍後再試',
   bossAlive: '魔王還沒倒下',
-  retired: '合成台改版中，請稍候改用魔法陣',
   // magic circle refusals (placementProblems)
   overCap: '超過核心上限',
   overUnlocked: '尚未開放',
@@ -81,27 +73,14 @@ const REJECTED: Record<string, string> = {
 };
 
 /** Message for a server action's result. */
-export function synthMessage(result: ActionResult, content: Content, _inputs?: string[]): string {
+export function synthMessage(result: ActionResult, content: Content): string {
   switch (result.kind) {
     case 'learned':
-      return 'crafted' in result && result.crafted
-        ? `自創魔法：${spellLabel(result.spellId, content)}`
-        : `習得新魔法：${spellLabel(result.spellId, content)}`;
+      return `習得新魔法：${spellLabel(result.spellId, content)}`;
     case 'known':
       return `已經會了 ${spellLabel(result.spellId, content)}`;
     case 'failed':
       return '魔法陣崩解了……元素已經消耗';
-    case 'duplicate':
-      // only what the server says came back: a random recipe's retry refunds a single item
-      return result.refunded.length > 0
-        ? `已經會了 ${spellLabel(result.spellId, content)}，退還 ${itemCounts(result.refunded, content)}`
-        : `已經會了 ${spellLabel(result.spellId, content)}，沒有退還`;
-    case 'noReaction':
-      return '沒有反應……材料損耗了一部分';
-    case 'dormant':
-      return '似乎還缺少什麼……';
-    case 'overload':
-      return '魔力過載！';
     case 'empowered':
       return `強化成功：${empowerLabel(result.level)}`;
     case 'circleOpened':
@@ -117,7 +96,6 @@ export function synthMessage(result: ActionResult, content: Content, _inputs?: s
     case 'none':
       return ''; // presence actions are not shown as messages
     case 'rejected':
-      if (result.reason === 'grade') return '元素階級不夠';
       return REJECTED[result.reason] ?? '無法執行';
   }
 }

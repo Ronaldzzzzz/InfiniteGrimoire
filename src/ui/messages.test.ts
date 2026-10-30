@@ -1,31 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../engine/content';
-import { AFFINITY_LABEL, empowerLabel, itemCounts, itemName, passiveRequirementLabel, slotLabel, spellLabel, synthMessage } from './messages';
+import { AFFINITY_LABEL, empowerLabel, itemCounts, itemName, passiveRequirementLabel, spellLabel, synthMessage } from './messages';
 
 const crafted = 'm:fire.3.---fw.-----.bolt';
 
 describe('synthMessage', () => {
   it('formats every synthesis result kind', () => {
-    expect(synthMessage({ kind: 'learned', spellId: 'fireball', crafted: false }, content)).toBe('習得新魔法：火球');
-    expect(synthMessage({ kind: 'learned', spellId: crafted, crafted: true }, content)).toBe(`自創魔法：${spellLabel(crafted, content)}`);
-    expect(synthMessage({ kind: 'duplicate', spellId: 'fireball', refunded: ['el:fire:1'] }, content)).toBe('已經會了 火球，退還 初階火');
-    expect(synthMessage({ kind: 'duplicate', spellId: 'fireball', refunded: [] }, content)).toBe('已經會了 火球，沒有退還');
-    expect(synthMessage({ kind: 'noReaction' }, content)).toBe('沒有反應……材料損耗了一部分');
-    expect(synthMessage({ kind: 'dormant' }, content)).toBe('似乎還缺少什麼……');
-    expect(synthMessage({ kind: 'overload', spellId: 'mana_overload' }, content)).toBe('魔力過載！');
+    expect(synthMessage({ kind: 'learned', spellId: crafted, form: 'bolt' }, content)).toBe(`習得新魔法：${spellLabel(crafted, content)}`);
     expect(synthMessage({ kind: 'rejected', reason: 'insufficient' }, content)).toBe('材料不足');
     expect(synthMessage({ kind: 'cleared', loot: ['el:fire:1'] }, content)).toBe('關卡結算：初階火');
     expect(synthMessage({ kind: 'cleared', loot: [] }, content)).toBe('關卡結算：沒有獲得道具');
     expect(synthMessage({ kind: 'rejected', reason: 'tooFast' }, content)).toBe('結算太快了，請稍後再試');
     expect(synthMessage({ kind: 'rejected', reason: 'cannotDamage' }, content)).toBe('裝備中的魔法打不動這裡的魔物');
     expect(synthMessage({ kind: 'rejected', reason: 'elsewhere' }, content)).toBe('你已經不在這個地點了');
-    expect(synthMessage({ kind: 'rejected', reason: 'slots' }, content)).toBe('請放入兩個素材');
-  });
-
-  it('names the grade a grade refusal needed', () => {
-    // the retired altar's grade refusal no longer knows the grade (there are no recipes to derive it from)
-    expect(synthMessage({ kind: 'rejected', reason: 'grade' }, content, ['el:fire:1', 'fire_tornado'])).toBe('元素階級不夠');
-    expect(synthMessage({ kind: 'rejected', reason: 'retired' }, content)).toBe('合成台改版中，請稍候改用魔法陣');
   });
 
   it('formats the other server actions', () => {
@@ -56,13 +43,11 @@ describe('itemName', () => {
   });
 });
 
-describe('spellLabel / slotLabel', () => {
-  it('names named and crafted spells, items in slots, and falls back to the id', () => {
+describe('spellLabel', () => {
+  it('names named and circle spells, and falls back to the id', () => {
     expect(spellLabel('fireball', content)).toBe('火球');
     expect(spellLabel(crafted, content)).not.toBe(crafted);
     expect(spellLabel('nope', content)).toBe('nope');
-    expect(slotLabel('el:fire:2', content)).toBe('中階火');
-    expect(slotLabel('fireball', content)).toBe('火球');
   });
 });
 

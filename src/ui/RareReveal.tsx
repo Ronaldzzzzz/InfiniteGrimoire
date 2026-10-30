@@ -40,9 +40,9 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-/** Where the altar sits, relative to the screen centre, so the orb can fly from it. */
-function altarOffset(): { x: number; y: number } {
-  const el = typeof document !== 'undefined' ? document.querySelector('.altar') : null;
+/** Where the parchment sits, relative to the screen centre, so the orb can fly from it. */
+function parchmentOffset(): { x: number; y: number } {
+  const el = typeof document !== 'undefined' ? document.querySelector('.parchment') : null;
   if (!el || typeof window === 'undefined') return { x: 0, y: 0 };
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return { x: 0, y: 0 };
@@ -64,7 +64,7 @@ function hintText(spell: Spell): string | null {
 export function RareReveal({ spell, first, onChoose }: { spell: Spell; first: boolean; onChoose: (equip: boolean) => void }) {
   const [reduced] = useState(prefersReducedMotion);
   const [phase, setPhase] = useState<Phase>(() => (reduced ? 'title' : 'gather'));
-  const [origin] = useState(altarOffset);
+  const [origin] = useState(parchmentOffset);
   const [motes] = useState(() => ({ burst: motesOf(spell, BURST_PARTICLES), gather: motesOf(spell, GATHER_MOTES), embers: motesOf(spell, EMBERS) }));
 
   const choose = useRef(onChoose);

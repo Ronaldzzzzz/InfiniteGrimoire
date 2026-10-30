@@ -132,14 +132,6 @@ describe('SyncController', () => {
     expect(rt.getSnapshot().revision).toBe(10);
     expect(api.circle).toHaveBeenCalledWith(expect.anything(), 7, P);
   });
-  it('the retired altar call refuses at once without a request', async () => {
-    const rt = mk();
-    const api = fakeApi();
-    const sync = new SyncController(rt, api);
-    expect(await sync.synthesize(['el:fire:1', 'el:fire:1'])).toEqual({ kind: 'rejected', reason: 'retired' });
-    expect(api.circle).not.toHaveBeenCalled();
-    expect(rt.getSnapshot().synthPending).toBe(false);
-  });
   it("sync.action('empower') adopts the server state", async () => {
     const rt = mk();
     const result = { kind: 'empowered' as const, level: 2 };

@@ -12,14 +12,14 @@ import { fakeRuntime } from './test-runtime';
 
 vi.mock('./BattleCanvas', () => ({ BattleCanvas: () => null }));
 // counts a render only when the props changed: the spy sits behind the same shallow comparison the real component has
-const renders = vi.hoisted(() => ({ altar: vi.fn(), keys: vi.fn() }));
-vi.mock('./SynthesisAltar', async (orig) => {
-  const actual = await orig<typeof import('./SynthesisAltar')>();
+const renders = vi.hoisted(() => ({ parchment: vi.fn(), keys: vi.fn() }));
+vi.mock('./CircleTable', async (orig) => {
+  const actual = await orig<typeof import('./CircleTable')>();
   return {
     ...actual,
-    SynthesisAltar: memo((props: ComponentProps<typeof actual.SynthesisAltar>) => {
-      renders.altar();
-      return <actual.SynthesisAltar {...props} />;
+    CircleTable: memo((props: ComponentProps<typeof actual.CircleTable>) => {
+      renders.parchment();
+      return <actual.CircleTable {...props} />;
     }),
   };
 });
@@ -33,7 +33,10 @@ vi.mock('./KeyItemBar', async (orig) => {
     }),
   };
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1': 1 }, learned = ['mana_bolt'], actionResult: ActionResult | null = null) {
   const fake = fakeRuntime({ inventory, learned });
@@ -43,7 +46,7 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
     status: 'online',
     onStatus: () => () => {},
     onOfflineReport: () => () => {},
-    synthesize: vi.fn(() => new Promise<ActionResult | null>((r) => (reply = r))),
+    synthesizeCircle: vi.fn(() => new Promise<ActionResult | null>((r) => (reply = r))),
     action: vi.fn(async () => actionResult),
     uploadNow: vi.fn(async () => {}),
   } as unknown as SyncController;
@@ -60,11 +63,24 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
   return { runtime, sync, reply: (r: ActionResult | null) => reply(r), pending: (p: boolean) => act(() => fake.set({ synthPending: p })) };
 }
 
-const slotTexts = () =>
+/** core and ring-1 slot labels, e.g. ['核心：火・初階…', '一環 第1格：空…'] trimmed to the part before （ */
+const circleTexts = () =>
   screen
     .getAllByRole('button')
-    .filter((b) => b.classList.contains('altar-side'))
-    .map((b) => b.querySelector('.altar-name')?.textContent ?? '空');
+    .filter((b) => b.classList.contains('circle-slot') && !b.classList.contains('ring2'))
+    .map((b) => b.getAttribute('aria-label')!.replace(/（.*$/, ''));
+const coreText = () => circleTexts()[0];
+const addBolt = () => {
+  fireEvent.click(screen.getByRole('button', { name: /^一環符文/ }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^射/ }));
+};
+/** presses 合成, answers it and lets the progress ring fill */
+async function inject(reply: (r: ActionResult | null) => void, result: ActionResult, ms: number) {
+  fireEvent.click(screen.getByRole('button', { name: '合成' }));
+  reply(result);
+  await act(async () => {});
+  act(() => vi.advanceTimersByTime(ms));
+}
 
 const placeFromTree = (name: string) => {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }));
@@ -120,12 +136,12 @@ describe('App layout', () => {
     expect(screen.queryByText(/魔王出現還差/)).toBeNull();
   });
 
-  it('the altar and the key item bar do not re-render when only unrelated inventory changes', () => {
+  it('the parchment and the key item bar do not re-render when only unrelated inventory changes', () => {
     const { runtime } = setup();
-    const altar = renders.altar.mock.calls.length;
+    const parchment = renders.parchment.mock.calls.length;
     const keys = renders.keys.mock.calls.length;
     act(() => (runtime as unknown as ReturnType<typeof fakeRuntime>).set({ game: { inventory: { 'el:fire:1': 3, 'el:wind:1': 1, 'el:earth:1': 5 } } }));
-    expect(renders.altar.mock.calls.length).toBe(altar);
+    expect(renders.parchment.mock.calls.length).toBe(parchment);
     expect(renders.keys.mock.calls.length).toBe(keys);
   });
 
@@ -145,47 +161,56 @@ describe('App layout', () => {
     expect(await screen.findByRole('dialog', { name: '帳號' }, slow)).toBeTruthy();
   });
 
-  it('has no synthesis / grimoire / map tabs', () => {
+  it('has no synthesis / grimoire / map tabs; the parchment replaces the altar', () => {
     setup();
     expect(screen.queryByRole('button', { name: '魔導書' })).toBeNull();
     expect(screen.queryByRole('button', { name: '地圖' })).toBeNull();
-    // the grimoire column switches between the tree and the notebook
     expect(screen.getByRole('tab', { name: '五元素' }).getAttribute('aria-selected')).toBe('true');
     fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
     expect(screen.getByText(/還沒有自創魔法/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '合成' })).toBeTruthy(); // the synth action button, not a tab
+    expect(screen.getByRole('region', { name: '魔法陣' })).toBeTruthy();
+    expect(document.querySelector('.altar')).toBeNull();
   });
 
-  it('switches between the three grimoire tabs without clearing the altar', () => {
+  it('switches between the three grimoire tabs without clearing the circle', () => {
     setup();
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     for (const name of ['光與暗', '魔法筆記', '五元素']) {
       fireEvent.click(screen.getByRole('tab', { name }));
       expect(screen.getByRole('tab', { name }).getAttribute('aria-selected')).toBe('true');
-      expect(slotTexts()).toEqual(['火・初階', '空']);
+      expect(coreText()).toBe('核心：火・初階');
     }
-    // the light/dark tab draws its own tree (no fog since the magic circle rework)
     fireEvent.click(screen.getByRole('tab', { name: '光與暗' }));
     expect(screen.getByRole('button', { name: new RegExp(content.spells.holy_judgment!.name) })).toBeTruthy();
   });
 
-  it('puts a clicked element cell into the first empty slot, then the next one', () => {
+  it('puts a clicked element cell into the core, then the first open ring slot', () => {
     setup();
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    expect(slotTexts()).toEqual(['火・初階', '空']);
+    expect(coreText()).toBe('核心：火・初階');
     fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
-    expect(slotTexts()).toEqual(['火・初階', '風・初階']);
+    expect(circleTexts()[1]).toBe('一環 第1格：風・初階');
   });
 
-  it('keeps the slots when an element is upgraded', () => {
+  it('keeps the circle when an element is upgraded', () => {
     const { runtime } = setup();
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     fireEvent.click(screen.getByRole('button', { name: '初階火升成中階火' }));
     expect(runtime.upgrade).toHaveBeenCalledWith('fire', 1);
-    expect(slotTexts()).toEqual(['火・初階', '空']);
+    expect(coreText()).toBe('核心：火・初階');
   });
 
-  it('shows a locked spell hint next to the slots, and clears it when a learned spell is clicked', () => {
+  it('放入合成 on a spell puts its circle on the parchment', () => {
+    setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball']);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
+    fireEvent.click(within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }));
+    expect(coreText()).toBe('核心：火・初階');
+    expect(circleTexts()[5]).toBe('一環 第5格：火・初階');
+    expect(screen.getByRole('button', { name: '一環符文：射' })).toBeTruthy();
+  });
+
+  it('shows a locked spell hint next to the parchment, and clears it when a learned spell is clicked', () => {
     setup();
     const hint = content.spells.fireball!.hint;
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`${content.spells.fireball!.name}（未學會）`) }));
@@ -194,80 +219,82 @@ describe('App layout', () => {
     expect(screen.queryByText(hint)).toBeNull();
   });
 
-  it('also shows the hint in the grimoire node details (narrow screens stack the grimoire below the slots)', () => {
+  it('also shows the hint in the grimoire node details (narrow screens stack the grimoire below the parchment)', () => {
     setup();
     const hint = content.spells.fireball!.hint;
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`${content.spells.fireball!.name}（未學會）`) }));
     expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(hint);
   });
 
-  async function learnCrafted() {
-    const id = 'm:fire.3.---ef.-----.bolt';
-    const h = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball', 'wind_blade']);
+  const FIREWIND = 'm:fire.2.----w.-----.bolt';
+  async function learnCircle() {
+    vi.useFakeTimers();
+    const h = setup({ 'el:fire:1': 3, 'el:wind:1': 1 }, ['mana_bolt']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    placeFromTree(content.spells.wind_blade!.name);
-    fireEvent.click(screen.getByRole('button', { name: '合成' }));
-    h.reply({ kind: 'learned', spellId: id, crafted: true });
-    await screen.findByText(`裝備「${resolveSpell(id, content)!.name}」？`, {}, { timeout: 3000 });
-    return { ...h, id };
+    fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
+    addBolt();
+    await inject(h.reply, { kind: 'learned', spellId: FIREWIND, form: 'bolt' }, 3000);
+    expect(screen.getByText(`裝備「${resolveSpell(FIREWIND, content)!.name}」？`)).toBeTruthy();
+    return { ...h, id: FIREWIND };
   }
 
-  it('a new synthesis result is not auto-equipped; the toast asks, and 裝備 equips', async () => {
-    const { runtime, id } = await learnCrafted();
+  it('a new circle spell is not auto-equipped; the toast asks, and 裝備 equips', async () => {
+    const { runtime, sync, id } = await learnCircle();
+    expect(sync.synthesizeCircle).toHaveBeenCalledWith({
+      core: { element: 'fire', grade: 1 },
+      ring1: [{ element: 'wind', grade: 1 }, null, null, null, null],
+      ring2: [null, null, null, null, null],
+      runes: ['bolt', null],
+    });
     expect(runtime.equip).not.toHaveBeenCalled();
-    const banner = screen.getByRole('status', { name: '合成結果' });
-    expect(banner.textContent).toContain('自創魔法！');
-    expect(banner.textContent).toContain(resolveSpell(id, content)!.name);
-    // the learned spell is in the fake state?  put it there like the server reply would
+    expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain(resolveSpell(id, content)!.name);
     act(() => (runtime as unknown as { set: (p: unknown) => void }).set({ game: { learned: ['mana_bolt', id] } }));
     fireEvent.click(screen.getByRole('button', { name: '裝備' }));
     expect(runtime.equip).toHaveBeenCalledWith(id);
   });
 
   it('the toast expires after 3 s without equipping', async () => {
-    const { runtime, id } = await learnCrafted();
-    const label = `裝備「${resolveSpell(id, content)!.name}」？`;
-    await waitFor(() => expect(screen.queryByText(label)).toBeNull(), { timeout: 4500 });
+    const { runtime, id } = await learnCircle();
+    act(() => vi.advanceTimersByTime(3100));
+    expect(screen.queryByText(`裝備「${resolveSpell(id, content)!.name}」？`)).toBeNull();
     expect(runtime.equip).not.toHaveBeenCalled();
-  }, 10000);
+  });
 
   it('pressing 裝備 after the save lost that spell does not equip', async () => {
-    const { runtime } = await learnCrafted();
-    // the fake state never gained the crafted spell, like a replaced save
+    const { runtime } = await learnCircle();
     fireEvent.click(screen.getByRole('button', { name: '裝備' }));
     expect(runtime.equip).not.toHaveBeenCalled();
   });
 
   it('a known result shows 已經會了, with no toast and no equip', async () => {
+    vi.useFakeTimers();
     const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    fireEvent.click(screen.getByRole('button', { name: '合成' }));
-    reply({ kind: 'duplicate', spellId: 'fireball', refunded: ['el:fire:1'] });
-    await waitFor(() => expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('已經會了'), { timeout: 3000 });
+    addBolt();
+    await inject(reply, { kind: 'known', spellId: 'fireball', form: 'bolt' }, 3000);
+    expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('已經會了');
     expect(runtime.equip).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: '裝備' })).toBeNull();
   });
 
-  it('a rare result plays the reveal; 裝備 equips once and the next queued reveal follows', async () => {
+  it('a rare result plays the reveal after 5 s; 裝備 equips once and the next queued reveal follows', async () => {
+    vi.useFakeTimers();
     const { runtime, reply } = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'worldfire', 'moontide']);
     const fire = () => screen.getByRole('button', { name: '初階火 ×3' });
     fireEvent.click(fire());
     fireEvent.click(fire());
-    fireEvent.click(screen.getByRole('button', { name: '合成' }));
-    reply({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
-    const first = await screen.findByRole('dialog', { name: '稀有魔法' }, { timeout: 3000 });
+    addBolt();
+    await inject(reply, { kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } }, 3000);
+    expect(screen.queryByRole('dialog', { name: '稀有魔法' })).toBeNull(); // still injecting
+    act(() => vi.advanceTimersByTime(2000));
+    const first = screen.getByRole('dialog', { name: '稀有魔法' });
     expect(runtime.equip).not.toHaveBeenCalled();
     expect(screen.queryByRole('status', { name: '新發現' })).toBeNull();
-    expect(screen.queryByRole('status', { name: '合成結果' })).toBeNull();
-    expect(slotTexts()).toEqual(['空', '空']);
 
     // a second rare result arrives while the first is still playing
-    fireEvent.click(fire());
-    fireEvent.click(fire());
-    fireEvent.click(screen.getByRole('button', { name: '合成' }));
-    reply({ kind: 'learned', spellId: 'moontide', crafted: false, rare: { first: false } });
-    await waitFor(() => expect(screen.getAllByRole('dialog', { name: '稀有魔法' })).toHaveLength(1), { timeout: 3000 });
+    await inject(reply, { kind: 'learned', spellId: 'moontide', form: 'bolt', rare: { first: false } }, 5000);
+    expect(screen.getAllByRole('dialog', { name: '稀有魔法' })).toHaveLength(1);
     fireEvent.click(first); // to the title
     expect(first.textContent).toContain('焚世之焰');
     expect(first.textContent).toContain('全服首次發現');
@@ -276,7 +303,7 @@ describe('App layout', () => {
     fireEvent.click(screen.getByRole('button', { name: '裝備' }));
     expect(runtime.equip).toHaveBeenCalledTimes(1);
     expect(runtime.equip).toHaveBeenCalledWith('worldfire');
-    const second = await screen.findByRole('dialog', { name: '稀有魔法' }, { timeout: 3000 });
+    const second = screen.getByRole('dialog', { name: '稀有魔法' });
     fireEvent.click(second);
     expect(second.textContent).toContain('滄溟月潮');
     expect(second.textContent).toContain('✦ 稀有魔法！✦');
@@ -284,41 +311,18 @@ describe('App layout', () => {
     expect(runtime.equip).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog', { name: '稀有魔法' })).toBeNull();
     expect(screen.queryByRole('status', { name: '新發現' })).toBeNull();
-    expect(slotTexts()).toEqual(['空', '空']);
   });
 
-  it('while the synthesis is pending nothing can be placed; after the reveal both sides are empty', async () => {
-    const { runtime, sync, reply, pending } = setup({ 'el:fire:1': 3, 'el:wind:1': 1 }, ['mana_bolt', 'fireball', 'wind_blade']);
-    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
-    placeFromTree(content.spells.wind_blade!.name);
-    expect(slotTexts()).toEqual(['火・初階', content.spells.wind_blade!.name]);
-    fireEvent.click(screen.getByRole('button', { name: '合成' }));
-    expect(sync.synthesize).toHaveBeenCalled();
-    pending(true);
-    // element cell, bubble button and double-click all do nothing (and no toast)
-    fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
-    expect((within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.doubleClick(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
-    expect(slotTexts()).toEqual(['火・初階', content.spells.wind_blade!.name]);
-    expect(screen.queryByText(`已放入合成台：${content.spells.fireball!.name}`)).toBeNull();
-    pending(false);
-    reply({ kind: 'learned', spellId: 'm:fire.3.---ef.-----.bolt', crafted: true });
-    await waitFor(() => expect(slotTexts()).toEqual(['空', '空']), { timeout: 3000 });
-    expect(runtime.equip).not.toHaveBeenCalled();
-  });
-
-  it('while pending with an empty side left, element cells and the tree still place nothing', () => {
+  it('while a circle is pending, element cells and 放入合成 change nothing', () => {
     const { pending } = setup({ 'el:fire:1': 3, 'el:wind:1': 1 }, ['mana_bolt', 'fireball']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     pending(true);
     fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
-    expect(slotTexts()).toEqual(['火・初階', '空']);
+    expect(circleTexts()[1]).toBe('一環 第1格：空');
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
     expect((within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放入合成' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.doubleClick(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
-    expect(slotTexts()).toEqual(['火・初階', '空']);
-    expect(screen.queryByText(/已放入合成台/)).toBeNull();
+    expect(circleTexts()[5]).toBe('一環 第5格：空');
   });
 
   it('has no 放入魔法 combobox and no 嘗試紀錄 heading any more', () => {

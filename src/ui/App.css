@@ -31,9 +31,6 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .hud-note { color: var(--gold); font-size: 14px; }
 .hud-note.warn { color: var(--fire); }
 
-.altar-needs { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
-.altar-needs .short { color: var(--fire); font-weight: 600; }
-.synth-retry { margin: 2px 0 0; font-size: 13px; font-style: normal; color: var(--rune); }
 .synth-message { min-height: 1.5em; color: var(--gold); }
 .tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--muted); border-radius: 4px; color: var(--muted); font-size: 12px; }
 
@@ -240,145 +237,80 @@ html.away { filter: grayscale(1); }
 @media (max-width: 767px) {
   .discovery-banner { position: fixed; z-index: 60; }
 }
+/* ---- magic circle parchment: tap a slot, pick an element or rune; strokes draw on (stroke-dashoffset), 合成 fills a ring ---- */
+.parchment-panel { display: flex; flex-direction: column; gap: 8px; }
+.parchment {
+  --ink: #3b2a17; --dur: 3000ms;
+  position: relative; width: min(100%, 52vh); min-width: 0; margin: 0 auto; aspect-ratio: 1; border-radius: 12px; overflow: hidden; container-type: inline-size;
+  background:
+    radial-gradient(ellipse at 30% 25%, #f1e2bd, transparent 60%),
+    radial-gradient(ellipse at 75% 80%, #c9ab74, transparent 55%),
+    radial-gradient(circle at 50% 50%, #e3cc9a 40%, #b8955c 100%);
+  box-shadow: inset 0 0 28px #6b4a2299, 0 2px 10px #0008;
+}
+.parchment-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.parchment-svg .ring-line { fill: none; stroke: #6b4a2266; stroke-width: 1.2; stroke-dasharray: 3 3; }
+.parchment-svg .ring-line.mismatch { stroke: #b0331d; stroke-width: 1.8; stroke-dasharray: 6 3; }
+.parchment-svg .guide { stroke: #6b4a2233; stroke-width: 0.8; }
+.parchment-svg .draw { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: circle-draw 0.6s ease-out forwards; }
+.parchment-svg .star { stroke-width: 1.2; }
+.parchment-svg .core-mark { stroke-width: 2.4; }
+.parchment-svg .node-mark { stroke-width: 2; }
+.parchment-svg .progress-track { fill: none; stroke: #6b4a2233; stroke-width: 4; }
+.parchment-svg .progress-fill { fill: none; stroke-width: 4; stroke-linecap: round; stroke-dashoffset: var(--len); animation: circle-fill var(--dur) linear forwards; filter: drop-shadow(0 0 3px #fff8); }
+.parchment-svg .spark { opacity: 0; animation: circle-spark 0.9s ease-out infinite; animation-delay: calc(var(--i) * 0.11s); transform-box: fill-box; transform-origin: center; }
+@keyframes circle-draw { to { stroke-dashoffset: 0; } }
+@keyframes circle-fill { to { stroke-dashoffset: 0; } }
+@keyframes circle-spark { 0% { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; transform: scale(1.6); } 100% { opacity: 0; transform: scale(0.2) translateY(-6px); } }
+.parchment.charging { animation: circle-glow 0.8s ease-in-out infinite alternate; }
+@keyframes circle-glow { from { box-shadow: inset 0 0 28px #6b4a2299, 0 0 4px #e8b84a55; } to { box-shadow: inset 0 0 20px #6b4a2266, 0 0 22px #e8b84aaa; } }
 
-/* ---- synthesis altar: a square split in two, 合成 in the middle (CSS only: transform/opacity animations) ---- */
-.altar-panel { display: flex; flex-direction: column; gap: 8px; }
-.altar {
-  --a: var(--rune); --b: var(--rune);
-  position: relative; width: min(100%, 52vh); margin: 0 auto; aspect-ratio: 1;
-  display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; contain: paint; container-type: inline-size;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+.circle-slot {
+  --c: #6b4a22;
+  position: absolute; width: 13%; aspect-ratio: 1; min-height: 0; padding: 0; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05;
+  border-radius: 50%; border: 1.5px dashed #6b4a2299; background: #f1e2bd88; color: var(--ink);
 }
-.altar-divider { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--line); pointer-events: none; }
-.altar-side {
-  --c: var(--gold); --c2: var(--gold);
-  position: relative; min-width: 0; min-height: 0; padding: 12% 8px 10%; border: 0; border-radius: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; text-align: center;
-  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 26%, transparent), transparent 68%);
-}
-.altar-side:disabled { opacity: 1; cursor: default; }
-.altar-side.filled:not(:disabled):hover .altar-orb { scale: 1.08; }
-.altar-side:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
-.altar-side.empty { background: none; }
-.altar-fx { position: relative; width: 60%; aspect-ratio: 1; flex: none; }
-.altar-orb {
-  position: absolute; inset: 20%; border-radius: 50%;
-  background: radial-gradient(circle at 40% 36%, #fff9 0, var(--c) 32%, color-mix(in srgb, var(--c2) 70%, transparent) 58%, transparent 72%);
-  box-shadow: 0 0 22px color-mix(in srgb, var(--c) 70%, transparent);
-  animation: altar-breathe 3.2s ease-in-out infinite; transition: scale 0.2s;
-}
-.altar-side.empty .altar-orb { position: relative; display: block; width: 36%; aspect-ratio: 1; inset: auto; margin-top: 12%; background: none; box-shadow: none; border: 2px dashed #3a4252; animation: none; }
-.altar-side.kind-material .altar-orb { inset: 28%; }
-.altar .halo {
-  position: absolute; inset: 2%; border-radius: 50%;
-  background: conic-gradient(var(--c), transparent 25%, var(--c2) 50%, transparent 75%, var(--c));
-  -webkit-mask: radial-gradient(circle, transparent 56%, #000 59%, #000 65%, transparent 69%);
-  mask: radial-gradient(circle, transparent 56%, #000 59%, #000 65%, transparent 69%);
-  animation: altar-spin 6s linear infinite;
-}
-.altar-label { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin-top: auto; }
-.altar-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.altar-meta { color: var(--muted); font-size: 12px; }
-.altar-side.empty .altar-meta { margin-top: auto; padding-inline: 4px; }
+.circle-slot.core { width: 17%; }
+.circle-slot.filled { border: 2px solid var(--c); background: #f6ead0; box-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent); }
+.circle-slot.blocked { opacity: 0.35; background: #8b7a5e55; border-style: dotted; }
+.circle-slot:disabled { cursor: not-allowed; }
+.circle-slot:not(:disabled):hover { border-color: var(--gold); }
+.circle-slot:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.circle-slot .glyph { font-weight: 800; font-size: clamp(13px, 4cqw, 18px); color: color-mix(in srgb, var(--c) 70%, #1a1008); }
+.circle-slot .branch { font-size: 9px; color: #5b4024; white-space: nowrap; }
+.circle-slot .muted { color: #6b4a22; font-size: 12px; }
 
-/* particles: --x/--y start point, --i staggers; each element moves its own way (same language as the battle) */
-.altar .p {
-  position: absolute; left: var(--x); top: var(--y); width: 4px; height: 4px; border-radius: 50%;
-  background: var(--c); opacity: 0; pointer-events: none;
-  animation-iteration-count: infinite; animation-delay: calc(var(--i) * -0.29s);
+.circle-result {
+  position: absolute; inset: 22%; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; text-align: center; background: radial-gradient(circle, #fff8e6, #f1e2bdee 70%); color: var(--ink); cursor: pointer;
+  animation: circle-result-in 0.35s ease-out both;
 }
-.altar .p-spark { box-shadow: 0 0 6px var(--c); animation-name: altar-rise; animation-duration: 1.7s; animation-timing-function: ease-out; }
-.altar .p-streak { width: 16px; height: 2px; border-radius: 2px; animation-name: altar-sweep; animation-duration: 1.3s; animation-timing-function: ease-in-out; }
-.altar .p-bolt { width: 4px; height: 13px; border-radius: 0; clip-path: polygon(60% 0, 0 55%, 45% 55%, 25% 100%, 100% 40%, 55% 40%); animation-name: altar-flicker; animation-duration: 1.1s; animation-timing-function: steps(1, end); }
-.altar .p-shard { width: 6px; height: 6px; border-radius: 1px; animation-name: altar-fall; animation-duration: 1.9s; animation-timing-function: ease-in; }
-.altar .p-drop { width: 4px; height: 6px; border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%; animation-name: altar-drip; animation-duration: 1.5s; animation-timing-function: ease-in; }
+.circle-kicker { font-weight: 700; color: #8a5a10; }
+.circle-result-name { font-weight: 800; font-size: 17px; }
+.circle-result.tone-failed { background: radial-gradient(circle, #d8cfc0, #a8977cee 70%); }
+.circle-result.tone-failed .circle-kicker { color: #7a2a1a; }
+.circle-result.tone-rare .circle-kicker { color: #b07a00; }
+@keyframes circle-result-in { from { opacity: 0; transform: scale(0.85); } }
 
-@keyframes altar-breathe { 0%, 100% { opacity: 0.85; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1.04); } }
-@keyframes altar-spin { to { rotate: 1turn; } }
-@keyframes altar-rise { 0% { opacity: 0; transform: translate(0, 12px) scale(1); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc((var(--i) - 6) * 1.5px), -52px) scale(0.3); } }
-@keyframes altar-sweep { 0% { opacity: 0; transform: translateX(-28px) scaleX(0.4); } 50% { opacity: 0.9; transform: translateX(0) scaleX(1); } 100% { opacity: 0; transform: translateX(28px) scaleX(0.4); } }
-@keyframes altar-flicker { 0% { opacity: 0; } 8% { opacity: 1; } 14% { opacity: 0.2; } 20% { opacity: 1; transform: scale(1.3); } 28%, 100% { opacity: 0; transform: scale(1); } }
-@keyframes altar-fall { 0% { opacity: 0; transform: translateY(-34px) rotate(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(38px) rotate(220deg); } }
-@keyframes altar-drip { 0% { opacity: 0; transform: translateY(-26px) scaleY(0.8); } 20% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(34px) scaleY(1.3); } }
-
-/* 合成: a round button on the dividing line */
-.altar-go {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2;
-  width: 26%; aspect-ratio: 1; min-height: 0; padding: 0; border: 0; border-radius: 50%;
-  background: var(--rune); color: #0d1208; font-weight: 700; font-size: clamp(13px, 4.2cqi, 18px);
-  box-shadow: 0 0 0 4px var(--bg), 0 0 18px color-mix(in srgb, var(--rune) 70%, transparent); transition: scale 0.15s;
-}
-.altar-go:not(:disabled):hover { scale: 1.06; }
-.altar-go:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
-.altar-go:disabled { opacity: 1; background: var(--panel); color: var(--muted); box-shadow: 0 0 0 4px var(--bg); }
-.altar.fusing .altar-go:disabled { background: radial-gradient(circle, #fff, color-mix(in srgb, var(--a) 60%, var(--b))); color: #0d1208; animation: altar-pulse 0.45s ease-in-out infinite alternate; }
-
-/* fusing: both sides spiral into the middle while the two colours swirl together */
-.altar.fusing .altar-side:nth-child(1) .altar-fx { animation: altar-in-left 0.8s cubic-bezier(0.5, 0, 0.9, 0.6) forwards; }
-.altar.fusing .altar-side:nth-child(2) .altar-fx { animation: altar-in-right 0.8s cubic-bezier(0.5, 0, 0.9, 0.6) forwards; }
-.altar.fusing .altar-label, .altar.fusing .altar-meta { opacity: 0; transition: opacity 0.2s; }
-.altar-fuse {
-  position: absolute; left: 50%; top: 50%; width: 78%; aspect-ratio: 1; margin: -39% 0 0 -39%; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(var(--a), var(--b), var(--a), var(--b), var(--a));
-  -webkit-mask: radial-gradient(circle, #000 18%, #0008 42%, transparent 70%);
-  mask: radial-gradient(circle, #000 18%, #0008 42%, transparent 70%);
-  animation: altar-spin 0.7s linear infinite, altar-grow 0.8s ease-out both;
-}
-.altar-fuse::after { content: ""; position: absolute; inset: 34%; border-radius: 50%; background: radial-gradient(circle, #fff, #fff0 70%); animation: altar-pulse 0.4s ease-in-out infinite alternate; }
-@keyframes altar-in-left { to { transform: translateX(92%) scale(0.25) rotate(200deg); opacity: 0.2; } }
-@keyframes altar-in-right { to { transform: translateX(-92%) scale(0.25) rotate(-200deg); opacity: 0.2; } }
-@keyframes altar-grow { from { scale: 0.15; opacity: 0; } to { scale: 1; opacity: 1; } }
-@keyframes altar-pulse { from { scale: 0.92; } to { scale: 1.08; } }
-
-/* a refusal: the sides spring back and the altar shakes a little */
-.altar.bounce { animation: altar-shake 0.4s ease-out; }
-.altar.bounce .altar-side:nth-child(1) .altar-fx { animation: altar-back-left 0.4s cubic-bezier(0.3, 1.6, 0.6, 1); }
-.altar.bounce .altar-side:nth-child(2) .altar-fx { animation: altar-back-right 0.4s cubic-bezier(0.3, 1.6, 0.6, 1); }
-@keyframes altar-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-5px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
-@keyframes altar-back-left { from { transform: translateX(40%) scale(0.6); } }
-@keyframes altar-back-right { from { transform: translateX(-40%) scale(0.6); } }
-
-/* the reveal, centred over the altar; a click dismisses it */
-.altar-reveal {
-  --c: var(--a); --c2: var(--b);
-  position: absolute; inset: 0; z-index: 3; cursor: pointer; padding: 12px; text-align: center;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--c) 30%, var(--bg)), color-mix(in srgb, var(--c2) 18%, var(--bg)) 45%, var(--bg) 78%);
-  animation: altar-reveal-in 0.35s ease-out both;
-}
-.altar-reveal-orb {
-  width: 36%; aspect-ratio: 1; border-radius: 50%;
-  background: conic-gradient(var(--c), #ffd27a, var(--c2), var(--c));
-  box-shadow: 0 0 26px var(--gold);
-  animation: altar-spin 4s linear infinite, altar-pop 0.5s cubic-bezier(0.3, 1.6, 0.6, 1) both;
-}
-.altar-kicker { color: var(--gold); font-weight: 700; font-size: 18px; letter-spacing: 0.05em; }
-.altar-reveal-name { font-weight: 700; font-size: 17px; display: inline-flex; align-items: center; gap: 6px; }
-.altar-reveal-name .dots i { width: 11px; height: 11px; }
-.altar-reveal-detail { color: var(--muted); font-size: 13px; }
-.altar-reveal.tone-crafted .altar-kicker { color: var(--rune); }
-.altar-reveal.tone-crafted .altar-reveal-orb { box-shadow: 0 0 26px var(--rune); }
-.altar-reveal.tone-known .altar-reveal-orb { opacity: 0.55; box-shadow: none; }
-.altar-reveal.tone-known .altar-kicker { color: var(--muted); }
-.altar-reveal.tone-fizzle, .altar-reveal.tone-dormant { background: radial-gradient(circle, #2a3140, var(--bg) 72%); }
-.altar-reveal.tone-fizzle .altar-reveal-orb { background: radial-gradient(circle, #8b93a5aa, #8b93a500 70%); box-shadow: none; animation: altar-smoke 1.6s ease-out both; }
-.altar-reveal.tone-fizzle .altar-kicker, .altar-reveal.tone-dormant .altar-kicker { color: var(--muted); }
-.altar-reveal.tone-dormant .altar-reveal-orb { background: radial-gradient(circle, var(--neutral), #b8c7ff00 68%); box-shadow: none; animation: altar-breathe 2.4s ease-in-out infinite; opacity: 0.5; }
-.altar-reveal.tone-overload .altar-kicker { color: var(--fire); font-size: 20px; }
-.altar-reveal.tone-overload .altar-reveal-orb { box-shadow: 0 0 32px var(--fire); }
-.altar-reveal.tone-overload::before { content: ""; position: absolute; inset: 0; background: #fff; pointer-events: none; animation: altar-flash 0.6s ease-out both; }
-@keyframes altar-reveal-in { from { opacity: 0; transform: scale(0.9); } }
-@keyframes altar-pop { from { scale: 0.2; opacity: 0; } }
-@keyframes altar-smoke { from { scale: 0.6; opacity: 1; } to { scale: 1.6; opacity: 0; } }
-@keyframes altar-flash { from { opacity: 0.9; } to { opacity: 0; } }
+.rune-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.rune-slot b { color: var(--gold); margin-left: 4px; }
+.rune-slot.filled { border-color: var(--gold); }
+.circle-picker { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.circle-picker .picker-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.circle-picker .picker-grid button { --c: var(--line); border-left: 4px solid var(--c); padding: 6px 8px; font-size: 13px; }
+.circle-picker .picker-grid button.on { border-color: var(--gold); }
+.circle-picker .picker-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.circle-predict { margin: 0; color: var(--rune); font-size: 14px; }
+.circle-warn { margin: 0; color: var(--fire); font-size: 13px; }
+.circle-go-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.circle-go { min-width: 96px; }
+.circle-why { color: var(--muted); font-size: 13px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .altar .p, .altar .halo, .altar-orb, .altar-fuse, .altar-fuse::after, .altar-reveal, .altar-reveal-orb, .altar-reveal::before,
-  .altar.bounce, .altar.bounce .altar-fx, .altar.fusing .altar-fx, .altar.fusing .altar-go:disabled { animation: none !important; }
-  .altar .p { opacity: 0.6; }
-  .altar.fusing .altar-fx { opacity: 0.3; }
-  .altar-reveal.tone-overload::before { opacity: 0; }
-  .altar-side.filled .altar-orb { transition: none; }
+  .parchment-svg .draw { animation: none; stroke-dashoffset: 0; }
+  .parchment-svg .spark, .parchment.charging, .circle-result { animation: none; }
+  .parchment-svg .spark { opacity: 0.8; }
 }
 
 /* rare spell: a full-screen reveal over everything (CSS transforms and opacity only, so the battle canvas keeps its frame rate) */
@@ -396,7 +328,7 @@ html.away { filter: grayscale(1); }
 .rr-stage > span { position: absolute; left: 50%; top: 45%; pointer-events: none; }
 .rr-skip { position: absolute; right: 16px; top: 12px; font-size: 13px; color: var(--muted); letter-spacing: 0.1em; animation: rr-fade-in 0.6s 0.4s ease-out both; }
 
-/* 1 gather: the altar's orb flies to the centre while motes are drawn in and a ring tightens around it */
+/* 1 gather: the parchment's orb flies to the centre while motes are drawn in and a ring tightens around it */
 .rr-orb {
   width: 56px; height: 56px; margin: -28px; border-radius: 50%;
   background: radial-gradient(circle, #fff 0 18%, color-mix(in srgb, var(--c) 70%, #fff) 34%, var(--c) 58%, transparent 72%);
@@ -531,7 +463,6 @@ html.away { filter: grayscale(1); }
 
 .spell-chant { font-style: italic; color: #e8b84a; margin: 0.25rem 0; }
 .spell-facts-line { margin: 0.25rem 0; font-size: 0.85em; }
-.altar-putback { align-self: flex-start; padding: 4px 10px; font-size: 13px; }
 
 /* equip-this-spell toasts: stacked above the strip's upper right (inside .strip-float, clear of the stage bar), newest on top */
 .equip-toasts { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; width: max-content; max-width: min(100%, 320px); }
