@@ -1,6 +1,7 @@
 import { ELEMENT_ORDER } from './types';
 import type { ElementId } from './types';
 import type { Affinity, Content, Effect, Material, School, Spell } from './model';
+import { namedCircleSpell } from './circle-spell';
 
 export const CRAFTED_MAX_LEN = 512;
 export const HARD_MAX_DEPTH = 8;
@@ -150,7 +151,10 @@ function derive(id: string, content: Content): Spell | null {
   };
 }
 
-/** Named spell by lookup, crafted spell by deriving it from its id. Null for anything invalid; never throws. */
+/**
+ * Named spell by lookup, magic circle spell (`m:` canonical id, with its named spell laid over) by generating it, crafted
+ * spell by deriving it from its id. Null for anything invalid; never throws.
+ */
 export function resolveSpell(id: string, content: Content): Spell | null {
   if (typeof id !== 'string' || id.length === 0 || id.length > CRAFTED_MAX_LEN) return null;
   const named = Object.hasOwn(content.spells, id) ? content.spells[id] : undefined;
@@ -158,7 +162,7 @@ export function resolveSpell(id: string, content: Content): Spell | null {
   let memo = cache.get(content);
   if (!memo) cache.set(content, (memo = new Map()));
   if (memo.has(id)) return memo.get(id)!;
-  const result = derive(id, content);
+  const result = id.startsWith('m:') ? namedCircleSpell(id, content) : derive(id, content);
   memo.set(id, result);
   return result;
 }

@@ -17,10 +17,21 @@
   },
   "branches": {
     "fire": { "coreOut": 1, "ring1In": 1, "ring1Out": 2, "ring2In": 2 },
-    "wind": { "coreOut": 1, "ring1In": 1, "ring1Out": 2, "ring2In": 2 },
-    "thunder": { "coreOut": 2, "ring1In": 2, "ring1Out": 3, "ring2In": 3 },
-    "earth": { "coreOut": 1, "ring1In": 1, "ring1Out": 1, "ring2In": 1 },
-    "water": { "coreOut": 1, "ring1In": 1, "ring1Out": 2, "ring2In": 2 }
+    "wind": { "coreOut": 2, "ring1In": 2, "ring1Out": 2, "ring2In": 2 },
+    "thunder": { "coreOut": 2, "ring1In": 2, "ring1Out": 2, "ring2In": 2 },
+    "earth": { "coreOut": 1, "ring1In": 1, "ring1Out": 2, "ring2In": 2 },
+    "water": { "coreOut": 2, "ring1In": 2, "ring1Out": 2, "ring2In": 2 }
   },
-  "slotShift": [0, 0, 1, 0, 1]
+  "slotShift": [0, 0, 1, 0, 1],
+  "relations": {
+    "generateBonus": 1.03,
+    "overcomePenalty": 0.92,
+    "reactions": {
+      "water": { "kind": "blind", "ms": 1500 },
+      "fire": { "kind": "burn", "ms": 2000, "power": 0.1 },
+      "wind": { "kind": "blind", "ms": 1000 },
+      "earth": { "kind": "stun", "ms": 500 },
+      "thunder": { "kind": "stun", "ms": 800 }
+    }
+  }
 }

@@ -111,7 +111,8 @@
       "angle": 0
     },
     "baseOf": "fire",
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:fire.2.----f.-----.bolt"
   },
   {
     "id": "wind_blade",
@@ -151,7 +152,8 @@
       "angle": 72
     },
     "baseOf": "wind",
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:wind.2.----w.-----.blades"
   },
   {
     "id": "lightning",
@@ -192,7 +194,8 @@
       "angle": 144
     },
     "baseOf": "thunder",
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:thunder.2.----t.-----.chain"
   },
   {
     "id": "rock_spear",
@@ -239,7 +242,8 @@
       "angle": 216
     },
     "baseOf": "earth",
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:earth.2.----e.-----.bolt"
   },
   {
     "id": "water_wave",
@@ -290,7 +294,8 @@
       "angle": 288
     },
     "baseOf": "water",
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:water.2.----a.-----.ring"
   },
   {
     "id": "flame_burst",
@@ -720,7 +725,8 @@
       "ring": 3,
       "angle": 288
     },
-    "school": "cataclysm"
+    "school": "cataclysm",
+    "circle": "m:fire.4.--eef.-----.meteor"
   },
   {
     "id": "ice_storm",
@@ -1078,7 +1084,8 @@
       "ring": 4,
       "angle": 0
     },
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:fire.5.-feff.-----.bolt"
   },
   {
     "id": "sunfall",
@@ -1281,7 +1288,8 @@
       "ring": 4,
       "angle": 144
     },
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:thunder.5.-ttwt.-----.chain"
   },
   {
     "id": "thunder_god",
@@ -1500,7 +1508,8 @@
       "ring": 4,
       "angle": 288
     },
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:water.5.-aawa.-----.zone"
   },
   {
     "id": "deluge",
@@ -2046,7 +2055,8 @@
       "ring": 3,
       "angle": 12
     },
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:fire.4.--fff.-----.bolt"
   },
   {
     "id": "crimson_pillar",
@@ -2110,7 +2120,8 @@
       "ring": 5,
       "angle": 0
     },
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:fire.6.fffff.-----.zone"
   },
   {
     "id": "hellfire_siege",
@@ -2166,7 +2177,8 @@
       "angle": 6
     },
     "chant": "赤焰為牆，獄火為梯——圍城者，焚！",
-    "school": "cataclysm"
+    "school": "cataclysm",
+    "circle": "m:fire.8.fffff.---ff.ring"
   },
   {
     "id": "corona_scorch",
@@ -2272,7 +2284,8 @@
       "ring": 3,
       "angle": 84
     },
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:wind.4.--www.-----.zone"
   },
   {
     "id": "severing_scythe",
@@ -2311,7 +2324,8 @@
       "ring": 5,
       "angle": 72
     },
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:wind.6.wwwww.-----.blades"
   },
   {
     "id": "gale_severance",
@@ -2374,7 +2388,8 @@
       "angle": 78
     },
     "chant": "蒼天之嵐，裂界之刃——此處，不容越線！",
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:wind.8.wwwww.---ww.zone"
   },
   {
     "id": "void_gale",
@@ -2483,7 +2498,8 @@
       "ring": 3,
       "angle": 156
     },
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:thunder.4.--ttt.-----.chain"
   },
   {
     "id": "voltaris_javelin",
@@ -2536,7 +2552,8 @@
       "ring": 5,
       "angle": 138
     },
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:thunder.6.ttttt.-----.bolt"
   },
   {
     "id": "thunder_throne",
@@ -2590,7 +2607,8 @@
       "angle": 150
     },
     "chant": "雲為階，雷為冕——王座已立，萬雷朝拜！",
-    "school": "cataclysm"
+    "school": "cataclysm",
+    "circle": "m:thunder.8.ttttt.---tt.storm"
   },
   {
     "id": "astral_fulmination",
@@ -2690,7 +2708,8 @@
       "ring": 3,
       "angle": 228
     },
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:earth.4.--eee.-----.bolt"
   },
   {
     "id": "obsidian_thorns",
@@ -2745,7 +2764,8 @@
       "ring": 5,
       "angle": 210
     },
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:earth.6.eeeee.-----.zone"
   },
   {
     "id": "mountain_fall",
@@ -2800,7 +2820,8 @@
       "angle": 222
     },
     "chant": "群峰低首，山脈傾頹——天地之間，再無山巒！",
-    "school": "cataclysm"
+    "school": "cataclysm",
+    "circle": "m:earth.8.eeeee.---ee.meteor"
   },
   {
     "id": "continental_crush",
@@ -2906,7 +2927,8 @@
       "ring": 3,
       "angle": 300
     },
-    "school": "evocation"
+    "school": "evocation",
+    "circle": "m:water.4.--aaa.-----.bolt"
   },
   {
     "id": "abyssal_crush",
@@ -2968,7 +2990,8 @@
       "ring": 5,
       "angle": 288
     },
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:water.6.aaaaa.-----.zone"
   },
   {
     "id": "abyssal_prison",
@@ -3036,7 +3059,8 @@
       "angle": 294
     },
     "chant": "滄海之淵，鎖我敵魂——入水者，永世不得出！",
-    "school": "conjuration"
+    "school": "conjuration",
+    "circle": "m:water.8.aaaaa.---aa.zone"
   },
   {
     "id": "nether_tides",
@@ -3145,7 +3169,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 5.203,
+        "mult": 30,
         "delayMs": 600,
         "status": [
           {
@@ -3153,19 +3177,6 @@
             "ms": 2000
           }
         ]
-      },
-      {
-        "kind": "storm",
-        "mult": 2.615,
-        "ms": 3000,
-        "tickMs": 50
-      },
-      {
-        "kind": "bolt",
-        "mult": 14,
-        "count": 1,
-        "radius": 0.05,
-        "target": "strongest"
       }
     ],
     "words": {
@@ -3189,7 +3200,8 @@
     },
     "rare": true,
     "school": "forbidden",
-    "chant": "日輝破曉，神雷裁決——凡有罪者，盡皆化為白光！"
+    "chant": "日輝破曉，神雷裁決——凡有罪者，盡皆化為白光！",
+    "circle": "m:fire.10.fffff.-tttt.field"
   },
   {
     "id": "abyss_devour",
@@ -3245,7 +3257,8 @@
     },
     "rare": true,
     "school": "forbidden",
-    "chant": "深海之底、永暗之門洞開——將一切拖入無歸之淵！"
+    "chant": "深海之底、永暗之門洞開——將一切拖入無歸之淵！",
+    "circle": "m:water.10.aaaaa.-eeee.zone"
   },
   {
     "id": "worldfire",
@@ -3261,20 +3274,8 @@
     "cooldownMs": 3800,
     "effects": [
       {
-        "kind": "field",
-        "mult": 4.268,
-        "delayMs": 500,
-        "status": [
-          {
-            "kind": "burn",
-            "ms": 6000,
-            "power": 0.6
-          }
-        ]
-      },
-      {
         "kind": "meteor",
-        "mult": 5.715,
+        "mult": 11,
         "count": 4,
         "radius": 0.28,
         "delayMs": 700,
@@ -3301,7 +3302,8 @@
     },
     "rare": true,
     "school": "forbidden",
-    "chant": "太初之火，終末之燼——連同天空與法則一併焚盡！"
+    "chant": "太初之火，終末之燼——連同天空與法則一併焚盡！",
+    "circle": "m:fire.10.fffff.-ffff.meteor"
   },
   {
     "id": "heavens_breath",
@@ -3326,12 +3328,6 @@
         "pull": 1,
         "follow": false,
         "strikes": 0
-      },
-      {
-        "kind": "blades",
-        "mult": 4.047,
-        "count": 9,
-        "push": 0.5
       }
     ],
     "words": {
@@ -3353,7 +3349,8 @@
     },
     "rare": true,
     "school": "forbidden",
-    "chant": "傾聽吧，那是世界誕生之初、來自天外蒼穹的吐息。"
+    "chant": "傾聽吧，那是世界誕生之初、來自天外蒼穹的吐息。",
+    "circle": "m:wind.10.wwwww.-wwww.zone"
   },
   {
     "id": "ninefold_thunder",
@@ -3370,16 +3367,9 @@
     "effects": [
       {
         "kind": "storm",
-        "mult": 1.981,
+        "mult": 3.96,
         "ms": 4000,
         "tickMs": 50
-      },
-      {
-        "kind": "chain",
-        "mult": 1.836,
-        "hops": 18,
-        "range": 0.35,
-        "explode": 0.12
       }
     ],
     "words": {
@@ -3401,7 +3391,8 @@
     },
     "rare": true,
     "school": "forbidden",
-    "chant": "九重天門盡開，降下永夜不息的雷霆煉獄！"
+    "chant": "九重天門盡開，降下永夜不息的雷霆煉獄！",
+    "circle": "m:thunder.10.ttttt.-tttt.storm"
   },
   {
     "id": "titans_grip",
@@ -3427,13 +3418,6 @@
             "ms": 2500
           }
         ]
-      },
-      {
-        "kind": "bolt",
-        "mult": 82.52,
-        "count": 1,
-        "radius": 0.03,
-        "target": "strongest"
       }
     ],
     "words": {
@@ -3455,7 +3439,8 @@
     },
     "rare": true,
     "school": "forbidden",
-    "chant": "群山不過指尖微塵——遠古泰坦，於此握碎大地！"
+    "chant": "群山不過指尖微塵——遠古泰坦，於此握碎大地！",
+    "circle": "m:earth.10.eeeee.-eeee.ring"
   },
   {
     "id": "moontide",
@@ -3480,22 +3465,6 @@
         "pull": 0.5,
         "follow": true,
         "strikes": 0
-      },
-      {
-        "kind": "field",
-        "mult": 8.795,
-        "delayMs": 400,
-        "status": [
-          {
-            "kind": "wet",
-            "ms": 6000
-          },
-          {
-            "kind": "slow",
-            "ms": 4000,
-            "power": 0.6
-          }
-        ]
       }
     ],
     "words": {
@@ -3517,6 +3486,7 @@
     },
     "rare": true,
     "school": "forbidden",
-    "chant": "銀月低垂，滄溟倒懸，萬古潮汐盡歸吾掌！"
+    "chant": "銀月低垂，滄溟倒懸，萬古潮汐盡歸吾掌！",
+    "circle": "m:water.10.aaaaa.-aaaa.zone"
   }
 ]

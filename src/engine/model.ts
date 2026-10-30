@@ -36,6 +36,8 @@ export interface NamedSpellDef extends Spell {
   rare?: boolean;
   /** old-language incantation shown when a high-tier or rare spell is cast */
   chant?: string;
+  /** the canonical magic circle id (`m:…`) this named spell names; rare spells: the Lv.10 circle that may roll them */
+  circle?: string;
 }
 export interface Material { id: ItemId; name: string; nameEn: string; desc: string; elements: ElementId[]; words: Words; effect: Effect }
 export interface KeyItem { id: ItemId; name: string; nameEn: string; desc: string; reveals: string }
@@ -100,4 +102,8 @@ export interface CircleRules {
   branches: Record<ElementId, ElementBranches>;
   /** fixed per-position offset added to both ring-1 slot j's out and ring-2 slot j's in (so it never breaks a match) */
   slotShift: number[];
+  /** what 相生 / 相剋 pairs on the ring-1 pentagram do to a generated spell */
+  relations: CircleRelations;
 }
+/** Each 相生 pair multiplies a generated spell's mults by generateBonus, each 相剋 pair by overcomePenalty and adds the counter element's reaction status. */
+export interface CircleRelations { generateBonus: number; overcomePenalty: number; reactions: Record<ElementId, StatusDef> }

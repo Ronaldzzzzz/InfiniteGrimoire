@@ -57,6 +57,9 @@ export const LIGHT_DARK_SPELLS = ['holy_judgment', 'abyss_devour'] as const;
 /** Required `depth` of a named spell by tier. */
 export const NAMED_DEPTH = (tier: number): number => (tier <= 2 ? 0 : tier <= 4 ? 1 : tier <= 6 ? 2 : 3);
 
+/** Shape of a canonical circle id (`m:<core>.<tier>.<ring1>.<ring2>.<form>`); circle.ts parseCanonical does the full check. */
+const CIRCLE_ID_RE = new RegExp(`^m:(${ELEMENT_ORDER.join('|')})\\.(\\d{1,2})\\.[fwtea-]{5}\\.[fwtea-]{5}\\.(${RUNE_IDS.join('|')})$`);
+
 const spellSchema = z.object({
   id: spellId,
   name: str,
@@ -78,6 +81,7 @@ const spellSchema = z.object({
   rare: z.boolean().optional(),
   school,
   chant: str.optional(),
+  circle: z.string().regex(CIRCLE_ID_RE, { error: (iss) => `invalid circle id "${String(iss.input)}"` }).optional(),
 });
 
 const recipeSchema = z.object({
@@ -242,6 +246,15 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
       if (s.node?.tree !== 'lightdark' || !s.node.side) issues.push(`spell ${s.id}: light/dark spells need node.tree "lightdark" and a side`);
     } else if (s.node?.tree === 'lightdark') issues.push(`spell ${s.id}: only light/dark spells may use the lightdark tree`);
   }
+  const circleOwner = new Map<string, string>();
+  for (const s of spells) {
+    if (!s.circle) continue;
+    const prior = circleOwner.get(s.circle);
+    if (prior) issues.push(`spell ${s.id}: circle "${s.circle}" already names ${prior}`);
+    else circleOwner.set(s.circle, s.id);
+    const tier = Number(CIRCLE_ID_RE.exec(s.circle)![2]);
+    if (tier !== s.tier) issues.push(`spell ${s.id}: circle "${s.circle}" is Lv.${tier}, the spell is Lv.${s.tier}`);
+  }
   for (const p of passives) {
     if (p.node.tree === 'lightdark') issues.push(`passive ${p.id}: passives may not use the lightdark tree`);
   }
@@ -355,6 +368,11 @@ const circleRulesSchema = z.object({
   tierUnlocks: z.record(z.string(), z.number().int().min(2).max(10)),
   branches: z.strictObject({ fire: branch, wind: branch, thunder: branch, earth: branch, water: branch }),
   slotShift: z.array(count).length(5),
+  relations: z.object({
+    generateBonus: z.number().positive(),
+    overcomePenalty: z.number().positive(),
+    reactions: z.strictObject({ fire: status, wind: status, thunder: status, earth: status, water: status }),
+  }),
 });
 
 /** Parse circle-rules.json and cross-check it against the loaded content (boss ids, key items). */
