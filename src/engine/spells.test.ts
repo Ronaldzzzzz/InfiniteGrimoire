@@ -51,7 +51,7 @@ describe('crafted spells', () => {
       const id = craftedId(x, y);
       const s = resolveSpell(id, content)!;
       const [ta, tb] = id.slice(2, -1).split('|') as [string, string];
-      const A = content.spells[ta]!, B = content.spells[tb]!;
+      const A = resolveSpell(ta, content)!, B = resolveSpell(tb, content)!; // rares resolve from their circle (magic circle Task 2)
       const gain = s.affinity === 'good' ? 1 + 0.35 * 0.7 ** (s.depth - 1) : s.affinity === 'bad' ? 0.6 : 1;
       const dmg = (fx: typeof s.effects) => fx.reduce((n, e) => n + ('mult' in e ? e.mult : 0), 0);
       const sideA = s.effects.slice(0, A.effects.length), sideB = s.effects.slice(A.effects.length, A.effects.length + B.effects.length);

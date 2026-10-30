@@ -3169,7 +3169,7 @@
     "effects": [
       {
         "kind": "field",
-        "mult": 30,
+        "mult": 5.203,
         "delayMs": 600,
         "status": [
           {
@@ -3275,7 +3275,7 @@
     "effects": [
       {
         "kind": "meteor",
-        "mult": 11,
+        "mult": 5.715,
         "count": 4,
         "radius": 0.28,
         "delayMs": 700,
@@ -3367,7 +3367,7 @@
     "effects": [
       {
         "kind": "storm",
-        "mult": 3.96,
+        "mult": 1.981,
         "ms": 4000,
         "tickMs": 50
       }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalCircle, circuitMismatches, GRADE_CAP, parseCanonical, placementProblems, RING_FLOOR, RUNE_IDS } from './circle';
 import type { Placement } from './circle';
-import { circleSpell, namedFor } from './circle-spell';
+import { circleSpell, namedFor, RARE_BONUS } from './circle-spell';
 import { content } from './content';
 import type { Effect, NamedSpellDef } from './model';
 import { resolveSpell, TIER_STEP } from './spells';
@@ -89,18 +89,24 @@ describe('spells generated from circles', () => {
     expect(s.name).toBe('火球');
     expect(s.named).toBe(true);
     expect(s.effects).toEqual(circleSpell(id, content)!.effects);
+    // the desc describes the generated effect, not the old hand-tuned one
+    expect(s.desc).toBe(circleSpell(id, content)!.desc);
     expect(namedFor(id, content)?.id).toBe('fireball');
   });
 
-  it('a rare spell keeps its own data; its circle resolves as the ordinary Lv.10 spell', () => {
-    const rare = content.spells.worldfire!;
-    expect(rare.effects).toHaveLength(1);
-    expect(resolveSpell('worldfire', content)!.name).toBe(rare.name);
-    expect(namedFor(rare.circle!, content)).toBeUndefined();
-    expect(resolveSpell(rare.circle!, content)!.name).not.toBe(rare.name);
-    for (const s of Object.values(content.spells).filter((x) => x.rare)) {
-      expect(s.effects, s.id).toHaveLength(1);
-      expect(parseCanonical(s.circle!)?.tier, s.id).toBe(10);
+  it('a rare spell is the Lv.10 spell of its circle x RARE_BONUS with its own id and texts; the circle stays ordinary', () => {
+    for (const def of Object.values(content.spells).filter((x) => x.rare)) {
+      expect(parseCanonical(def.circle!)?.tier, def.id).toBe(10);
+      const rare = resolveSpell(def.id, content)!, plain = resolveSpell(def.circle!, content)!;
+      expect(rare.id, def.id).toBe(def.id);
+      expect(rare.name, def.id).toBe(def.name);
+      expect(rare.desc, def.id).toBe(def.desc);
+      expect(rare.school, def.id).toBe('forbidden');
+      expect((rare as { rare?: boolean }).rare, def.id).toBe(true);
+      expect(rare.effects, def.id).toEqual(plain.effects);
+      expect(rare.attack, def.id).toBe(Math.round(plain.attack * RARE_BONUS));
+      expect(plain.name, def.id).not.toBe(def.name);
+      expect(namedFor(def.circle!, content), def.id).toBeUndefined();
     }
   });
 

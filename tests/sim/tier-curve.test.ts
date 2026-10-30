@@ -10,12 +10,14 @@ const KNOWN_GAPS: Record<string, number> = {};
 const GAP_TOLERANCE = 0.03;
 
 describe('spell tier curve (magic circle spells)', () => {
-  it('neighbouring tiers are about TIER_STEP apart and empowering stays below the next tier', { timeout: 120_000 }, () => {
+  it('neighbouring tiers are about TIER_STEP apart, empowering stays below the next tier, rares beat their circle and x1.5 Lv.9', { timeout: 120_000 }, () => {
     const report = curveReport(CURVE_OPTS);
     const lines = report.medians.map((m) =>
-      `Lv.${m.tier} @${m.zone}: 單挑 ${m.solo.toFixed(1)}${m.ratioSolo ? ` (×${m.ratioSolo.toFixed(2)})` : ''}；群怪 ${m.crowd.toFixed(1)}${m.ratioCrowd ? ` (×${m.ratioCrowd.toFixed(2)})` : ''}；幾何 ${m.geo.toFixed(1)}`);
-    console.info(`各階中位數（倍率在較低階的主場量）\n${lines.join('\n')}\n未通過 ${report.failures.length} 條\n${report.failures.map((f) => `[${f.key}] ${f.text}`).join('\n')}`);
+      `Lv.${m.tier} @${m.zone}: 單挑 ${m.solo.toFixed(1)}；群怪 ${m.crowd.toFixed(1)}；幾何 ${m.geo.toFixed(1)}${m.ratioSolo ? `；對 Lv.${m.tier - 1}（在 Lv.${m.tier - 1} 的主場）單挑 ×${m.ratioSolo.toFixed(2)}、群怪 ×${m.ratioCrowd!.toFixed(2)}` : ''}`);
+    const rares = report.rares.map((r) => `${r.name} ${r.geo.toFixed(1)}（自己的陣 ×${(r.geo / r.circleGeo).toFixed(2)}，Lv.9 中位數 ×${(r.geo / r.lv9Median).toFixed(2)}）`);
+    console.info(`各階中位數\n${lines.join('\n')}\n稀有魔法（${report.rares[0]?.lv9Median.toFixed(1)} = Lv.9 中位數）\n${rares.join('\n')}\n未通過 ${report.failures.length} 條\n${report.failures.map((f) => `[${f.key}] ${f.text}`).join('\n')}`);
     expect(report.perCircle.length).toBeGreaterThanOrEqual(5 * 9);
+    expect(report.rares.length).toBe(7);
     const unknown = report.failures.filter((f) => KNOWN_GAPS[f.key] === undefined).map((f) => `[${f.key}] ${f.text}`);
     expect(unknown).toEqual([]);
     for (const f of report.failures) {

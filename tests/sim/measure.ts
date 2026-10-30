@@ -140,6 +140,8 @@ export interface CurveReport {
   failures: CurveFailure[];
   /** Per tier 2..10, medians at HOME_ZONE[tier]; ratio = this tier's median / the tier below's, both at the lower tier's home zone. */
   medians: { tier: number; zone: string; solo: number; crowd: number; geo: number; ratioSolo: number | null; ratioCrowd: number | null }[];
+  /** Rare spells at HOME_ZONE[10] (geometric mean of solo and crowd), against their own circle's ordinary spell and the Lv.9 median. */
+  rares: { id: string; name: string; geo: number; circleGeo: number; lv9Median: number }[];
 }
 
 const geo = (a: number, b: number) => Math.sqrt(a * b);
@@ -152,6 +154,9 @@ const f1 = (x: number) => x.toFixed(1);
 
 /** Seed-averaged scenario DPS (the curve uses the mean over `seeds`). */
 const meanOver = (seeds: number[], f: (seed: number) => number) => seeds.reduce((n, sd) => n + f(sd), 0) / seeds.length;
+
+/** A rare spell's geometric-mean DPS at HOME_ZONE[10] must be at least this times the Lv.9 median there. */
+export const RARE_OVER_LV9 = 1.5;
 
 /** Neighbouring tiers: median of tier n+1 / tier n within TIER_STEP +- CURVE_BAND, both measured at HOME_ZONE[n]. */
 export const CURVE_BAND = 0.2;
@@ -219,7 +224,21 @@ export function curveReport(opts: { seeds: number[]; soloMs: number; crowdMs: nu
     const me = median(rows(n).map((p) => p.empoweredGeoAt[z]!)), r = next > 0 ? me / next : Infinity;
     if (!(me > 0) || r > 1 / 1.2) failures.push({ key: `empowered median Lv.${n}`, text: `Lv.${n} 強化 +${MAX_SPELL_LEVEL - 1} 的中位數 ${f1(me)}，超過 Lv.${n + 1} 中位數 ${f1(next)} ÷ 1.2（×${r.toFixed(2)}）。`, ratio: r, limit: 1 / 1.2, side: 'max' });
   }
-  return { perCircle, failures, medians };
+
+  // Rares (the 2 % roll of their circle) must be worth hitting: at HOME_ZONE[10], geo >= their own circle's ordinary spell
+  // and >= RARE_OVER_LV9 x the Lv.9 median.
+  const rares: CurveReport['rares'] = [];
+  {
+    const z = HOME_ZONE[10]!, m9 = medGeo(9, z);
+    const geoAt = (id: string) => geo(solo(id, 1, z), crowd(id, 1, z));
+    for (const s of Object.values(content.spells).filter((x) => x.rare).sort((a, b) => a.id.localeCompare(b.id))) {
+      const g = geoAt(s.id), cg = geoAt(s.circle!);
+      rares.push({ id: s.id, name: s.name, geo: g, circleGeo: cg, lv9Median: m9 });
+      if (!(g >= cg)) failures.push({ key: `rare vs circle ${s.id}`, text: `${s.name}（稀有）幾何平均 ${f1(g)}，低於自己的陣 ${s.circle} 的一般魔法 ${f1(cg)}（×${(g / cg).toFixed(2)}）。`, ratio: g / cg, limit: 1, side: 'min' });
+      if (!(g >= m9 * RARE_OVER_LV9)) failures.push({ key: `rare vs Lv.9 ${s.id}`, text: `${s.name}（稀有）幾何平均 ${f1(g)}，低於 Lv.9 中位數 ${f1(m9)} 的 ${RARE_OVER_LV9} 倍（×${(g / m9).toFixed(2)}）。`, ratio: g / m9, limit: RARE_OVER_LV9, side: 'min' });
+    }
+  }
+  return { perCircle, failures, medians, rares };
 }
 
 // ---- Stage time on the battle strip (battle-strip spec 3.7) ----

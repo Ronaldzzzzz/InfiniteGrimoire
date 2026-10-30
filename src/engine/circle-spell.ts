@@ -91,6 +91,8 @@ function formEffect(form: RuneId, tier: number, n: Record<ElementId, number>, mu
 /**
  * The spell a canonical circle id makes, or null for anything that is not a canonical id. Deterministic: the same id
  * always gives the same spell. Named spells are laid over it by `namedCircleSpell`.
+ * The circle rules (relations table) come from the global `circleRules`, not from `content`: Task 1 keeps circle-rules.json
+ * outside `Content` (one rule set for the whole world, never swapped by sims); `content` is taken for the named lookups.
  */
 export function circleSpell(id: string, _content: Content): Spell | null {
   const c = parseCanonical(id);
@@ -144,14 +146,32 @@ export function namedFor(circleId: string, content: Content): NamedSpellDef | un
   return index.get(circleId);
 }
 
-/** A circle's spell with its named spell's name, texts and school laid over the generated numbers. */
+/**
+ * A circle's spell with its named spell's name, hint, chant, words and school laid over the generated numbers. The desc
+ * stays the generated one: the named spells' hand-written descs describe their old hand-tuned effects (岩槍's stun,
+ * 湧泉之環's slow...), which the generated effect no longer has; new flavour descs are content work for later.
+ */
 export function namedCircleSpell(id: string, content: Content): (Spell & { hint?: string; chant?: string }) | null {
   const spell = circleSpell(id, content);
   if (!spell) return null;
   const def = namedFor(id, content);
-  if (!def) return spell;
-  return {
-    ...spell, name: def.name, nameEn: def.nameEn, desc: def.desc, hint: def.hint, words: def.words, school: def.school, named: true,
-    ...(def.chant ? { chant: def.chant } : {}),
-  };
+  return def ? overlay(spell, def) : spell;
+}
+
+const overlay = (spell: Spell, def: NamedSpellDef) => ({
+  ...spell, name: def.name, nameEn: def.nameEn, hint: def.hint, words: def.words, school: def.school, named: true as const,
+  ...(def.chant ? { chant: def.chant } : {}),
+});
+
+/** Attack multiplier of a rare spell over the ordinary spell of its own Lv.10 circle (placeholder). */
+export const RARE_BONUS = 1.5;
+
+/**
+ * A rare named spell: the generated spell of its own `circle` with attack x RARE_BONUS, its own id, texts (desc included:
+ * the rares are new content written for their main form) and school. Null when its circle does not parse.
+ */
+export function rareSpell(def: NamedSpellDef, content: Content): (Spell & { hint: string; chant?: string; rare: true }) | null {
+  const base = def.circle ? circleSpell(def.circle, content) : null;
+  if (!base) return null;
+  return { ...overlay(base, def), id: def.id, desc: def.desc, attack: Math.round(base.attack * RARE_BONUS), rare: true };
 }

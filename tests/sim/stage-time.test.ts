@@ -26,8 +26,9 @@ const KNOWN_GAPS: Record<string, number> = {
   'ember_wastes rel 1': 1.07,
   'sunken_temple rel 1': 1.1,
   'starfall_plateau rel 1': 0.79,
-  'worlds_end rel 1': 0.76,
 };
+// 'worlds_end rel 1' (was x0.76) left the list in magic circle Task 2: the rares now resolve from their Lv.10 circle with
+// RARE_BONUS, measured x0.60 (< TIER_UP_MAX), so the row is held to the normal rule again.
 const GAP_TOLERANCE = 0.03;
 
 const min = (ms: number | null) => (ms === null ? '打不完' : `${(ms / 60_000).toFixed(2)} 分`);

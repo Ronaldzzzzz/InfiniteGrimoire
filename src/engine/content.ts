@@ -248,6 +248,7 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
   }
   const circleOwner = new Map<string, string>();
   for (const s of spells) {
+    if (s.rare && !s.circle) issues.push(`rare spell ${s.id}: needs the Lv.10 circle it resolves from`);
     if (!s.circle) continue;
     const prior = circleOwner.get(s.circle);
     if (prior) issues.push(`spell ${s.id}: circle "${s.circle}" already names ${prior}`);
