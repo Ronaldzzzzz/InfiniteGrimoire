@@ -45,7 +45,7 @@
 
 - 遊戲內容（魔法、地點 JSON）改版時，舊存檔的相容與搬移。
 - 第二版 C+D：Cron Trigger 每日結算。
-- 離線收益：伺服器驗算，會動到防作弊錨點窗口（`validate.ts`）。
+- 離線收益：已實作（2026-10-30，伺服器計算）。新欄位 `clearTimes`、`awayAt`、`offlineUntil` 有預設值，**不需要新的 migration**（遠端仍只要 0007）。
 - 第三版市集：購買原子化、每人限買一次、金幣不能複製。
 - A2 Google 登入（需要使用者建立 OAuth 用戶端）。
 - 之後任何會重建 `players` 表的 migration（像 0003 那樣複製 → DROP → 重建）都要處理 `discoveries.player_id` 指向 `players(id)` 的外鍵：先備份並暫存 `discoveries`，或在重建期間關閉外鍵檢查，否則 DROP 會失敗或遺失發現紀錄。
