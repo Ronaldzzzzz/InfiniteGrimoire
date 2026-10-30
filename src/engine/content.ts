@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { ELEMENT_ORDER, ITEM_ID_RE } from './types';
 import type { ElementId } from './types';
-import { OVERLOAD_SPELL, STARTING_SPELL } from './model';
-import type { Content } from './model';
+import { OVERLOAD_SPELL, RUNE_IDS, STARTING_SPELL } from './model';
+import type { CircleRules, Content } from './model';
 import spellsJson from '../data/content/spells.json';
 import recipesJson from '../data/content/recipes.json';
 import monstersJson from '../data/content/monsters.json';
@@ -11,6 +11,7 @@ import materialsJson from '../data/content/materials.json';
 import keyItemsJson from '../data/content/key-items.json';
 import passivesJson from '../data/content/passives.json';
 import regionsJson from '../data/content/regions.json';
+import circleRulesJson from '../data/content/circle-rules.json';
 
 export class ContentError extends Error {
   constructor(public issues: string[]) {
@@ -343,3 +344,39 @@ export const content: Content = loadContent({
   passives: passivesJson,
   regions: regionsJson,
 });
+
+const rune = z.enum(RUNE_IDS, { error: (iss) => `unknown rune "${String(iss.input)}"` });
+const count = z.number().int().min(0).max(9);
+const branch = z.object({ coreOut: count, ring1In: count, ring1Out: count, ring2In: count });
+const circleRulesSchema = z.object({
+  startTier: z.number().int().min(1).max(10),
+  startRunes: z.array(rune).min(1),
+  runeUnlocks: z.record(z.string(), z.array(rune).min(1)),
+  tierUnlocks: z.record(z.string(), z.number().int().min(2).max(10)),
+  branches: z.strictObject({ fire: branch, wind: branch, thunder: branch, earth: branch, water: branch }),
+  slotShift: z.array(count).length(5),
+});
+
+/** Parse circle-rules.json and cross-check it against the loaded content (boss ids, key items). */
+export function loadCircleRules(raw: unknown, c: Content): CircleRules {
+  const r = circleRulesSchema.safeParse(raw);
+  if (!r.success) throw new ContentError(r.error.issues.map((iss) => `circleRules.${fmtPath(iss.path)}: ${iss.message}`));
+  const rules = r.data as CircleRules;
+  const issues: string[] = [];
+  const bosses = new Set(c.zones.map((z) => z.bossId));
+  for (const b of Object.keys(rules.runeUnlocks)) {
+    if (!bosses.has(b)) issues.push(`circleRules.runeUnlocks: "${b}" is not a zone boss`);
+  }
+  for (const k of Object.keys(rules.tierUnlocks)) {
+    if (!c.keyItems[k]) issues.push(`circleRules.tierUnlocks: unknown key item "${k}"`);
+  }
+  for (const e of ELEMENT_ORDER) {
+    const b = rules.branches[e];
+    // a circle of one element must always close its circuit
+    if (b.coreOut !== b.ring1In || b.ring1Out !== b.ring2In) issues.push(`circleRules.branches.${e}: a uniform ${e} circle would not match (coreOut must equal ring1In, ring1Out must equal ring2In)`);
+  }
+  if (issues.length > 0) throw new ContentError(issues);
+  return rules;
+}
+
+export const circleRules: CircleRules = loadCircleRules(circleRulesJson, content);

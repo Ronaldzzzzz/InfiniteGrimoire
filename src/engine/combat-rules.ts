@@ -5,8 +5,8 @@ export const OVERLEVEL_K = 0.5;
 /** Damage = attack x DEFENSE_SCALE / (DEFENSE_SCALE + defense); attack, hp and defense were all scaled x10, so this went 100 -> 1000. */
 export const DEFENSE_SCALE = 1000;
 
-/** element -> the element it counters */
-const COUNTERS: Record<ElementId, ElementId> = {
+/** element -> the element it counters (相剋) */
+export const COUNTERS: Record<ElementId, ElementId> = {
   water: 'fire',
   fire: 'wind',
   wind: 'earth',

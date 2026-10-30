@@ -83,3 +83,21 @@ export interface GameState {
 }
 export const STARTING_SPELL = 'mana_bolt';
 export const OVERLOAD_SPELL = 'mana_overload';
+
+/** Magic circle runes (one per ring); each maps to the Effect['kind'] of the same name. */
+export const RUNE_IDS = ['bolt', 'blades', 'ring', 'chain', 'zone', 'meteor', 'storm', 'field'] as const;
+export type RuneId = typeof RUNE_IDS[number];
+/** Branch counts of one element: the core sends coreOut to each ring-1 node; ring-1 nodes take ring1In and send ring1Out to their ring-2 node, which takes ring2In. */
+export interface ElementBranches { coreOut: number; ring1In: number; ring1Out: number; ring2In: number }
+/** circle-rules.json: unlocks and branch counts of the magic circle. */
+export interface CircleRules {
+  startTier: number;
+  startRunes: RuneId[];
+  /** boss id -> runes its first defeat unlocks */
+  runeUnlocks: Record<string, RuneId[]>;
+  /** key item id -> the tier using it unlocks */
+  tierUnlocks: Record<ItemId, number>;
+  branches: Record<ElementId, ElementBranches>;
+  /** fixed per-position offset added to both ring-1 slot j's out and ring-2 slot j's in (so it never breaks a match) */
+  slotShift: number[];
+}

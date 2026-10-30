@@ -1,0 +1,26 @@
+{
+  "startTier": 2,
+  "startRunes": ["bolt"],
+  "runeUnlocks": {
+    "mist_stag": ["blades", "ring"],
+    "storm_roc": ["chain", "zone"],
+    "volcano_drake": ["meteor"],
+    "sunken_titan": ["storm"],
+    "fallen_star_wyrm": ["field"]
+  },
+  "tierUnlocks": {
+    "key:storm_heart": 4,
+    "key:thunder_eye": 6,
+    "key:magma_seal": 8,
+    "key:titan_crown": 9,
+    "key:star_sigil": 10
+  },
+  "branches": {
+    "fire": { "coreOut": 1, "ring1In": 1, "ring1Out": 2, "ring2In": 2 },
+    "wind": { "coreOut": 1, "ring1In": 1, "ring1Out": 2, "ring2In": 2 },
+    "thunder": { "coreOut": 2, "ring1In": 2, "ring1Out": 3, "ring2In": 3 },
+    "earth": { "coreOut": 1, "ring1In": 1, "ring1Out": 1, "ring2In": 1 },
+    "water": { "coreOut": 1, "ring1In": 1, "ring1Out": 2, "ring2In": 2 }
+  },
+  "slotShift": [0, 0, 1, 0, 1]
+}
