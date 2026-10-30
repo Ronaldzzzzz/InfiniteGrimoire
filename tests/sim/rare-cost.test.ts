@@ -1,55 +1,47 @@
 import { describe, expect, it } from 'vitest';
-import { ELEMENT_ORDER, type ElementId } from '../../src/engine/types';
-import { runBot } from './bot';
+import { failChance, circleCost, RARE_CHANCE, rareFor } from '../../src/engine/circle-synth';
+import { runesUnlocked } from '../../src/engine/circle';
+import { content } from '../../src/engine/content';
+import { ELEMENT_ORDER, gradeValue } from '../../src/engine/types';
+import { routeCircle, runBot } from './bot';
 
 const MINUTE = 60_000;
 const SIX_HOURS = 360 * MINUTE;
 const SEED = 20261021;
-/** The Lv.9 spell must be learned (always enforced, as are 0 rejections). */
-const ENFORCE = true;
 /**
- * The farming-time ceiling is report-only since the 2026-10-28 hit-point cut (crowd TTK spec): the user deferred the drop
- * rebalance ("4的掉落平衡後續再更動"); restore this with it.
+ * The farming-time ceiling is report-only. Since the magic circle (project 2) a rare spell is rolled from its own Lv.10
+ * circle (RARE_CHANCE per success), so its cost is that circle's elements, not one material per attempt as when the
+ * old 120-minute ceiling was set (spec 2.1 of the tier curve); the drop rebalance is deferred ("4的掉落平衡後續再更動").
  */
 const ENFORCE_TIMES = false;
-/** Spec 2.1: farming one rare spell takes at most this many simulated minutes. */
 const RARE_FARM_CEILING_MIN = 120;
-/** The Lv.9 spell each element's rare recipe takes as its first input, and the rare's material (R1: one material per attempt). */
-const LV9: Record<ElementId, { spell: string; material: string }> = {
-  fire: { spell: 'corona_scorch', material: 'mat:ember_core' },
-  wind: { spell: 'void_gale', material: 'mat:roc_feather' },
-  thunder: { spell: 'astral_fulmination', material: 'mat:fulgurite' },
-  earth: { spell: 'continental_crush', material: 'mat:lava_stone' },
-  water: { spell: 'nether_tides', material: 'mat:tide_scale' },
-};
-/** Expected attempts for a 1:49 weight rare outcome. */
-const ATTEMPTS = 50;
 
-/** Items gained per sim minute in the `windowMin` minutes after `fromMs` (or to the end of the samples). */
-function perMinuteAfter(samples: { atMs: number; n: number }[], fromMs: number, windowMin: number): number {
-  const start = samples.findLast((s) => s.atMs <= fromMs) ?? { atMs: fromMs, n: 0 };
+/** Grade-1 equivalents per sim minute gained in the `windowMin` minutes after `fromMs` (or to the end of the samples). */
+function perMinuteAfter(samples: { atMs: number; eq: number }[], fromMs: number, windowMin: number): number {
+  const start = samples.findLast((s) => s.atMs <= fromMs) ?? { atMs: fromMs, eq: 0 };
   const end = samples.findLast((s) => s.atMs <= fromMs + windowMin * MINUTE);
   if (!end) return 0;
   const mins = (end.atMs - start.atMs) / MINUTE;
-  return mins > 0 ? (end.n - start.n) / mins : 0;
+  return mins > 0 ? (end.eq - start.eq) / mins : 0;
 }
 
-// re-enabled in Task 4 (magic circle bots)
-describe.skip('rare spell farming cost', () => {
+describe('rare spell farming cost', () => {
+  const allRunes = runesUnlocked(content.zones.map((z) => z.bossId), content);
   for (const el of ELEMENT_ORDER) {
-    it(`pure ${el}: farming one rare spell takes at most RARE_FARM_CEILING_MIN simulated minutes`, async () => {
-      const { spell, material } = LV9[el];
+    it(`pure ${el}: draws its rare spell's Lv.10 circle; farming time printed`, async () => {
+      const circle = routeCircle(el, 10, allRunes);
+      const rare = rareFor(circle.id, content);
+      expect(rare, `${circle.id} is no rare spell's circle`).toBeDefined();
       const r = await runBot({ route: el, seed: SEED, maxSimMs: SIX_HOURS });
       expect(r.rejectedUploads, r.rejectionReasons.join('\n')).toBe(0);
-      const from = r.learnedAt[spell];
-      if (from === undefined) {
-        console.info(`[rare-cost] ${el}: ${spell} was never learned (sim ${(r.simMs / MINUTE).toFixed(0)} min)`);
-        if (ENFORCE) expect(from, `${spell} was never learned`).toBeDefined();
-        return;
-      }
-      const rate = perMinuteAfter(r.gainedItems[material] ?? [], from, 30);
-      const minutes = rate > 0 ? ATTEMPTS / rate : Infinity;
-      console.info(`[rare-cost] ${el}: learned ${spell} at ${(from / MINUTE).toFixed(1)} min, ${rate.toFixed(2)} ${material}/min -> ${minutes.toFixed(0)} min`);
+      const from = r.learnedAt[circle.id] ?? r.learnedAt[rare!.id];
+      expect(from, `${circle.id} was never drawn`).toBeDefined();
+      const cost = circleCost(circle.placement).reduce((n, it) => n + gradeValue(Number(it.split(':')[2])), 0);
+      const attempts = 1 / (RARE_CHANCE * (1 - failChance(circle.placement)));
+      const rate = perMinuteAfter(r.gained[el], from!, 30);
+      const minutes = rate > 0 ? (attempts * cost) / rate : Infinity;
+      console.info(`[rare-cost] ${el}: drew ${circle.id} at ${(from! / MINUTE).toFixed(1)} min; ${cost} eq per circle x ${attempts.toFixed(1)} attempts`
+        + ` at ${rate.toFixed(1)} eq/min -> ${minutes.toFixed(0)} min for ${rare!.id}`);
       if (ENFORCE_TIMES) expect(minutes).toBeLessThanOrEqual(RARE_FARM_CEILING_MIN);
     }, 600_000);
   }

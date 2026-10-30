@@ -8,17 +8,14 @@ import { parseState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
 import { MAX_SPELL_LEVEL, resolveSpell, spellAtLevel } from '../../src/engine/spells';
 import { BOSS_LIMIT_MS, highestPlayable, isBossStage, stageCount } from '../../src/engine/stages';
-import { tierUnlockOf } from '../../src/engine/circle';
+import { canonicalCircle, GRADE_CAP, parseCanonical, RING_FLOOR, runesUnlocked, SLOTS, tierUnlockOf, type Placement } from '../../src/engine/circle';
+import type { RuneId } from '../../src/engine/model';
 import { ELEMENT_ORDER, elementItem, GRADE_UPGRADE_COST, gradeValue, type ElementId, type ItemId } from '../../src/engine/types';
 import { createApp } from '../../worker/app';
 import { MemoryStore } from '../../worker/store';
 import { soloBossDps } from './measure';
 
-// The old two-input synthesis is gone (magic circle Task 3); the route tests that drive this bot are skipped until
-// Task 4 rewrites it to draw magic circles. Only what keeps this module loading changed here.
-const requiredGrade = (depth: number): number => Math.min(5, Math.max(1, depth));
-
-/** A pure element route, the fire + wind combination route, or mana_bolt only (null). */
+/** A pure element route, the thunder + wind combination route, or mana_bolt only (null). */
 export type Route = ElementId | 'mixed' | null;
 export interface BotOptions {
   route: Route;
@@ -29,7 +26,11 @@ export interface BotResult {
   clearedZones: string[];
   learned: string[];
   levels: Record<string, number>;
-  revealed: string[];
+  /** the unlocked magic circle tier at the end */
+  circleTier: number;
+  /** POST /api/circle calls and how many of them were big failures */
+  circleAttempts: number;
+  circleFailures: number;
   simMs: number;
   /** simulated ms at which each zone's boss first fell */
   clearedAt: Record<string, number>;
@@ -84,26 +85,65 @@ function dps(spell: Spell): number {
  * applied as the client would (success -> adopt the returned state; rejected / conflict -> adopt
  * the server state).
  *
- * The route is a list of recipes learned in order: pure X = the Lv.2-9 line (X_base, X_empower, X_lv4,
- * X_pure_2, X_lv6, X_pure_3, X_lv8, X_lv9); mixed = fireball, wind_blade, fire tornado, thunderfire
- * hurricane and skyburner, then the fire trunk. Element inputs and fusion costs are upgraded from
- * lower grades on the client, like the element table. Every 5 simulated minutes the elements beyond
- * what the next recipe needs empower the strongest spell. Key items are used as soon as they drop.
+ * The route decides the circle: pure X = an X core with X nodes only; mixed = a thunder core, ring 1 alternating thunder
+ * and wind (thunder generates wind, no 相剋, so every layer connects), ring 2 wind. At each decision the bot draws the
+ * highest tier its unlocked circle tier allows that is above every circle it already knows and that it can pay for
+ * (core at the lowest grade whose cap reaches the tier, ring 1 at 初階, ring 2 at 高階; lower grades are upgraded on the
+ * client like the element table). It uses the textbook circle of that element and tier when one exists and its rune is
+ * unlocked; otherwise the same layout (or ring 1 then ring 2 filled from slot 4 down) with the unlocked rune whose spell
+ * has the most damage per second, i.e. a self-made spell. A big failure is retried at the next decision. Every 5 simulated
+ * minutes the elements beyond what the next circle needs empower the strongest spell. Key items are used as soon as they drop.
  *
  * Stages: the bot auto-advances. A cleared stage is settled with POST /api/stage-clear, then the next stage starts; before
  * the boss stage it estimates with soloBossDps whether the equipped spell kills the boss within BOSS_MARGIN x BOSS_LIMIT_MS,
  * and if not it replays the stage before the boss. A boss stage that times out sends it one stage back, like the client.
  */
-export const ROUTE_RECIPES: Record<Exclude<Route, null>, string[]> = {
-  ...(Object.fromEntries(
-    ELEMENT_ORDER.map((e) => [e, [`${e}_base`, `${e}_empower`, `${e}_lv4`, `${e}_pure_2`, `${e}_lv6`, `${e}_pure_3`, `${e}_lv8`, `${e}_lv9`]]),
-  ) as Record<ElementId, string[]>),
-  // after skyburner the mixed route follows the fire trunk
-  mixed: [
-    'fire_base', 'wind_base', 'fire_wind', 'thunder_fire_hurricane', 'skyburner',
-    'fire_empower', 'fire_lv4', 'fire_pure_2', 'fire_lv6', 'fire_pure_3', 'fire_lv8', 'fire_lv9',
-  ],
+const NODE_OF: Record<Exclude<Route, null>, { core: ElementId; ring1: (j: number) => ElementId; ring2: ElementId }> = {
+  ...(Object.fromEntries(ELEMENT_ORDER.map((e) => [e, { core: e, ring1: () => e, ring2: e }])) as Record<ElementId, { core: ElementId; ring1: () => ElementId; ring2: ElementId }>),
+  mixed: { core: 'thunder', ring1: (j) => (j % 2 === 0 ? 'thunder' : 'wind'), ring2: 'wind' },
 };
+/** The lowest core grade whose cap reaches `tier`. */
+const coreGradeFor = (tier: number): number => GRADE_CAP.findIndex((cap) => cap >= tier) + 1;
+
+/** The textbook circle (named, rare included) of a pure element at a tier, if any. */
+function textbookOf(el: ElementId, tier: number): ReturnType<typeof parseCanonical> {
+  for (const s of Object.values(content.spells)) {
+    const c = s.circle ? parseCanonical(s.circle) : null;
+    if (c && c.core === el && c.tier === tier && [...c.ring1, ...c.ring2].every((x) => x === null || x === el)) return c;
+  }
+  return null;
+}
+
+export interface RouteCircle { placement: Placement; id: string; textbook: boolean }
+/**
+ * The circle a route draws at `tier` with the runes it knows: the textbook circle when its rune is known, else the same
+ * layout (or the default one) with the known rune whose spell deals the most damage per second. Both rings carry the same
+ * rune, so the form is certain.
+ */
+export function routeCircle(route: Exclude<Route, null>, tier: number, runes: RuneId[]): RouteCircle {
+  const nodes = NODE_OF[route];
+  const n1 = Math.min(SLOTS, tier - 1), n2 = Math.max(0, tier - 1 - SLOTS);
+  const book = route === 'mixed' ? null : textbookOf(route, tier);
+  const filledFromEnd = (n: number) => [0, 1, 2, 3, 4].map((j) => j >= SLOTS - n);
+  const r1 = book ? book.ring1.map((x) => x !== null) : filledFromEnd(n1);
+  const r2 = book ? book.ring2.map((x) => x !== null) : filledFromEnd(n2);
+  const placementWith = (rune: RuneId): Placement => ({
+    core: { element: nodes.core, grade: coreGradeFor(tier) },
+    ring1: r1.map((on, j) => (on ? { element: nodes.ring1(j), grade: RING_FLOOR[0] } : null)),
+    ring2: r2.map((on) => (on ? { element: nodes.ring2, grade: RING_FLOOR[1] } : null)),
+    runes: [rune, n2 > 0 ? rune : null],
+  });
+  const make = (rune: RuneId, textbook: boolean): RouteCircle => {
+    const placement = placementWith(rune);
+    return { placement, id: canonicalCircle(placement, rune), textbook };
+  };
+  if (book && runes.includes(book.form)) return make(book.form, true);
+  return runes.map((r) => make(r, false)).reduce((a, b) => (dps(resolveSpell(b.id, content)!) > dps(resolveSpell(a.id, content)!) ? b : a));
+}
+
+/** Element items a circle costs, highest grade first (stocking a lower grade never uses up a higher one). */
+const circleItems = (p: Placement): ItemId[] =>
+  [p.core, ...p.ring1, ...p.ring2].filter((x) => x != null).sort((a, b) => b.grade - a.grade).map((x) => elementItem(x.element, x.grade));
 
 export async function runBot(opts: BotOptions): Promise<BotResult> {
   const battleRng = createRng(opts.seed);
@@ -134,6 +174,10 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   let revision = created.body.revision as number;
   let battle: BattleState = createBattle(game.currentZone, game.currentStage);
   let rejectedUploads = 0;
+  let circleAttempts = 0;
+  let circleFailures = 0;
+  /** `result` of the last successful action reply */
+  let lastResult: unknown;
   let serverCalls = 0;
   let stageClears = 0;
   let bossFailures = 0;
@@ -168,15 +212,11 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     }
     game = serverState(r.body.state);
     revision = r.body.revision as number;
+    lastResult = r.body.result;
     for (const id of game.learned) if (!(id in learnedAt)) learnedAt[id] = simMs;
     return true;
   };
 
-  const plan = (opts.route ? ROUTE_RECIPES[opts.route] : []).map((id) => {
-    const r = content.recipes.find((x) => x.id === id);
-    if (!r) throw new Error(`unknown route recipe ${id}`);
-    return r;
-  });
   const count = (id: string) => (Object.hasOwn(game.inventory, id) ? game.inventory[id]! : 0);
   const levelOf = (id: string) => (Object.hasOwn(game.levels, id) ? game.levels[id]! : 1);
   const fightAs = (id: string) => spellAtLevel(resolveSpell(id, content)!, levelOf(id));
@@ -207,42 +247,47 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     }
     return true;
   };
-  /** Element items a route recipe consumes: its element inputs, plus the fusion cost when both inputs are spells. */
-  const recipeElements = (r: (typeof plan)[number]): ItemId[] => {
-    const items = r.inputs.filter((i) => i.startsWith('el:'));
-    if (items.length > 0) return items;
-    const out = content.spells[r.outcomes[0]!.spellId!]!;
-    return out.elements.map((e) => elementItem(e, requiredGrade(out.depth)));
-  };
-  const nextStep = () => plan.find((r) => !game.learned.includes(r.outcomes[0]!.spellId!));
-  /** Grade-1 equivalents per element held back for the next route recipe. */
-  const reserve = (): Record<string, number> => {
-    const out: Record<string, number> = {};
-    const r = nextStep();
-    if (!r) return out;
-    for (const it of recipeElements(r)) {
-      const [, e, g] = it.split(':');
-      out[e!] = (out[e!] ?? 0) + gradeValue(Number(g));
-    }
+  /** Highest tier among the learned spells (mana_bolt included). */
+  const knownTier = () => Math.max(...game.learned.map((id) => resolveSpell(id, content)!.tier));
+  /** The circles worth drawing now, highest tier first: above every known tier, up to the unlocked circle tier. */
+  const nextCircles = (): RouteCircle[] => {
+    if (!opts.route) return [];
+    const runes = runesUnlocked(game.defeatedBosses, content);
+    const out: RouteCircle[] = [];
+    for (let t = game.circleTier; t > knownTier(); t--) out.push(routeCircle(opts.route, t, runes));
     return out;
+  };
+  /** Grade-1 equivalents per element a circle costs. */
+  const costEq = (p: Placement): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const it of circleItems(p)) { const [, e, g] = it.split(':'); out[e!] = (out[e!] ?? 0) + gradeValue(Number(g)); }
+    return out;
+  };
+  /** Grade-1 equivalents per element held back for the highest circle not yet drawn. */
+  const reserve = (): Record<string, number> => {
+    const next = nextCircles()[0];
+    return next ? costEq(next.placement) : {};
   };
 
   const synthesizeStep = async (): Promise<void> => {
-    const r = nextStep();
-    if (!r) return;
-    const out = content.spells[r.outcomes[0]!.spellId!]!;
-    if (!out.prerequisites.every((p) => game.learned.includes(p))) return;
-    const need = new Map<ItemId, number>();
-    for (const it of recipeElements(r)) need.set(it, (need.get(it) ?? 0) + 1);
-    // check the whole cost in grade-1 equivalents first, so a half-made upgrade never eats another input
-    const eq: Record<string, number> = {};
-    for (const [it, n] of need) { const [, e, g] = it.split(':'); eq[e!] = (eq[e!] ?? 0) + n * gradeValue(Number(g)); }
-    if (Object.entries(eq).some(([e, v]) => elementEquivalent(game.inventory, e as ElementId) < v)) return;
-    for (const [it, n] of need) {
-      const [, e, g] = it.split(':');
-      if (!stock(e as ElementId, Number(g), n)) return;
+    for (const c of nextCircles()) {
+      // check the whole cost in grade-1 equivalents first, so a half-made upgrade never eats another input
+      if (Object.entries(costEq(c.placement)).some(([e, v]) => elementEquivalent(game.inventory, e as ElementId) < v)) continue;
+      const need = new Map<ItemId, number>();
+      for (const it of circleItems(c.placement)) need.set(it, (need.get(it) ?? 0) + 1);
+      let ok = true;
+      for (const [it, n] of need) {
+        const [, e, g] = it.split(':');
+        if (!stock(e as ElementId, Number(g), n)) { ok = false; break; }
+      }
+      if (!ok) continue;
+      circleAttempts++;
+      if (await act('/api/circle', { placement: c.placement })) {
+        const kind = (lastResult as { kind?: string } | undefined)?.kind;
+        if (kind === 'failed') circleFailures++;
+      }
+      return;
     }
-    await act('/api/synthesize', { inputs: r.inputs });
   };
 
   const empowerStep = async (): Promise<void> => {
@@ -392,7 +437,9 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     clearedZones: content.zones.filter((z) => game.defeatedBosses.includes(z.bossId)).map((z) => z.id),
     learned: game.learned,
     levels: game.levels,
-    revealed: [],
+    circleTier: game.circleTier,
+    circleAttempts,
+    circleFailures,
     simMs,
     clearedAt,
     learnedAt,
@@ -403,6 +450,6 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     bossFailures,
     rejectedUploads,
     rejectionReasons,
-    summary: { simMs, clearedAt, clearMinutes, stageClears, bossFailures, learned: game.learned, levels: game.levels, zone: game.currentZone, inventory: game.inventory },
+    summary: { simMs, clearedAt, clearMinutes, stageClears, bossFailures, circleTier: game.circleTier, circleAttempts, circleFailures, learned: game.learned, levels: game.levels, zone: game.currentZone, inventory: game.inventory },
   };
 }

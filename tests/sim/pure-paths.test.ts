@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canDamage } from '../../src/engine/combat-rules';
+import { GRADE_CAP } from '../../src/engine/circle';
 import { content } from '../../src/engine/content';
 import { resolveSpell } from '../../src/engine/spells';
 import { ELEMENT_ORDER, type ElementId } from '../../src/engine/types';
@@ -9,7 +10,7 @@ const MINUTE = 60_000;
 const SIX_HOURS = 360 * MINUTE;
 /**
  * Always on: 0 rejections and pure routes only learn their own element.
- * ENFORCE_CLEAR: every zone cleared, every region revealed, enough server calls (and the mixed route's spells).
+ * ENFORCE_CLEAR: every zone cleared, the circle opened to its top tier, enough server calls (and the mixed route's spells).
  * ENFORCE_TIMES: the time bounds below. Report-only since the 2026-10-28 hit-point cut (crowd TTK spec): monsters die much
  * faster, so routes clear early; the user deferred the drop rebalance ("4的掉落平衡後續再更動"), restore this with it.
  */
@@ -27,7 +28,8 @@ const ofPath = (id: string, el: ElementId) => {
   const s = resolveSpell(id, content);
   return !!s && s.elements.length > 0 && s.elements.every((e) => e === el);
 };
-const allRegions = content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id);
+/** Every key item used: the circle opens to its highest tier. */
+const TOP_TIER = GRADE_CAP[GRADE_CAP.length - 1]!;
 const minutes = (r: BotResult) => Object.fromEntries(Object.entries(r.clearedAt).map(([z, ms]) => [z, +(ms / MINUTE).toFixed(1)]));
 
 const TIMEOUT = 600_000;
@@ -39,12 +41,12 @@ function check(label: string, r: BotResult): void {
   const learnedMin = Object.fromEntries(Object.entries(r.learnedAt).map(([id, ms]) => [id, +(ms / MINUTE).toFixed(1)]));
   console.info(`[sim] ${label}: cleared=${r.clearedZones.length}/${content.zones.length} sim=${(r.simMs / MINUTE).toFixed(1)}min`
     + ` clearedAt=${JSON.stringify(minutes(r))} perZone=${JSON.stringify(r.summary.clearMinutes)}`
-    + ` revealed=${r.revealed.length}/${allRegions.length} stageClears=${r.stageClears} bossFailures=${r.bossFailures} rejected=${r.rejectedUploads}`
+    + ` circleTier=${r.circleTier} circles=${r.circleAttempts} (failed ${r.circleFailures}) stageClears=${r.stageClears} bossFailures=${r.bossFailures} rejected=${r.rejectedUploads}`
     + ` learnedAt=${JSON.stringify(learnedMin)}`);
   const zones = content.zones;
   if (ENFORCE_CLEAR) {
     expect(r.clearedZones, JSON.stringify(r.summary)).toEqual(zones.map((z) => z.id));
-    expect([...r.revealed].sort()).toEqual([...allRegions].sort());
+    expect(r.circleTier).toBe(TOP_TIER);
     expect(r.serverCalls).toBeGreaterThanOrEqual(Math.floor(r.simMs / 30_000) + 2);
   }
   if (!ENFORCE_TIMES) return;
@@ -60,20 +62,21 @@ function check(label: string, r: BotResult): void {
   }
 }
 
-// re-enabled in Task 4 (magic circle bots)
-describe.skip('element routes', () => {
+describe('element routes', () => {
   for (const el of ELEMENT_ORDER) {
-    it(`pure ${el} route follows Lv.2-9 through six zones with 0 rejections`, { timeout: TIMEOUT }, async () => {
+    it(`pure ${el} route draws its element's circles through six zones with 0 rejections`, { timeout: TIMEOUT }, async () => {
       const r = await runBot({ route: el, seed: SEED, maxSimMs: SIX_HOURS });
       check(`pure ${el}`, r);
       expect(r.learned.filter((id) => !ofPath(id, el))).toEqual([]);
     });
   }
 
-  it('mixed fire + wind route learns fire_tornado and the thunderfire hurricane, then the fire trunk', { timeout: TIMEOUT }, async () => {
+  it('mixed thunder + wind route learns circles with both elements up to Lv.9', { timeout: TIMEOUT }, async () => {
     const r = await runBot({ route: 'mixed', seed: SEED, maxSimMs: SIX_HOURS });
     check('mixed', r);
-    if (ENFORCE_CLEAR) expect(r.learned).toEqual(expect.arrayContaining(['fire_tornado', 'thunder_fire_hurricane', 'corona_scorch']));
+    const both = r.learned.map((id) => resolveSpell(id, content)!).filter((s) => s.elements.includes('thunder') && s.elements.includes('wind'));
+    expect(r.learned.filter((id) => !ofPath(id, 'thunder') && !both.some((s) => s.id === id))).toEqual([]);
+    if (ENFORCE_CLEAR) expect(Math.max(...both.map((s) => s.tier))).toBeGreaterThanOrEqual(9);
   });
 
   it('mana_bolt only cannot clear thunder_gorge', { timeout: TIMEOUT }, async () => {
