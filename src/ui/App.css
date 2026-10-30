@@ -273,7 +273,7 @@ html.away { filter: grayscale(1); }
 }
 .circle-slot.core { width: 17%; }
 .circle-slot.filled { border: 2px solid var(--c); background: #f6ead0; box-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent); }
-.circle-slot.blocked { opacity: 0.35; background: #8b7a5e55; border-style: dotted; }
+.circle-slot.blocked { opacity: 0.35; background: #8b7a5e55; border-style: dotted; cursor: not-allowed; }
 .circle-slot:disabled { cursor: not-allowed; }
 .circle-slot:not(:disabled):hover { border-color: var(--gold); }
 .circle-slot:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -296,7 +296,11 @@ html.away { filter: grayscale(1); }
 .rune-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .rune-slot b { color: var(--gold); margin-left: 4px; }
 .rune-slot.filled { border-color: var(--gold); }
-.circle-picker { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.circle-picker {
+  position: absolute; left: 6%; right: 6%; bottom: 6%; max-height: 60%; overflow-y: auto; z-index: 2;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 8px; display: flex; flex-direction: column; gap: 6px;
+  box-shadow: 0 4px 16px #000a; color: var(--text); outline: none;
+}
 .circle-picker .picker-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .circle-picker .picker-grid button { --c: var(--line); border-left: 4px solid var(--c); padding: 6px 8px; font-size: 13px; }
 .circle-picker .picker-grid button.on { border-color: var(--gold); }

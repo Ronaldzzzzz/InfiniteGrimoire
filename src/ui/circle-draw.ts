@@ -40,11 +40,6 @@ export function starPath(): string {
   return [0, 2, 4, 1, 3].map((i, k) => `${k === 0 ? 'M' : 'L'}${p[i]!.x} ${p[i]!.y}`).join(' ') + ' Z';
 }
 
-/** Length of a segment, for the stroke-dasharray of a line being drawn. */
-export function segmentLength(a: Pt, b: Pt): number {
-  return round(Math.hypot(b.x - a.x, b.y - a.y));
-}
-
 /** Circumference of a circle of radius r (the progress ring's dasharray). */
 export function circumference(r: number): number {
   return round(2 * Math.PI * r);

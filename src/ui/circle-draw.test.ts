@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CENTER, CIRCLE_PAIRS, circumference, pentagramPoints, PROGRESS_R, RING_R, segmentLength, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
+import { CENTER, CIRCLE_PAIRS, circumference, pentagramPoints, PROGRESS_R, RING_R, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
 
 const dist = (p: { x: number; y: number }) => Math.hypot(p.x - CENTER, p.y - CENTER);
 const angle = (p: { x: number; y: number }) => Math.atan2(p.y - CENTER, p.x - CENTER);
@@ -11,7 +11,7 @@ describe('circle-draw', () => {
     for (const p of pts) expect(dist(p)).toBeCloseTo(RING_R[0], 1);
     expect(pts[0]!.x).toBeCloseTo(CENTER, 5);
     expect(pts[0]!.y).toBeLessThan(CENTER);
-    const sides = CIRCLE_PAIRS.map(([a, b]) => segmentLength(pts[a]!, pts[b]!));
+    const sides = CIRCLE_PAIRS.map(([a, b]) => Math.hypot(pts[a]!.x - pts[b]!.x, pts[a]!.y - pts[b]!.y));
     for (const s of sides) expect(s).toBeCloseTo(sides[0]!, 1);
   });
 

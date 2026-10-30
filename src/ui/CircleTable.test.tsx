@@ -72,14 +72,36 @@ describe('CircleTable', () => {
     choose(/^一環 第1格/, /^火・初階/);
     // 初階 core caps the circle at Lv.2
     const next = btn(/^一環 第2格/) as HTMLButtonElement;
-    expect(next.disabled).toBe(true);
+    expect(next.getAttribute('aria-disabled')).toBe('true');
     expect(next.getAttribute('aria-label')).toContain('超過核心上限');
     // a 中階 core reaches Lv.4, past the unlocked Lv.3: the 3rd ring node is not open yet
     choose(/^核心/, /^火・中階/);
     choose(/^一環 第2格/, /^火・初階/);
     const locked = btn(/^一環 第3格/) as HTMLButtonElement;
-    expect(locked.disabled).toBe(true);
+    expect(locked.getAttribute('aria-disabled')).toBe('true');
     expect(locked.getAttribute('aria-label')).toContain('尚未開放');
+  });
+
+  it('tapping a greyed slot shows its reason (phones have no hover) and opens no picker', () => {
+    setup({ circleTier: 3 });
+    choose(/^核心/, /^火・初階/);
+    choose(/^一環 第1格/, /^火・初階/);
+    fireEvent.click(btn(/^一環 第2格/));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('status', { name: '' }).textContent).toBe('超過核心上限');
+    expect(btn(/^一環 第2格：空/)).toBeTruthy(); // still empty
+    fireEvent.click(btn(/^二環 第1格/));
+    expect(screen.getByText('一環要先放滿五格才能放二環')).toBeTruthy();
+  });
+
+  it('the picker opens over the parchment with focus inside, and Escape closes it', () => {
+    setup();
+    fireEvent.click(btn(/^核心/));
+    const dialog = screen.getByRole('dialog', { name: '選擇核心元素' });
+    expect(screen.getByRole('region', { name: '魔法陣' }).contains(dialog)).toBe(true);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('disables 合成 with the reason: 超過核心上限 after the core is lowered, 尚未開放 for a loaded circle', () => {

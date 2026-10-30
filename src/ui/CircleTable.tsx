@@ -10,7 +10,7 @@ import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type Elemen
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
 import {
-  CENTER, CIRCLE_PAIRS, circumference, PROGRESS_R, RING_R, slotPoint, sparkPoints, STAR_PAIRS, VIEW, type Pt,
+  CENTER, CIRCLE_PAIRS, circumference, PROGRESS_R, RING_R, slotPoint, sparkPoints, STAR_PAIRS, starPath, VIEW, type Pt,
 } from './circle-draw';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { useRuntime, type RuntimeStore } from './useGame';
@@ -313,8 +313,17 @@ export const CircleTable = memo(function CircleTable({
         style={{ ...pos(slotPoint(ring, j)), ...(x ? { '--c': COLORS.element[x.element] } : {}) } as CSSProperties}
         aria-label={label}
         title={block ?? undefined}
-        disabled={busy || block !== null}
-        onClick={() => setTarget({ kind: 'node', ring, j })}
+        disabled={busy}
+        aria-disabled={block !== null || undefined}
+        // a greyed slot stays tappable so phones (no hover) can read why it cannot take a node
+        onClick={() => {
+          if (block) {
+            setTarget(null);
+            setMessage(block);
+            return;
+          }
+          setTarget({ kind: 'node', ring, j });
+        }}
       >
         {x ? <><span className="glyph">{ELEMENT_NAMES[x.element]}</span><span className="branch">{counts}</span></> : null}
       </button>
@@ -327,9 +336,7 @@ export const CircleTable = memo(function CircleTable({
         <svg className="parchment-svg" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
           <circle className={`ring-line${mismatch[0] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[0]} />
           <circle className={`ring-line outer${mismatch[1] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[1]} />
-          {STAR_PAIRS.map(([a, b]) => (
-            <line key={`g${a}`} className="guide" x1={slotPoint(0, a).x} y1={slotPoint(0, a).y} x2={slotPoint(0, b).x} y2={slotPoint(0, b).y} />
-          ))}
+          <path className="guide" d={starPath()} />
           {draft.core && ring1.map((x, j) => x && <Line key={`w${j}-${x.element}`} a={centre} b={slotPoint(0, j)} className="wire" />)}
           {CIRCLE_PAIRS.map(([a, b]) => ring1[a] && ring1[b] && (
             <Line key={`c${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={slotPoint(0, a)} b={slotPoint(0, b)} className="edge" />
@@ -375,6 +382,17 @@ export const CircleTable = memo(function CircleTable({
             <span className="circle-result-name">{shown.name}</span>
           </div>
         )}
+        {target && !busy && (
+          <Picker
+            target={target}
+            draft={draft}
+            held={heldKey ? heldKey.split(',').map(Number) : []}
+            runes={runes}
+            onNode={(x) => setNode(target, x)}
+            onRune={(r) => target.kind === 'rune' && setRune(target.ring, r)}
+            onClose={() => setTarget(null)}
+          />
+        )}
       </section>
 
       <div className="rune-row">
@@ -388,17 +406,6 @@ export const CircleTable = memo(function CircleTable({
         <button type="button" className="circle-clear" disabled={busy} onClick={() => { setTarget(null); edit(emptyDraft); }}>清空魔法陣</button>
       </div>
 
-      {target && !busy && (
-        <Picker
-          target={target}
-          draft={draft}
-          held={heldKey ? heldKey.split(',').map(Number) : []}
-          runes={runes}
-          onNode={(x) => setNode(target, x)}
-          onRune={(r) => target.kind === 'rune' && setRune(target.ring, r)}
-          onClose={() => setTarget(null)}
-        />
-      )}
 
       {placement && (
         <p className="circle-predict" aria-label="預測">{predictionOf(placement)}</p>
@@ -427,10 +434,25 @@ function Picker({ target, draft, held, runes, onNode, onRune, onClose }: {
   onRune: (r: RuneId | null) => void;
   onClose: () => void;
 }) {
+  // opening moves focus into the picker (first enabled option); Escape closes it
+  const box = useRef<HTMLDivElement>(null);
+  const targetKey = JSON.stringify(target);
+  useEffect(() => {
+    box.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+  }, [targetKey]);
+  const keys = {
+    ref: box,
+    tabIndex: -1,
+    onKeyDown: (e: { key: string; stopPropagation(): void }) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      onClose();
+    },
+  };
   if (target.kind === 'rune') {
     const current = draft.runes[target.ring];
     return (
-      <div className="circle-picker" role="dialog" aria-label={`選擇${RING_NAME[target.ring]}符文`}>
+      <div className="circle-picker" role="dialog" aria-label={`選擇${RING_NAME[target.ring]}符文`} {...keys}>
         <div className="picker-grid">
           {RUNE_IDS.map((r) => {
             const known = runes.includes(r);
@@ -455,7 +477,7 @@ function Picker({ target, draft, held, runes, onNode, onRune, onClose }: {
     Array.from({ length: MAX_ELEMENT_GRADE }, (_, g) => ({ e, grade: g + 1, n: held[ei * MAX_ELEMENT_GRADE + g] ?? 0 })),
   ).filter((o) => o.n > 0);
   return (
-    <div className="circle-picker" role="dialog" aria-label={title}>
+    <div className="circle-picker" role="dialog" aria-label={title} {...keys}>
       {options.length === 0 && <p className="muted">還沒有元素，先去打怪收集吧</p>}
       <div className="picker-grid">
         {options.map((o) => {
