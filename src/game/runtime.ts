@@ -22,6 +22,8 @@ export interface Snapshot {
   battle: BattleState;
   revision: number;
   paused: boolean;
+  /** frozen because the game is not the window in use (offline income runs instead) */
+  away: boolean;
   /** a server action (synthesis, empower, reveal, passive) is in flight; its reply replaces the game state */
   synthPending: boolean;
   /** after a clear, move on to the next stage (otherwise the same stage restarts) */
@@ -42,7 +44,7 @@ export class GameRuntime {
     private readonly rng: Rng,
   ) {
     this.snapshot = {
-      game: state, battle: this.newBattle(state.currentZone, state.currentStage), revision, paused: false, synthPending: false,
+      game: state, battle: this.newBattle(state.currentZone, state.currentStage), revision, paused: false, away: false, synthPending: false,
       autoAdvance: loadAutoAdvance(), lastResult: null,
     };
   }
@@ -58,7 +60,7 @@ export class GameRuntime {
 
   /** 0..1: how far the clock is into the next fixed step; renderers interpolate between steps with it. */
   stepAlpha(): number {
-    if (this.snapshot.paused) return 0;
+    if (this.snapshot.paused || this.snapshot.away) return 0;
     return Math.min(1, this.leftoverMs / STEP_MS);
   }
 
@@ -78,7 +80,7 @@ export class GameRuntime {
   }
 
   advance(elapsedMs: number): void {
-    if (this.snapshot.paused || !(elapsedMs > 0)) return;
+    if (this.snapshot.paused || this.snapshot.away || !(elapsedMs > 0)) return;
     this.leftoverMs += Math.min(elapsedMs, MAX_CATCHUP_MS);
     let { game, battle, lastResult } = this.snapshot;
     const events: BattleEvent[] = [];
@@ -188,6 +190,13 @@ export class GameRuntime {
     const next = enterStage(battle);
     if (next === battle) return;
     this.set({ battle: next, lastResult: null });
+  }
+
+  /** Freezes the battle while the player is away (separate from the network pause, so a reconnect does not thaw it). */
+  setAway(away: boolean): void {
+    if (this.snapshot.away === away) return;
+    this.leftoverMs = 0;
+    this.set({ away });
   }
 
   setPaused(paused: boolean): void {

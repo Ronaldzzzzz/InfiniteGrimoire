@@ -12,7 +12,7 @@ import { TopBar } from './TopBar';
 afterEach(cleanup);
 
 function runtime(game: GameState, battlePatch: Partial<Snapshot['battle']> = {}, synthPending = false) {
-  const snapshot: Snapshot = { game, battle: { ...createBattle(game.currentZone, game.currentStage), ...battlePatch }, revision: 1, paused: false, synthPending, autoAdvance: true, lastResult: null };
+  const snapshot: Snapshot = { game, battle: { ...createBattle(game.currentZone, game.currentStage), ...battlePatch }, revision: 1, paused: false, away: false, synthPending, autoAdvance: true, lastResult: null };
   return { getSnapshot: () => snapshot, subscribe: () => () => {}, equip: vi.fn(), travel: vi.fn() } as unknown as GameRuntime;
 }
 

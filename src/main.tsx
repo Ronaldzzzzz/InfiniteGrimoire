@@ -74,8 +74,14 @@ function Boot() {
     const stopLoop = startLoop(runtime, sync);
     const stopPresence = watchPresence({
       delayMs: AWAY_DELAY_MS,
-      onAway: () => void sync.goAway(),
-      onReturn: () => void sync.claimOffline(),
+      onAway: () => {
+        runtime.setAway(true);
+        void sync.goAway();
+      },
+      onReturn: () => {
+        void sync.claimOffline(); // sent first, so a stage cleared right after waits behind it
+        runtime.setAway(false);
+      },
     });
     const offAuth = sync.onAuthError(() => {
       clearToken();

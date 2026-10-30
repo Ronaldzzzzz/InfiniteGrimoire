@@ -10,14 +10,17 @@ import type { ItemId } from './types';
 export const OFFLINE_RATE = 0.5;
 /** At most this much away time is paid (8 hours). */
 export const OFFLINE_CAP_MS = 28_800_000;
-/** Hidden for this long before the client's "away" counts. */
-export const AWAY_DELAY_MS = 30_000;
+/** Not the window in use for this long: the client freezes the battle and says "away". */
+export const AWAY_DELAY_MS = 10_000;
+/** Offline time is paid in whole ticks of this length; a tick may be a share of one clear. */
+export const OFFLINE_TICK_MS = 30_000;
 /** Clear times kept per stage. */
 export const CLEAR_TIMES_KEEP = 5;
 
 export type OfflineResult =
   | { kind: 'none' }
-  | { kind: 'offline'; zoneId: string; stage: number; runs: number; awayMs: number; capped: boolean; loot: Record<ItemId, number> };
+  /** runs: clears the paid ticks are worth (may be fractional) */
+  | { kind: 'offline'; zoneId: string; stage: number; ticks: number; runs: number; awayMs: number; capped: boolean; loot: Record<ItemId, number> };
 
 /** The stage offline time is spent on: the last cleared zone's highest ordinary stage. */
 export function offlineStage(state: GameState, content: Content): { zoneId: string; stage: number; zone: Zone } | null {
@@ -82,11 +85,12 @@ export function claimOffline(
   const counted = Math.min(awayMs, OFFLINE_CAP_MS);
   const per = median(times);
   if (!(per > 0)) return none;
-  const runs = Math.floor(counted / per);
-  if (runs < 1) return none;
+  const ticks = Math.floor(counted / OFFLINE_TICK_MS);
+  if (ticks < 1) return none;
+  const runs = (ticks * OFFLINE_TICK_MS) / per;
   const loot = offlineLoot(zone, target.stage, runs, spell.tier, content, rng);
   return {
     state: { ...state, inventory: addCounts(state.inventory, loot), offlineUntil: now, awayAt: 0 },
-    result: { kind: 'offline', zoneId: target.zoneId, stage: target.stage, runs, awayMs, capped: awayMs > OFFLINE_CAP_MS, loot },
+    result: { kind: 'offline', zoneId: target.zoneId, stage: target.stage, ticks, runs, awayMs, capped: awayMs > OFFLINE_CAP_MS, loot },
   };
 }

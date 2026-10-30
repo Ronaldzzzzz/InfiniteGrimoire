@@ -27,7 +27,7 @@ function fakeStore(initial: Snapshot) {
 
 function initial(): Snapshot {
   const game = createInitialState(content);
-  return { game, battle: createBattle(game.currentZone, game.currentStage), revision: 1, paused: false, synthPending: false, autoAdvance: true, lastResult: null };
+  return { game, battle: createBattle(game.currentZone, game.currentStage), revision: 1, paused: false, away: false, synthPending: false, autoAdvance: true, lastResult: null };
 }
 
 describe('useRuntime', () => {

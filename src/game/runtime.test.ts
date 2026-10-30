@@ -50,6 +50,19 @@ describe('GameRuntime', () => {
     rt.advance(1000);
     expect(rt.getSnapshot().battle).not.toBe(before.battle);
   });
+  it('an away runtime is frozen apart from the network pause, and resumes without catch-up', () => {
+    const rt = make();
+    const before = rt.getSnapshot();
+    rt.setAway(true);
+    expect(rt.getSnapshot().away).toBe(true);
+    rt.setPaused(false); // a reconnect must not thaw an away freeze
+    rt.advance(10_000);
+    expect(rt.getSnapshot().battle).toBe(before.battle);
+    expect(rt.stepAlpha()).toBe(0);
+    rt.setAway(false);
+    rt.advance(10_000);
+    expect(rt.getSnapshot().battle).not.toBe(before.battle);
+  });
   it('replaceState in the same zone keeps the battle going and notifies', () => {
     const rt = make();
     rt.advance(1000);

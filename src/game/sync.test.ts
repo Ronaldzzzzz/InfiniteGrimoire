@@ -533,14 +533,14 @@ describe('SyncController', () => {
     expect(seen).not.toHaveBeenCalled();
     stop();
     sync.start(); // a stopped controller never sends again; restart for the second claim
-    const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, runs: 5, awayMs: 60_000, capped: false, loot: {} };
+    const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, ticks: 2, runs: 5, awayMs: 60_000, capped: false, loot: {} };
     offline.mockResolvedValueOnce({ kind: 'ok', result, state: rt.getSnapshot().game, revision: 10 } as never);
     await sync.claimOffline();
     expect(seen).toHaveBeenCalledWith(result);
   });
   it('a claim the server never answered stays pending and is retried on the next tick', async () => {
     const rt = mk();
-    const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, runs: 5, awayMs: 60_000, capped: false, loot: {} };
+    const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, ticks: 2, runs: 5, awayMs: 60_000, capped: false, loot: {} };
     const offline = vi
       .fn()
       .mockRejectedValueOnce(new NetworkError('x'))

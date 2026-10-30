@@ -7,7 +7,7 @@ import { AwayReport, mergeReports } from './AwayReport';
 
 afterEach(cleanup);
 const report: OfflineReport = {
-  kind: 'offline', zoneId: 'mist_meadow', stage: 4, runs: 12, awayMs: (2 * 60 + 5) * 60_000, capped: false, loot: { 'el:fire:1': 7 },
+  kind: 'offline', zoneId: 'mist_meadow', stage: 4, ticks: 250, runs: 12, awayMs: (2 * 60 + 5) * 60_000, capped: false, loot: { 'el:fire:1': 7 },
 };
 
 describe('AwayReport', () => {
@@ -22,6 +22,10 @@ describe('AwayReport', () => {
     expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('知道了'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it('shows a share of a run with one decimal', () => {
+    const { container } = render(<AwayReport report={{ ...report, runs: 0.2 }} content={content} onClose={vi.fn()} />);
+    expect(container.textContent).toContain('在 迷霧草原 1-4 刷了 0.2 次');
   });
   it('shows the cap line only when capped; under an hour shows minutes only', () => {
     const { container } = render(<AwayReport report={{ ...report, capped: true, awayMs: 5 * 60_000 }} content={content} onClose={vi.fn()} />);

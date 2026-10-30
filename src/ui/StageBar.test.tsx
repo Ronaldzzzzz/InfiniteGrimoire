@@ -62,6 +62,14 @@ describe('StageBar', () => {
     expect(screen.queryByRole('button', { name: '進入魔王關' })).toBeNull();
   });
 
+  it('says the battle is frozen while away', () => {
+    const rt = fakeRuntime();
+    bar(rt);
+    expect(screen.queryByRole('status', { name: '離線中' })).toBeNull();
+    act(() => rt.set({ away: true }));
+    expect(screen.getByRole('status', { name: '離線中' }).textContent).toContain('收益每 30 秒以 5 折計算');
+  });
+
   it('mirrors autoAdvance in the checkbox and toggles it', () => {
     const rt = fakeRuntime();
     bar(rt);

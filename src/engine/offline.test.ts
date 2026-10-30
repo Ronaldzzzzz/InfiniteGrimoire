@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Content, GameState, Monster, NamedSpellDef, Zone } from './model';
 import {
-  claimOffline, markAway, offlineLoot, offlineStage, OFFLINE_CAP_MS, OFFLINE_RATE,
+  claimOffline, markAway, offlineLoot, offlineStage, OFFLINE_CAP_MS, OFFLINE_RATE, OFFLINE_TICK_MS,
 } from './offline';
 import { overlevelEfficiency } from './combat-rules';
 import { createInitialState } from './persist';
@@ -68,7 +68,7 @@ describe('claimOffline', () => {
     const { state, result } = claimOffline(s, NOW - HOUR, NOW, data, createRng(1));
     expect(result.kind).toBe('offline');
     if (result.kind !== 'offline') return;
-    expect(result).toMatchObject({ zoneId: 'mist_meadow', stage: 3, runs: 24, capped: false, awayMs: HOUR });
+    expect(result).toMatchObject({ zoneId: 'mist_meadow', stage: 3, runs: 24, ticks: HOUR / OFFLINE_TICK_MS, capped: false, awayMs: HOUR });
     expect(state.offlineUntil).toBe(NOW);
     expect(state.awayAt).toBe(0);
     const grew: Record<string, number> = {};
@@ -99,6 +99,20 @@ describe('claimOffline', () => {
     expect(r.runs).toBe(Math.floor(OFFLINE_CAP_MS / 150_000));
     expect(r.capped).toBe(true);
     expect(r.awayMs).toBe(10 * HOUR);
+  });
+
+  it('pays in 30 s ticks, a share of a run when the time is shorter than a clear', () => {
+    const r = claimOffline(away({ awayAt: NOW - 45_000 }), NOW - HOUR, NOW, data, createRng(1)).result;
+    expect(r.kind).toBe('offline');
+    if (r.kind !== 'offline') return;
+    expect(r.ticks).toBe(1);
+    expect(r.runs).toBeCloseTo(OFFLINE_TICK_MS / 150_000);
+    expect(r.awayMs).toBe(45_000);
+  });
+
+  it('none below one tick', () => {
+    const r = claimOffline(away({ awayAt: NOW - (OFFLINE_TICK_MS - 1) }), NOW - HOUR, NOW, data, createRng(1));
+    expect(r.result).toEqual({ kind: 'none' });
   });
 
   it('clamps negative time to none', () => {

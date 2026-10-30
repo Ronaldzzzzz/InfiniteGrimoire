@@ -25,7 +25,7 @@ export function AwayReport({ report, content, onClose }: { report: OfflineReport
       <div className="away-report" role="dialog" aria-label="離開期間的收穫">
         <h2>離開期間的收穫</h2>
         <p>離開 {awayLabel(report.awayMs)}</p>
-        <p>在 {zone?.name ?? report.zoneId} {zone?.order ?? '?'}-{report.stage} 刷了 {report.runs} 次</p>
+        <p>在 {zone?.name ?? report.zoneId} {zone?.order ?? '?'}-{report.stage} 刷了 {Math.round(report.runs * 10) / 10} 次</p>
         {loot.length > 0 && (
           <ul className="away-loot">
             {loot.map(([id, n]) => <li key={id}>{itemName(id, content)} ×{n}</li>)}

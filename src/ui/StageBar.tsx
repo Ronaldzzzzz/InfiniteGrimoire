@@ -28,6 +28,7 @@ export const StageBar = memo(function StageBar({
   const percent = useRuntime(runtime, (s) => Math.round(stageProgress(s.battle) * 100));
   const bossSec = useRuntime(runtime, (s) => (s.battle.bossMs === null ? null : Math.max(0, Math.ceil((BOSS_LIMIT_MS - s.battle.bossMs) / 1000))));
   const autoAdvance = useRuntime(runtime, (s) => s.autoAdvance);
+  const away = useRuntime(runtime, (s) => s.away);
   const lastResult = useRuntime(runtime, (s) => s.lastResult);
 
   // the notice for each result lasts RESULT_MS; a result that is updated (claim answered) starts a new one
@@ -67,6 +68,11 @@ export const StageBar = memo(function StageBar({
           </button>
         )}
       </div>
+      {away && (
+        <div className="stage-away" role="status" aria-label="離線中">
+          離線中：戰鬥已暫停，收益每 30 秒以 5 折計算。回到遊戲視窗即可繼續。
+        </div>
+      )}
       {lastResult && lastResult !== dismissed && <ResultNotice result={lastResult} content={content} />}
     </div>
   );
