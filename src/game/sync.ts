@@ -1,4 +1,5 @@
 import type { GameState } from '../engine/model';
+import type { OfflineResult } from '../engine/offline';
 import type { ItemId } from '../engine/types';
 import { AuthError, NetworkError, type ActionOutcome, type ActionResult, type ApiClient } from './api';
 import type { GameRuntime } from './runtime';
@@ -17,9 +18,12 @@ export interface ActionPayloads {
   reveal: { keyItem: ItemId };
   passive: { passiveId: string };
   stageClear: { zoneId: string; stage: number };
+  away: Record<string, never>;
+  offline: Record<string, never>;
   gmInventory: { gmToken: string; items: Record<ItemId, number> };
   gmZones: { gmToken: string; op: 'unlock_all' | 'reveal_all' | 'boss_ready' };
 }
+export type OfflineReport = Extract<OfflineResult, { kind: 'offline' }>;
 export type ActionKind = keyof ActionPayloads;
 
 /** Lets a caller shape what an action sends and which of the returned state's client-owned fields to keep. */
@@ -54,6 +58,7 @@ export class SyncController {
   private failures = 0;
   private statusListeners = new Set<(s: ConnStatus) => void>();
   private authListeners = new Set<() => void>();
+  private offlineListeners = new Set<(r: OfflineReport) => void>();
   /** stage claims run one at a time, in the order the stages were cleared */
   private claims: Promise<unknown> = Promise.resolve();
 
@@ -75,6 +80,32 @@ export class SyncController {
   onAuthError(listener: () => void): () => void {
     this.authListeners.add(listener);
     return () => void this.authListeners.delete(listener);
+  }
+
+  onOfflineReport(cb: (r: OfflineReport) => void): () => void {
+    this.offlineListeners.add(cb);
+    return () => void this.offlineListeners.delete(cb);
+  }
+
+  /** Tells the server the player has been away. Never throws; a failure is ignored (the next claim just pays less). */
+  async goAway(): Promise<void> {
+    try {
+      await this.action('away', {});
+    } catch (e) {
+      console.warn('away failed:', e instanceof Error ? e.message : 'unknown error');
+    }
+  }
+
+  /** Claims offline income. Never throws, so a failed claim cannot block the game. */
+  async claimOffline(): Promise<OfflineResult | null> {
+    try {
+      const result = await this.action('offline', {});
+      if (result?.kind === 'offline') for (const l of [...this.offlineListeners]) l(result);
+      return result?.kind === 'offline' || result?.kind === 'none' ? result : null;
+    } catch (e) {
+      console.warn('offline claim failed:', e instanceof Error ? e.message : 'unknown error');
+      return null;
+    }
   }
 
   start(): () => void {
@@ -218,6 +249,10 @@ export class SyncController {
         const p = payload as ActionPayloads['stageClear'];
         return this.api.stageClear(game, revision, p.zoneId, p.stage);
       }
+      case 'away':
+        return this.api.away(game, revision);
+      case 'offline':
+        return this.api.offline(game, revision);
       case 'gmInventory': {
         const p = payload as ActionPayloads['gmInventory'];
         return this.api.gmInventory(game, revision, p.gmToken, p.items);

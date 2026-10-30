@@ -3,9 +3,10 @@ import type { Content, Spell } from '../engine/model';
 import { resolveSpell } from '../engine/spells';
 import type { AccountInfo, ActionResult, ApiClient, LoginResult } from '../game/api';
 import type { GameRuntime } from '../game/runtime';
-import type { SyncController } from '../game/sync';
+import type { OfflineReport, SyncController } from '../game/sync';
 import './App.css';
 import { AccountDialog } from './AccountDialog';
+import { AwayReport, mergeReports } from './AwayReport';
 import { BattleCanvas } from './BattleCanvas';
 import { DiscoveryBanner } from './DiscoveryBanner';
 import { EquipToasts, pushToast, type EquipToast } from './EquipToasts';
@@ -49,6 +50,8 @@ export function App({
   const [discovery, setDiscovery] = useState<{ spell: Spell; isNew: boolean; n: number } | null>(null);
   // rare spells play one full-screen reveal at a time; one arriving mid-reveal waits its turn (`n` keys each one)
   const [rareQueue, setRareQueue] = useState<{ spell: Spell; spellId: string; first: boolean; n: number }[]>([]);
+  const [awayReport, setAwayReport] = useState<OfflineReport | null>(null);
+  useEffect(() => sync.onOfflineReport((r) => setAwayReport((prev) => mergeReports(prev, r))), [sync]);
   const [toasts, setToasts] = useState<EquipToast[]>([]);
   const toastN = useRef(0);
   const [lifting, setLifting] = useState<string | null>(null);
@@ -194,6 +197,7 @@ export function App({
       {rareQueue[0] && (
         <RareReveal key={rareQueue[0].n} spell={rareQueue[0].spell} first={rareQueue[0].first} onChoose={endRareReveal} />
       )}
+      {awayReport && <AwayReport report={awayReport} content={content} onClose={() => setAwayReport(null)} />}
       <GmWindow api={api} sync={sync} runtime={runtime} content={content} username={account?.username ?? null} />
       <OfflineOverlay status={status} />
     </div>

@@ -109,6 +109,10 @@ export function synthMessage(result: ActionResult, content: Content, inputs?: st
       return result.loot.length > 0 ? `關卡結算：${itemCounts(result.loot, content)}` : '關卡結算：沒有獲得道具';
     case 'gm':
       return '已套用';
+    case 'away':
+    case 'offline':
+    case 'none':
+      return ''; // presence actions are not shown as messages
     case 'rejected': {
       if (result.reason === 'grade') {
         const g = neededGrade(inputs, content);

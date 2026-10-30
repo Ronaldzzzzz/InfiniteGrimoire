@@ -20,6 +20,8 @@ function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
     reveal: vi.fn(),
     unlockPassive: vi.fn(),
     stageClear: vi.fn(),
+    away: vi.fn(),
+    offline: vi.fn(),
     login: vi.fn(),
     bind: vi.fn(),
     getAccount: vi.fn(),
@@ -505,5 +507,36 @@ describe('SyncController', () => {
       await vi.advanceTimersByTimeAsync(1000);
       expect(stageClear).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('boot claims offline before the first upload, and reports only real offline income', async () => {
+    const rt = mk();
+    const calls: string[] = [];
+    const offline = vi.fn(async () => {
+      calls.push('offline');
+      return { kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 8 };
+    });
+    const upload = vi.fn(async () => {
+      calls.push('upload');
+      return { kind: 'ok' as const, revision: 9 };
+    });
+    const sync = new SyncController(rt, fakeApi({ offline, upload }));
+    const seen = vi.fn();
+    sync.onOfflineReport(seen);
+    await sync.claimOffline();
+    const stop = sync.start();
+    await vi.advanceTimersByTimeAsync(UPLOAD_INTERVAL_MS);
+    expect(calls).toEqual(['offline', 'upload']);
+    expect(seen).not.toHaveBeenCalled();
+    stop();
+    const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, runs: 5, awayMs: 60_000, capped: false, loot: {} };
+    offline.mockResolvedValueOnce({ kind: 'ok', result, state: rt.getSnapshot().game, revision: 10 } as never);
+    await sync.claimOffline();
+    expect(seen).toHaveBeenCalledWith(result);
+  });
+  it('a failed claim does not throw', async () => {
+    const sync = new SyncController(mk(), fakeApi({ offline: vi.fn(async () => { throw new ApiError('x', 400); }) }));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(sync.claimOffline()).resolves.toBeNull();
   });
 });

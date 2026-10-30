@@ -42,6 +42,7 @@ function setup(inventory: Record<string, number> = { 'el:fire:1': 3, 'el:wind:1'
   const sync = {
     status: 'online',
     onStatus: () => () => {},
+    onOfflineReport: () => () => {},
     synthesize: vi.fn(() => new Promise<ActionResult | null>((r) => (reply = r))),
     action: vi.fn(async () => actionResult),
     uploadNow: vi.fn(async () => {}),
@@ -91,7 +92,7 @@ describe('App layout', () => {
       gmLogin: vi.fn(async () => ({ gmToken: 'g1', expiresAt: Date.now() + 600_000 })),
       gmResetPassword: vi.fn(async () => {}),
     } as unknown as ApiClient;
-    const sync = { status: 'online', onStatus: () => () => {}, action: vi.fn(), uploadNow: vi.fn(async () => {}) } as unknown as SyncController;
+    const sync = { status: 'online', onStatus: () => () => {}, onOfflineReport: () => () => {}, action: vi.fn(), uploadNow: vi.fn(async () => {}) } as unknown as SyncController;
     const runtimeA = fakeRuntime() as unknown as GameRuntime;
     const { rerender } = render(<App runtime={runtimeA} sync={sync} content={content} api={api} onSwitched={vi.fn()} onLoggedOut={vi.fn()} />);
     fireEvent.keyDown(window, { code: 'Backquote', ctrlKey: true, shiftKey: true });

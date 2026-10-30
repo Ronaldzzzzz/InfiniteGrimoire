@@ -3,6 +3,7 @@ import type { SynthResult } from '../engine/crafting';
 import type { EmpowerResult } from '../engine/empower';
 import type { GameState } from '../engine/model';
 import { parseState } from '../engine/persist';
+import type { OfflineResult } from '../engine/offline';
 import type { StageClearResult } from '../engine/stage-clear';
 import type { RevealResult, UnlockResult } from '../engine/tree';
 import type { ItemId } from '../engine/types';
@@ -13,7 +14,9 @@ export type UploadOutcome =
   | { kind: 'conflict' | 'rejected'; state: GameState; revision: number; reasons?: string[] };
 /** 'gm': a GM edit to the GM's own save was applied. */
 export type GmResult = { kind: 'gm' };
-export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult | StageClearResult | GmResult;
+/** 'away': the server noted the player left. */
+export type AwayResult = { kind: 'away' };
+export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult | StageClearResult | GmResult | AwayResult | OfflineResult;
 /**
  * 'ok': the server applied the action. 'refused': the game rules said no (a 422 with a result); the server
  * wrote nothing and the local state stays. 'conflict' / 'rejected' (a 422 with audit reasons): adopt `state`.
@@ -75,6 +78,10 @@ export interface ApiClient {
   unlockPassive(state: GameState, baseRevision: number, passiveId: string): Promise<ActionOutcome>;
   /** The server settles a cleared stage: stage progress and the settlement loot. */
   stageClear(state: GameState, baseRevision: number, zoneId: string, stage: number): Promise<ActionOutcome>;
+  /** Tells the server the player has been away from the page. */
+  away(state: GameState, baseRevision: number): Promise<ActionOutcome>;
+  /** Claims offline income for the time since the last away mark. */
+  offline(state: GameState, baseRevision: number): Promise<ActionOutcome>;
   login(username: string, password: string): Promise<LoginResult>;
   bind(username: string, password: string): Promise<{ username: string }>;
   getAccount(): Promise<AccountInfo>;
@@ -231,6 +238,8 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
     reveal: (state, baseRevision, keyItem) => action('/api/reveal', { state, baseRevision, keyItem }),
     unlockPassive: (state, baseRevision, passiveId) => action('/api/passive', { state, baseRevision, passiveId }),
     stageClear: (state, baseRevision, zoneId, stage) => action('/api/stage-clear', { state, baseRevision, zoneId, stage }),
+    away: (state, baseRevision) => action('/api/away', { state, baseRevision }),
+    offline: (state, baseRevision) => action('/api/offline', { state, baseRevision }),
     async login(username, password) {
       const { body } = await request('POST', '/api/login', { username, password: await clientPasswordHash(username, password) });
       if (typeof body.token !== 'string') throw new ApiError('invalid token from server', 0);

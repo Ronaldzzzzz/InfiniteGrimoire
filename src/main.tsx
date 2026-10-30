@@ -6,6 +6,8 @@ import type { GameState } from './engine/model';
 import { createApiClient, type ApiClient } from './game/api';
 import { classifyBootError } from './game/boot';
 import { startLoop } from './game/loop';
+import { watchPresence } from './game/presence';
+import { AWAY_DELAY_MS } from './engine/offline';
 import { GameRuntime } from './game/runtime';
 import { readToken, TOKEN_KEY, writeToken } from './game/session';
 import { SyncController } from './game/sync';
@@ -66,8 +68,15 @@ function Boot() {
   useEffect(() => {
     if (!ready) return;
     const { runtime, sync } = ready;
+    // pay for closed time before the first periodic upload; a failed claim never blocks the game
+    void sync.claimOffline();
     const stopSync = sync.start();
     const stopLoop = startLoop(runtime, sync);
+    const stopPresence = watchPresence({
+      delayMs: AWAY_DELAY_MS,
+      onAway: () => void sync.goAway(),
+      onReturn: () => void sync.claimOffline(),
+    });
     const offAuth = sync.onAuthError(() => {
       clearToken();
       setPhase({ kind: 'onboarding' });
@@ -75,6 +84,7 @@ function Boot() {
     return () => {
       stopSync();
       stopLoop();
+      stopPresence();
       offAuth();
     };
   }, [ready]);
