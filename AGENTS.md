@@ -60,7 +60,7 @@
 
 ### 3.0 接手先看這裡（2026-10-30 更新）
 
-**現在停在哪（2026-10-30 晚，專案 1 收尾）：** 專案 1（橫向戰鬥帶與關卡＋手感、關卡由簡至難、離線收益）連同使用者試玩後的修正都做完了，branch `feat/battle-strip` 比 `main` 多 38 個 commit，**未 push、未合併**（合併要先問使用者，push 由使用者 `! git push`）。試玩後的修正：舊存檔缺離線欄位導致上傳一直被拒（`readStored`）；自動前進不進魔王關、改成重複刷第 9 關並顯示「進入魔王關」（`goToBoss`）；離線改成「遊戲不是使用中的視窗」滿 10 秒就凍結（`setAway`、`BattleView.setFrozen`）、整頁灰階（`html.away`）、畫面正中間顯示「離線中」、分頁標題「💤 離線收益中 - 無限魔導書」（使用者確認維持 💤），收益每 30 秒一個 tick；「離開」「回來」依序排隊、絕不丟掉。`npm test` 77 個檔案 897 個測試全過、`npm run build` 通過。**下一步：** 使用者決定合併 → 專案 2（魔法陣合成）的設計討論（總體設計 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` 第 4.1、4.2、4.4 節與第 6 節「專案 2」要決定的事）。平衡數值（下方手感與關卡波數）仍是提案、使用者尚未逐項確認。
+**現在停在哪（2026-10-30 晚，專案 1 收尾）：** 專案 1（橫向戰鬥帶與關卡＋手感、關卡由簡至難、離線收益）連同使用者試玩後的修正都做完了，**2026-10-30 使用者同意後已 fast-forward 合併到 `main`**，`feat/battle-strip` 已刪除；`main` 尚未 push（push 由使用者 `! git push`）。試玩後的修正：舊存檔缺離線欄位導致上傳一直被拒（`readStored`）；自動前進不進魔王關、改成重複刷第 9 關並顯示「進入魔王關」（`goToBoss`）；離線改成「遊戲不是使用中的視窗」滿 10 秒就凍結（`setAway`、`BattleView.setFrozen`）、整頁灰階（`html.away`）、畫面正中間顯示「離線中」、分頁標題「💤 離線收益中 - 無限魔導書」（使用者確認維持 💤），收益每 30 秒一個 tick；「離開」「回來」依序排隊、絕不丟掉。`npm test` 77 個檔案 897 個測試全過、`npm run build` 通過。**下一步：** 專案 2（魔法陣合成）的設計討論（進行中）（總體設計 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` 第 4.1、4.2、4.4 節與第 6 節「專案 2」要決定的事）。平衡數值（手感、關卡波數、離線 5 折／8 小時／10 秒凍結／30 秒 tick）**使用者 2026-10-30：先暫定**，之後可再調。
 
 **之前停在哪（2026-10-30，專案 1 續：手感、關卡由簡至難、離線收益）：** branch `feat/battle-strip`（**未 push、未合併**）。規格第 3.8、3.9 節（已實作）、計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、帳本與 Task 1 量測 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/`。Task 1～5 已完成並各自審查；最終全 branch 審查找到 1 個 Important（離線回來後第一次通關只量到回來後的時間，會讓下一次離線多給約 12 倍）已修正並複審通過：跨過離開或離線時段的那次通關不記時間、成功通關會結束「離開」、重新連線先送離線結算再上傳。`npm test` 76 個檔案 875 個測試全過（連跑三次有一次 1 個測試逾時，另兩次全過，與已知的負載逾時相同）、`npm run build` 通過（2026-10-30）。
 - **手感（Task 1，以下數值都是提案，待使用者確認）：** `LANE_SPEED` 4 → 2.5、`STOP_X` 0.08 → 0.16、小人 22×38 → 34×58（`HERO_W`／`HERO_H`，眼睛 6 px）；`WALK_MS` 不變。
@@ -103,7 +103,7 @@
 | 順序 | 項目 | 狀態 | 去哪裡看 |
 |---|---|---|---|
 | 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers`、`feat/tier-step-18`、`feat/crowd-ttk`）到 `main` | **已完成（2026-10-29，使用者試玩後同意）**；push 由使用者 `! git push` | 本節 |
-| **0.1（進行中）** | 魔法研究改版（四個專案） | 專案 1（橫向戰鬥帶、關卡、離線收益）**已完成，在 `feat/battle-strip` 待合併**；**下一步：專案 2 魔法陣合成的設計討論** | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
+| **0.1（進行中）** | 魔法研究改版（四個專案） | 專案 1（橫向戰鬥帶、關卡、離線收益）**已完成並合併到 `main`（2026-10-30）**；**下一步：專案 2 魔法陣合成的設計討論** | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
 | 0.5 | 魔法深度拓展（名稱、類型、定義）剩下的部分 | 第一批（20 招、強度曲線、地圖）**已完成（在 `feat/rare-tuning`）**；Phase 1～3 文案的其餘招式、新施法形態、異變詞綴、Overdrive、禁忌殘頁等**都還沒做**，之後再討論 | `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md`、`2026-10-27-spell-expansion-green-items-review.md` |
 | 1 | 魔法階級強度曲線（含距離魔王還差幾隻、放回上次組合） | **已完成（在 `feat/rare-tuning`）**；`TIER_STEP` 使用者已定 1.8、強化滿 ×1.4；待使用者試玩 | 本節、規格與帳本 |
 | 1b | 稀有魔法落空的保底／補償 | **暫停（使用者 2026-10-29），遊戲性討論之後再提**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
@@ -281,6 +281,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-30（Claude Code，Opus 5.5，macOS，合併專案 1）**：使用者同意合併：`feat/battle-strip` fast-forward 到 `main`、branch 已刪除；`main` 上 `npm test` 77 檔 897 個全過。平衡數值使用者決定先暫定；根目錄的 ChatGPT 統整檔不進版本庫（使用者決定）。停在：`main` 未 push。下一步：專案 2（魔法陣合成）設計討論。
 
 - **2026-10-30（Claude Code，Opus 5.5，macOS，整理交接）**：使用者確認分頁標題維持 💤，指示整理後進入下一階段。更新 3.0「現在停在哪」與順序表。停在：`feat/battle-strip` 未 push、未合併。下一步：使用者決定合併 → 專案 2（魔法陣合成）設計討論。
 
