@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
-import { craftedId, resolveSpell } from '../engine/spells';
+import { resolveSpell } from '../engine/spells';
 import { DiscoveryBanner } from './DiscoveryBanner';
 
 beforeEach(() => vi.useFakeTimers());
@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe('DiscoveryBanner', () => {
   it('DiscoveryBanner shows the tag and hides after 2.6 s', () => {
-    const spell = resolveSpell(craftedId('fireball', 'wind_blade'), content)!;
+    const spell = resolveSpell('m:fire.3.---ef.-----.bolt', content)!;
     const onDone = vi.fn();
     render(<DiscoveryBanner spell={spell} isNew onDone={onDone} />);
     const banner = screen.getByRole('status', { name: '新發現' });

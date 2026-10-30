@@ -70,7 +70,7 @@ describe('GrimoirePanel', () => {
   });
 
   it('the card shows school, attack, cooldown, statuses and the chant of a high-tier spell', () => {
-    setup({ learned: ['mana_bolt', 'fireball', 'worldfire'], revealed: ['astral'] });
+    setup({ learned: ['mana_bolt', 'fireball', 'worldfire'] });
     fireEvent.click(node(content.spells.fireball!.name));
     fireEvent.click(screen.getByRole('button', { name: '詳情' }));
     let card = screen.getByRole('region', { name: '節點詳情' });
@@ -199,24 +199,17 @@ describe('GrimoirePanel', () => {
     expect(screen.getByRole('group', { name: '魔法操作' }).textContent).toContain(content.spells.mana_bolt!.name);
   });
 
-  it('fogged regions show no nodes; once revealed the fog lifts and the nodes appear', () => {
-    const inferno = content.spells.inferno!.name;
-    const { rt, rerender } = setup({ inventory: {} });
-    expect(screen.queryByRole('button', { name: new RegExp(inferno) })).toBeNull();
-    expect(screen.queryByRole('button', { name: new RegExp(content.passives.ember_affinity!.name) })).toBeNull();
-    expect(screen.getAllByLabelText('迷霧').length).toBe(5);
-    expect(screen.queryByRole('button', { name: /使用風暴之心/ })).toBeNull();
-    act(() => rt.set({ game: { revealed: ['outer'] } }));
-    rerender('outer');
-    expect(screen.getByRole('button', { name: new RegExp(inferno) })).toBeTruthy();
-    expect(screen.getAllByLabelText('迷霧').length).toBe(4);
-    expect(document.querySelector('.fog.lifting')).toBeTruthy();
+  it('there is no fog any more: every region shows its nodes (until the star map replaces this tree)', () => {
+    setup({ inventory: {} });
+    expect(screen.getByRole('button', { name: new RegExp(content.spells.inferno!.name) })).toBeTruthy();
+    expect(screen.getByRole('button', { name: new RegExp(content.passives.ember_affinity!.name) })).toBeTruthy();
+    expect(screen.queryByLabelText('迷霧')).toBeNull();
   });
 
   it('passive unlock button only when the requirement is met', async () => {
     const name = content.passives.ember_affinity!.name;
     const action = vi.fn(async (): Promise<ActionResult | null> => ({ kind: 'unlocked' }));
-    const { rt } = setup({ revealed: ['outer'], inventory: { 'mat:ember_core': 4 } }, false, action);
+    const { rt } = setup({ inventory: { 'mat:ember_core': 4 } }, false, action);
     fireEvent.click(node(name));
     expect(screen.queryByRole('group', { name: '魔法操作' })).toBeNull();
     const detail = screen.getByRole('region', { name: '節點詳情' });
@@ -232,7 +225,7 @@ describe('GrimoirePanel', () => {
   });
 
   it('the tree, bubble and card do not re-render when only the inventory changes', () => {
-    const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], revealed: ['outer'], inventory: { 'el:fire:1': 1 } });
+    const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'], inventory: { 'el:fire:1': 1 } });
     const onRender = vi.fn();
     render(
       <Profiler id="grimoire" onRender={onRender}>
@@ -375,14 +368,8 @@ describe('GrimoirePanel', () => {
       render(<GrimoirePanel runtime={rt} sync={{ action: vi.fn(async () => null) }} onHint={vi.fn()} onPick={onPick} slotsFull={false} lifting={null} content={content} tree="lightdark" />);
       return { onPick };
     }
-    it('hides the spells behind one fog band per side, without their names', () => {
-      lightDark({ learned: ['mana_bolt'] });
-      expect(screen.getAllByLabelText('迷霧').length).toBe(1);
-      expect(screen.queryByText(holy)).toBeNull();
-      expect(screen.queryByText(content.spells.abyss_devour!.name)).toBeNull();
-    });
     it('click opens the bubble, double click puts a learned spell into the altar', () => {
-      const { onPick } = lightDark({ learned: ['mana_bolt', 'holy_judgment'], revealed: ['astral'] });
+      const { onPick } = lightDark({ learned: ['mana_bolt', 'holy_judgment'] });
       expect(screen.queryByLabelText('迷霧')).toBeNull();
       fireEvent.click(node(holy));
       expect(screen.getByRole('group', { name: '魔法操作' })).toBeTruthy();

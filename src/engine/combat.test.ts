@@ -10,7 +10,7 @@ import type { Content, Effect, GameState, Monster, NamedSpellDef, Zone } from '.
 import type { ElementId } from './types';
 
 const mkGame = (o: Partial<GameState> = {}): GameState => ({
-  version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
+  version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, circleTier: 2, passives: [],
   currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {}, ...o,
 });
 

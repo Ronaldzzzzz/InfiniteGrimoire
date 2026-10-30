@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ContentError, LIGHT_DARK_SPELLS, NAMED_DEPTH, content, loadContent } from './content';
 import spells from '../data/content/spells.json';
-import recipes from '../data/content/recipes.json';
 import monsters from '../data/content/monsters.json';
 import zones from '../data/content/zones.json';
 import materials from '../data/content/materials.json';
@@ -9,11 +8,11 @@ import keyItems from '../data/content/key-items.json';
 import passives from '../data/content/passives.json';
 import regions from '../data/content/regions.json';
 import { stageTotal } from './stages';
-import { craftedId, inputToken, resolveSpell } from './spells';
+import { parseCanonical } from './circle';
 import { ELEMENT_ORDER } from './types';
 import baseline from './content-baseline.json';
 
-const base = () => structuredClone({ spells, recipes, monsters, zones, materials, keyItems, passives, regions }) as Record<string, any>;
+const base = () => structuredClone({ spells, monsters, zones, materials, keyItems, passives, regions }) as Record<string, any>;
 
 function issuesOf(raw: Record<string, any>): string {
   try {
@@ -66,20 +65,6 @@ describe('content', () => {
     const raw = base();
     raw.spells.push(structuredClone(raw.spells[0]));
     expect(issuesOf(raw)).toContain('duplicate id "mana_bolt"');
-  });
-
-  it('rejects a recipe input that does not exist', () => {
-    const raw = base();
-    raw.recipes[0].inputs = ['nope', 'el:fire:1'];
-    expect(issuesOf(raw)).toContain('unknown input "nope"');
-    raw.recipes[0].inputs = ['mat:ghost', 'el:fire:1'];
-    expect(issuesOf(raw)).toContain('unknown input "mat:ghost"');
-  });
-
-  it('rejects a recipe outcome that does not exist', () => {
-    const raw = base();
-    raw.recipes[0].outcomes = [{ spellId: 'nope', weight: 1 }];
-    expect(issuesOf(raw)).toContain('unknown outcome spell "nope"');
   });
 
   it('rejects duplicate or missing baseOf', () => {
@@ -140,7 +125,6 @@ describe('content', () => {
   it('requires mana_bolt and mana_overload', () => {
     const raw = base();
     raw.spells = raw.spells.filter((s: any) => s.id !== 'mana_overload' && s.id !== 'mana_bolt');
-    raw.recipes = [];
     const text = issuesOf(raw);
     expect(text).toContain('mana_overload');
     expect(text).toContain('mana_bolt');
@@ -172,55 +156,8 @@ describe('effect status', () => {
 describe('shipped content set', () => {
   const spellsOf = Object.values(content.spells);
   const hidden = new Set(content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id));
-  const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
-  const recipesFor = (inputs: [string, string]) =>
-    content.recipes.filter((r) => sameSet([...r.inputs].sort(), [...inputs].sort()));
   const zoneMonsters = (z: (typeof content.zones)[number]) => [...z.monsters, z.bossId];
   const topTier = Math.max(...Object.values(content.monsters).map((m) => m.tier));
-
-  it('every element pair has a named spell', () => {
-    for (const [i, x] of ELEMENT_ORDER.entries()) {
-      for (const y of ELEMENT_ORDER.slice(i)) {
-        const candidates = [
-          ...recipesFor([`el:${x}:1`, `el:${y}:1`]),
-          ...(x === y ? [] : recipesFor([content.baseSpells[x], content.baseSpells[y]])),
-        ];
-        const named = candidates.flatMap((r) => r.outcomes.map((o) => o.spellId)).filter((s): s is string => !!s);
-        const want = x === y ? [x] : [x, y];
-        expect(named.some((id) => sameSet(content.spells[id]!.elements, want)), `${x}+${y}`).toBe(true);
-      }
-    }
-  });
-
-  it('each element has a pure line to the top tier', () => {
-    for (const e of ELEMENT_ORDER) {
-      const line = [content.baseSpells[e]];
-      for (;;) {
-        const cur = line[line.length - 1]!;
-        const next = content.recipes.find((r) =>
-          r.inputs.includes(cur) && r.inputs.some((i) => i.startsWith(`el:${e}:`)) && r.outcomes.length === 1 &&
-          r.outcomes[0]!.spellId !== null && sameSet(content.spells[r.outcomes[0]!.spellId]!.elements, [e]));
-        if (!next) break;
-        line.push(next.outcomes[0]!.spellId!);
-      }
-      expect(line.length, `${e}: ${line.join(' > ')}`).toBe(8);
-      const spells = line.map((id) => content.spells[id]!);
-      spells.forEach((s, i) => {
-        expect(s.tier, s.id).toBe(i + 2);
-        expect(s.depth, s.id).toBe(NAMED_DEPTH(s.tier));
-      });
-      // the end of the line can hurt every monster by tier alone
-      expect(spells[spells.length - 1]!.tier, e).toBeGreaterThanOrEqual(topTier - 1);
-    }
-  });
-
-  it('at least two named spells sit in hidden regions', () => {
-    // ... and can be made from core spells or items, so random experiments can stumble on them before the fog lifts
-    const core = (id: string) => /^(el|mat):/.test(id) || (!!content.spells[id]?.node && !hidden.has(content.spells[id]!.node!.region));
-    const stumble = spellsOf.filter((s) => s.node && hidden.has(s.node.region) &&
-      content.recipes.some((r) => r.outcomes.some((o) => o.spellId === s.id) && r.inputs.every(core)));
-    expect(stumble.length, stumble.map((s) => s.id).join(',')).toBeGreaterThanOrEqual(2);
-  });
 
   it('each boss but the last drops a key item that reveals a different region', () => {
     const revealed = content.zones.slice(0, -1).map((z) => {
@@ -231,19 +168,6 @@ describe('shipped content set', () => {
     });
     expect(new Set(revealed).size).toBe(content.zones.length - 1);
     for (const r of revealed) expect(hidden.has(r), r).toBe(true);
-  });
-
-  it('random recipes succeed at most 10% and fall through to crafted', () => {
-    const random = content.recipes.filter((r) => r.outcomes.length > 1);
-    expect(random.length).toBeGreaterThanOrEqual(2);
-    for (const r of random) {
-      const total = r.outcomes.reduce((n, o) => n + o.weight, 0);
-      const named = r.outcomes.filter((o) => o.spellId !== null).reduce((n, o) => n + o.weight, 0);
-      expect(r.outcomes.some((o) => o.spellId === null), r.id).toBe(true);
-      expect(named / total, r.id).toBeLessThanOrEqual(0.1);
-      const [a, b] = r.inputs.map((i) => inputToken(i, content));
-      expect(resolveSpell(craftedId(a!, b!), content), r.id).not.toBeNull();
-    }
   });
 
   it('materials and key items are all dropped somewhere', () => {
@@ -262,7 +186,7 @@ describe('shipped content set', () => {
     expect(by((s) => s.affinity === 'base' && s.elements.length === 1)).toBe(5);
     expect(by((s) => s.affinity === 'self' && s.tier === 3)).toBe(5);
     expect(by((s) => s.elements.length === 2 && s.depth === 1)).toBe(10);
-    expect(by((s) => s.elements.length >= 2 && s.depth >= 2 && !content.recipes.some((r) => r.outcomes.length > 1 && r.outcomes.some((o) => o.spellId === s.id)))).toBeGreaterThanOrEqual(6);
+    expect(by((s) => s.elements.length >= 2 && s.depth >= 2 && !s.rare)).toBeGreaterThanOrEqual(6);
     expect(Object.keys(content.materials).length).toBeGreaterThanOrEqual(8);
     expect(Object.keys(content.keyItems).length).toBeGreaterThanOrEqual(3);
     const passives = Object.values(content.passives);
@@ -374,7 +298,7 @@ describe('map expansion', () => {
   });
 
   it('the two new zones drop all seven rare materials, 2-3 per regular monster at 1-2%', () => {
-    const rareMats = new Set(content.recipes.filter((r) => r.outcomes.some((o) => o.spellId === null)).flatMap((r) => r.inputs).filter((i) => i.startsWith('mat:')));
+    const rareMats = new Set(['mat:ember_core', 'mat:roc_feather', 'mat:fulgurite', 'mat:lava_stone', 'mat:tide_scale', 'mat:sun_shard', 'mat:abyss_pearl']);
     expect(rareMats.size).toBe(7);
     const seen = new Set<string>();
     for (const z of [zs[4]!, zs[5]!]) {
@@ -420,7 +344,7 @@ describe('map expansion', () => {
 describe('rare spells', () => {
   const NEW = ['worldfire', 'heavens_breath', 'ninefold_thunder', 'titans_grip', 'moontide', 'holy_judgment', 'abyss_devour'];
 
-  it('has one rare spell per element, each only from a Lv.9 spell plus a material at 1 : 49', () => {
+  it('has the seven rare spells, each rolled from its own Lv.10 circle', () => {
     const rares = Object.values(content.spells).filter((s) => s.rare);
     expect(rares.map((s) => s.id).sort()).toEqual(
       ['abyss_devour', 'heavens_breath', 'holy_judgment', 'moontide', 'ninefold_thunder', 'titans_grip', 'worldfire'],
@@ -434,9 +358,11 @@ describe('rare spells', () => {
       const s = content.spells[id]!;
       expect(s, id).toMatchObject({ tier: 10, school: 'forbidden', named: true, rare: true, prerequisites: [lv9] });
       expect(content.spells[lv9]!.tier, lv9).toBe(9);
-      const r = content.recipes.find((x) => x.id === id)!;
-      expect([...r.inputs].sort(), id).toEqual([lv9, mat].sort());
-      expect(r.outcomes, id).toEqual([{ spellId: id, weight: 1 }, { spellId: null, weight: 49 }]);
+      void mat;
+      const c = parseCanonical(s.circle!);
+      expect(c, id).not.toBeNull();
+      expect(c!.tier, id).toBe(10);
+      expect(s.elements, id).toContain(c!.core);
     }
   });
 
@@ -454,44 +380,24 @@ describe('rare spells', () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(per)).toEqual([2, 5, 5, 15, 11, 6, 6, 5, 5, 7]);
   });
 
-  it('rejects a rare recipe whose spell input is not Lv.9 or whose weights are not 1 : 49', () => {
-    const r1 = base();
-    r1.recipes.find((r: any) => r.id === 'worldfire').inputs = ['hellfire_siege', 'mat:ember_core'];
-    expect(issuesOf(r1)).toContain('rare spell "worldfire"');
-    const r2 = base();
-    r2.recipes.find((r: any) => r.id === 'worldfire').outcomes[1].weight = 9;
-    expect(issuesOf(r2)).toContain('rare spell "worldfire"');
-  });
-
   it('rejects a missing tier in a pure element chain', () => {
     const raw = base();
     raw.spells.find((s: any) => s.id === 'crimson_pillar').tier = 5;
     expect(issuesOf(raw)).toContain('pure fire');
   });
 
-  it('rejects content where a rare spell comes from a fixed recipe', () => {
+  it('rejects a rare spell without its circle', () => {
     const raw = base();
-    raw.recipes.find((r: any) => r.id === 'worldfire').outcomes = [{ spellId: 'worldfire', weight: 1 }];
-    expect(issuesOf(raw)).toContain('rare spell "worldfire"');
+    delete raw.spells.find((s: any) => s.id === 'worldfire').circle;
+    expect(issuesOf(raw)).toContain('rare spell worldfire: needs the Lv.10 circle');
   });
 
-  it('rejects a rare spell no recipe can produce', () => {
-    const raw = base();
-    raw.recipes = raw.recipes.filter((r: any) => r.id !== 'worldfire');
-    expect(issuesOf(raw)).toContain('rare spell "worldfire"');
-  });
-
-  it('existing spells and recipes are unchanged', () => {
+  it('existing spells are unchanged', () => {
     for (const s of Object.values(content.spells)) {
       if (NEW.includes(s.id) || s.rare || !(s.id in baseline.spells)) continue;
       expect([s.tier, s.attack, s.cooldownMs, s.depth].join('|'), s.id).toBe((baseline.spells as Record<string, string>)[s.id]);
     }
-    for (const r of content.recipes) {
-      if (NEW.includes(r.id) || /_pure_[23]$/.test(r.id) || !(r.id in baseline.recipes)) continue;
-      expect(r.inputs.join('+') + '>' + r.outcomes.map((q) => `${q.spellId}:${q.weight}`).join(','), r.id).toBe((baseline.recipes as Record<string, string>)[r.id]);
-    }
     expect(Object.keys(baseline.spells).every((id) => id in content.spells)).toBe(true);
-    expect(Object.keys(baseline.recipes).every((id) => content.recipes.some((r) => r.id === id))).toBe(true);
   });
 });
 
@@ -562,12 +468,6 @@ describe('spell schools, chants and the tree layout', () => {
     const r4 = base();
     r4.passives[0].node.tree = 'lightdark';
     expect(issuesOf(r4)).toContain('passive');
-  });
-
-  it('rejects two recipes with the same inputs', () => {
-    const raw = base();
-    raw.recipes.push({ ...structuredClone(raw.recipes[0]), id: 'dupe', inputs: [...raw.recipes[0].inputs].reverse() });
-    expect(issuesOf(raw)).toContain('recipe dupe: same inputs as recipe');
   });
 
   it('places every named spell on ring tier - 1, in the region of its tier', () => {

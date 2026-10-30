@@ -21,24 +21,30 @@ function setup(game: Partial<GameState>, synthPending = false, action = vi.fn(as
 }
 
 describe('KeyItemBar', () => {
-  it('uses a key item: reveals, tells the app, shows a message that fades, and the button goes away', async () => {
+  it('uses a key item: opens the circle tier, tells the app, shows a message that fades, and the button goes away', async () => {
     vi.useFakeTimers();
     let rt: ReturnType<typeof fakeRuntime>;
     const action = vi.fn(async (): Promise<ActionResult | null> => {
-      rt.set({ game: { revealed: ['outer'], inventory: {} } });
-      return { kind: 'revealed', region: 'outer' };
+      rt.set({ game: { circleTier: 4, inventory: {} } });
+      return { kind: 'circleOpened', tier: 4 };
     });
     let onRevealed: ReturnType<typeof vi.fn>;
     ({ rt, onRevealed } = setup({ inventory: { 'key:storm_heart': 1 } }, false, action));
     const button = screen.getByRole('button', { name: /使用風暴之心/ });
     expect(button.textContent).toContain(content.keyItems['key:storm_heart']!.desc);
     await act(async () => { fireEvent.click(button); });
-    expect(action).toHaveBeenCalledWith('reveal', { keyItem: 'key:storm_heart' });
+    expect(action).toHaveBeenCalledWith('keyItem', { keyItem: 'key:storm_heart' });
     expect(onRevealed).toHaveBeenCalledWith('outer');
-    expect(screen.getByText('迷霧散開了')).toBeTruthy();
+    expect(screen.getByText('魔法陣開放到 Lv.4')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /使用風暴之心/ })).toBeNull();
     act(() => { vi.advanceTimersByTime(KEY_MESSAGE_MS); });
-    expect(screen.queryByText('迷霧散開了')).toBeNull();
+    expect(screen.queryByText('魔法陣開放到 Lv.4')).toBeNull();
+  });
+
+  it('hides a key item that would open nothing more', () => {
+    setup({ inventory: { 'key:storm_heart': 1, 'key:thunder_eye': 1 }, circleTier: 6 });
+    expect(screen.queryByRole('button', { name: /使用風暴之心/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /使用大鵬之眼/ })).toBeNull();
   });
 
   it('is disabled while a synthesis is pending', () => {

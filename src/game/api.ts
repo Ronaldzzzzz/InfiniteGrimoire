@@ -1,11 +1,12 @@
 import { content } from '../engine/content';
-import type { SynthResult } from '../engine/crafting';
+import type { Placement } from '../engine/circle';
+import type { CircleReply } from '../engine/circle-synth';
 import type { EmpowerResult } from '../engine/empower';
 import type { GameState } from '../engine/model';
 import { parseState } from '../engine/persist';
 import type { OfflineResult } from '../engine/offline';
 import type { StageClearResult } from '../engine/stage-clear';
-import type { RevealResult, UnlockResult } from '../engine/tree';
+import type { KeyItemResult, UnlockResult } from '../engine/tree';
 import type { ItemId } from '../engine/types';
 import { clientPasswordHash } from './password-hash';
 
@@ -16,7 +17,20 @@ export type UploadOutcome =
 export type GmResult = { kind: 'gm' };
 /** 'away': the server noted the player left. */
 export type AwayResult = { kind: 'away' };
-export type ActionResult = SynthResult | EmpowerResult | RevealResult | UnlockResult | StageClearResult | GmResult | AwayResult | OfflineResult;
+/**
+ * Results of the retired two-input altar. The server no longer makes them (POST /api/synthesize is gone); they stay only
+ * so the old SynthesisAltar compiles until the magic circle parchment (plan Task 5) replaces it.
+ * @deprecated removed with SynthesisAltar
+ */
+export type LegacySynthResult =
+  | { kind: 'learned'; spellId: string; crafted: boolean; rare?: { first: boolean } }
+  | { kind: 'duplicate'; spellId: string; refunded: ItemId[] }
+  | { kind: 'noReaction' }
+  | { kind: 'dormant' }
+  | { kind: 'overload'; spellId: string }
+  | { kind: 'rejected'; reason: 'slots' | 'unknownInput' | 'insufficient' | 'grade' | 'retired' };
+export type ActionResult =
+  | CircleReply | LegacySynthResult | EmpowerResult | KeyItemResult | UnlockResult | StageClearResult | GmResult | AwayResult | OfflineResult;
 /**
  * 'ok': the server applied the action. 'refused': the game rules said no (a 422 with a result); the server
  * wrote nothing and the local state stays. 'conflict' / 'rejected' (a 422 with audit reasons): adopt `state`.
@@ -72,9 +86,11 @@ export interface ApiClient {
   createGuest(displayName: string): Promise<LoginResult>;
   loadSave(): Promise<{ state: GameState; revision: number }>;
   upload(state: GameState, baseRevision: number, opts?: { keepalive?: boolean }): Promise<UploadOutcome>;
-  synthesize(state: GameState, baseRevision: number, inputs: ItemId[]): Promise<ActionOutcome>;
+  /** Draws a magic circle: the server checks the placement, spends the elements and rolls the result. */
+  circle(state: GameState, baseRevision: number, placement: Placement): Promise<ActionOutcome>;
   empower(state: GameState, baseRevision: number, spellId: string): Promise<ActionOutcome>;
-  reveal(state: GameState, baseRevision: number, keyItem: ItemId): Promise<ActionOutcome>;
+  /** Uses a key item: it opens the magic circle to its tier. */
+  useKeyItem(state: GameState, baseRevision: number, keyItem: ItemId): Promise<ActionOutcome>;
   unlockPassive(state: GameState, baseRevision: number, passiveId: string): Promise<ActionOutcome>;
   /** The server settles a cleared stage: stage progress and the settlement loot. */
   stageClear(state: GameState, baseRevision: number, zoneId: string, stage: number): Promise<ActionOutcome>;
@@ -233,9 +249,9 @@ export function createApiClient(getToken: () => string | null, fetchImpl?: typeo
       const { body } = await request('GET', after === undefined ? '/api/discoveries' : `/api/discoveries?after=${after}`);
       return parseDiscoveries(body.discoveries);
     },
-    synthesize: (state, baseRevision, inputs) => action('/api/synthesize', { state, baseRevision, inputs }),
+    circle: (state, baseRevision, placement) => action('/api/circle', { state, baseRevision, placement }),
     empower: (state, baseRevision, spellId) => action('/api/empower', { state, baseRevision, spellId }),
-    reveal: (state, baseRevision, keyItem) => action('/api/reveal', { state, baseRevision, keyItem }),
+    useKeyItem: (state, baseRevision, keyItem) => action('/api/key-item', { state, baseRevision, keyItem }),
     unlockPassive: (state, baseRevision, passiveId) => action('/api/passive', { state, baseRevision, passiveId }),
     stageClear: (state, baseRevision, zoneId, stage) => action('/api/stage-clear', { state, baseRevision, zoneId, stage }),
     away: (state, baseRevision) => action('/api/away', { state, baseRevision }),

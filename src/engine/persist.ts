@@ -1,14 +1,16 @@
 import { z } from 'zod';
 import { STARTING_SPELL, type Content, type GameState } from './model';
 import { MAX_SPELL_LEVEL, resolveSpell } from './spells';
+import { circleRules } from './content';
+import { GRADE_CAP } from './circle';
 import { CLEAR_TIMES_KEEP } from './offline';
 import { ITEM_ID_RE } from './types';
 
-/** A new player: mana_bolt only, standing in the first zone. */
+/** A new player: mana_bolt only, the starting circle tier, standing in the first zone. */
 export function createInitialState(content: Content): GameState {
   const first = content.zones[0]!.id;
   return {
-    version: 2, inventory: {}, learned: [STARTING_SPELL], equipped: STARTING_SPELL, levels: {}, revealed: [], passives: [],
+    version: 2, inventory: {}, learned: [STARTING_SPELL], equipped: STARTING_SPELL, levels: {}, circleTier: circleRules.startTier, passives: [],
     currentZone: first, unlockedZones: [first], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {},
   };
 }
@@ -28,7 +30,7 @@ const saveSchema = z.strictObject({
   learned: z.array(z.string()),
   equipped: z.string(),
   levels: z.record(z.string(), z.number().int().min(1).max(MAX_SPELL_LEVEL)),
-  revealed: z.array(z.string()),
+  circleTier: z.number().int().min(1).max(GRADE_CAP[GRADE_CAP.length - 1]!),
   passives: z.array(z.string()),
   currentZone: z.string(),
   unlockedZones: z.array(z.string()),
@@ -65,7 +67,6 @@ export function parseState(input: unknown, content: Content): GameState | null {
     const s = r.data;
     const zoneIds = new Set(content.zones.map((z) => z.id));
     const bossIds = new Set(content.zones.map((z) => z.bossId));
-    const regionIds = new Set(content.regions.map((g) => g.id));
     const isZone = (id: string) => zoneIds.has(id);
     const learned = new Set(s.learned);
     const ok =
@@ -73,8 +74,6 @@ export function parseState(input: unknown, content: Content): GameState | null {
       s.learned.every((id) => resolveSpell(id, content) !== null) &&
       learned.has(s.equipped) &&
       Object.keys(s.levels).every((id) => learned.has(id)) &&
-      unique(s.revealed) &&
-      s.revealed.every((id) => regionIds.has(id)) &&
       unique(s.passives) &&
       s.passives.every((id) => Object.hasOwn(content.passives, id)) &&
       isZone(s.currentZone) &&

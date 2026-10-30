@@ -88,7 +88,7 @@ describe('GmWindow', () => {
     await login();
     expect(await screen.findByRole('button', { name: '套用' })).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: '地圖' }));
-    expect(screen.getByRole('button', { name: '散開所有迷霧' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '開放所有魔法陣格子' })).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: '配方表' }));
     expect(screen.getByRole('searchbox')).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: '玩家' }));

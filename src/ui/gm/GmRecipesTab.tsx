@@ -1,34 +1,15 @@
 import { useMemo, useState } from 'react';
 import type { Content } from '../../engine/model';
-import { ELEMENT_NAMES, itemCounts, slotLabel } from '../messages';
-import { useRuntime, type RuntimeStore } from '../useGame';
-import { recipeTable } from './recipe-table';
+import { ELEMENT_NAMES } from '../messages';
+import { circleTable } from './recipe-table';
 
-/** Spec §5.3: every recipe with its odds and fusion elements, searchable by spell or element name. */
-export function GmRecipesTab({ runtime, content }: { runtime: RuntimeStore; content: Content }) {
-  // fusionNeeds reads only `learned`, so subscribe to that instead of the whole game
-  const learned = useRuntime(runtime, (s) => s.game.learned);
+/** Every textbook circle with the spell it teaches (rare spells with their chance), searchable by spell or element name. */
+export function GmRecipesTab({ content }: { content: Content }) {
   const [query, setQuery] = useState('');
-
-  const rows = useMemo(() => {
-    const game = { ...runtime.getSnapshot().game, learned };
-    return recipeTable(content, game).map((r) => {
-      const inputs = r.inputs.map((id) => slotLabel(id, content));
-      const elements = new Set<string>();
-      for (const id of r.inputs) {
-        const el = id.split(':');
-        if (el[0] === 'el' && el[1]) elements.add(ELEMENT_NAMES[el[1]] ?? '');
-        else if (el[0] === 'mat') for (const e of content.materials[id]?.elements ?? []) elements.add(ELEMENT_NAMES[e] ?? '');
-        else for (const e of content.spells[id]?.elements ?? []) elements.add(ELEMENT_NAMES[e] ?? '');
-      }
-      for (const o of content.recipes.find((x) => x.id === r.id)!.outcomes) {
-        if (o.spellId) for (const e of content.spells[o.spellId]?.elements ?? []) elements.add(ELEMENT_NAMES[e] ?? '');
-      }
-      const haystack = [...inputs, ...r.outcomes.map((o) => o.label), ...elements].join(' ');
-      return { ...r, inputNames: inputs, fusionText: r.fusion.length ? itemCounts(r.fusion, content) : '—', haystack };
-    });
-  }, [runtime, learned, content]);
-
+  const rows = useMemo(
+    () => circleTable(content).map((r) => ({ ...r, haystack: [r.name, r.layout, ...r.elements.map((e) => ELEMENT_NAMES[e])].join(' ') })),
+    [content],
+  );
   const q = query.trim();
   const shown = q ? rows.filter((r) => r.haystack.includes(q)) : rows;
 
@@ -38,23 +19,17 @@ export function GmRecipesTab({ runtime, content }: { runtime: RuntimeStore; cont
       <table className="gm-recipe-table">
         <thead>
           <tr>
-            <th scope="col">輸入</th>
-            <th scope="col">結果</th>
-            <th scope="col">融合需要</th>
+            <th scope="col">魔法</th>
+            <th scope="col">魔法陣</th>
+            <th scope="col">機率</th>
           </tr>
         </thead>
         <tbody>
           {shown.map((r) => (
             <tr key={r.id}>
-              <td>{r.inputNames.join(' ＋ ')}</td>
-              <td>
-                {r.outcomes.map((o, i) => (
-                  <div key={i}>
-                    {o.label} {o.pct}%{o.rare && <span className="gm-rare">稀有</span>}
-                  </div>
-                ))}
-              </td>
-              <td>{r.fusionText}</td>
+              <td>{r.name} Lv.{r.tier}{r.rare && <span className="gm-rare">稀有</span>}</td>
+              <td>{r.layout}</td>
+              <td>{r.pct}%</td>
             </tr>
           ))}
         </tbody>

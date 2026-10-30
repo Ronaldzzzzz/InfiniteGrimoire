@@ -200,7 +200,7 @@ export function GmWindow({ api, sync, runtime, content, username }: Props) {
               <div className="gm-pane" role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
                 {tab === 'items' && <GmInventoryTab ctx={ctx} sync={sync} runtime={runtime} content={content} />}
                 {tab === 'zones' && <GmMapTab ctx={ctx} sync={sync} content={content} />}
-                {tab === 'recipes' && <GmRecipesTab runtime={runtime} content={content} />}
+                {tab === 'recipes' && <GmRecipesTab content={content} />}
                 {tab === 'players' && <GmPlayersTab ctx={ctx} api={api} />}
               </div>
             </>

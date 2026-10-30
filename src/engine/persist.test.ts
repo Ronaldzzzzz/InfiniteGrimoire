@@ -4,11 +4,12 @@ import { content } from './content';
 import { createRng } from './rng';
 import type { GameState } from './model';
 import { createInitialState, parseState, serialize } from './persist';
-import { HARD_MAX_DEPTH, craftedId, resolveSpell } from './spells';
+import { resolveSpell } from './spells';
 
 const zone0 = content.zones[0]!.id;
 const zone1 = content.zones[1]!.id;
-const crafted = craftedId('fireball', 'mat:ember_core');
+/** an unnamed magic circle spell (fire core, a fire and a wind node) */
+const crafted = 'm:fire.3.---fw.-----.bolt';
 
 function sample(): GameState {
   return {
@@ -17,7 +18,7 @@ function sample(): GameState {
     learned: ['mana_bolt', 'fireball', crafted],
     equipped: crafted,
     levels: { fireball: 12, [crafted]: 50 },
-    revealed: ['outer'],
+    circleTier: 4,
     passives: ['ember_affinity'],
     unlockedZones: [zone0, zone1],
     defeatedBosses: [content.zones[0]!.bossId],
@@ -36,7 +37,7 @@ const roundtrip = (mutate: (o: any) => void) => {
 describe('persist', () => {
   it('initial state: mana_bolt only, first zone, nothing else', () => {
     expect(createInitialState(content)).toEqual({
-      version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
+      version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, circleTier: 2, passives: [],
       currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {},
     });
   });
@@ -66,7 +67,8 @@ describe('persist', () => {
   });
 
   it('learned: every id must resolve, no duplicates, equipped among them', () => {
-    expect(roundtrip((o) => o.learned.push(craftedId('fireball', 'nope_spell')))).toBeNull();
+    expect(roundtrip((o) => o.learned.push('m:fire.3.---fw.-----.laser'))).toBeNull();
+    expect(roundtrip((o) => o.learned.push('m:fire.3.---wf.-----.bolt'))).toBeNull(); // not the folded form
     expect(roundtrip((o) => o.learned.push('c(fireball|'))).toBeNull();
     expect(roundtrip((o) => o.learned.push('mat:ember_core'))).toBeNull();
     expect(roundtrip((o) => o.learned.push('fireball'))).toBeNull();
@@ -83,9 +85,14 @@ describe('persist', () => {
     expect(roundtrip((o) => (o.levels.fireball = 1))).not.toBeNull();
   });
 
-  it('revealed and passives: known ids, no duplicates', () => {
-    expect(roundtrip((o) => o.revealed.push('nowhere'))).toBeNull();
-    expect(roundtrip((o) => o.revealed.push('outer'))).toBeNull();
+  it('circleTier: an integer 1..10; the old revealed field is gone', () => {
+    for (const bad of [0, 11, 2.5, '4', null]) expect(roundtrip((o) => (o.circleTier = bad)), String(bad)).toBeNull();
+    expect(roundtrip((o) => delete o.circleTier)).toBeNull();
+    expect(roundtrip((o) => (o.revealed = []))).toBeNull();
+    expect(roundtrip((o) => (o.circleTier = 10))).not.toBeNull();
+  });
+
+  it('passives: known ids, no duplicates', () => {
     expect(roundtrip((o) => o.passives.push('nothing'))).toBeNull();
     expect(roundtrip((o) => o.passives.push('ember_affinity'))).toBeNull();
   });
@@ -104,20 +111,23 @@ describe('persist', () => {
   });
 });
 
-describe('old saves after the tier rework', () => {
-  it('still parses saves that hold rares and crafted spells built on them', () => {
-    const learned = [
-      'mana_bolt', 'worldfire', 'holy_judgment', 'inferno', 'fire_tornado',
-      craftedId('inferno', 'worldfire'), craftedId('fire_tornado', 'mat:sun_shard'),
-    ];
-    const state = { ...sample(), learned: [...learned, 'fireball', crafted], equipped: 'worldfire' };
+describe('old saves after the magic circle rework', () => {
+  it('old-format learned ids are rejected cleanly: crafted c(…) ids do not resolve and the save is null', () => {
+    for (const id of ['c(fireball|rock_spear)', 'c(inferno|worldfire)', 'c(fire_tornado|mat:sun_shard)']) {
+      expect(resolveSpell(id, content), id).toBeNull();
+      expect(roundtrip((o) => o.learned.push(id)), id).toBeNull();
+    }
+    // a save from before 0008 (revealed, no circleTier) is not a save any more
+    const { circleTier, ...rest } = sample();
+    void circleTier;
+    expect(parseState({ ...rest, revealed: ['outer'] }, content)).toBeNull();
+  });
+
+  it('rare and textbook ids still parse', () => {
+    const state = { ...sample(), learned: ['mana_bolt', 'worldfire', 'fireball', crafted, content.spells.inferno!.circle!], equipped: 'worldfire' };
     const parsed = parseState(JSON.parse(serialize(state)), content);
     expect(parsed).not.toBeNull();
-    for (const id of parsed!.learned) {
-      const s = resolveSpell(id, content);
-      expect(s, id).not.toBeNull();
-      expect(s!.depth, id).toBeLessThanOrEqual(HARD_MAX_DEPTH);
-    }
+    for (const id of parsed!.learned) expect(resolveSpell(id, content), id).not.toBeNull();
   });
 });
 

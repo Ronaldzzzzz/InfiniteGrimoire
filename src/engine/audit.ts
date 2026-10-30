@@ -150,7 +150,7 @@ export function validateUpload(prev: GameState, next: GameState, elapsedMs: numb
   // server-owned fields
   if (!sameSet(prev.learned, next.learned)) reasons.push('learned spells changed');
   if (canonical(prev.levels) !== canonical(next.levels)) reasons.push('levels changed');
-  if (!sameSet(prev.revealed, next.revealed)) reasons.push('revealed changed');
+  if (prev.circleTier !== next.circleTier) reasons.push('circleTier changed');
   if (!sameSet(prev.passives, next.passives)) reasons.push('passives changed');
   if (canonical(prev.synthesisLog) !== canonical(next.synthesisLog)) reasons.push('synthesisLog changed');
   if (canonical(prev.clearedStages) !== canonical(next.clearedStages)) reasons.push('clearedStages changed');
@@ -158,6 +158,7 @@ export function validateUpload(prev: GameState, next: GameState, elapsedMs: numb
   if (canonical(prev.clearTimes) !== canonical(next.clearTimes)) reasons.push('clearTimes changed');
   if (prev.awayAt !== next.awayAt) reasons.push('awayAt changed');
   if (prev.offlineUntil !== next.offlineUntil) reasons.push('offlineUntil changed');
+  for (const id of next.learned) if (!resolveSpell(id, content)) reasons.push(`learned spell ${id} does not resolve`);
   if (!next.learned.includes(next.equipped)) reasons.push(`equipped spell ${next.equipped} is not learned`);
   if (!next.unlockedZones.includes(next.currentZone)) reasons.push(`currentZone ${next.currentZone} is not unlocked`);
   const here = content.zones.find((z) => z.id === next.currentZone);

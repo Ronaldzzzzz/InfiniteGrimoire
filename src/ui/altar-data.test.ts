@@ -70,6 +70,6 @@ describe('revealOf', () => {
   });
 
   it('returns null for non-synthesis results', () => {
-    expect(revealOf({ kind: 'revealed', region: 'x' }, content, [])).toBeNull();
+    expect(revealOf({ kind: 'circleOpened', tier: 4 }, content, [])).toBeNull();
   });
 });

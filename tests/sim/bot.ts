@@ -1,7 +1,6 @@
 import { createBattle, stepBattle, STEP_MS, type BattleEvent, type BattleState } from '../../src/engine/combat';
 import { canDamage } from '../../src/engine/combat-rules';
 import { content } from '../../src/engine/content';
-import { requiredGrade } from '../../src/engine/crafting';
 import { empowerCost } from '../../src/engine/empower';
 import { elementEquivalent, upgradeElement } from '../../src/engine/inventory';
 import type { Effect, GameState, Spell, Zone } from '../../src/engine/model';
@@ -9,11 +8,15 @@ import { parseState } from '../../src/engine/persist';
 import { createRng } from '../../src/engine/rng';
 import { MAX_SPELL_LEVEL, resolveSpell, spellAtLevel } from '../../src/engine/spells';
 import { BOSS_LIMIT_MS, highestPlayable, isBossStage, stageCount } from '../../src/engine/stages';
-import { visibleRegions } from '../../src/engine/tree';
+import { tierUnlockOf } from '../../src/engine/circle';
 import { ELEMENT_ORDER, elementItem, GRADE_UPGRADE_COST, gradeValue, type ElementId, type ItemId } from '../../src/engine/types';
 import { createApp } from '../../worker/app';
 import { MemoryStore } from '../../worker/store';
 import { soloBossDps } from './measure';
+
+// The old two-input synthesis is gone (magic circle Task 3); the route tests that drive this bot are skipped until
+// Task 4 rewrites it to draw magic circles. Only what keeps this module loading changed here.
+const requiredGrade = (depth: number): number => Math.min(5, Math.max(1, depth));
 
 /** A pure element route, the fire + wind combination route, or mana_bolt only (null). */
 export type Route = ElementId | 'mixed' | null;
@@ -259,9 +262,8 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
   };
 
   const revealStep = async (): Promise<void> => {
-    const visible = visibleRegions(game, content);
     for (const key of Object.values(content.keyItems)) {
-      if (count(key.id) > 0 && !visible.has(key.reveals)) await act('/api/reveal', { keyItem: key.id });
+      if (count(key.id) > 0 && (tierUnlockOf(key.id) ?? 0) > game.circleTier) await act('/api/key-item', { keyItem: key.id });
     }
   };
 
@@ -390,7 +392,7 @@ export async function runBot(opts: BotOptions): Promise<BotResult> {
     clearedZones: content.zones.filter((z) => game.defeatedBosses.includes(z.bossId)).map((z) => z.id),
     learned: game.learned,
     levels: game.levels,
-    revealed: game.revealed,
+    revealed: [],
     simMs,
     clearedAt,
     learnedAt,

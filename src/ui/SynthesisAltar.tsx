@@ -1,6 +1,5 @@
 import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { fusionNeeds, rareStillHidden, rollsRare, SYNTH_SLOTS } from '../engine/crafting';
-import { OVERLOAD_SPELL, type Content } from '../engine/model';
+import { OVERLOAD_SPELL, type Content, type GameState } from '../engine/model';
 import { GRADE_NAMES } from '../engine/types';
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
@@ -9,6 +8,15 @@ import { BANNER_MS, ElementDots } from './DiscoveryBanner';
 import { ELEMENT_NAMES, empowerLabel, itemName, slotLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { comboBlocker, loadLastCombo, saveLastCombo } from './last-combo';
 import { useRuntime, type RuntimeStore } from './useGame';
+
+/**
+ * Retired two-input altar: the server's recipe synthesis is gone (magic circles replace it, plan Task 5), so the
+ * recipe-side helpers it used are inert stand-ins and its sync call refuses at once.
+ */
+const SYNTH_SLOTS = 2;
+const fusionNeeds = (_game: GameState, _inputs: string[], _content: Content): string[] => [];
+const rareStillHidden = (_game: GameState, _inputs: string[], _content: Content): boolean => false;
+const rollsRare = (_inputs: string[], _content: Content): boolean => false;
 
 /** A slot holds an inventory item (element or material) or a learned spell id. */
 export type Slots = (string | null)[];
@@ -261,7 +269,7 @@ export const SynthesisAltar = memo(function SynthesisAltar({
       latest.current.onSlotsChange(emptySlots());
       latest.current.onResult?.(applied);
       setMessage(reveal?.detail ?? synthMessage(applied, content, sorted));
-      setRetry(hidden && (applied.kind === 'duplicate' || (applied.kind === 'learned' && applied.crafted)));
+      setRetry(hidden && (applied.kind === 'duplicate' || (applied.kind === 'learned' && 'crafted' in applied && applied.crafted)));
       if (reveal) {
         const n = ++seq.current;
         setShown({ seq: n, reveal, spell, look: spell ? lookOf(spell) : null });

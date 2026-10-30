@@ -5,8 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
-import { MIN_FUSE_MS, RARE_MISS_MESSAGE, RETRY_HINT, REVEAL_MS, SynthesisAltar, type Slots } from './SynthesisAltar';
-import { craftedId } from '../engine/spells';
+import { MIN_FUSE_MS, REVEAL_MS, SynthesisAltar, type Slots } from './SynthesisAltar';
 import { fakeRuntime } from './test-runtime';
 import * as lastCombo from './last-combo';
 
@@ -39,32 +38,9 @@ function setup(
 }
 
 describe('SynthesisAltar', () => {
-  describe('fusion cost of two spells', () => {
-    const needs = () => screen.queryByLabelText('融合所需元素');
-    const spells = { learned: ['mana_bolt', 'fireball', 'wind_blade'] };
-
-    it('lists every element the fusion also needs with how many are held, and blocks 合成 while short', () => {
-      const a = setup({ ...spells, inventory: { 'el:fire:1': 1 } }, ['fireball', 'wind_blade']);
-      expect(needs()!.textContent).toBe('另外需要：初階火 ×1（持有 1）、初階風 ×1（持有 0）');
-      expect(needs()!.querySelectorAll('.short')).toHaveLength(1);
-      expect(needs()!.querySelector('.short')!.textContent).toContain('初階風');
-      expect(go().disabled).toBe(true);
-      act(() => a.rt.set({ game: { inventory: { 'el:fire:1': 1, 'el:wind:1': 1 } } }));
-      expect(needs()!.querySelectorAll('.short')).toHaveLength(0);
-      expect(go().disabled).toBe(false);
-    });
-
-    it('shows nothing when no fusion cost applies', () => {
-      setup({ ...spells, learned: [...spells.learned, 'fire_tornado'] }, ['fireball', 'wind_blade']);
-      expect(needs()).toBeNull(); // the named result is known: a duplicate costs no fusion
-      cleanup();
-      setup({ learned: ['mana_bolt', 'fireball'], inventory: { 'el:wind:2': 1 } }, ['fireball', 'el:wind:2']);
-      expect(needs()).toBeNull(); // an element input: no fusion cost
-      cleanup();
-      setup(spells, ['fireball', null]);
-      expect(needs()).toBeNull();
-    });
-  });
+  // The altar is retired (plan Task 5 replaces it with the magic circle parchment): the server's recipes are gone, so its
+  // fusion-cost line and its random-recipe miss handling (rareStillHidden / rollsRare) have nothing to show any more and
+  // their tests were removed with crafting.ts. The tests below cover what the parchment will reuse (flow, reveal, timers).
 
   it('enables 合成 only with two affordable, known inputs and no pending action', () => {
     const inv = { 'el:fire:1': 1, 'el:wind:1': 1 };
@@ -83,69 +59,6 @@ describe('SynthesisAltar', () => {
     expect(go().textContent).toBe('嬗變中…');
     act(() => a.rt.set({ synthPending: false, game: { inventory: {} } }));
     expect(go().disabled).toBe(true);
-  });
-
-  describe('a miss on a random recipe', () => {
-    const retry = () => document.querySelector('.synth-retry')?.textContent ?? null;
-    const missed = craftedId('corona_scorch', 'mat:ember_core');
-    const play = async (learned: string[], reply: ActionResult) => {
-      vi.useFakeTimers();
-      const a = setup({ learned: ['mana_bolt', ...learned], inventory: { 'mat:ember_core': 1 } }, ['corona_scorch', 'mat:ember_core'], async () => reply);
-      fireEvent.click(go());
-      await flush();
-      act(() => vi.advanceTimersByTime(MIN_FUSE_MS));
-      return a;
-    };
-
-    it('a rare-recipe miss that overloads reads as a plain miss, not 魔力過載 (F2)', async () => {
-      for (const reply of [
-        { kind: 'overload', spellId: 'mana_overload' },
-        { kind: 'duplicate', spellId: 'mana_overload', refunded: [] },
-      ] as ActionResult[]) {
-        const a = await play(['corona_scorch'], reply);
-        expect(message()).toBe(RARE_MISS_MESSAGE);
-        expect(message()).not.toContain('過載');
-        expect(reveal()).toBeNull();
-        expect(retry()).toBe(RETRY_HINT);
-        expect(a.onResult).not.toHaveBeenCalled(); // so no 魔力過載 banner either
-        expect(a.onSlotsChange).toHaveBeenCalledWith([null, null]);
-        cleanup();
-      }
-      // once the rare is learned the miss stays neutral, just without the hint
-      await play(['corona_scorch', 'worldfire'], { kind: 'overload', spellId: 'mana_overload' });
-      expect(message()).toBe(RARE_MISS_MESSAGE);
-      expect(retry()).toBeNull();
-    });
-
-    it('an overload outside a rare recipe still says 魔力過載', async () => {
-      vi.useFakeTimers();
-      const a = setup({ learned: ['mana_bolt', 'fireball', 'wind_blade'], inventory: { 'el:fire:1': 1, 'el:wind:1': 1 } }, ['fireball', 'wind_blade'],
-        async () => ({ kind: 'overload', spellId: 'mana_overload' }));
-      fireEvent.click(go());
-      await flush();
-      act(() => vi.advanceTimersByTime(MIN_FUSE_MS));
-      expect(within(reveal()!).getByText('魔力過載！')).toBeTruthy();
-      expect(a.onResult).toHaveBeenCalled();
-    });
-
-    it('hints that trying again may turn out differently, without naming the result', async () => {
-      await play(['corona_scorch'], { kind: 'learned', spellId: missed, crafted: true });
-      expect(retry()).toBe(RETRY_HINT);
-      expect(retry()).not.toContain('焚世');
-    });
-
-    it('also hints after a duplicate miss', async () => {
-      await play(['corona_scorch', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
-      expect(retry()).toBe(RETRY_HINT);
-    });
-
-    it('stays quiet when the roll hits, or when the hidden result is already learned', async () => {
-      await play(['corona_scorch'], { kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
-      expect(retry()).toBeNull();
-      cleanup();
-      await play(['corona_scorch', 'worldfire', missed], { kind: 'duplicate', spellId: missed, refunded: [] });
-      expect(retry()).toBeNull();
-    });
   });
 
   it('synthesizes sorted inputs and reveals only after the reply and MIN_FUSE_MS', async () => {

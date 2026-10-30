@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import { createInitialState } from '../engine/persist';
-import { craftedId } from '../engine/spells';
 import { spellPickerGroups, tierRangeLabel, zonePickerRows } from './picker-data';
 
 const LEARNED = ['mana_bolt', 'flame_burst', 'fireball', 'fire_tornado', 'wind_blade', 'tailwind'];
@@ -40,7 +39,7 @@ describe('spellPickerGroups', () => {
   });
 
   it('lists crafted spells by their derived name', () => {
-    const id = craftedId('fireball', 'mat:ember_core');
+    const id = 'm:fire.3.---fw.-----.bolt';
     const rows = spellPickerGroups(game({ learned: ['mana_bolt', id] }), content, 'tier')[0]!.rows;
     const row = rows.find((r) => r.id === id)!;
     expect(row.name).not.toBe(id);

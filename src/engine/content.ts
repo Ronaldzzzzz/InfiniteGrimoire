@@ -4,7 +4,6 @@ import type { ElementId } from './types';
 import { OVERLOAD_SPELL, RUNE_IDS, STARTING_SPELL } from './model';
 import type { CircleRules, Content } from './model';
 import spellsJson from '../data/content/spells.json';
-import recipesJson from '../data/content/recipes.json';
 import monstersJson from '../data/content/monsters.json';
 import zonesJson from '../data/content/zones.json';
 import materialsJson from '../data/content/materials.json';
@@ -82,12 +81,6 @@ const spellSchema = z.object({
   school,
   chant: str.optional(),
   circle: z.string().regex(CIRCLE_ID_RE, { error: (iss) => `invalid circle id "${String(iss.input)}"` }).optional(),
-});
-
-const recipeSchema = z.object({
-  id: str,
-  inputs: z.tuple([str, str]),
-  outcomes: z.array(z.object({ spellId: z.string().nullable(), weight: z.number().positive() })).min(1),
 });
 
 const monsterSchema = z.object({
@@ -174,10 +167,9 @@ function checkUnique(label: string, ids: string[], issues: string[]) {
   }
 }
 
-export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zones' | 'materials' | 'keyItems' | 'passives' | 'regions', unknown>): Content {
+export function loadContent(raw: Record<'spells' | 'monsters' | 'zones' | 'materials' | 'keyItems' | 'passives' | 'regions', unknown>): Content {
   const issues: string[] = [];
   const spells = parseList('spells', spellSchema, raw.spells, issues);
-  const recipes = parseList('recipes', recipeSchema, raw.recipes, issues);
   const monsters = parseList('monsters', monsterSchema, raw.monsters, issues);
   const zones = parseList('zones', zoneSchema, raw.zones, issues);
   const materials = parseList('materials', materialSchema, raw.materials, issues);
@@ -186,7 +178,6 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
   const regions = parseList('regions', regionSchema, raw.regions, issues);
 
   checkUnique('spells', spells.map((s) => s.id), issues);
-  checkUnique('recipes', recipes.map((s) => s.id), issues);
   checkUnique('monsters', monsters.map((s) => s.id), issues);
   checkUnique('zones', zones.map((s) => s.id), issues);
   checkUnique('items', [...materials, ...keyItems].map((s) => s.id), issues);
@@ -194,7 +185,6 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
   checkUnique('regions', regions.map((s) => s.id), issues);
 
   const spellIds = new Set(spells.map((s) => s.id));
-  const spellById = new Map(spells.map((s) => [s.id, s]));
   const monsterIds = new Set(monsters.map((m) => m.id));
   const regionIds = new Set(regions.map((r) => r.id));
   const materialIds = new Set(materials.map((m) => m.id));
@@ -218,14 +208,6 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
   }
   for (const e of ELEMENT_ORDER) {
     if (!baseSpells[e]) issues.push(`spells: no spell has baseOf "${e}"`);
-  }
-
-  const comboOwner = new Map<string, string>();
-  for (const r of recipes) {
-    const key = [...r.inputs].sort().join('+');
-    const prior = comboOwner.get(key);
-    if (prior) issues.push(`recipe ${r.id}: same inputs as recipe ${prior}`);
-    else comboOwner.set(key, r.id);
   }
 
   const lightDark = new Set<string>(LIGHT_DARK_SPELLS);
@@ -258,31 +240,6 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
   }
   for (const p of passives) {
     if (p.node.tree === 'lightdark') issues.push(`passive ${p.id}: passives may not use the lightdark tree`);
-  }
-
-  for (const r of recipes) {
-    for (const i of r.inputs) {
-      if (!spellIds.has(i) && !(ITEM_ID_RE.test(i) && knownItem(i))) issues.push(`recipe ${r.id}: unknown input "${i}"`);
-    }
-    for (const o of r.outcomes) {
-      if (o.spellId !== null && !spellIds.has(o.spellId)) issues.push(`recipe ${r.id}: unknown outcome spell "${o.spellId}"`);
-    }
-  }
-
-  for (const s of spells) {
-    if (!s.rare) continue;
-    const makers = recipes.filter((r) => r.outcomes.some((o) => o.spellId === s.id));
-    if (makers.length === 0) issues.push(`rare spell "${s.id}" has no recipe that produces it`);
-    for (const r of makers) {
-      if (!r.outcomes.some((o) => o.spellId === null)) issues.push(`rare spell "${s.id}" comes from recipe ${r.id}, which has no fall-through (spellId null) outcome`);
-      const spellIn = r.inputs.filter((i) => spellById.has(i)), matIn = r.inputs.filter((i) => i.startsWith('mat:'));
-      const w = (id: string | null) => r.outcomes.find((o) => o.spellId === id)?.weight;
-      if (r.inputs.length !== 2 || spellIn.length !== 1 || matIn.length !== 1 || spellById.get(spellIn[0]!)?.tier !== 9) {
-        issues.push(`rare spell "${s.id}" recipe ${r.id} must be one tier 9 named spell plus one material`);
-      } else if (r.outcomes.length !== 2 || w(s.id) !== 1 || w(null) !== 49) {
-        issues.push(`rare spell "${s.id}" recipe ${r.id} must be 1 : 49 (rare : null)`);
-      }
-    }
   }
 
   for (const e of ELEMENT_ORDER) {
@@ -337,7 +294,6 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
 
   return {
     spells: Object.fromEntries(spells.map((s) => [s.id, s])),
-    recipes,
     monsters: Object.fromEntries(monsters.map((m) => [m.id, m])),
     zones: [...zones].sort((a, b) => a.order - b.order),
     materials: Object.fromEntries(materials.map((m) => [m.id, m])),
@@ -350,7 +306,6 @@ export function loadContent(raw: Record<'spells' | 'recipes' | 'monsters' | 'zon
 
 export const content: Content = loadContent({
   spells: spellsJson,
-  recipes: recipesJson,
   monsters: monstersJson,
   zones: zonesJson,
   materials: materialsJson,

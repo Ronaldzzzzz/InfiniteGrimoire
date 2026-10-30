@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
 import { empower, empowerCost, empowerGrade } from './empower';
-import { attackCeiling, craftedId, MAX_SPELL_LEVEL, resolveSpell, spellAtLevel, EMPOWER_MAX } from './spells';
+import { MAX_SPELL_LEVEL, resolveSpell, spellAtLevel, EMPOWER_MAX } from './spells';
 import type { GameState } from './model';
 
 const mkState = (inventory: Record<string, number>, learned: string[], levels: Record<string, number> = {}): GameState => ({
-  version: 2, inventory, learned, equipped: 'mana_bolt', levels, revealed: [], passives: [],
+  version: 2, inventory, learned, equipped: 'mana_bolt', levels, circleTier: 2, passives: [],
   currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {},
 });
 const spell = (id: string) => resolveSpell(id, content)!;
@@ -71,9 +71,9 @@ describe('empower', () => {
     expect(at49.result).toEqual({ kind: 'empowered', level: 50 });
   });
 
-  it('works for crafted spells', () => {
-    const id = craftedId('fireball', 'lightning');
-    const s = mkState({ 'el:fire:1': 2, 'el:thunder:1': 2 }, ['fireball', 'lightning', id]);
+  it('works for magic circle spells', () => {
+    const id = 'm:fire.3.---fw.-----.bolt';
+    const s = mkState({ 'el:fire:1': 2, 'el:wind:1': 2 }, ['fireball', id]);
     const { state, result } = empower(s, id, content);
     expect(result).toEqual({ kind: 'empowered', level: 2 });
     expect(state.levels[id]).toBe(2);
@@ -81,14 +81,10 @@ describe('empower', () => {
   });
 
   it('max level stays bounded', () => {
-    const names = ['fireball', 'wind_blade', 'lightning'];
-    let id = names[0]!;
-    for (let i = 0; i < 8; i++) id = craftedId(id, names[(i + 1) % 3]!);
-    const deep = resolveSpell(id, content);
-    expect(deep).not.toBeNull();
-    expect(deep!.depth).toBe(8);
-    const max = spellAtLevel(deep!, MAX_SPELL_LEVEL);
-    expect(max.attack).toBeLessThanOrEqual(attackCeiling(deep!.tier, content) * EMPOWER_MAX);
-    expect(max.tier).toBeLessThanOrEqual(9);
+    const top = resolveSpell('m:fire.10.fffff.-ffff.meteor', content);
+    expect(top).not.toBeNull();
+    const max = spellAtLevel(top!, MAX_SPELL_LEVEL);
+    expect(max.attack).toBeCloseTo(top!.attack * EMPOWER_MAX);
+    expect(max.tier).toBe(10);
   });
 });

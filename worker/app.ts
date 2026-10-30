@@ -1,6 +1,9 @@
 import { Hono, type Context } from 'hono';
 import { validateUpload } from '../src/engine/audit';
-import { comboKey, synthesize, SYNTH_SLOTS } from '../src/engine/crafting';
+import { circleResultKey, parsePlacement, synthesizeCircle } from '../src/engine/circle-synth';
+import type { CircleReply, CircleResult } from '../src/engine/circle-synth';
+import { canonicalCircle } from '../src/engine/circle';
+import { circleRules } from '../src/engine/content';
 import { empower } from '../src/engine/empower';
 import type { Content, GameState } from '../src/engine/model';
 import { createInitialState, parseState, readStored, serialize } from '../src/engine/persist';
@@ -8,8 +11,8 @@ import { claimOffline, markAway } from '../src/engine/offline';
 import { claimStage } from '../src/engine/stage-clear';
 import { stageCount } from '../src/engine/stages';
 import type { Rng } from '../src/engine/rng';
-import { CRAFTED_MAX_LEN } from '../src/engine/spells';
-import { depthCap, revealRegion, unlockPassive } from '../src/engine/tree';
+import { SPELL_ID_MAX_LEN } from '../src/engine/spells';
+import { unlockPassive, useKeyItem } from '../src/engine/tree';
 import { ITEM_ID_RE } from '../src/engine/types';
 import { hashToken, newToken } from './auth';
 import type { GmActionKind, PlayerRow, Store } from './store';
@@ -35,6 +38,7 @@ export interface AppDeps {
 export const GM_TOKEN_TTL_MS = 30 * 60_000;
 /** Most of one item a GM edit may set. */
 export const GM_ITEM_MAX = 999_999;
+/** reveal_all (its old name, from the fog it used to lift) opens every magic circle tier. */
 const GM_ZONE_OPS = { unlock_all: 'unlock_zones', reveal_all: 'reveal_all', boss_ready: 'boss_ready' } as const;
 type GmZoneOp = keyof typeof GM_ZONE_OPS;
 
@@ -64,7 +68,7 @@ export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const USER_FAIL_LIMIT = 5;
 export const IP_FAIL_LIMIT = 20;
 const HOUR_MS = 60 * 60 * 1000;
-const ACTION_PATHS = ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/stage-clear', '/api/away', '/api/offline', '/api/discoveries'] as const;
+const ACTION_PATHS = ['/api/circle', '/api/empower', '/api/key-item', '/api/passive', '/api/stage-clear', '/api/away', '/api/offline', '/api/discoveries'] as const;
 
 /** Client IP for rate limits: Cloudflare's header, or 'local' in tests and `wrangler dev` without it. */
 function clientIp(c: Ctx): string {
@@ -370,7 +374,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       ...anchor,
       learned: current.learned,
       levels: current.levels,
-      revealed: current.revealed,
+      circleTier: current.circleTier,
       passives: current.passives,
       synthesisLog: current.synthesisLog,
       clearedStages: current.clearedStages,
@@ -432,11 +436,12 @@ export function createApp(deps: AppDeps): Hono<Env> {
    * audited first; an action the engine rejects is a 422 with its result and writes nothing (it is
    * not counted as a cheating attempt). onCommit runs after a successful commit.
    */
-  async function serverAction<R extends { kind: string }>(
+  async function serverAction<R extends { kind: string }, F = R>(
     c: Ctx,
     body: Record<string, unknown>,
     apply: (state: GameState, ctx: { savedAt: number }) => { state: GameState; result: R },
-    onCommit?: (playerId: string, t: number, result: R) => Promise<R | void>,
+    /** may replace the result the client sees (e.g. a rare learn gets its discovery); `F` is that reply's type */
+    onCommit?: (playerId: string, t: number, result: R) => Promise<F | void>,
     opts: { resetAnchor?: boolean; beforeCommit?: (playerId: string, t: number) => Promise<void> } = {},
   ): Promise<Response> {
     const checked = await checkUpload(c, body);
@@ -462,32 +467,31 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ result: final, state, revision: checked.revision + 1 });
   }
 
-  /** A string id field of an action body (spell ids may be crafted, so up to CRAFTED_MAX_LEN). */
+  /** A string id field of an action body (spell ids may be canonical circle ids, so up to SPELL_ID_MAX_LEN). */
   const idField = (body: Record<string, unknown>, field: string): string => {
     const v = body[field];
-    if (typeof v !== 'string' || v.length === 0 || v.length > CRAFTED_MAX_LEN) throw new HttpError(400, `invalid ${field}`);
+    if (typeof v !== 'string' || v.length === 0 || v.length > SPELL_ID_MAX_LEN) throw new HttpError(400, `invalid ${field}`);
     return v;
   };
 
-  app.post('/api/synthesize', async (c) => {
+  /**
+   * Draws a magic circle. The placement is untrusted: a malformed one is 400; one that breaks the rules (with the
+   * server's own circle tier and runes) or that the inventory cannot pay is a 422 refusal (not counted as cheating).
+   */
+  app.post('/api/circle', async (c) => {
     const body = await readJson(c);
-    const inputs = body.inputs;
-    if (
-      !Array.isArray(inputs) ||
-      inputs.length > SYNTH_SLOTS ||
-      !inputs.every((i) => typeof i === 'string' && i.length <= CRAFTED_MAX_LEN)
-    ) {
-      throw new HttpError(400, 'invalid inputs');
-    }
-    const list = inputs as string[];
-    return serverAction(
+    const placement = parsePlacement(body.placement);
+    if (!placement) throw new HttpError(400, 'invalid placement');
+    return serverAction<CircleResult, CircleReply>(
       c,
       body,
-      (state) => synthesize(state, list, content, deps.rng(), { depthCap: depthCap(state, content) }),
-      async (playerId, t, result) => {
-        const resultKey = 'spellId' in result ? `${result.kind}:${result.spellId}` : result.kind;
-        await store.recordSynthesis(playerId, t, comboKey(list), resultKey);
-        if (result.kind !== 'learned' || !content.spells[result.spellId]?.rare) return;
+      (state) => synthesizeCircle(state, placement, content, deps.rng()),
+      async (playerId, t, result): Promise<CircleReply | void> => {
+        if (result.kind === 'rejected') return;
+        await store.recordSynthesis(playerId, t, canonicalCircle(placement, result.form), circleResultKey(result));
+        // only a new rare learn tells the client about the discovery; a known rare roll is an ordinary repeat
+        if (result.kind === 'known' && result.rare) return { kind: 'known', spellId: result.spellId, form: result.form };
+        if (result.kind !== 'learned' || !result.rare) return;
         // decided by the DB insert, and only after the save committed; excluded players (suspicious, GM-used) learn but are not recorded
         // the learn is already committed: a failing discovery write must not turn it into a 500
         try {
@@ -509,10 +513,10 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return serverAction(c, body, (state) => empower(state, spellId, content));
   });
 
-  app.post('/api/reveal', async (c) => {
+  app.post('/api/key-item', async (c) => {
     const body = await readJson(c);
     const keyItem = idField(body, 'keyItem');
-    return serverAction(c, body, (state) => revealRegion(state, keyItem, content));
+    return serverAction(c, body, (state) => useKeyItem(state, keyItem, content));
   });
 
   app.post('/api/passive', async (c) => {
@@ -602,7 +606,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
         case 'unlock_all':
           return { ...state, unlockedZones: content.zones.map((z) => z.id) };
         case 'reveal_all':
-          return { ...state, revealed: content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id) };
+          return { ...state, circleTier: Math.max(state.circleTier, ...Object.values(circleRules.tierUnlocks)) };
         case 'boss_ready': {
           const zone = content.zones.find((z) => z.id === state.currentZone);
           if (!zone) return state;

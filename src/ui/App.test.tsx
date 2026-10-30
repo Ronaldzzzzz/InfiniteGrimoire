@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import type { GameRuntime } from '../game/runtime';
 import type { ActionResult, ApiClient } from '../game/api';
-import { craftedId, resolveSpell } from '../engine/spells';
+import { resolveSpell } from '../engine/spells';
 import type { SyncController } from '../game/sync';
 import { App } from './App';
 import { fakeRuntime } from './test-runtime';
@@ -130,7 +130,7 @@ describe('App layout', () => {
   });
 
   it('using a key item from the battle view switches back to the tree tab', async () => {
-    setup({ 'key:storm_heart': 1 }, ['mana_bolt'], { kind: 'revealed', region: 'outer' });
+    setup({ 'key:storm_heart': 1 }, ['mana_bolt'], { kind: 'circleOpened', tier: 4 });
     fireEvent.click(screen.getByRole('tab', { name: '魔法筆記' }));
     expect(screen.getByRole('tab', { name: '魔法筆記' }).getAttribute('aria-selected')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: /使用風暴之心/ }));
@@ -164,8 +164,9 @@ describe('App layout', () => {
       expect(screen.getByRole('tab', { name }).getAttribute('aria-selected')).toBe('true');
       expect(slotTexts()).toEqual(['火・初階', '空']);
     }
+    // the light/dark tab draws its own tree (no fog since the magic circle rework)
     fireEvent.click(screen.getByRole('tab', { name: '光與暗' }));
-    expect(screen.getAllByLabelText('迷霧').length).toBe(1);
+    expect(screen.getByRole('button', { name: new RegExp(content.spells.holy_judgment!.name) })).toBeTruthy();
   });
 
   it('puts a clicked element cell into the first empty slot, then the next one', () => {
@@ -201,7 +202,7 @@ describe('App layout', () => {
   });
 
   async function learnCrafted() {
-    const id = craftedId('fireball', 'wind_blade');
+    const id = 'm:fire.3.---ef.-----.bolt';
     const h = setup({ 'el:fire:1': 3 }, ['mana_bolt', 'fireball', 'wind_blade']);
     fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
     placeFromTree(content.spells.wind_blade!.name);
@@ -302,7 +303,7 @@ describe('App layout', () => {
     expect(slotTexts()).toEqual(['火・初階', content.spells.wind_blade!.name]);
     expect(screen.queryByText(`已放入合成台：${content.spells.fireball!.name}`)).toBeNull();
     pending(false);
-    reply({ kind: 'learned', spellId: craftedId('fireball', 'wind_blade'), crafted: true });
+    reply({ kind: 'learned', spellId: 'm:fire.3.---ef.-----.bolt', crafted: true });
     await waitFor(() => expect(slotTexts()).toEqual(['空', '空']), { timeout: 3000 });
     expect(runtime.equip).not.toHaveBeenCalled();
   });

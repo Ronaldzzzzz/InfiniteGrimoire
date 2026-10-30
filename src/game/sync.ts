@@ -1,3 +1,4 @@
+import type { Placement } from '../engine/circle';
 import type { GameState } from '../engine/model';
 import type { OfflineResult } from '../engine/offline';
 import type { ItemId } from '../engine/types';
@@ -13,9 +14,9 @@ export type ConnStatus = 'online' | 'offline' | 'error';
 type UploadResult = 'done' | 'network' | 'auth' | 'error';
 
 export interface ActionPayloads {
-  synthesize: { inputs: ItemId[] };
+  circle: { placement: Placement };
   empower: { spellId: string };
-  reveal: { keyItem: ItemId };
+  keyItem: { keyItem: ItemId };
   passive: { passiveId: string };
   stageClear: { zoneId: string; stage: number };
   away: Record<string, never>;
@@ -319,12 +320,12 @@ export class SyncController {
 
   private send(kind: ActionKind, payload: ActionPayloads[ActionKind], game: GameState, revision: number): Promise<ActionOutcome> {
     switch (kind) {
-      case 'synthesize':
-        return this.api.synthesize(game, revision, (payload as ActionPayloads['synthesize']).inputs);
+      case 'circle':
+        return this.api.circle(game, revision, (payload as ActionPayloads['circle']).placement);
       case 'empower':
         return this.api.empower(game, revision, (payload as ActionPayloads['empower']).spellId);
-      case 'reveal':
-        return this.api.reveal(game, revision, (payload as ActionPayloads['reveal']).keyItem);
+      case 'keyItem':
+        return this.api.useKeyItem(game, revision, (payload as ActionPayloads['keyItem']).keyItem);
       case 'passive':
         return this.api.unlockPassive(game, revision, (payload as ActionPayloads['passive']).passiveId);
       case 'stageClear': {
@@ -387,7 +388,16 @@ export class SyncController {
     return p;
   }
 
-  synthesize(inputs: ItemId[]): Promise<ActionResult | null> {
-    return this.action('synthesize', { inputs });
+  /** Draws a magic circle on the server (POST /api/circle). */
+  synthesizeCircle(placement: Placement): Promise<ActionResult | null> {
+    return this.action('circle', { placement });
+  }
+
+  /**
+   * The retired two-input altar: the server has no endpoint for it any more, so this refuses at once without a request.
+   * @deprecated kept only until the magic circle parchment replaces SynthesisAltar (plan Task 5)
+   */
+  async synthesize(_inputs: ItemId[]): Promise<ActionResult | null> {
+    return { kind: 'rejected', reason: 'retired' };
   }
 }

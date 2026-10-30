@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../engine/content';
-import { craftedId } from '../engine/spells';
 import { AFFINITY_LABEL, empowerLabel, itemCounts, itemName, passiveRequirementLabel, slotLabel, spellLabel, synthMessage } from './messages';
 
-const crafted = craftedId('fireball', 'mat:ember_core');
+const crafted = 'm:fire.3.---fw.-----.bolt';
 
 describe('synthMessage', () => {
   it('formats every synthesis result kind', () => {
@@ -24,14 +23,20 @@ describe('synthMessage', () => {
   });
 
   it('names the grade a grade refusal needed', () => {
-    // fire_tornado + wind_blade is depth 2: its element inputs must be 中階
-    expect(synthMessage({ kind: 'rejected', reason: 'grade' }, content, ['el:fire:1', 'fire_tornado'])).toBe('元素階級不夠，需要中階以上');
-    expect(synthMessage({ kind: 'rejected', reason: 'grade' }, content)).toBe('元素階級不夠');
+    // the retired altar's grade refusal no longer knows the grade (there are no recipes to derive it from)
+    expect(synthMessage({ kind: 'rejected', reason: 'grade' }, content, ['el:fire:1', 'fire_tornado'])).toBe('元素階級不夠');
+    expect(synthMessage({ kind: 'rejected', reason: 'retired' }, content)).toBe('合成台改版中，請稍候改用魔法陣');
   });
 
   it('formats the other server actions', () => {
     expect(synthMessage({ kind: 'empowered', level: 3 }, content)).toBe('強化成功：強化 +2');
-    expect(synthMessage({ kind: 'revealed', region: 'outer' }, content)).toBe('迷霧散開了');
+    expect(synthMessage({ kind: 'circleOpened', tier: 4 }, content)).toBe('魔法陣開放到 Lv.4');
+    expect(synthMessage({ kind: 'learned', spellId: 'm:fire.2.----f.-----.bolt', form: 'bolt' }, content)).toBe('習得新魔法：火球');
+    expect(synthMessage({ kind: 'known', spellId: 'm:fire.2.----f.-----.bolt', form: 'bolt' }, content)).toBe('已經會了 火球');
+    expect(synthMessage({ kind: 'failed', form: 'bolt' }, content)).toBe('魔法陣崩解了……元素已經消耗');
+    expect(synthMessage({ kind: 'rejected', reason: 'overCap' }, content)).toBe('超過核心上限');
+    expect(synthMessage({ kind: 'rejected', reason: 'overUnlocked' }, content)).toBe('尚未開放');
+    expect(synthMessage({ kind: 'rejected', reason: 'noEffect' }, content)).toBe('魔法陣已經開放到這一階了');
     expect(synthMessage({ kind: 'unlocked' }, content)).toBe('被動已解鎖');
     expect(synthMessage({ kind: 'gm' }, content)).toBe('已套用');
     expect(synthMessage({ kind: 'rejected', reason: 'maxLevel' }, content)).toBe('已經強化到最高等級');

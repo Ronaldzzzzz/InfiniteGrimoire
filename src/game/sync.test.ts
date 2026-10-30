@@ -2,12 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import { createRng } from '../engine/rng';
 import { createInitialState } from '../engine/persist';
+import type { Placement } from '../engine/circle';
 import { ApiError, AuthError, GmExpiredError, NetworkError, type ApiClient } from './api';
 import * as battleMod from '../engine/combat';
 import { STEP_MS } from '../engine/combat';
 import { GameRuntime } from './runtime';
 import { RETRY_MS, SyncController, UPLOAD_INTERVAL_MS } from './sync';
 
+/** a Lv.2 fire bolt placement */
+const P: Placement = { core: { element: 'fire', grade: 1 }, ring1: [{ element: 'fire', grade: 1 }, null, null, null, null], ring2: [null, null, null, null, null], runes: ['bolt', null] };
 const server = { ...createInitialState(content), equipped: 'mana_bolt', clearedStages: { mist_meadow: 5 } };
 function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
   return {
@@ -15,9 +18,9 @@ function fakeApi(over: Partial<ApiClient> = {}): ApiClient {
     createGuest: vi.fn(),
     loadSave: vi.fn(),
     upload: vi.fn(async () => ({ kind: 'ok' as const, revision: 8 })),
-    synthesize: vi.fn(),
+    circle: vi.fn(),
     empower: vi.fn(),
-    reveal: vi.fn(),
+    useKeyItem: vi.fn(),
     unlockPassive: vi.fn(),
     stageClear: vi.fn(),
     away: vi.fn(),
@@ -103,31 +106,39 @@ describe('SyncController', () => {
     await sync.uploadNow();
     expect(upload).toHaveBeenCalledTimes(1);
   });
-  it('synthesize while pending returns null and sends one request', async () => {
+  it('a circle while pending returns null and sends one request', async () => {
     const rt = mk();
     let resolve!: (v: never) => void;
     const synthesize = vi.fn(() => new Promise((r) => (resolve = r as never)));
-    const api = fakeApi({ synthesize: synthesize as never });
+    const api = fakeApi({ circle: synthesize as never });
     const sync = new SyncController(rt, api);
-    const p1 = sync.synthesize(['el:fire:1', 'el:fire:1']);
+    const p1 = sync.synthesizeCircle(P);
     expect(rt.getSnapshot().synthPending).toBe(true);
-    expect(await sync.synthesize(['el:fire:1', 'el:fire:1'])).toBeNull();
+    expect(await sync.synthesizeCircle(P)).toBeNull();
     expect(synthesize).toHaveBeenCalledTimes(1);
     await sync.uploadNow();
     expect(api.upload).not.toHaveBeenCalled();
-    resolve({ kind: 'ok', result: { kind: 'dormant' }, state: server, revision: 10 } as never);
+    resolve({ kind: 'ok', result: { kind: 'failed', form: 'bolt' }, state: server, revision: 10 } as never);
     await p1;
     expect(rt.getSnapshot().synthPending).toBe(false);
   });
-  it('synthesize ok applies server state and returns result', async () => {
+  it('a circle ok applies server state and returns result', async () => {
     const rt = mk();
-    const result = { kind: 'learned' as const, spellId: 'mana_bolt', crafted: false };
-    const api = fakeApi({ synthesize: vi.fn(async () => ({ kind: 'ok' as const, result, state: server, revision: 10 })) });
+    const result = { kind: 'learned' as const, spellId: 'mana_bolt', form: 'bolt' as const };
+    const api = fakeApi({ circle: vi.fn(async () => ({ kind: 'ok' as const, result, state: server, revision: 10 })) });
     const sync = new SyncController(rt, api);
-    expect(await sync.synthesize(['el:fire:1', 'el:fire:1'])).toEqual(result);
+    expect(await sync.synthesizeCircle(P)).toEqual(result);
     expect(rt.getSnapshot().game).toBe(server);
     expect(rt.getSnapshot().revision).toBe(10);
-    expect(api.synthesize).toHaveBeenCalledWith(expect.anything(), 7, ['el:fire:1', 'el:fire:1']);
+    expect(api.circle).toHaveBeenCalledWith(expect.anything(), 7, P);
+  });
+  it('the retired altar call refuses at once without a request', async () => {
+    const rt = mk();
+    const api = fakeApi();
+    const sync = new SyncController(rt, api);
+    expect(await sync.synthesize(['el:fire:1', 'el:fire:1'])).toEqual({ kind: 'rejected', reason: 'retired' });
+    expect(api.circle).not.toHaveBeenCalled();
+    expect(rt.getSnapshot().synthPending).toBe(false);
   });
   it("sync.action('empower') adopts the server state", async () => {
     const rt = mk();
@@ -141,15 +152,15 @@ describe('SyncController', () => {
     expect(rt.getSnapshot().revision).toBe(10);
     expect(rt.getSnapshot().synthPending).toBe(false);
   });
-  it('sends reveal and passive actions with their ids', async () => {
+  it('sends key item and passive actions with their ids', async () => {
     const rt = mk();
     const api = fakeApi({
-      reveal: vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'revealed' as const, region: 'outer' }, state: server, revision: 10 })),
+      useKeyItem: vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'circleOpened' as const, tier: 4 }, state: server, revision: 10 })),
       unlockPassive: vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'unlocked' as const }, state: server, revision: 11 })),
     });
     const sync = new SyncController(rt, api);
-    expect(await sync.action('reveal', { keyItem: 'key:storm_heart' })).toEqual({ kind: 'revealed', region: 'outer' });
-    expect(api.reveal).toHaveBeenCalledWith(expect.anything(), 7, 'key:storm_heart');
+    expect(await sync.action('keyItem', { keyItem: 'key:storm_heart' })).toEqual({ kind: 'circleOpened', tier: 4 });
+    expect(api.useKeyItem).toHaveBeenCalledWith(expect.anything(), 7, 'key:storm_heart');
     expect(await sync.action('passive', { passiveId: 'ember_affinity' })).toEqual({ kind: 'unlocked' });
     expect(api.unlockPassive).toHaveBeenCalledWith(expect.anything(), 10, 'ember_affinity');
   });
@@ -175,27 +186,27 @@ describe('SyncController', () => {
   });
   it('an audit-rejected action adopts the server state and returns null', async () => {
     const rt = mk();
-    const api = fakeApi({ synthesize: vi.fn(async () => ({ kind: 'rejected' as const, state: server, revision: 12, reasons: ['too many'] })) });
+    const api = fakeApi({ circle: vi.fn(async () => ({ kind: 'rejected' as const, state: server, revision: 12, reasons: ['too many'] })) });
     const sync = new SyncController(rt, api);
-    expect(await sync.action('synthesize', { inputs: ['el:fire:1', 'el:fire:1'] })).toBeNull();
+    expect(await sync.action('circle', { placement: P })).toBeNull();
     expect(rt.getSnapshot().game).toBe(server);
     expect(rt.getSnapshot().revision).toBe(12);
   });
-  it('synthesize while offline returns null; conflict replaces state', async () => {
+  it('a circle while offline returns null; conflict replaces state', async () => {
     const rt = mk();
     const api = fakeApi({
       upload: vi.fn(async () => {
         throw new NetworkError('x');
       }),
-      synthesize: vi.fn(async () => ({ kind: 'conflict' as const, state: server, revision: 11 })),
+      circle: vi.fn(async () => ({ kind: 'conflict' as const, state: server, revision: 11 })),
     });
     const sync = new SyncController(rt, api);
     await sync.uploadNow();
-    expect(await sync.synthesize(['el:fire:1', 'el:fire:1'])).toBeNull();
-    expect(api.synthesize).not.toHaveBeenCalled();
+    expect(await sync.synthesizeCircle(P)).toBeNull();
+    expect(api.circle).not.toHaveBeenCalled();
     const rt2 = mk();
     const s2 = new SyncController(rt2, api);
-    expect(await s2.synthesize(['el:fire:1', 'el:fire:1'])).toBeNull();
+    expect(await s2.synthesizeCircle(P)).toBeNull();
     expect(rt2.getSnapshot().revision).toBe(11);
   });
   it('AuthError reaches onAuthError listeners', async () => {
@@ -235,22 +246,22 @@ describe('SyncController', () => {
     expect(fn).toHaveBeenCalledTimes(1);
     expect(upload).toHaveBeenCalledTimes(2);
   });
-  it('synthesize waits for in-flight upload then uses new revision', async () => {
+  it('a circle waits for in-flight upload then uses new revision', async () => {
     const rt = mk();
     let resolveUp!: (v: { kind: 'ok'; revision: number }) => void;
     const upload = vi.fn(() => new Promise<{ kind: 'ok'; revision: number }>((r) => (resolveUp = r)));
-    const result = { kind: 'dormant' as const };
+    const result = { kind: 'failed' as const, form: 'bolt' as const };
     const synthesize = vi.fn(async () => ({ kind: 'ok' as const, result, state: server, revision: 20 }));
-    const sync = new SyncController(rt, fakeApi({ upload, synthesize }));
+    const sync = new SyncController(rt, fakeApi({ upload, circle: synthesize }));
     const up = sync.uploadNow();
-    const syn = sync.synthesize(['el:fire:1', 'el:fire:1']);
+    const syn = sync.synthesizeCircle(P);
     await Promise.resolve();
     expect(synthesize).not.toHaveBeenCalled();
     resolveUp({ kind: 'ok', revision: 8 });
     await up;
     expect(await syn).toEqual(result);
     expect(synthesize).toHaveBeenCalledTimes(1);
-    expect(synthesize).toHaveBeenCalledWith(expect.anything(), 8, ['el:fire:1', 'el:fire:1']);
+    expect(synthesize).toHaveBeenCalledWith(expect.anything(), 8, P);
   });
   it('two consecutive non-network upload failures set status error; a success clears it', async () => {
     const rt = mk();
@@ -496,13 +507,13 @@ describe('SyncController', () => {
       let finish!: (v: never) => void;
       const synthesize = vi.fn(() => new Promise((r) => (finish = r as never)));
       const stageClear = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'cleared' as const, loot: [] }, state: settled, revision: 11 }));
-      const sync = new SyncController(rt, fakeApi({ synthesize: synthesize as never, stageClear }));
+      const sync = new SyncController(rt, fakeApi({ circle: synthesize as never, stageClear }));
       sync.start();
-      const p = sync.synthesize(['el:fire:1', 'el:fire:1']);
+      const p = sync.synthesizeCircle(P);
       clearStage(rt);
       await vi.advanceTimersByTimeAsync(0);
       expect(stageClear).not.toHaveBeenCalled();
-      finish({ kind: 'ok', result: { kind: 'dormant' }, state: server, revision: 10 } as never);
+      finish({ kind: 'ok', result: { kind: 'failed', form: 'bolt' }, state: server, revision: 10 } as never);
       await p;
       await vi.advanceTimersByTimeAsync(1000);
       expect(stageClear).toHaveBeenCalledTimes(1);

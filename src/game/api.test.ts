@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
 import { createInitialState } from '../engine/persist';
+import type { Placement } from '../engine/circle';
 import { ApiError, AuthError, createApiClient, GmExpiredError, RateLimitedError } from './api';
 import { clientPasswordHash } from './password-hash';
 
@@ -106,15 +107,16 @@ describe('discoveries api', () => {
 
 describe('action api', () => {
   const state = createInitialState(content);
+  const placement: Placement = { core: { element: 'fire', grade: 1 }, ring1: [{ element: 'fire', grade: 1 }, null, null, null, null], ring2: [null, null, null, null, null], runes: ['bolt', null] };
 
   it('posts each action with its id field', async () => {
     const f = fakeFetch(200, { result: { kind: 'empowered', level: 2 }, state, revision: 5 });
     const api = createApiClient(() => 'tok', f as unknown as typeof fetch);
     expect(await api.empower(state, 4, 'mana_bolt')).toEqual({ kind: 'ok', result: { kind: 'empowered', level: 2 }, state, revision: 5 });
-    await api.reveal(state, 4, 'key:storm_heart');
+    await api.useKeyItem(state, 4, 'key:storm_heart');
     await api.unlockPassive(state, 4, 'ember_affinity');
     await api.stageClear(state, 4, 'mist_meadow', 3);
-    await api.synthesize(state, 4, ['el:fire:1', 'el:fire:1']);
+    await api.circle(state, 4, placement);
     const calls = f.mock.calls.map((c) => {
       const [path, init] = c as unknown as [string, RequestInit];
       const { state: _s, ...rest } = JSON.parse(init.body as string) as Record<string, unknown>;
@@ -122,33 +124,33 @@ describe('action api', () => {
     });
     expect(calls).toEqual([
       ['/api/empower', { baseRevision: 4, spellId: 'mana_bolt' }],
-      ['/api/reveal', { baseRevision: 4, keyItem: 'key:storm_heart' }],
+      ['/api/key-item', { baseRevision: 4, keyItem: 'key:storm_heart' }],
       ['/api/passive', { baseRevision: 4, passiveId: 'ember_affinity' }],
       ['/api/stage-clear', { baseRevision: 4, zoneId: 'mist_meadow', stage: 3 }],
-      ['/api/synthesize', { baseRevision: 4, inputs: ['el:fire:1', 'el:fire:1'] }],
+      ['/api/circle', { baseRevision: 4, placement }],
     ]);
   });
 
   it('tells a game-rule refusal (422 with result) from an audit rejection (422 with reasons)', async () => {
-    const refused = createApiClient(() => 'tok', fakeFetch(422, { reason: 'rejected', result: { kind: 'rejected', reason: 'grade' }, state, revision: 4 }) as unknown as typeof fetch);
-    expect(await refused.synthesize(state, 4, ['el:fire:1', 'fireball'])).toEqual({ kind: 'refused', result: { kind: 'rejected', reason: 'grade' }, state, revision: 4 });
+    const refused = createApiClient(() => 'tok', fakeFetch(422, { reason: 'rejected', result: { kind: 'rejected', reason: 'overCap' }, state, revision: 4 }) as unknown as typeof fetch);
+    expect(await refused.circle(state, 4, placement)).toEqual({ kind: 'refused', result: { kind: 'rejected', reason: 'overCap' }, state, revision: 4 });
     const audit = createApiClient(() => 'tok', fakeFetch(422, { reason: 'rejected', reasons: ['too many fire'], state, revision: 6 }) as unknown as typeof fetch);
     expect(await audit.empower(state, 4, 'mana_bolt')).toEqual({ kind: 'rejected', state, revision: 6, reasons: ['too many fire'] });
   });
 
   it('keeps the rare flag on a learned result and rejects a malformed one', async () => {
-    const learned = { kind: 'learned', spellId: 'x', rare: { first: true } };
+    const learned = { kind: 'learned', spellId: 'worldfire', form: 'meteor', rare: { first: true } };
     const api = createApiClient(() => 'tok', fakeFetch(200, { result: learned, state, revision: 5 }) as unknown as typeof fetch);
-    expect(await api.synthesize(state, 4, ['a', 'b'])).toMatchObject({ kind: 'ok', result: learned });
+    expect(await api.circle(state, 4, placement)).toMatchObject({ kind: 'ok', result: learned });
     const bad = createApiClient(() => 'tok', fakeFetch(200, { result: { kind: 'learned', spellId: 'x', rare: { first: 'yes' } }, state, revision: 5 }) as unknown as typeof fetch);
-    await expect(bad.synthesize(state, 4, ['a', 'b'])).rejects.toBeInstanceOf(ApiError);
+    await expect(bad.circle(state, 4, placement)).rejects.toBeInstanceOf(ApiError);
     const bad2 = createApiClient(() => 'tok', fakeFetch(200, { result: { kind: 'learned', spellId: 'x', rare: true }, state, revision: 5 }) as unknown as typeof fetch);
-    await expect(bad2.synthesize(state, 4, ['a', 'b'])).rejects.toBeInstanceOf(ApiError);
+    await expect(bad2.circle(state, 4, placement)).rejects.toBeInstanceOf(ApiError);
   });
 
   it('maps 409 to a conflict with the server state', async () => {
     const api = createApiClient(() => 'tok', fakeFetch(409, { reason: 'conflict', state, revision: 9 }) as unknown as typeof fetch);
-    expect(await api.reveal(state, 4, 'key:storm_heart')).toEqual({ kind: 'conflict', state, revision: 9 });
+    expect(await api.useKeyItem(state, 4, 'key:storm_heart')).toEqual({ kind: 'conflict', state, revision: 9 });
   });
 });
 

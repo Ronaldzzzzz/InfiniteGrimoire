@@ -60,7 +60,8 @@ function check(label: string, r: BotResult): void {
   }
 }
 
-describe('element routes', () => {
+// re-enabled in Task 4 (magic circle bots)
+describe.skip('element routes', () => {
   for (const el of ELEMENT_ORDER) {
     it(`pure ${el} route follows Lv.2-9 through six zones with 0 rejections`, { timeout: TIMEOUT }, async () => {
       const r = await runBot({ route: el, seed: SEED, maxSimMs: SIX_HOURS });

@@ -51,15 +51,13 @@ export type PassiveUnlock =
   | { kind: 'learned'; count: number; element: ElementId | null };
 export interface Passive { id: string; name: string; nameEn: string; desc: string; node: TreeNode; bonus: PassiveBonus; unlock: PassiveUnlock }
 export interface TreeRegion { id: string; name: string; nameEn: string; order: number; initiallyVisible: boolean }
-/** spellId null: the roll fell through, the inputs make their crafted spell instead. */
-export interface Recipe { id: string; inputs: [string, string]; outcomes: { spellId: string | null; weight: number }[] }
 export interface DropDef { itemId: ItemId; chance: number; min: number; max: number }
 export interface Monster { id: string; name: string; nameEn: string; element: ElementId; tier: number; hp: number; defense: number; regenPerSec: number; speed: number; radius: number; boss: boolean; drops: DropDef[] }
 /** One stage of a zone: each number is the size of one wave. A boss stage's boss comes on top of these. */
 export interface StageDef { waves: number[] }
 export interface Zone { id: string; name: string; nameEn: string; order: number; monsters: string[]; bossId: string; stages: StageDef[] }
 export interface Content {
-  spells: Record<string, NamedSpellDef>; recipes: Recipe[]; monsters: Record<string, Monster>; zones: Zone[];
+  spells: Record<string, NamedSpellDef>; monsters: Record<string, Monster>; zones: Zone[];
   materials: Record<ItemId, Material>; keyItems: Record<ItemId, KeyItem>; passives: Record<string, Passive>; regions: TreeRegion[];
   /** element -> its base spell id (from baseOf) */
   baseSpells: Record<ElementId, string>;
@@ -67,7 +65,9 @@ export interface Content {
 export interface SynthLogEntry { attempts: number; results: Record<string, number>; noReaction: boolean }
 export interface GameState {
   version: 2; inventory: Inventory; learned: string[]; equipped: string; levels: Record<string, number>;
-  revealed: string[]; passives: string[]; currentZone: string; unlockedZones: string[];
+  /** highest magic circle tier the player may draw (2 at the start, raised by using key items; server-owned) */
+  circleTier: number;
+  passives: string[]; currentZone: string; unlockedZones: string[];
   defeatedBosses: string[];
   /** 1-based stage being played in currentZone */
   currentStage: number;
@@ -81,6 +81,7 @@ export interface GameState {
   awayAt: number;
   /** server time (ms) where the last offline settlement ended; 0 = never (server-owned) */
   offlineUntil: number;
+  /** magic circle attempts keyed by canonical circle id (server-owned) */
   synthesisLog: Record<string, SynthLogEntry>;
 }
 export const STARTING_SPELL = 'mana_bolt';

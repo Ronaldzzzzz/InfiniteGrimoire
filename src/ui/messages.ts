@@ -1,7 +1,6 @@
 import { content as defaultContent } from '../engine/content';
-import { requiredGrade } from '../engine/crafting';
 import type { Affinity, Content, Passive } from '../engine/model';
-import { craftedId, inputToken, resolveSpell } from '../engine/spells';
+import { resolveSpell } from '../engine/spells';
 import { GRADE_NAMES, type ItemId } from '../engine/types';
 import { USERNAME_MAX, USERNAME_MIN, PASSWORD_MAX, PASSWORD_MIN, type UsernameProblem } from '../engine/account-rules';
 import { ApiError, NetworkError, RateLimitedError, type ActionResult } from '../game/api';
@@ -51,15 +50,6 @@ export function slotLabel(id: string, content: Content): string {
   return /^(el|mat|key):/.test(id) ? itemName(id, content) : spellLabel(id, content);
 }
 
-/** Grade the crafted result of these inputs demands from its element inputs, or null when unknown. */
-function neededGrade(inputs: string[] | undefined, content: Content): number | null {
-  if (!inputs || inputs.length !== 2) return null;
-  const a = inputToken(inputs[0]!, content), b = inputToken(inputs[1]!, content);
-  if (a === null || b === null) return null;
-  const spell = resolveSpell(craftedId(a, b), content);
-  return spell ? requiredGrade(spell.depth) : null;
-}
-
 const REJECTED: Record<string, string> = {
   insufficient: '材料不足',
   slots: '請放入兩個素材',
@@ -69,9 +59,8 @@ const REJECTED: Record<string, string> = {
   noElements: '無屬性魔法不能強化',
   unknown: '找不到這個項目',
   notOwned: '沒有這個道具',
-  alreadyRevealed: '這個區域已經揭開了',
+  noEffect: '魔法陣已經開放到這一階了',
   already: '已經解鎖了',
-  hidden: '這個區域還被迷霧遮住',
   requirement: '還沒達成解鎖條件',
   locked: '這個地點還沒開放',
   elsewhere: '你已經不在這個地點了',
@@ -79,15 +68,29 @@ const REJECTED: Record<string, string> = {
   cannotDamage: '裝備中的魔法打不動這裡的魔物',
   tooFast: '結算太快了，請稍後再試',
   bossAlive: '魔王還沒倒下',
+  retired: '合成台改版中，請稍候改用魔法陣',
+  // magic circle refusals (placementProblems)
+  overCap: '超過核心上限',
+  overUnlocked: '尚未開放',
+  ring2BeforeRing1Full: '一環要先放滿五格才能放二環',
+  tooManyRing2: '二環最多只能放四格',
+  belowRingFloor: '這一環的元素階級不夠',
+  runeLocked: '還沒學會這個符文',
+  runeWithoutRing: '沒有節點的環不能放符文',
+  ringWithoutRune: '每一環都要放一個符文',
 };
 
-/** Message for a server action's result; `inputs` are the synthesis inputs (for the grade a refusal needed). */
-export function synthMessage(result: ActionResult, content: Content, inputs?: string[]): string {
+/** Message for a server action's result. */
+export function synthMessage(result: ActionResult, content: Content, _inputs?: string[]): string {
   switch (result.kind) {
     case 'learned':
-      return result.crafted
+      return 'crafted' in result && result.crafted
         ? `自創魔法：${spellLabel(result.spellId, content)}`
         : `習得新魔法：${spellLabel(result.spellId, content)}`;
+    case 'known':
+      return `已經會了 ${spellLabel(result.spellId, content)}`;
+    case 'failed':
+      return '魔法陣崩解了……元素已經消耗';
     case 'duplicate':
       // only what the server says came back: a random recipe's retry refunds a single item
       return result.refunded.length > 0
@@ -101,8 +104,8 @@ export function synthMessage(result: ActionResult, content: Content, inputs?: st
       return '魔力過載！';
     case 'empowered':
       return `強化成功：${empowerLabel(result.level)}`;
-    case 'revealed':
-      return '迷霧散開了';
+    case 'circleOpened':
+      return `魔法陣開放到 Lv.${result.tier}`;
     case 'unlocked':
       return '被動已解鎖';
     case 'cleared':
@@ -113,13 +116,9 @@ export function synthMessage(result: ActionResult, content: Content, inputs?: st
     case 'offline':
     case 'none':
       return ''; // presence actions are not shown as messages
-    case 'rejected': {
-      if (result.reason === 'grade') {
-        const g = neededGrade(inputs, content);
-        return g === null ? '元素階級不夠' : `元素階級不夠，需要${GRADE_NAMES[g - 1]}以上`;
-      }
+    case 'rejected':
+      if (result.reason === 'grade') return '元素階級不夠';
       return REJECTED[result.reason] ?? '無法執行';
-    }
   }
 }
 

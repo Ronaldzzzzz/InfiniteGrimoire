@@ -22,7 +22,6 @@ const zone = (id: string, order: number, bossId: string): Zone => ({
 
 const data: Content = {
   spells: { mana_bolt: spell({ id: 'mana_bolt' }), big: spell({ id: 'big', tier: 5 }) },
-  recipes: [],
   monsters: {
     slime: mon({ id: 'slime', drops: [{ itemId: 'el:fire:1', chance: 0.5, min: 1, max: 3 }, { itemId: 'mat:goo', chance: 0.2, min: 1, max: 1 }] }),
     bat: mon({ id: 'bat', drops: [{ itemId: 'el:wind:1', chance: 1, min: 1, max: 1 }] }),

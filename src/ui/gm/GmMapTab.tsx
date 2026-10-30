@@ -7,7 +7,7 @@ import { runGmAction } from './run-gm';
 type Op = 'unlock_all' | 'reveal_all' | 'boss_ready';
 const OPS: { op: Op; label: string; done: string }[] = [
   { op: 'unlock_all', label: '開放所有地點', done: '已開放所有地點' },
-  { op: 'reveal_all', label: '散開所有迷霧', done: '已散開所有迷霧' },
+  { op: 'reveal_all', label: '開放所有魔法陣格子', done: '已開放所有魔法陣格子' },
   { op: 'boss_ready', label: '目前地點直達魔王關', done: '已設定：目前地點直達魔王關' },
 ];
 

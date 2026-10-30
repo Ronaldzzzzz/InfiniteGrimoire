@@ -1,34 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { fusionNeeds } from '../../engine/crafting';
 import { content } from '../../engine/content';
-import { createInitialState } from '../../engine/persist';
-import recipes from '../../data/content/recipes.json';
-import { recipeTable } from './recipe-table';
+import { RARE_CHANCE } from '../../engine/circle-synth';
+import { circleLabel, circleTable } from './recipe-table';
 
-describe('recipeTable', () => {
-  const state = { ...createInitialState(content), learned: ['mana_bolt', 'fireball', 'wind_blade', 'inferno'] };
-  const rows = recipeTable(content, state);
+describe('circleTable', () => {
+  const rows = circleTable(content);
 
-  it('has one row per recipe', () => {
-    expect(rows).toHaveLength(recipes.length);
+  it('has one row per named spell with a circle, ordered by tier', () => {
+    expect(rows).toHaveLength(Object.values(content.spells).filter((s) => s.circle).length);
+    expect(rows.map((r) => r.tier)).toEqual([...rows.map((r) => r.tier)].sort((a, b) => a - b));
   });
 
-  it('turns weights into percentages with one decimal', () => {
+  it('a rare spell is its circle at RARE_CHANCE; an ordinary one is 100%', () => {
     const fire = rows.find((r) => r.id === 'worldfire')!;
-    expect(fire.outcomes.map((o) => o.pct)).toEqual([2, 98]);
-    expect(fire.outcomes[0]).toMatchObject({ label: '焚世之焰 Lv.10', rare: true });
-    expect(fire.outcomes[1]).toMatchObject({ label: '落空 → 自創魔法', rare: false });
-    const holy = rows.find((r) => r.id === 'holy_judgment')!;
-    expect(holy.outcomes.map((o) => o.pct)).toEqual([2, 98]);
+    expect(fire).toMatchObject({ name: '焚世之焰', tier: 10, rare: true, pct: RARE_CHANCE * 100 });
+    expect(rows.find((r) => r.id === 'fireball')).toMatchObject({ rare: false, pct: 100, circle: content.spells.fireball!.circle });
   });
 
-  it('a single outcome is 100% and not rare', () => {
-    const base = rows.find((r) => r.id === 'fire_base')!;
-    expect(base.outcomes).toEqual([{ label: `${content.spells.fireball!.name} Lv.${content.spells.fireball!.tier}`, pct: 100, rare: false }]);
-  });
-
-  it('fusion matches fusionNeeds for the same state', () => {
-    for (const r of rows) expect(r.fusion).toEqual(fusionNeeds(state, r.inputs, content));
-    expect(rows.find((r) => r.id === 'fire_wind')!.fusion.length).toBeGreaterThan(0);
+  it('describes the circle in words', () => {
+    expect(circleLabel('m:fire.2.----f.-----.bolt')).toBe('核心火｜一環 火｜二環 —｜射');
+    expect(circleLabel('m:fire.10.fffff.-tttt.field')).toBe('核心火｜一環 火・火・火・火・火｜二環 雷・雷・雷・雷｜臨');
+    expect(circleLabel('nope')).toBe('nope');
   });
 });

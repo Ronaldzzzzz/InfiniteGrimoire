@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react';
 import type { Content } from '../engine/model';
-import { visibleRegions } from '../engine/tree';
+import { tierUnlockOf } from '../engine/circle';
 import type { SyncController } from '../game/sync';
 import { itemName } from './messages';
 import { runAction } from './run-action';
@@ -22,12 +22,11 @@ export const KeyItemBar = memo(function KeyItemBar({
   onRevealed: (region: string) => void;
 }) {
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
-  // a joined string, so drops that don't add a usable key item don't re-render the bar
+  // a joined string, so drops that don't add a usable key item don't re-render the bar; usable = opens a higher circle tier
   const keyList = useRuntime(runtime, (s) => {
     const inv = s.game.inventory;
-    const visible = visibleRegions({ revealed: s.game.revealed }, content);
     return Object.keys(inv)
-      .filter((id) => inv[id]! > 0 && Object.hasOwn(content.keyItems, id) && !visible.has(content.keyItems[id]!.reveals))
+      .filter((id) => inv[id]! > 0 && Object.hasOwn(content.keyItems, id) && (tierUnlockOf(id) ?? 0) > s.game.circleTier)
       .join(',');
   });
   const keys = keyList ? keyList.split(',') : [];
@@ -39,9 +38,10 @@ export const KeyItemBar = memo(function KeyItemBar({
   }, [message]);
 
   const useKey = async (keyItem: string): Promise<void> => {
-    const { result, message: text } = await runAction(() => sync.action('reveal', { keyItem }), content);
+    const { result, message: text } = await runAction(() => sync.action('keyItem', { keyItem }), content);
     setMessage(text);
-    if (result?.kind === 'revealed') onRevealed(result.region);
+    // until the star map (plan Task 6) the app still reacts by showing the tree; the region is the key's old one
+    if (result?.kind === 'circleOpened') onRevealed(content.keyItems[keyItem]!.reveals);
   };
 
   if (keys.length === 0 && !message) return null;

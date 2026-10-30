@@ -2,14 +2,15 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { content } from '../engine/content';
-import { craftedId, resolveSpell } from '../engine/spells';
+import { resolveSpell } from '../engine/spells';
 import { Notebook } from './Notebook';
 import { fakeRuntime } from './test-runtime';
 
 afterEach(cleanup);
 
-const good = craftedId('fireball', 'wind_blade');
-const bad = craftedId('fireball', 'water_wave');
+/** unnamed magic circle spells: 土 generates 火 (good); 水 counters 火 on a star line (bad) */
+const good = 'm:fire.3.---ef.-----.bolt';
+const bad = 'm:fire.3.--a-f.-----.bolt';
 const sync = () => ({ action: vi.fn(async () => null) });
 
 describe('Notebook', () => {

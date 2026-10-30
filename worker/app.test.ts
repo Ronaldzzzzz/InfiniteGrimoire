@@ -7,7 +7,11 @@ import type { Content, GameState } from '../src/engine/model';
 import { createInitialState } from '../src/engine/persist';
 import { minStageMs, stageCount } from '../src/engine/stages';
 import { createRng } from '../src/engine/rng';
-import { craftedId } from '../src/engine/spells';
+import { placementProblems, runesUnlocked } from '../src/engine/circle';
+import type { CircleNode, Placement, RuneId } from '../src/engine/circle';
+import { FAIL_BASE, RARE_CHANCE } from '../src/engine/circle-synth';
+import type { Rng } from '../src/engine/rng';
+import type { ElementId } from '../src/engine/types';
 import { ELEMENT_ORDER } from '../src/engine/types';
 import { ANCHOR_ADVANCE_MS, createApp, excludedFromRecords, FEED_LIMIT, GM_ITEM_MAX, GM_TOKEN_TTL_MS, MAX_BODY_BYTES, MAX_WINDOW_MS, SUSPICIOUS_REJECTIONS_24H } from './app';
 import { hashToken, toBase64Url } from './auth';
@@ -22,6 +26,15 @@ let app: ReturnType<typeof createApp>;
 
 const makeApp = (c: Content = content, pepper = 'test-pepper') =>
   createApp({ store, now: () => clock, rng: () => createRng(1), content: c, pepper });
+
+/** An rng whose every roll is `value` (int() gives its min): 0.5 draws the first form, never fails, never rolls a rare. */
+const rolling = (value: number): Rng => ({ next: () => value, int: (min) => min });
+/** An rng answering `next()` from `values` in order (then 0.99); int() gives its min. */
+const rolls = (values: number[]): Rng => {
+  const left = [...values];
+  return { next: () => left.shift() ?? 0.99, int: (min) => min };
+};
+const appRolling = (value: number) => createApp({ store, now: () => clock, rng: () => rolling(value), content, pepper: 'test-pepper' });
 
 beforeEach(() => {
   store = new MemoryStore();
@@ -43,6 +56,34 @@ async function guest(name = 'Mage') {
 const initial = () => createInitialState(content);
 const withInv = (inventory: Record<string, number>): GameState => ({ ...initial(), inventory });
 const saved = (playerId: string) => JSON.parse(store.saves.get(playerId)!.state) as GameState;
+
+type Slot = ElementId | null;
+const node = (element: ElementId, grade = 1): CircleNode => ({ element, grade });
+function circle(core: CircleNode, ring1: Slot[], ring2: Slot[] = [], runes: [RuneId | null, RuneId | null] = [null, null], g1 = 1, g2 = 3): Placement {
+  const pad = (a: Slot[], g: number) => [0, 1, 2, 3, 4].map((i) => (a[i] ? node(a[i]!, g) : null));
+  return { core, ring1: pad(ring1, g1), ring2: pad(ring2, g2), runes };
+}
+/** The Lv.2 fire bolt (火球): a 初階 fire core and one fire node, rune 射. */
+const FIRE_BOLT = 'm:fire.2.----f.-----.bolt';
+const fireBolt = () => circle(node('fire'), ['fire'], [], ['bolt', null]);
+const fire2 = () => withInv({ 'el:fire:1': 2 });
+/** 焚世之焰's circle: 神階 fire core, ring 1 five fire, ring 2 four 高階 fire, 墜 on both rings. */
+const worldfireCircle = () => circle(node('fire', 5), ['fire', 'fire', 'fire', 'fire', 'fire'], [null, 'fire', 'fire', 'fire', 'fire'], ['meteor', 'meteor']);
+/** What drawing worldfireCircle `times` needs: tier 10 open, every boss down (墜), and the elements. */
+const rareSeed = (times = 1): Partial<GameState> => ({
+  inventory: { 'el:fire:1': 5 * times, 'el:fire:3': 4 * times, 'el:fire:5': times },
+  circleTier: 10,
+  defeatedBosses: content.zones.map((z) => z.bossId),
+});
+
+/** A guest whose save and anchor already hold `patch` (as if earned and audited earlier). */
+async function seededGuest(patch: Partial<GameState>, name = 'Mage') {
+  const { body } = await guest(name);
+  const state: GameState = { ...body.state, ...patch };
+  const row = store.saves.get(body.playerId)!;
+  store.saves.set(body.playerId, { ...row, state: JSON.stringify(state), anchorState: JSON.stringify(state) });
+  return { ...body, state };
+}
 
 type ActionOut = { result: { kind: string; reason?: string; spellId?: string }; state: GameState; revision: number; reason?: string; reasons?: string[] };
 async function action(path: string, body: Record<string, unknown>, token: string) {
@@ -106,7 +147,7 @@ describe('auth', () => {
     expect((await app.request('/api/save')).status).toBe(401);
     expect((await app.request('/api/save', { headers: { authorization: 'Bearer nope' } })).status).toBe(401);
     expect((await app.request('/api/save', json({}, undefined, 'PUT'))).status).toBe(401);
-    for (const path of ['/api/synthesize', '/api/empower', '/api/reveal', '/api/passive', '/api/stage-clear']) {
+    for (const path of ['/api/circle', '/api/empower', '/api/key-item', '/api/passive', '/api/stage-clear']) {
       expect((await app.request(path, json({}))).status, path).toBe(401);
     }
   });
@@ -185,14 +226,14 @@ describe('save', () => {
   it('rejects forged crafted spells, levels, reveals and passives', async () => {
     const { body } = await guest();
     clock += 60_000;
-    const forged = craftedId('fireball', 'mat:ember_core');
+    const forged = 'm:fire.3.---fw.-----.bolt';
     const cases: [Partial<GameState>, string][] = [
       [{ learned: ['mana_bolt', forged], equipped: forged }, 'learned spells changed'],
       [{ learned: ['mana_bolt', 'fireball'] }, 'learned spells changed'],
       [{ levels: { mana_bolt: 9 } }, 'levels changed'],
-      [{ revealed: ['outer'] }, 'revealed changed'],
+      [{ circleTier: 4 }, 'circleTier changed'],
       [{ passives: ['ember_affinity'] }, 'passives changed'],
-      [{ synthesisLog: { 'el:fire:1+el:fire:1': { attempts: 1, results: { fireball: 1 }, noReaction: false } } }, 'synthesisLog changed'],
+      [{ synthesisLog: { [FIRE_BOLT]: { attempts: 1, results: { [`learned:${FIRE_BOLT}`]: 1 }, noReaction: false } } }, 'synthesisLog changed'],
     ];
     for (const [change, reason] of cases) {
       const res = await app.request('/api/save', json({ state: { ...body.state, ...change }, baseRevision: 0 }, body.token, 'PUT'));
@@ -222,112 +263,153 @@ describe('save', () => {
   });
 });
 
-describe('synthesize', () => {
-  const thunder2 = () => withInv({ 'el:thunder:1': 2 });
-  const inputs = ['el:thunder:1', 'el:thunder:1'];
-
-  it('learns spell server-side', async () => {
-    const { body } = await guest();
-    clock += 3_600_000;
-    const { status, out } = await action('/api/synthesize', { state: thunder2(), baseRevision: 0, inputs }, body.token);
-    expect(status).toBe(200);
-    expect(out.result.kind).toBe('learned');
-    expect(out.state.learned).toContain('lightning');
-    expect(out.revision).toBe(1);
-    expect(store.synthEvents).toEqual([
-      { playerId: body.playerId, at: clock, combo: 'el:thunder:1+el:thunder:1', result: 'learned:lightning' },
-    ]);
-    expect(saved(body.playerId).learned).toContain('lightning');
+describe('magic circle', () => {
+  beforeEach(() => {
+    app = appRolling(0.5);
   });
 
-  it('synthesize crafts a spell and the next upload keeps it', async () => {
+  it('learns a Lv.2 fire bolt and spends 初階火 ×2', async () => {
     const { body } = await guest();
     clock += 3_600_000;
-    const start = withInv({ 'el:fire:1': 3, 'mat:ember_core': 1 });
-    const first = await action('/api/synthesize', { state: start, baseRevision: 0, inputs: ['el:fire:1', 'el:fire:1'] }, body.token);
-    expect(first.out.result.kind).toBe('learned');
+    const { status, out } = await action('/api/circle', { state: fire2(), baseRevision: 0, placement: fireBolt() }, body.token);
+    expect(status).toBe(200);
+    expect(out.result).toEqual({ kind: 'learned', spellId: FIRE_BOLT, form: 'bolt' });
+    expect(out.state.learned).toEqual(['mana_bolt', FIRE_BOLT]);
+    expect(out.state.inventory).toEqual({});
+    expect(out.revision).toBe(1);
+    expect(store.synthEvents).toEqual([{ playerId: body.playerId, at: clock, combo: FIRE_BOLT, result: `learned:${FIRE_BOLT}` }]);
+    expect(saved(body.playerId).learned).toContain(FIRE_BOLT);
+    expect(saved(body.playerId).synthesisLog[FIRE_BOLT]).toEqual({ attempts: 1, results: { [`learned:${FIRE_BOLT}`]: 1 }, noReaction: false });
+    // the next upload keeps the server-learned spell and may equip it
     clock += 1000;
-    const second = await action('/api/synthesize', { state: first.out.state, baseRevision: 1, inputs: ['fireball', 'mat:ember_core'] }, body.token);
-    expect(second.status).toBe(200);
-    const id = craftedId('fireball', 'mat:ember_core');
-    expect(second.out.result).toEqual({ kind: 'learned', spellId: id, crafted: true });
-    expect(second.out.state.learned).toEqual(['mana_bolt', 'fireball', id]);
-    // the fusion cost (one grade-1 fire for a depth-1 spell) and the material are spent
-    expect(second.out.state.inventory).toEqual({});
+    expect((await app.request('/api/save', json({ state: { ...out.state, equipped: FIRE_BOLT }, baseRevision: 1 }, body.token, 'PUT'))).status).toBe(200);
+  });
+
+  it('known on repeat spends again, one entry', async () => {
+    const { body } = await guest();
+    clock += 3_600_000;
+    const first = await action('/api/circle', { state: withInv({ 'el:fire:1': 4 }), baseRevision: 0, placement: fireBolt() }, body.token);
     clock += 1000;
-    const next = { ...second.out.state, equipped: id };
-    expect((await app.request('/api/save', json({ state: next, baseRevision: 2 }, body.token, 'PUT'))).status).toBe(200);
-    expect(saved(body.playerId).equipped).toBe(id);
+    const { status, out } = await action('/api/circle', { state: first.out.state, baseRevision: 1, placement: fireBolt() }, body.token);
+    expect(status).toBe(200);
+    expect(out.result).toEqual({ kind: 'known', spellId: FIRE_BOLT, form: 'bolt' });
+    expect(out.state.learned.filter((x) => x === FIRE_BOLT)).toHaveLength(1);
+    expect(out.state.inventory).toEqual({});
+    expect(store.synthEvents.map((e) => e.result)).toEqual([`learned:${FIRE_BOLT}`, `known:${FIRE_BOLT}`]);
   });
 
   it('ignores client-claimed learned spells', async () => {
     const { body } = await guest();
     clock += 3_600_000;
-    const claimed = { ...thunder2(), learned: ['mana_bolt', 'fireball'] };
-    const { status, out } = await action('/api/synthesize', { state: claimed, baseRevision: 0, inputs }, body.token);
+    const claimed = { ...fire2(), learned: ['mana_bolt', FIRE_BOLT] };
+    const { status, out } = await action('/api/circle', { state: claimed, baseRevision: 0, placement: fireBolt() }, body.token);
     expect(status).toBe(422);
     expect(out.reasons).toContain('learned spells changed');
     expect(store.synthEvents).toHaveLength(0);
   });
 
-  it('a rejected action returns 422 with the result and does not write', async () => {
-    const { body } = await guest();
-    clock += 3_600_000;
-    for (const bad of [['el:thunder:1'], ['constructor', 'el:thunder:1'], ['el:dark:1', 'el:thunder:1'], ['__proto__', 'lightning']]) {
-      const { status, out } = await action('/api/synthesize', { state: thunder2(), baseRevision: 0, inputs: bad }, body.token);
-      expect(status, bad.join('+')).toBe(422);
+  it('refuses every placement problem and missing elements: 422, nothing written, not counted as cheating', async () => {
+    const rich = { 'el:fire:1': 9, 'el:fire:2': 9, 'el:fire:3': 9, 'el:fire:4': 9, 'el:fire:5': 9 };
+    const five: Slot[] = ['fire', 'fire', 'fire', 'fire', 'fire'];
+    const cases: [Placement, number, string][] = [
+      [circle(node('fire'), ['fire', 'fire'], [], ['bolt', null]), 2, 'overCap'],
+      [circle(node('fire', 2), ['fire', 'fire'], [], ['bolt', null]), 2, 'overUnlocked'],
+      [circle(node('fire', 4), ['fire', 'fire', 'fire', 'fire'], ['fire'], ['bolt', 'bolt']), 10, 'ring2BeforeRing1Full'],
+      [circle(node('fire', 5), five, five, ['bolt', 'bolt']), 10, 'tooManyRing2'],
+      [circle(node('fire', 4), five, ['fire'], ['bolt', 'bolt'], 1, 2), 10, 'belowRingFloor'],
+      [circle(node('fire'), ['fire'], [], ['chain', null]), 2, 'runeLocked'],
+      [circle(node('fire'), [], [], ['bolt', null]), 2, 'runeWithoutRing'],
+      [circle(node('fire'), ['fire'], [], [null, null]), 2, 'ringWithoutRune'],
+    ];
+    for (const [p, tier, problem] of cases) {
+      const g = await seededGuest({ inventory: rich, circleTier: tier });
+      const problems = placementProblems(p, { unlockedTier: tier, runes: runesUnlocked([], content) });
+      expect(problems, problem).toContain(problem);
+      const { status, out } = await action('/api/circle', { state: g.state, baseRevision: 0, placement: p }, g.token);
+      expect(status, problem).toBe(422);
       expect(out.reason).toBe('rejected');
-      expect(out.result.kind).toBe('rejected');
-      expect(out.state).toEqual(body.state);
+      expect(out.result, problem).toEqual({ kind: 'rejected', reason: problems[0] });
+      expect(out.state).toEqual(g.state);
       expect(out.revision).toBe(0);
+      expect(saved(g.playerId)).toEqual(g.state);
     }
-    const one = await action('/api/synthesize', { state: thunder2(), baseRevision: 0, inputs: ['el:thunder:1'] }, body.token);
-    expect(one.out.result).toEqual({ kind: 'rejected', reason: 'slots' });
-    expect(store.saves.get(body.playerId)?.revision).toBe(0);
+    const poor = await seededGuest({ inventory: { 'el:fire:1': 1 } });
+    const short = await action('/api/circle', { state: poor.state, baseRevision: 0, placement: fireBolt() }, poor.token);
+    expect(short.status).toBe(422);
+    expect(short.out.result).toEqual({ kind: 'rejected', reason: 'insufficient' });
     expect(store.synthEvents).toHaveLength(0);
-    // an engine rejection is not a cheating attempt
+    // an engine refusal is not a cheating attempt
     expect(store.rejections).toHaveLength(0);
   });
 
-  it('an over-long input is 400', async () => {
+  it('a malformed placement is 400 and writes nothing', async () => {
     const { body } = await guest();
     clock += 30_000;
-    const long = `c(${'x'.repeat(600)}|fireball)`;
-    for (const bad of [[long, 'el:thunder:1'], ['el:thunder:1', 'el:thunder:1', 'el:thunder:1'], ['el:thunder:1', 7], 'el:thunder:1']) {
-      const res = await app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs: bad }, body.token));
-      expect(res.status, JSON.stringify(bad).slice(0, 40)).toBe(400);
+    const p = fireBolt();
+    const bad: unknown[] = [
+      undefined, null, 'fire', [], {},
+      { ...p, ring1: p.ring1.slice(0, 4) },
+      { ...p, ring2: [...p.ring2, null] },
+      { ...p, core: { element: 'fire', grade: 1.5 } },
+      { ...p, core: { element: 'fire', grade: 0 } },
+      { ...p, core: { element: 'fire', grade: 6 } },
+      { ...p, core: { element: 'dark', grade: 1 } },
+      { ...p, ring1: [{ element: 'constructor', grade: 1 }, null, null, null, null] },
+      { ...p, runes: ['laser', null] },
+      { ...p, runes: ['bolt'] },
+      { ...p, extra: true },
+    ];
+    for (const placement of bad) {
+      const res = await app.request('/api/circle', json({ state: fire2(), baseRevision: 0, placement }, body.token));
+      expect(res.status, JSON.stringify(placement)?.slice(0, 60)).toBe(400);
     }
-    for (const [path, field] of [['/api/empower', 'spellId'], ['/api/reveal', 'keyItem'], ['/api/passive', 'passiveId']] as const) {
-      for (const bad of [long, '', 3, undefined]) {
-        const res = await app.request(path, json({ state: thunder2(), baseRevision: 0, [field]: bad }, body.token));
-        expect(res.status, `${path} ${String(bad).slice(0, 10)}`).toBe(400);
+    for (const [path, field] of [['/api/empower', 'spellId'], ['/api/key-item', 'keyItem'], ['/api/passive', 'passiveId']] as const) {
+      for (const v of ['x'.repeat(600), '', 3, undefined]) {
+        const res = await app.request(path, json({ state: fire2(), baseRevision: 0, [field]: v }, body.token));
+        expect(res.status, `${path} ${String(v).slice(0, 10)}`).toBe(400);
       }
     }
     expect(store.saves.get(body.playerId)?.revision).toBe(0);
     expect(store.synthEvents).toHaveLength(0);
+    expect(store.rejections).toHaveLength(0);
   });
 
-  it('a synthesis result that fails parseState is a 500 and is not committed', async () => {
-    // a named spell whose id is too long to resolve cannot come from real data; it stands in for any engine bug
-    const ghost = 'g'.repeat(600);
-    const broken: Content = {
-      ...content,
-      spells: { ...content.spells, [ghost]: { ...content.spells.fireball!, id: ghost, prerequisites: [] } },
-      recipes: [...content.recipes, { id: 'ghost', inputs: ['mat:ember_core', 'mat:ember_core'], outcomes: [{ spellId: ghost, weight: 1 }] }],
-    };
-    app = makeApp(broken);
+  it('old-format learned ids are rejected cleanly', async () => {
     const { body } = await guest();
     clock += 30_000;
-    const res = await app.request(
-      '/api/synthesize',
-      json({ state: withInv({ 'mat:ember_core': 2, 'el:fire:1': 1 }), baseRevision: 0, inputs: ['mat:ember_core', 'mat:ember_core'] }, body.token),
-    );
-    expect(res.status).toBe(500);
+    const old = { ...body.state, learned: ['mana_bolt', 'c(fireball|rock_spear)'] };
+    const put = await app.request('/api/save', json({ state: old, baseRevision: 0 }, body.token, 'PUT'));
+    expect(put.status).toBe(400);
+    expect(await put.json()).toEqual({ error: 'invalid state' });
+    const act = await app.request('/api/circle', json({ state: old, baseRevision: 0, placement: fireBolt() }, body.token));
+    expect(act.status).toBe(400);
+    // a stale pre-0008 save (revealed, no circleTier) is malformed too
+    const { circleTier, ...rest } = body.state;
+    void circleTier;
+    const stale = await app.request('/api/save', json({ state: { ...rest, revealed: [] }, baseRevision: 0 }, body.token, 'PUT'));
+    expect(stale.status).toBe(400);
+    // the retired endpoints are gone
+    expect((await app.request('/api/synthesize', json({ state: body.state, baseRevision: 0, inputs: [] }, body.token))).status).toBe(404);
+    expect((await app.request('/api/reveal', json({ state: body.state, baseRevision: 0, keyItem: 'key:storm_heart' }, body.token))).status).toBe(404);
+    expect(store.rejections).toHaveLength(0);
     expect(store.saves.get(body.playerId)?.revision).toBe(0);
+  });
+
+  it('a circle result that fails parseState is a 500 and is not committed', async () => {
+    // a rare spell whose id is too long to resolve cannot come from real data; it stands in for any engine bug
+    const ghost = 'g'.repeat(600);
+    const spells = { ...content.spells, [ghost]: { ...content.spells.worldfire!, id: ghost } };
+    delete spells.worldfire;
+    const broken: Content = { ...content, spells };
+    app = createApp({ store, now: () => clock, rng: () => rolls([0.5, 0]), content: broken, pepper: 'test-pepper' });
+    const g = await seededGuest(rareSeed());
+    const res = await app.request('/api/circle', json({ state: g.state, baseRevision: 0, placement: worldfireCircle() }, g.token));
+    expect(res.status).toBe(500);
+    expect(store.saves.get(g.playerId)?.revision).toBe(0);
     expect(store.synthEvents).toHaveLength(0);
   });
 
-  it('concurrent synthesize with same baseRevision', async () => {
+  it('concurrent circles with the same baseRevision', async () => {
     // Both requests pass the revision precheck before either commits, so only the store's CAS can stop the second.
     class GatedStore extends MemoryStore {
       private waiting = 0;
@@ -343,42 +425,65 @@ describe('synthesize', () => {
       }
     }
     store = new GatedStore();
-    app = makeApp();
+    app = appRolling(0.5);
     const { body } = await guest();
     clock += 3_600_000;
-    const send = () => app.request('/api/synthesize', json({ state: thunder2(), baseRevision: 0, inputs }, body.token));
+    const send = () => app.request('/api/circle', json({ state: fire2(), baseRevision: 0, placement: fireBolt() }, body.token));
     const [a, b] = await Promise.all([send(), send()]);
     expect([a.status, b.status].sort()).toEqual([200, 409]);
     const loser = a.status === 409 ? a : b;
     const lost = (await loser.json()) as { reason: string; state: GameState; revision: number };
     expect(lost.reason).toBe('conflict');
     expect(lost.revision).toBe(1);
-    expect(saved(body.playerId).inventory['el:thunder:1'] ?? 0).toBe(0);
+    expect(saved(body.playerId).inventory['el:fire:1'] ?? 0).toBe(0);
     expect(store.saves.get(body.playerId)?.revision).toBe(1);
     expect(store.synthEvents).toHaveLength(1);
   });
+
+  it('failed circle charges the anchor', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    const s1 = fire2();
+    expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
+    clock += 1000;
+    app = appRolling(FAIL_BASE / 2);
+    const { status, out } = await action('/api/circle', { state: s1, baseRevision: 1, placement: fireBolt() }, body.token);
+    expect(status).toBe(200);
+    expect(out.result).toEqual({ kind: 'failed', form: 'bolt' });
+    expect(out.state.learned).toEqual(['mana_bolt']);
+    expect(out.state.inventory).toEqual({});
+    expect(store.synthEvents.map((e) => e.result)).toEqual(['failed']);
+    // the anchor (the initial state, empty inventory) now carries the spent elements as debt
+    expect(JSON.parse(store.saves.get(body.playerId)!.anchorState).inventory).toEqual({ 'el:fire:1': -2 });
+    clock += 60_000;
+    const put = await app.request('/api/save', json({ state: out.state, baseRevision: 2 }, body.token, 'PUT'));
+    expect(put.status).toBe(200);
+    // restoring the spent elements is gain the window has to explain: it is not free
+    expect(store.rejections).toHaveLength(0);
+  });
 });
 
-describe('empower, reveal and passive', () => {
-  /** A guest who learned fireball through the API (revision 1), with `extra` items on top. */
-  async function withFireball(extra: Record<string, number>) {
+describe('empower, key items and passives', () => {
+  /** A guest who learned the Lv.2 fire bolt through the API (revision 1), with `extra` items on top. */
+  async function withFireBolt(extra: Record<string, number>) {
+    app = appRolling(0.5);
     const { body } = await guest();
     clock += 3_600_000;
     const start = withInv({ ...extra, 'el:fire:1': 2 + (extra['el:fire:1'] ?? 0) });
-    const r = await action('/api/synthesize', { state: start, baseRevision: 0, inputs: ['el:fire:1', 'el:fire:1'] }, body.token);
-    expect(r.out.state.learned).toContain('fireball');
+    const r = await action('/api/circle', { state: start, baseRevision: 0, placement: fireBolt() }, body.token);
+    expect(r.out.state.learned).toContain(FIRE_BOLT);
     clock += 1000;
     return { token: body.token, playerId: body.playerId, state: r.out.state, revision: r.out.revision };
   }
 
   it('empower spends elements and raises the level', async () => {
-    const g = await withFireball({ 'el:fire:1': 5 });
-    const { status, out } = await action('/api/empower', { state: g.state, baseRevision: 1, spellId: 'fireball' }, g.token);
+    const g = await withFireBolt({ 'el:fire:1': 5 });
+    const { status, out } = await action('/api/empower', { state: g.state, baseRevision: 1, spellId: FIRE_BOLT }, g.token);
     expect(status, JSON.stringify(out)).toBe(200);
     expect(out.result).toEqual({ kind: 'empowered', level: 2 });
-    expect(out.state.levels).toEqual({ fireball: 2 });
+    expect(out.state.levels).toEqual({ [FIRE_BOLT]: 2 });
     expect(out.state.inventory).toEqual({ 'el:fire:1': 3 });
-    expect(saved(g.playerId).levels).toEqual({ fireball: 2 });
+    expect(saved(g.playerId).levels).toEqual({ [FIRE_BOLT]: 2 });
     // the spent elements are charged to the anchor (the synthesis result, 5 fire): restoring them is a gain to explain
     expect(JSON.parse(store.saves.get(g.playerId)!.anchorState).inventory['el:fire:1']).toBe(3);
     // mana_bolt has no element to empower with
@@ -391,31 +496,46 @@ describe('empower, reveal and passive', () => {
     expect(dropped.status).toBe(422);
   });
 
-  it('reveal consumes the key item', async () => {
-    const g = await withFireball({ 'key:storm_heart': 1 });
-    const { status, out } = await action('/api/reveal', { state: g.state, baseRevision: 1, keyItem: 'key:storm_heart' }, g.token);
+  it('key item raises circleTier and is consumed', async () => {
+    const g = await withFireBolt({ 'key:storm_heart': 1 });
+    const { status, out } = await action('/api/key-item', { state: g.state, baseRevision: 1, keyItem: 'key:storm_heart' }, g.token);
     expect(status).toBe(200);
-    expect(out.result).toEqual({ kind: 'revealed', region: 'outer' });
-    expect(out.state.revealed).toEqual(['outer']);
+    expect(out.result).toEqual({ kind: 'circleOpened', tier: 4 });
+    expect(out.state.circleTier).toBe(4);
     expect(out.state.inventory['key:storm_heart']).toBeUndefined();
-    const again = await action('/api/reveal', { state: out.state, baseRevision: 2, keyItem: 'key:storm_heart' }, g.token);
+    expect(saved(g.playerId).circleTier).toBe(4);
+    const again = await action('/api/key-item', { state: out.state, baseRevision: 2, keyItem: 'key:storm_heart' }, g.token);
     expect(again.status).toBe(422);
-    expect(again.out.result.kind).toBe('rejected');
-    expect(saved(g.playerId).revealed).toEqual(['outer']);
+    expect(again.out.result).toEqual({ kind: 'rejected', reason: 'notOwned' });
+    const unknown = await action('/api/key-item', { state: out.state, baseRevision: 2, keyItem: 'constructor' }, g.token);
+    expect(unknown.out.result).toEqual({ kind: 'rejected', reason: 'unknown' });
+    expect(saved(g.playerId).circleTier).toBe(4);
+    expect(store.rejections).toHaveLength(0);
   });
 
-  it('passive unlock respects the fog', async () => {
-    const g = await withFireball({ 'mat:ember_core': 5, 'key:storm_heart': 1 });
-    const hidden = await action('/api/passive', { state: g.state, baseRevision: 1, passiveId: 'ember_affinity' }, g.token);
-    expect(hidden.status).toBe(422);
-    expect(hidden.out.result).toEqual({ kind: 'rejected', reason: 'hidden' });
-    const shown = await action('/api/reveal', { state: g.state, baseRevision: 1, keyItem: 'key:storm_heart' }, g.token);
-    const { status, out } = await action('/api/passive', { state: shown.out.state, baseRevision: 2, passiveId: 'ember_affinity' }, g.token);
+  it('circleTier cannot be changed by an upload', async () => {
+    const { body } = await guest();
+    clock += 30_000;
+    for (const circleTier of [10, 4, 1]) {
+      const res = await app.request('/api/save', json({ state: { ...body.state, circleTier }, baseRevision: 0 }, body.token, 'PUT'));
+      expect(res.status, String(circleTier)).toBe(422);
+      expect(((await res.json()) as { reasons: string[] }).reasons).toContain('circleTier changed');
+    }
+    // nor through an action's state
+    const viaAction = await action('/api/circle', { state: { ...fire2(), circleTier: 10 }, baseRevision: 0, placement: fireBolt() }, body.token);
+    expect(viaAction.status).toBe(422);
+    expect(viaAction.out.reasons).toContain('circleTier changed');
+    expect(saved(body.playerId).circleTier).toBe(2);
+  });
+
+  it('a passive unlocks without any fog', async () => {
+    const g = await withFireBolt({ 'mat:ember_core': 5 });
+    const { status, out } = await action('/api/passive', { state: g.state, baseRevision: 1, passiveId: 'ember_affinity' }, g.token);
     expect(status).toBe(200);
     expect(out.result).toEqual({ kind: 'unlocked' });
     expect(out.state.passives).toEqual(['ember_affinity']);
     expect(out.state.inventory['mat:ember_core']).toBeUndefined();
-    const unknown = await action('/api/passive', { state: out.state, baseRevision: 3, passiveId: 'constructor' }, g.token);
+    const unknown = await action('/api/passive', { state: out.state, baseRevision: 2, passiveId: 'constructor' }, g.token);
     expect(unknown.out.result).toEqual({ kind: 'rejected', reason: 'unknown' });
   });
 });
@@ -452,13 +572,10 @@ describe('window cap', () => {
     const res = await app.request('/api/save', json({ state: withInv({ 'el:fire:1': 5000 }), baseRevision: 0 }, body.token, 'PUT'));
     expect(res.status).toBe(422);
   });
-  it('synthesize is capped by the same window', async () => {
+  it('a circle is capped by the same window', async () => {
     const { body } = await guest();
     clock += 8 * 3_600_000;
-    const res = await app.request(
-      '/api/synthesize',
-      json({ state: withInv({ 'el:fire:1': 5000, 'el:thunder:1': 2 }), baseRevision: 0, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token),
-    );
+    const res = await app.request('/api/circle', json({ state: withInv({ 'el:fire:1': 5000 }), baseRevision: 0, placement: fireBolt() }, body.token));
     expect(res.status).toBe(422);
     expect(store.synthEvents).toHaveLength(0);
   });
@@ -506,7 +623,8 @@ describe('anchor window', { timeout: 15_000 }, () => {
     for (const e of ELEMENT_ORDER) expect(gainOf(saved(body.playerId), e), e).toBeLessThan(2 * limit[e]!);
   });
 
-  it('high-frequency synthesize calls cannot accumulate per-call allowances either', async () => {
+  it('high-frequency circle calls cannot accumulate per-call allowances either', async () => {
+    app = appRolling(FAIL_BASE / 2); // every circle fails: it spends two fire and commits the claim
     const { body } = await guest();
     let accepted = body.state;
     let revision = 0;
@@ -514,11 +632,10 @@ describe('anchor window', { timeout: 15_000 }, () => {
     for (let i = 0; i < 300; i++) {
       clock += 100;
       const claim = inflate(accepted);
-      // no recipe for fire + water: a logged no-reaction that consumes nothing but commits the claim
-      const { status, out } = await action('/api/synthesize', { state: claim, baseRevision: revision, inputs: ['el:fire:1', 'el:water:1'] }, body.token);
+      const { status, out } = await action('/api/circle', { state: claim, baseRevision: revision, placement: fireBolt() }, body.token);
       revision = out.revision;
       if (status !== 200) rejected++;
-      else expect(out.result.kind).toBe('noReaction');
+      else expect(out.result.kind).toBe('failed');
       accepted = out.state;
     }
     expect(rejected).toBeGreaterThan(0);
@@ -551,13 +668,14 @@ describe('anchor window', { timeout: 15_000 }, () => {
     expect(JSON.parse(store.saves.get(body.playerId)!.anchorState)).toEqual(s2);
   });
 
-  it('synthesize 1 s after an accepted upload is accepted', async () => {
+  it('a circle 1 s after an accepted upload is accepted', async () => {
+    app = appRolling(0.5);
     const { body } = await guest();
     clock += 30_000;
-    const s1 = withInv({ 'el:thunder:1': 2 });
+    const s1 = fire2();
     expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
     clock += 1000;
-    const { status, out } = await action('/api/synthesize', { state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token);
+    const { status, out } = await action('/api/circle', { state: s1, baseRevision: 1, placement: fireBolt() }, body.token);
     expect(status).toBe(200);
     expect(out.result.kind).toBe('learned');
     // and the next regular upload keeps the server-learned spell
@@ -569,9 +687,9 @@ describe('anchor window', { timeout: 15_000 }, () => {
     // Restore the two inputs, synthesize again, repeat. Every restore counts as gain against the anchor,
     // so re-rolls are paid for by the window's farming allowance and the restores are rejected once
     // they exceed it (here: 200 cycles at 10 ms within ~4 s).
+    app = appRolling(0.5);
     const { body } = await guest();
-    const inputs = ['el:thunder:1', 'el:thunder:1'];
-    const two = { 'el:thunder:1': 2 };
+    const two = { 'el:fire:1': 2 };
     let revision = 0;
     const statuses: string[] = [];
     let paid = 0;
@@ -584,37 +702,39 @@ describe('anchor window', { timeout: 15_000 }, () => {
       statuses.push(`put${put.status}`);
       if (put.status !== 200) continue;
       clock += 10;
-      const syn = await action('/api/synthesize', { state: restored, baseRevision: revision, inputs }, body.token);
+      const syn = await action('/api/circle', { state: restored, baseRevision: revision, placement: fireBolt() }, body.token);
       revision = syn.out.revision;
       statuses.push(`syn${syn.status}:${syn.out.result?.kind ?? ''}`);
-      if (syn.status === 200) paid += 2 - (syn.out.state.inventory['el:thunder:1'] ?? 0);
+      if (syn.status === 200) paid += 2 - (syn.out.state.inventory['el:fire:1'] ?? 0);
     }
     expect(statuses).toContain('put422');
     // every element spent by synthesis fits what the window could have produced
-    const limit = maxGain(initial(), clock - t0, content).elements.thunder * GAIN_TOLERANCE + GAIN_SLACK;
+    const limit = maxGain(initial(), clock - t0, content).elements.fire * GAIN_TOLERANCE + GAIN_SLACK;
     expect(paid, statuses.join(' ')).toBeLessThanOrEqual(limit);
-    // and the synth events are exactly the paid ones: 2 for the learn, 1 net per duplicate
-    expect(paid).toBe(2 + (store.synthEvents.length - 1));
+    // and the synth events are exactly the paid ones: every circle (learned, then known) spends its two fire
+    expect(paid).toBe(2 * store.synthEvents.length);
   });
 
   it('the anchor is charged with what a synthesis spent', async () => {
     const { body } = await guest();
     clock += 30_000;
-    const s1 = withInv({ 'el:thunder:1': 3, 'el:fire:1': 1 });
+    const s1 = withInv({ 'el:fire:1': 3, 'el:thunder:1': 1 });
     await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'));
     clock += 1000;
-    await app.request('/api/synthesize', json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token));
-    // anchor (initial, empty inventory) minus the two spent inputs: the debt is carried as -2
-    expect(JSON.parse(store.saves.get(body.playerId)!.anchorState).inventory).toEqual({ 'el:thunder:1': -2 });
+    app = appRolling(0.5);
+    await app.request('/api/circle', json({ state: s1, baseRevision: 1, placement: fireBolt() }, body.token));
+    // anchor (initial, empty inventory) minus the two spent elements: the debt is carried as -2
+    expect(JSON.parse(store.saves.get(body.playerId)!.anchorState).inventory).toEqual({ 'el:fire:1': -2 });
   });
 
   it('synthesis then honest farming in the same window is accepted', async () => {
     const { body } = await guest();
     clock += 30_000;
-    const s1 = withInv({ 'el:thunder:1': 2 });
+    const s1 = fire2();
     expect((await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'))).status).toBe(200);
     clock += 1000;
-    const syn = await action('/api/synthesize', { state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token);
+    app = appRolling(0.5);
+    const syn = await action('/api/circle', { state: s1, baseRevision: 1, placement: fireBolt() }, body.token);
     expect(syn.status).toBe(200);
     expect(store.saves.get(body.playerId)!.anchorAt).toBe(clock - 31_000);
     const r = await playHonestly(body.token, syn.out, { uploadEveryMs: 20_000, until: (_g, ms) => ms >= 60_000 });
@@ -625,9 +745,10 @@ describe('anchor window', { timeout: 15_000 }, () => {
   it('server-owned fields are checked against the current save, not just the anchor', async () => {
     const { body } = await guest();
     clock += 30_000;
-    const s1 = withInv({ 'el:thunder:1': 2 });
+    const s1 = fire2();
     await app.request('/api/save', json({ state: s1, baseRevision: 0 }, body.token, 'PUT'));
-    await app.request('/api/synthesize', json({ state: s1, baseRevision: 1, inputs: ['el:thunder:1', 'el:thunder:1'] }, body.token));
+    app = appRolling(0.5);
+    await app.request('/api/circle', json({ state: s1, baseRevision: 1, placement: fireBolt() }, body.token));
     clock += 1000;
     // dropping the spell learned after the anchor
     const res = await app.request('/api/save', json({ state: body.state, baseRevision: 2 }, body.token, 'PUT'));
@@ -1016,40 +1137,33 @@ describe('accounts: info, password and logout', () => {
 });
 
 describe('rare discoveries', () => {
-  const rolling = (value: number) => ({ next: () => value, int: (min: number) => min });
-  const rareApp = (value: number) =>
-    createApp({ store, now: () => clock, rng: () => rolling(value), content, pepper: 'test-pepper' });
+  /** The roll that passes the failure check and then the rare check (RARE_CHANCE), or misses it. */
+  const HIT = [0.5, RARE_CHANCE / 2];
+  const MISS = [0.5, 0.99];
+  const rareApp = (values: number[]) =>
+    createApp({ store, now: () => clock, rng: () => rolls(values), content, pepper: 'test-pepper' });
 
-  /** A player who knows corona_scorch and holds ember cores, in both the save and its anchor. */
-  async function rarePlayer(name: string, cores = 5) {
-    const { body } = await guest(name);
-    const inventory: Record<string, number> = { 'mat:ember_core': cores };
-    const seeded: GameState = { ...body.state, learned: [...body.state.learned, 'corona_scorch'], inventory };
-    const row = store.saves.get(body.playerId)!;
-    store.saves.set(body.playerId, { ...row, state: JSON.stringify(seeded), anchorState: JSON.stringify(seeded) });
-    return { ...body, state: seeded };
-  }
-  const roll = async (p: { token: string; state: GameState }, value: number, revision = 0) => {
-    const res = await rareApp(value).request(
-      '/api/synthesize',
-      json({ inputs: ['corona_scorch', 'mat:ember_core'], state: p.state, baseRevision: revision }, p.token),
-    );
-    return { status: res.status, out: (await res.json()) as ActionOut & { result: { rare?: unknown; crafted?: boolean } } };
+  /** A player who may draw 焚世之焰's Lv.10 circle and holds its elements `times` over, in both the save and its anchor. */
+  const rarePlayer = (name: string, times = 1) => seededGuest(rareSeed(times), name);
+  const roll = async (p: { token: string; state: GameState }, values: number[], revision = 0) => {
+    const res = await rareApp(values).request('/api/circle', json({ placement: worldfireCircle(), state: p.state, baseRevision: revision }, p.token));
+    return { status: res.status, out: (await res.json()) as ActionOut & { result: { rare?: unknown; form?: string } } };
   };
   const feed = async (token: string, query = '') => {
     const res = await app.request(`/api/discoveries${query}`, { headers: { authorization: `Bearer ${token}` } });
     return { status: res.status, body: (await res.json()) as { discoveries: Record<string, unknown>[] } };
   };
 
-  it('records the rare roll, first for the first player only, and serves the feed newest first', async () => {
+  it('rare circle rolls the rare spell at RARE_CHANCE and writes discoveries, first for the first player only', async () => {
     const a = await rarePlayer('Ann');
     const b = await rarePlayer('Bob');
-    const ra = await roll(a, 0.001);
+    const ra = await roll(a, HIT);
     expect(ra.status).toBe(200);
-    expect(ra.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: true } });
+    expect(ra.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', form: 'meteor', rare: { first: true } });
+    expect(store.synthEvents.at(-1)).toMatchObject({ combo: content.spells.worldfire!.circle, result: 'learned:worldfire' });
     clock += 1000;
-    const rb = await roll(b, 0.001);
-    expect(rb.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    const rb = await roll(b, HIT);
+    expect(rb.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', form: 'meteor', rare: { first: false } });
     const { status, body } = await feed(a.token);
     expect(status).toBe(200);
     expect(body.discoveries.map((d) => d.first)).toEqual([false, true]);
@@ -1059,48 +1173,52 @@ describe('rare discoveries', () => {
     expect(afterFirst.body.discoveries.map((d) => d.displayName)).toEqual(['Bob']);
   });
 
-  it('a missed roll gives the crafted spell (overload at the default depth cap) with no rare field and no discovery', async () => {
-    // corona_scorch is depth 3, so the crafted fall-through is depth 4: past the default cap of 3
+  it('a missed roll gives the ordinary Lv.10 spell of the circle with no rare field and no discovery', async () => {
     const a = await rarePlayer('Ann');
-    const r = await roll(a, 0.99);
+    const r = await roll(a, MISS);
     expect(r.status).toBe(200);
-    expect(r.out.result.kind).toBe('overload');
-    expect('rare' in r.out.result).toBe(false);
+    expect(r.out.result).toEqual({ kind: 'learned', spellId: content.spells.worldfire!.circle, form: 'meteor' });
     expect(store.discoveryLog).toEqual([]);
   });
 
-  it('a second missed roll is a duplicate that still spends the material', async () => {
-    const a = await rarePlayer('Ann');
-    const r1 = await roll(a, 0.99);
-    expect(r1.status).toBe(200);
-    expect(saved(a.playerId).inventory['mat:ember_core']).toBe(4);
-    const r2 = await roll({ token: a.token, state: r1.out.state }, 0.99, r1.out.revision);
+  it('a second miss is known and still spends the elements', async () => {
+    const a = await rarePlayer('Ann', 2);
+    const r1 = await roll(a, MISS);
+    expect(saved(a.playerId).inventory['el:fire:5']).toBe(1);
+    const r2 = await roll({ token: a.token, state: r1.out.state }, MISS, r1.out.revision);
     expect(r2.status).toBe(200);
-    expect(r2.out.result).toMatchObject({ kind: 'duplicate', spellId: 'mana_overload', refunded: [] });
-    expect(r2.out.state.inventory['mat:ember_core']).toBe(3);
-    expect(saved(a.playerId).inventory['mat:ember_core']).toBe(3);
+    expect(r2.out.result).toEqual({ kind: 'known', spellId: content.spells.worldfire!.circle, form: 'meteor' });
+    expect(saved(a.playerId).inventory['el:fire:5']).toBeUndefined();
+  });
+
+  it('rolling a rare spell already learned is known, without a rare field or a second discovery', async () => {
+    const a = await rarePlayer('Ann', 2);
+    const r1 = await roll(a, HIT);
+    const r2 = await roll({ token: a.token, state: r1.out.state }, HIT, r1.out.revision);
+    expect(r2.status).toBe(200);
+    expect(r2.out.result).toEqual({ kind: 'known', spellId: 'worldfire', form: 'meteor' });
+    expect(store.discoveryLog).toHaveLength(1);
   });
 
   it('a committed rare learn survives a failing discovery write', async () => {
     const a = await rarePlayer('Ann');
     store.recordDiscovery = async () => { throw new Error('db down'); };
-    const r = await roll(a, 0.001);
+    const r = await roll(a, HIT);
     expect(r.status).toBe(200);
-    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', form: 'meteor', rare: { first: false } });
     expect(saved(a.playerId).learned).toContain('worldfire');
   });
 
-  it('a rejected action writes no discovery', async () => {
-    const a = await rarePlayer('Ann', 1);
-    const seeded = { ...a.state, inventory: {} };
-    const r = await roll({ token: a.token, state: seeded }, 0.001);
+  it('a refused circle writes no discovery', async () => {
+    const a = await rarePlayer('Ann');
+    const r = await roll({ token: a.token, state: { ...a.state, inventory: {} } }, HIT);
     expect(r.status).toBe(422);
     expect(store.discoveryLog).toEqual([]);
   });
 
   it('a conflict writes no discovery', async () => {
     const a = await rarePlayer('Ann');
-    const r = await roll(a, 0.001, 7);
+    const r = await roll(a, HIT, 7);
     expect(r.status).toBe(409);
     expect(store.discoveryLog).toEqual([]);
   });
@@ -1108,9 +1226,9 @@ describe('rare discoveries', () => {
   it('a suspicious player learns the spell but is not recorded', async () => {
     const a = await rarePlayer('Ann');
     await store.markSuspicious(a.playerId);
-    const r = await roll(a, 0.001);
+    const r = await roll(a, HIT);
     expect(r.status).toBe(200);
-    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', form: 'meteor', rare: { first: false } });
     expect(saved(a.playerId).learned).toContain('worldfire');
     expect(store.discoveryLog).toEqual([]);
   });
@@ -1118,9 +1236,9 @@ describe('rare discoveries', () => {
   it('a GM-used player learns the spell but is not recorded', async () => {
     const a = await rarePlayer('Ann');
     await store.markGmUsed(a.playerId);
-    const r = await roll(a, 0.001);
+    const r = await roll(a, HIT);
     expect(r.status).toBe(200);
-    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', crafted: false, rare: { first: false } });
+    expect(r.out.result).toEqual({ kind: 'learned', spellId: 'worldfire', form: 'meteor', rare: { first: false } });
     expect(saved(a.playerId).learned).toContain('worldfire');
     expect(store.discoveryLog).toEqual([]);
   });
@@ -1515,13 +1633,11 @@ describe('GM login and tokens', () => {
       expect((await a.request('/api/save', json({ state: moved, baseRevision: 1 }, g.token, 'PUT'))).status).toBe(200);
     });
 
-    it('reveal_all lifts every fog region', async () => {
+    it('reveal_all opens every magic circle tier', async () => {
       const { status, out } = await gm('/api/gm/zones', { state: g.state, baseRevision: 0, op: 'reveal_all' });
       expect(status).toBe(200);
-      const hidden = content.regions.filter((r) => !r.initiallyVisible).map((r) => r.id);
-      expect(hidden.length).toBeGreaterThan(0);
-      expect(out.state.revealed).toEqual(hidden);
-      expect(saved(g.playerId).revealed).toEqual(hidden);
+      expect(out.state.circleTier).toBe(10);
+      expect(saved(g.playerId).circleTier).toBe(10);
       expect(store.gmActions.map((x) => [x.action, x.detail])).toEqual([['reveal_all', null]]);
       clock += 30_000;
       expect((await a.request('/api/save', json({ state: out.state, baseRevision: 1 }, g.token, 'PUT'))).status).toBe(200);

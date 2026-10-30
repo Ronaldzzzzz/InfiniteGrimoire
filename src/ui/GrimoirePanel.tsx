@@ -1,7 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { content as defaultContent } from '../engine/content';
 import type { Content } from '../engine/model';
-import { visibleRegions } from '../engine/tree';
 import type { GameRuntime } from '../game/runtime';
 import type { SyncController } from '../game/sync';
 import { COLORS, spellColor } from '../render/palette';
@@ -77,12 +76,12 @@ export const GrimoirePanel = memo(function GrimoirePanel({
 }) {
   const learned = useRuntime(runtime, (s) => s.game.learned);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
-  const revealed = useRuntime(runtime, (s) => s.game.revealed);
   const passives = useRuntime(runtime, (s) => s.game.passives);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
   // while a synthesis is in flight nothing may be placed either (and no toast or flash may suggest it was)
   const noPlace = slotsFull || synthPending;
-  const visible = useMemo(() => visibleRegions({ revealed }, content), [content, revealed]);
+  // the fog is gone (magic circles: key items open circle tiers instead); every region shows until the star map replaces this tree
+  const visible = useMemo(() => new Set(content.regions.map((r) => r.id)), [content]);
   const lightDark = tree === 'lightdark';
   const layout = useMemo(
     () => lightDark

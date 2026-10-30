@@ -73,7 +73,7 @@ export function revealOf(result: ActionResult, content: Content, inputs: string[
     case 'learned':
       // a rare spell is revealed full screen (RareReveal), not in the middle of the altar
       if (result.rare) return null;
-      return result.crafted
+      return 'crafted' in result && result.crafted
         ? { tone: 'crafted', kicker: '自創魔法！', spellId: result.spellId, detail: detail() }
         : { tone: 'new', kicker: '新發現！', spellId: result.spellId, detail: detail() };
     case 'duplicate':

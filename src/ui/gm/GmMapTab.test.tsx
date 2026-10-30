@@ -18,7 +18,7 @@ function setup() {
 describe('GmMapTab', () => {
   it.each([
     ['開放所有地點', 'unlock_all'],
-    ['散開所有迷霧', 'reveal_all'],
+    ['開放所有魔法陣格子', 'reveal_all'],
     ['目前地點直達魔王關', 'boss_ready'],
   ])('%s sends op %s', async (label, op) => {
     const { action } = setup();

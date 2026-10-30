@@ -25,7 +25,7 @@ const zone = (id: string, order: number, monsters: string[], bossId: string, ext
   id, name: id, nameEn: id, order, monsters, bossId, stages: stagesOf(3), ...extra,
 });
 const fixture = (o: Partial<Content>): Content => ({
-  spells: {}, recipes: [], monsters: {}, zones: [], materials: {}, keyItems: {}, passives: {}, regions: [],
+  spells: {}, monsters: {}, zones: [], materials: {}, keyItems: {}, passives: {}, regions: [],
   baseSpells: {} as Content['baseSpells'], ...o,
 });
 
@@ -164,7 +164,7 @@ describe('validateUpload', () => {
     const cases: [Partial<GameState>, string][] = [
       [{ learned: ['mana_bolt'] }, 'learned'],
       [{ levels: { strong: 2 } }, 'levels'],
-      [{ revealed: ['outer'] }, 'revealed'],
+      [{ circleTier: 4 }, 'circleTier'],
       [{ passives: ['p1'] }, 'passives'],
       [{ synthesisLog: { r: { attempts: 1, results: {}, noReaction: true } } }, 'synthesisLog'],
     ];
@@ -201,10 +201,20 @@ describe('validateUpload', () => {
     }
   });
 
-  it('learned, revealed and passives compare as sets', () => {
-    const prev = { ...base(), learned: ['mana_bolt', 'strong'], revealed: ['a', 'b'] };
-    const next = { ...prev, learned: ['strong', 'mana_bolt'], revealed: ['b', 'a'] };
+  it('learned and passives compare as sets', () => {
+    const prev = { ...base(), learned: ['mana_bolt', 'strong'], passives: ['a', 'b'] };
+    const next = { ...prev, learned: ['strong', 'mana_bolt'], passives: ['b', 'a'] };
     expect(validateUpload(prev, next, 0, data)).toEqual({ ok: true });
+  });
+
+  it('circleTier cannot be changed by an upload', () => {
+    expect(fail(validateUpload(base(), { ...base(), circleTier: 10 }, 0, data))).toContain('circleTier changed');
+    expect(fail(validateUpload({ ...base(), circleTier: 6 }, { ...base(), circleTier: 4 }, 0, data))).toContain('circleTier changed');
+  });
+
+  it('learned may only hold ids that resolve', () => {
+    const prev = { ...base(), learned: ['mana_bolt', 'c(fireball|rock_spear)'] };
+    expect(fail(validateUpload(prev, prev, 0, data))).toContain('learned spell c(fireball|rock_spear) does not resolve');
   });
 
   it('equipped must be learned and currentZone unlocked', () => {

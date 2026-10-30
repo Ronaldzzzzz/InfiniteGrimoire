@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { content } from './content';
-import { BASE_DEPTH_CAP, depthCap, passiveBonuses, passiveRequirementMet, revealRegion, unlockPassive, visibleRegions } from './tree';
-import { HARD_MAX_DEPTH } from './spells';
+import { passiveBonuses, passiveRequirementMet, unlockPassive, useKeyItem } from './tree';
 import type { Content, GameState, Passive } from './model';
 
 const mkState = (over: Partial<GameState> = {}): GameState => ({
-  version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
+  version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, circleTier: 2, passives: [],
   currentZone: 'z1', unlockedZones: ['z1'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {}, ...over,
 });
 const withPassives = (...ps: Passive[]): Content => ({
@@ -16,44 +15,36 @@ const mkPassive = (id: string, bonus: Passive['bonus'], unlock: Passive['unlock'
 });
 
 describe('tree', () => {
-  it('starts with the initially visible regions', () => {
-    expect([...visibleRegions(mkState(), content)]).toEqual(['core']);
-    expect(visibleRegions(mkState({ revealed: ['outer'] }), content).has('outer')).toBe(true);
+  it('key item raises circleTier and is consumed', () => {
+    const s = mkState({ inventory: { 'key:storm_heart': 1, 'key:thunder_eye': 2 } });
+    const { state, result } = useKeyItem(s, 'key:storm_heart', content);
+    expect(result).toEqual({ kind: 'circleOpened', tier: 4 });
+    expect(state.circleTier).toBe(4);
+    expect(state.inventory).toEqual({ 'key:thunder_eye': 2 });
+    // used out of order, a later key opens more, and an earlier one then does nothing
+    const later = useKeyItem(mkState({ inventory: { 'key:thunder_eye': 1, 'key:storm_heart': 1 } }), 'key:thunder_eye', content);
+    expect(later.result).toEqual({ kind: 'circleOpened', tier: 6 });
+    const none = useKeyItem(later.state, 'key:storm_heart', content);
+    expect(none.result).toEqual({ kind: 'rejected', reason: 'noEffect' });
+    expect(none.state).toBe(later.state);
   });
 
-  it('reveals a region with a key item and consumes it', () => {
-    const s = mkState({ inventory: { 'key:storm_heart': 1 } });
-    const { state, result } = revealRegion(s, 'key:storm_heart', content);
-    expect(result).toEqual({ kind: 'revealed', region: 'outer' });
-    expect(state.revealed).toEqual(['outer']);
-    expect(state.inventory).toEqual({});
-  });
-
-  it('rejects revealing without the item or twice', () => {
+  it('rejects an unknown or missing key item', () => {
     const s = mkState();
-    const a = revealRegion(s, 'key:storm_heart', content);
-    expect(a.result).toEqual({ kind: 'rejected', reason: 'notOwned' });
-    expect(a.state).toEqual(s);
-    const b = revealRegion(s, 'key:nope', content);
-    expect(b.result).toEqual({ kind: 'rejected', reason: 'unknown' });
-    const twice = mkState({ inventory: { 'key:storm_heart': 1 }, revealed: ['outer'] });
-    const c = revealRegion(twice, 'key:storm_heart', content);
-    expect(c.result).toEqual({ kind: 'rejected', reason: 'alreadyRevealed' });
-    expect(c.state).toEqual(twice);
+    expect(useKeyItem(s, 'key:storm_heart', content)).toEqual({ state: s, result: { kind: 'rejected', reason: 'notOwned' } });
+    expect(useKeyItem(s, 'key:nope', content).result).toEqual({ kind: 'rejected', reason: 'unknown' });
+    expect(useKeyItem(mkState({ inventory: { 'mat:ember_core': 1 } }), 'mat:ember_core', content).result).toEqual({ kind: 'rejected', reason: 'unknown' });
+    expect(useKeyItem(s, 'constructor', content).result).toEqual({ kind: 'rejected', reason: 'unknown' });
   });
 
-  it('unlocks an item passive only when visible and affordable', () => {
+  it('unlocks an item passive only when affordable (there is no fog any more)', () => {
     const rich = mkState({ inventory: { 'mat:ember_core': 5 } });
-    const hidden = unlockPassive(rich, 'ember_affinity', content);
-    expect(hidden.result).toEqual({ kind: 'rejected', reason: 'hidden' });
-    expect(hidden.state).toEqual(rich);
-
-    const poor = mkState({ revealed: ['outer'], inventory: { 'mat:ember_core': 4 } });
+    const poor = mkState({ inventory: { 'mat:ember_core': 4 } });
     const short = unlockPassive(poor, 'ember_affinity', content);
     expect(short.result).toEqual({ kind: 'rejected', reason: 'requirement' });
     expect(short.state).toEqual(poor);
 
-    const ok = unlockPassive(mkState({ revealed: ['outer'], inventory: { 'mat:ember_core': 6 } }), 'ember_affinity', content);
+    const ok = unlockPassive(mkState({ inventory: { 'mat:ember_core': 6 } }), 'ember_affinity', content);
     expect(ok.result).toEqual({ kind: 'unlocked' });
     expect(ok.state.passives).toEqual(['ember_affinity']);
     expect(ok.state.inventory).toEqual({ 'mat:ember_core': 1 });
@@ -72,7 +63,8 @@ describe('tree', () => {
     // mana_bolt has no element; only fire spells count
     expect(passiveRequirementMet(mkState({ learned: ['mana_bolt', 'fireball', 'wind_blade'] }), 'l', c)).toBe(false);
     expect(passiveRequirementMet(mkState({ learned: ['mana_bolt', 'fireball', 'flame_burst'] }), 'l', c)).toBe(true);
-    // crafted spells are not named spells
+    // magic circle spells count by their elements; ids that do not resolve never count
+    expect(passiveRequirementMet(mkState({ learned: ['fireball', 'm:fire.2.----f.-----.bolt'] }), 'l', c)).toBe(true);
     expect(passiveRequirementMet(mkState({ learned: ['fireball', 'c(fireball|lightning)'] }), 'l', c)).toBe(false);
     const any = withPassives(mkPassive('a', { kind: 'cooldown', pct: 5 }, { kind: 'learned', count: 3, element: null }));
     expect(passiveRequirementMet(mkState({ learned: ['mana_bolt', 'fireball', 'wind_blade'] }), 'a', any)).toBe(true);
@@ -81,16 +73,6 @@ describe('tree', () => {
     const done = unlockPassive(mkState({ defeatedBosses: ['m_boss'] }), 'b', c);
     expect(done.result).toEqual({ kind: 'unlocked' });
     expect(unlockPassive(mkState(), 'b', c).result).toEqual({ kind: 'rejected', reason: 'requirement' });
-  });
-
-  it('depth passives raise the cap up to HARD_MAX_DEPTH', () => {
-    expect(BASE_DEPTH_CAP).toBe(3);
-    expect(depthCap(mkState(), content)).toBe(3);
-    const d1 = mkPassive('d1', { kind: 'depth', add: 2 }, { kind: 'boss', bossId: 'x' });
-    const d2 = mkPassive('d2', { kind: 'depth', add: 20 }, { kind: 'boss', bossId: 'x' });
-    const c = withPassives(d1, d2);
-    expect(depthCap(mkState({ passives: ['d1'] }), c)).toBe(5);
-    expect(depthCap(mkState({ passives: ['d1', 'd2'] }), c)).toBe(HARD_MAX_DEPTH);
   });
 
   it('passiveBonuses sums damage per element and cooldown', () => {

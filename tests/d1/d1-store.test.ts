@@ -67,15 +67,41 @@ describe('migration 0007', () => {
     raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 7, 5000, ?, 4000)').run('p1', '{"v":1}', '{"v":1}');
     const players = (raw.prepare('SELECT COUNT(*) AS n FROM players').get() as { n: number }).n;
 
-    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0007'));
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0007' && f < '0008'));
+    // 0008 (tested below) resets saves again, so stop before it
 
     expect((raw.prepare('SELECT COUNT(*) AS n FROM players').get() as { n: number }).n).toBe(players);
     const save = (await new D1Store(d1).getSave('p1'))!;
-    expect(parseState(JSON.parse(save.state), content)?.currentStage).toBe(1);
-    expect(parseState(JSON.parse(save.state), content)).toEqual(createInitialState(content)); // 0007 predates clearTimes etc.; zod defaults fill them
+    expect(JSON.parse(save.state)).toMatchObject({ version: 2, learned: ['mana_bolt'], revealed: [], currentStage: 1, clearedStages: {}, lastClearAt: 0 });
     expect(save.anchorState).toBe(save.state);
     expect(save.anchorAt).toBe(5000);
     expect(save.revision).toBe(8);
+  });
+});
+
+describe('migration 0008', () => {
+  it('0008 applies and resets saves to the magic circle initial state, keeping players, sessions and discoveries', async () => {
+    const { d1, raw } = createD1();
+    applyMigrations(raw, MIGRATIONS.filter((f) => f < '0008'));
+    raw.prepare('INSERT INTO players (id, display_name, created_at, suspicious) VALUES (?, ?, ?, 0)').run('p1', 'Old', 1234);
+    raw.prepare('INSERT INTO sessions (token_hash, player_id, created_at, last_seen_at) VALUES (?, ?, ?, ?)').run('h1', 'p1', 1234, 1234);
+    // a pre-0008 save: the fog (revealed) and a crafted spell, neither of which parses any more
+    const old = JSON.stringify({ ...JSON.parse(serialize(createInitialState(content))), circleTier: undefined, revealed: ['outer'], learned: ['mana_bolt', 'c(fireball|rock_spear)'] });
+    expect(parseState(JSON.parse(old), content)).toBeNull();
+    raw.prepare('INSERT INTO saves (player_id, state, revision, saved_at, anchor_state, anchor_at) VALUES (?, ?, 4, 6000, ?, 5000)').run('p1', old, old);
+    await new D1Store(d1).recordDiscovery({ spellId: 'worldfire', playerId: 'p1', displayName: 'Old', at: 1 });
+
+    applyMigrations(raw, MIGRATIONS.filter((f) => f >= '0008'));
+
+    const store = new D1Store(d1);
+    const save = (await store.getSave('p1'))!;
+    expect(save.state).toBe(serialize(createInitialState(content)));
+    expect(parseState(JSON.parse(save.state), content)).toEqual(createInitialState(content));
+    expect(save.anchorState).toBe(save.state);
+    expect(save.anchorAt).toBe(6000);
+    expect(save.revision).toBe(5);
+    expect((await store.findPlayerBySession('h1'))?.player.id).toBe('p1');
+    expect(await store.recentDiscoveries(null, 10)).toHaveLength(1);
   });
 });
 
