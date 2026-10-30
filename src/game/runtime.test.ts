@@ -60,7 +60,10 @@ describe('GameRuntime', () => {
     expect(rt.getSnapshot().battle).toBe(before.battle);
     expect(rt.stepAlpha()).toBe(0);
     rt.setAway(false);
-    rt.advance(10_000);
+    expect(rt.stepAlpha()).toBe(0); // nothing carried over from the frozen time
+    rt.advance(STEP_MS / 2);
+    expect(rt.getSnapshot().battle).toBe(before.battle); // half a step: no step yet, so nothing was banked
+    rt.advance(STEP_MS / 2);
     expect(rt.getSnapshot().battle).not.toBe(before.battle);
   });
   it('replaceState in the same zone keeps the battle going and notifies', () => {

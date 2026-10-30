@@ -23,6 +23,11 @@ describe('AwayReport', () => {
     fireEvent.click(screen.getByText('知道了'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+  it('shows seconds under a minute and 不到 0.1 次 for a sliver of a run', () => {
+    const { container } = render(<AwayReport report={{ ...report, awayMs: 45_000, runs: 0.04 }} content={content} onClose={vi.fn()} />);
+    expect(container.textContent).toContain('離開 45 秒');
+    expect(container.textContent).toContain('刷了不到 0.1 次');
+  });
   it('shows a share of a run with one decimal', () => {
     const { container } = render(<AwayReport report={{ ...report, runs: 0.2 }} content={content} onClose={vi.fn()} />);
     expect(container.textContent).toContain('在 迷霧草原 1-4 刷了 0.2 次');
@@ -35,6 +40,7 @@ describe('AwayReport', () => {
   it('merges reports: sums runs and loot, keeps the latest stage', () => {
     const m = mergeReports(report, { ...report, stage: 6, runs: 3, loot: { 'el:fire:1': 1, 'el:wind:1': 2 } });
     expect(m.runs).toBe(15);
+    expect(m.ticks).toBe(500);
     expect(m.stage).toBe(6);
     expect(m.loot).toEqual({ 'el:fire:1': 8, 'el:wind:1': 2 });
   });

@@ -573,26 +573,72 @@ describe('SyncController', () => {
     await vi.advanceTimersByTimeAsync(RETRY_MS);
     expect(calls.slice(1)).toEqual(['offline', 'upload']);
   });
-  it('an away dropped while another action is in flight is delivered afterwards; a return cancels it', async () => {
+  it('an away blocked by another action is delivered once it ends; a return before that cancels it', async () => {
     const rt = mk();
     const away = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'away' as const }, state: rt.getSnapshot().game, revision: 9 }));
     const offline = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 10 }));
     const sync = new SyncController(rt, fakeApi({ away, offline }));
     rt.setSynthPending(true);
-    await sync.goAway();
+    void sync.goAway();
+    await vi.advanceTimersByTimeAsync(300);
     expect(away).not.toHaveBeenCalled();
     rt.setSynthPending(false);
-    const stop = sync.start();
-    await vi.advanceTimersByTimeAsync(UPLOAD_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(300);
     expect(away).toHaveBeenCalledTimes(1);
-    stop();
 
     const sync2 = new SyncController(rt, fakeApi({ away, offline }));
     rt.setSynthPending(true);
-    await sync2.goAway();
+    void sync2.goAway();
+    await vi.advanceTimersByTimeAsync(0);
+    await sync2.claimOffline(); // back before the away was ever sent: nothing to claim
     rt.setSynthPending(false);
-    await sync2.claimOffline(); // returned before the away was ever sent
+    await vi.advanceTimersByTimeAsync(3000);
     expect(away).toHaveBeenCalledTimes(1);
+    expect(offline).not.toHaveBeenCalled();
+  });
+  it('a return while the away is still in flight claims right after it, without waiting for a tick', async () => {
+    const rt = mk();
+    const calls: string[] = [];
+    let release!: () => void;
+    const away = vi.fn(() => new Promise((resolve) => {
+      release = () => { calls.push('away'); resolve({ kind: 'ok', result: { kind: 'away' }, state: rt.getSnapshot().game, revision: 9 }); };
+    }));
+    const offline = vi.fn(async () => {
+      calls.push('offline');
+      return { kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 10 };
+    });
+    const sync = new SyncController(rt, fakeApi({ away, offline } as never));
+    const leaving = sync.goAway();
+    await vi.advanceTimersByTimeAsync(0);
+    void sync.claimOffline(); // back at once: the away is on the wire
+    release();
+    await leaving;
+    await vi.advanceTimersByTimeAsync(600);
+    expect(calls).toEqual(['away', 'offline']);
+  });
+  it('an away after an undelivered claim goes behind it: the claim is never lost', async () => {
+    const rt = mk();
+    const calls: string[] = [];
+    const offline = vi
+      .fn()
+      .mockImplementationOnce(async () => { calls.push('offline-fail'); throw new NetworkError('x'); })
+      .mockImplementation(async () => { calls.push('offline'); return { kind: 'ok', result: { kind: 'none' }, state: rt.getSnapshot().game, revision: 10 }; });
+    const away = vi.fn(async () => { calls.push('away'); return { kind: 'ok' as const, result: { kind: 'away' as const }, state: rt.getSnapshot().game, revision: 11 }; });
+    const sync = new SyncController(rt, fakeApi({ offline, away } as never));
+    await sync.claimOffline();
+    await sync.goAway(); // still offline: queued behind the claim
+    await vi.advanceTimersByTimeAsync(RETRY_MS);
+    expect(calls).toEqual(['offline-fail', 'offline', 'away']);
+  });
+  it('a claim refused outright is not resent', async () => {
+    const offline = vi.fn(async () => { throw new ApiError('x', 400); });
+    const sync = new SyncController(mk(), fakeApi({ offline }));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const stop = sync.start();
+    await sync.claimOffline();
+    await vi.advanceTimersByTimeAsync(UPLOAD_INTERVAL_MS * 2);
+    expect(offline).toHaveBeenCalledTimes(1);
+    stop();
   });
   it('a failed claim does not throw', async () => {
     const sync = new SyncController(mk(), fakeApi({ offline: vi.fn(async () => { throw new ApiError('x', 400); }) }));

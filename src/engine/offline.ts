@@ -71,7 +71,8 @@ const median = (xs: number[]): number => {
 export function claimOffline(
   state: GameState, prevSavedAt: number, now: number, content: Content, rng: Rng,
 ): { state: GameState; result: OfflineResult } {
-  const none = { state: state.awayAt === 0 ? state : { ...state, awayAt: 0 }, result: { kind: 'none' } as const };
+  // a real away that pays nothing still ends at now, so the frozen time is never recorded as a clear time
+  const none = { state: state.awayAt === 0 ? state : { ...state, awayAt: 0, offlineUntil: now }, result: { kind: 'none' } as const };
   const target = offlineStage(state, content);
   if (!target) return none;
   const { zone } = target;

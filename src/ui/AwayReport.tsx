@@ -7,14 +7,20 @@ export function mergeReports(prev: OfflineReport | null, next: OfflineReport): O
   if (!prev) return next;
   const loot = { ...prev.loot };
   for (const [id, n] of Object.entries(next.loot)) loot[id] = (loot[id] ?? 0) + n;
-  return { ...next, runs: prev.runs + next.runs, awayMs: prev.awayMs + next.awayMs, capped: prev.capped || next.capped, loot };
+  return { ...next, ticks: prev.ticks + next.ticks, runs: prev.runs + next.runs, awayMs: prev.awayMs + next.awayMs, capped: prev.capped || next.capped, loot };
 }
 
-/** 「2 小時 5 分」; under an hour 「5 分」. */
+/** 「2 小時 5 分」; under an hour 「5 分」; under a minute 「45 秒」. */
 export function awayLabel(awayMs: number): string {
+  if (awayMs < 60_000) return `${Math.floor(awayMs / 1000)} 秒`;
   const minutes = Math.floor(awayMs / 60_000);
   const h = Math.floor(minutes / 60);
   return h >= 1 ? `${h} 小時 ${minutes % 60} 分` : `${minutes} 分`;
+}
+
+/** 「 2.4 」 with one decimal; a sliver below 0.1 reads 「不到 0.1 」. */
+function runsLabel(runs: number): string {
+  return runs < 0.1 ? '不到 0.1 ' : ` ${Math.round(runs * 10) / 10} `;
 }
 
 export function AwayReport({ report, content, onClose }: { report: OfflineReport; content: Content; onClose: () => void }) {
@@ -25,7 +31,7 @@ export function AwayReport({ report, content, onClose }: { report: OfflineReport
       <div className="away-report" role="dialog" aria-label="離開期間的收穫">
         <h2>離開期間的收穫</h2>
         <p>離開 {awayLabel(report.awayMs)}</p>
-        <p>在 {zone?.name ?? report.zoneId} {zone?.order ?? '?'}-{report.stage} 刷了 {Math.round(report.runs * 10) / 10} 次</p>
+        <p>在 {zone?.name ?? report.zoneId} {zone?.order ?? '?'}-{report.stage} 刷了{runsLabel(report.runs)}次</p>
         {loot.length > 0 && (
           <ul className="away-loot">
             {loot.map(([id, n]) => <li key={id}>{itemName(id, content)} ×{n}</li>)}

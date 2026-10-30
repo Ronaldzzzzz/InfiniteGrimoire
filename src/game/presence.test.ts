@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { watchPresence } from './presence';
+import { FOCUS_POLL_MS, watchPresence } from './presence';
 
 /** A page whose visibility and window focus the test drives. */
 function stubPage() {
   const docListeners = new Set<() => void>();
-  const winListeners = new Set<() => void>();
+  const winListeners = new Map<string, Set<() => void>>();
   let focused = true;
   const doc = {
     visibilityState: 'visible' as DocumentVisibilityState,
@@ -13,8 +13,14 @@ function stubPage() {
     removeEventListener: (_: string, l: () => void) => void docListeners.delete(l),
   };
   const win = {
-    addEventListener: (_: string, l: () => void) => void winListeners.add(l),
-    removeEventListener: (_: string, l: () => void) => void winListeners.delete(l),
+    addEventListener: (type: string, l: () => void) => {
+      if (!winListeners.has(type)) winListeners.set(type, new Set());
+      winListeners.get(type)!.add(l);
+    },
+    removeEventListener: (type: string, l: () => void) => void winListeners.get(type)?.delete(l),
+  };
+  const fireWin = (type: string) => {
+    for (const l of [...(winListeners.get(type) ?? [])]) l();
   };
   const fire = (ls: Set<() => void>) => {
     for (const l of [...ls]) l();
@@ -31,13 +37,20 @@ function stubPage() {
     },
     blur: () => {
       focused = false;
-      fire(winListeners);
+      fireWin('blur');
     },
     focus: () => {
       focused = true;
-      fire(winListeners);
+      fireWin('focus');
     },
-    listenerCount: () => docListeners.size + winListeners.size,
+    /** a browser that fires blur while hasFocus() still says true */
+    blurEventOnly: () => {
+      fireWin('blur');
+    },
+    loseFocusSilently: () => {
+      focused = false;
+    },
+    listenerCount: () => docListeners.size + [...winListeners.values()].reduce((n, set) => n + set.size, 0),
   };
 }
 
@@ -98,6 +111,22 @@ describe('watchPresence', () => {
     expect(onReturn).not.toHaveBeenCalled();
     p.focus();
     expect(onReturn).toHaveBeenCalledTimes(1);
+  });
+  it('trusts the blur event even when hasFocus() lags', () => {
+    const p = stubPage();
+    const onAway = vi.fn();
+    watchPresence({ delayMs: DELAY, onAway, onReturn: vi.fn() }, p.env);
+    p.blurEventOnly();
+    vi.advanceTimersByTime(DELAY);
+    expect(onAway).toHaveBeenCalledTimes(1);
+  });
+  it('a missed blur is caught by the focus poll', () => {
+    const p = stubPage();
+    const onAway = vi.fn();
+    watchPresence({ delayMs: DELAY, onAway, onReturn: vi.fn() }, p.env);
+    p.loseFocusSilently();
+    vi.advanceTimersByTime(FOCUS_POLL_MS + DELAY);
+    expect(onAway).toHaveBeenCalledTimes(1);
   });
   it('disposer removes listeners', () => {
     const p = stubPage();

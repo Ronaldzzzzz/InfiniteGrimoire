@@ -120,7 +120,7 @@ describe('claimOffline', () => {
     expect(r.result).toEqual({ kind: 'none' });
   });
 
-  it('none without clear times, with a spell that cannot damage, or below one run', () => {
+  it('none without clear times, with a spell that cannot damage, or below one tick', () => {
     const cases: GameState[] = [
       away({ clearTimes: {}, awayAt: 5 }),
       base({ clearedStages: { late: 3 }, clearTimes: { 'late:3': [150_000] }, awayAt: 5, offlineUntil: 7 }),
@@ -130,9 +130,15 @@ describe('claimOffline', () => {
       const r = claimOffline(s, NOW - HOUR, NOW, data, createRng(1));
       expect(r.result).toEqual({ kind: 'none' });
       expect(r.state.awayAt).toBe(0);
-      expect(r.state.offlineUntil).toBe(s.offlineUntil);
+      // a real away still ends here, so the frozen time is never recorded as a clear time
+      expect(r.state.offlineUntil).toBe(NOW);
       expect(r.state.inventory).toBe(s.inventory);
     }
+  });
+
+  it('a none claim without an away mark (a reload) leaves offlineUntil alone', () => {
+    const s = away({ awayAt: 0, clearTimes: {} });
+    expect(claimOffline(s, NOW - HOUR, NOW, data, createRng(1)).state).toBe(s);
   });
 
   it('a second claim at the same moment pays nothing', () => {

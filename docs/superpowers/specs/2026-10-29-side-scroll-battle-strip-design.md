@@ -78,7 +78,7 @@
 
 ### 3.8 離線收益（2026-10-30 與使用者討論定案；**已實作（2026-10-30）**）
 
-實作：`src/engine/offline.ts`、`POST /api/away`／`/api/offline`、`src/game/presence.ts`、`AwayReport`；新欄位 `clearTimes`、`awayAt`、`offlineUntil`（伺服器擁有、有預設值、不需 migration）。常數 `OFFLINE_RATE` 0.5、`OFFLINE_CAP_MS` 8 小時、`AWAY_DELAY_MS` 30 秒、每關保留 5 筆通關時間。離開或離線的時間不計入通關時間紀錄（審查裁定）。
+實作：`src/engine/offline.ts`、`POST /api/away`／`/api/offline`、`src/game/presence.ts`、`AwayReport`；新欄位 `clearTimes`、`awayAt`、`offlineUntil`（伺服器擁有、有預設值、不需 migration）。常數 `OFFLINE_RATE` 0.5、`OFFLINE_CAP_MS` 8 小時、`AWAY_DELAY_MS` 10 秒、`OFFLINE_TICK_MS` 30 秒、每關保留 5 筆通關時間。離開或離線的時間不計入通關時間紀錄（審查裁定；沒有收益的結算也會結束離開）。注意：焦點移到網址列、擴充功能視窗或嵌在頁面的開發者工具也算「不是使用中的視窗」，10 秒後會凍結；在開發者工具有焦點時重新整理，遊戲一開始就是凍結的。
 
 **使用者拍板：**
 - **兩種情況都算**：(1) 分頁開著但**遊戲不是目前使用中的視窗**（點了別的視窗或程式、切到別的分頁、視窗縮小；`document.hasFocus()` 為 false 或頁面隱藏）**滿 10 秒**，戰鬥**凍結**並在長帶上提示「離線中」，從那一刻起算離線；回到遊戲視窗就恢復。(2) 整個關掉遊戲也算（從最後一次上傳存檔起算）。**2026-10-30 使用者再修訂**：原則是「視窗上面沒有東西才拿完整收益，不論在哪個螢幕，有遮就屬離線」；網頁偵測不到部分遮蓋，所以改用「必須是使用中的視窗」——第二個螢幕沒被遮但沒在操作也算離線（使用者同意）。取代先前的「看不到 30 秒才算」與「沒焦點但看得到不算」。

@@ -79,7 +79,7 @@ function Boot() {
         void sync.goAway();
       },
       onReturn: () => {
-        void sync.claimOffline(); // sent first, so a stage cleared right after waits behind it
+        void sync.claimOffline(); // queued behind any away still on the wire; a stage claim waits for it if they collide
         runtime.setAway(false);
       },
     });
