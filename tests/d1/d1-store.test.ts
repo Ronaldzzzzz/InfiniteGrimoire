@@ -72,7 +72,7 @@ describe('migration 0007', () => {
     expect((raw.prepare('SELECT COUNT(*) AS n FROM players').get() as { n: number }).n).toBe(players);
     const save = (await new D1Store(d1).getSave('p1'))!;
     expect(parseState(JSON.parse(save.state), content)?.currentStage).toBe(1);
-    expect(save.state).toBe(serialize(createInitialState(content)));
+    expect(parseState(JSON.parse(save.state), content)).toEqual(createInitialState(content)); // 0007 predates clearTimes etc.; zod defaults fill them
     expect(save.anchorState).toBe(save.state);
     expect(save.anchorAt).toBe(5000);
     expect(save.revision).toBe(8);

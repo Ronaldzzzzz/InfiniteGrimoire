@@ -1,5 +1,6 @@
 import { GAIN_TOLERANCE } from './audit';
 import { canDamage, overlevelEfficiency } from './combat-rules';
+import { CLEAR_TIMES_KEEP, OFFLINE_CAP_MS } from './offline';
 import { addItems } from './inventory';
 import type { Content, GameState, Zone } from './model';
 import type { Rng } from './rng';
@@ -14,17 +15,17 @@ export type StageClearResult =
 export type StageClearRejection = 'locked' | 'elsewhere' | 'notReached' | 'cannotDamage' | 'tooFast' | 'bossAlive';
 
 /** Rolls per foe in a settlement: about twice what the stage's kills dropped. */
-const LOOT_ROLLS = 2;
+export const LOOT_ROLLS = 2;
 
 /** The equipped spell at its empower level; null when it does not resolve. */
-function equippedSpell(state: GameState, content: Content): { tier: number; attack: number } | null {
+export function equippedSpell(state: GameState, content: Content): { tier: number; attack: number } | null {
   const s = resolveSpell(state.equipped, content);
   if (!s) return null;
   return spellAtLevel(s, Object.hasOwn(state.levels, state.equipped) ? state.levels[state.equipped]! : 1);
 }
 
 /** Whether a spell can damage every ordinary monster of the zone (the boss is not checked). */
-function damagesZone(spell: { tier: number; attack: number }, zone: Zone, content: Content): boolean {
+export function damagesZone(spell: { tier: number; attack: number }, zone: Zone, content: Content): boolean {
   return zone.monsters.every((id) => Object.hasOwn(content.monsters, id) && canDamage(spell, content.monsters[id]!));
 }
 
@@ -75,9 +76,18 @@ export function claimStage(
   if (isBossStage(zone, stage) && !state.defeatedBosses.includes(zone.bossId)) return reject('bossAlive');
   const loot = stageLoot(zone, stage, spell.tier, content, rng);
   const cleared = Math.max(state.clearedStages[zoneId] ?? 0, stage);
+  const key = `${zoneId}:${stage}`;
+  const clearTimes = isBossStage(zone, stage) || state.lastClearAt <= 0 ? state.clearTimes : {
+    ...state.clearTimes,
+    [key]: [
+      ...(Object.hasOwn(state.clearTimes, key) ? state.clearTimes[key]! : []),
+      Math.max(minStageMs(zone, stage), Math.min(now - state.lastClearAt, OFFLINE_CAP_MS)),
+    ].slice(-CLEAR_TIMES_KEEP),
+  };
   return {
     state: {
       ...state,
+      clearTimes,
       clearedStages: { ...state.clearedStages, [zoneId]: cleared },
       lastClearAt: now,
       inventory: loot.length > 0 ? addItems(state.inventory, loot) : state.inventory,

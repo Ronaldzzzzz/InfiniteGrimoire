@@ -100,6 +100,23 @@ describe('claimStage', () => {
     expect(claimStage(s, 'z3', 2, T, data, createRng(1)).result).toEqual({ kind: 'rejected', reason: 'notReached' });
   });
 
+  it('records clear times: floor at minStageMs, none for boss or first clear, newest 5 kept', () => {
+    const z = data.zones[0]!;
+    const min = minStageMs(z, 1);
+    expect(claimStage(base(), 'z1', 1, T, data, createRng(1)).state.clearTimes).toEqual({});
+    const fast = claimStage(base({ lastClearAt: T - 2400 }), 'z1', 1, T, data, createRng(1)).state;
+    expect(fast.clearTimes['z1:1']).toEqual([min]);
+    const slow = claimStage(base({ lastClearAt: T - 100_000 }), 'z1', 1, T, data, createRng(1)).state;
+    expect(slow.clearTimes['z1:1']).toEqual([100_000]);
+    const away = claimStage(base({ lastClearAt: 1 }), 'z1', 1, 100_000_000, data, createRng(1)).state;
+    expect(away.clearTimes['z1:1']).toEqual([28_800_000]);
+    const boss = claimStage(base({ clearedStages: { z1: 9 }, defeatedBosses: ['b1'], lastClearAt: T - 100_000 }), 'z1', 10, T, data, createRng(1)).state;
+    expect(boss.clearTimes).toEqual({});
+    let s = base({ lastClearAt: T - 10_000, clearTimes: { 'z1:1': [1, 2, 3, 4, 5] } });
+    s = claimStage(s, 'z1', 1, T, data, createRng(1)).state;
+    expect(s.clearTimes['z1:1']).toEqual([2, 3, 4, 5, 10_000]);
+  });
+
   it('re-claiming an already cleared stage gives loot but keeps cleared', () => {
     const { state, result } = claimStage(base({ clearedStages: { z1: 6 } }), 'z1', 3, T, data, createRng(1));
     expect(result.kind).toBe('cleared');

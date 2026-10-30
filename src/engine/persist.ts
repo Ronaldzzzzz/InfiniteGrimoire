@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { STARTING_SPELL, type Content, type GameState } from './model';
 import { MAX_SPELL_LEVEL, resolveSpell } from './spells';
+import { CLEAR_TIMES_KEEP } from './offline';
 import { ITEM_ID_RE } from './types';
 
 /** A new player: mana_bolt only, standing in the first zone. */
@@ -8,7 +9,7 @@ export function createInitialState(content: Content): GameState {
   const first = content.zones[0]!.id;
   return {
     version: 2, inventory: {}, learned: [STARTING_SPELL], equipped: STARTING_SPELL, levels: {}, revealed: [], passives: [],
-    currentZone: first, unlockedZones: [first], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {},
+    currentZone: first, unlockedZones: [first], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {},
   };
 }
 
@@ -35,6 +36,9 @@ const saveSchema = z.strictObject({
   currentStage: z.number().int().min(1).max(MAX_STAGES),
   clearedStages: z.record(z.string(), z.number().int().min(0).max(MAX_STAGES)),
   lastClearAt: count,
+  clearTimes: z.record(z.string(), z.array(count).max(CLEAR_TIMES_KEEP)).default({}),
+  awayAt: count.default(0),
+  offlineUntil: count.default(0),
   synthesisLog: z.record(z.string(), synthLogEntry),
 });
 
@@ -68,6 +72,11 @@ export function parseState(input: unknown, content: Content): GameState | null {
       s.unlockedZones.every(isZone) &&
       s.defeatedBosses.every((id) => bossIds.has(id)) &&
       Object.keys(s.clearedStages).every(isZone) &&
+      Object.keys(s.clearTimes).every((k) => {
+        const m = /^([^:]+):(\d+)$/.exec(k);
+        const zone = m && content.zones.find((z) => z.id === m[1]);
+        return !!zone && Number(m[2]) >= 1 && Number(m[2]) < zone.stages.length;
+      }) &&
       Object.keys(s.inventory).every((k) => ITEM_ID_RE.test(k));
     return ok ? (s as GameState) : null;
   } catch {

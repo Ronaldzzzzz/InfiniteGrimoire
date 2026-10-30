@@ -11,7 +11,7 @@ import type { ElementId } from './types';
 
 const mkGame = (o: Partial<GameState> = {}): GameState => ({
   version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, revealed: [], passives: [],
-  currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, synthesisLog: {}, ...o,
+  currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {}, ...o,
 });
 
 const testSpell = (id: string, effects: Effect[], o: Partial<NamedSpellDef> = {}): NamedSpellDef => ({

@@ -187,6 +187,20 @@ describe('validateUpload', () => {
     }
   });
 
+  it('an upload may not change clearTimes, awayAt or offlineUntil', () => {
+    const prev: GameState = { ...base(), clearTimes: { 'z1:1': [2000] }, awayAt: 5, offlineUntil: 7 };
+    const cases: [Partial<GameState>, string][] = [
+      [{ clearTimes: { 'z1:1': [1000] } }, 'clearTimes'],
+      [{ clearTimes: {} }, 'clearTimes'],
+      [{ awayAt: 0 }, 'awayAt'],
+      [{ offlineUntil: 8 }, 'offlineUntil'],
+    ];
+    expect(validateUpload(prev, { ...prev }, 1000, data)).toEqual({ ok: true });
+    for (const [change, word] of cases) {
+      expect(fail(validateUpload(prev, { ...prev, ...change }, 1000, data)).join(), word).toContain(word);
+    }
+  });
+
   it('learned, revealed and passives compare as sets', () => {
     const prev = { ...base(), learned: ['mana_bolt', 'strong'], revealed: ['a', 'b'] };
     const next = { ...prev, learned: ['strong', 'mana_bolt'], revealed: ['b', 'a'] };

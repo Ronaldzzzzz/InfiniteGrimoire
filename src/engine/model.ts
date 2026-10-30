@@ -73,6 +73,12 @@ export interface GameState {
   clearedStages: Record<string, number>;
   /** server time (ms) of the last stage settlement */
   lastClearAt: number;
+  /** recent ordinary-stage clear durations (ms) per `${zoneId}:${stage}`, newest last (server-owned) */
+  clearTimes: Record<string, number[]>;
+  /** server time (ms) the client said it left; 0 = not away (server-owned) */
+  awayAt: number;
+  /** server time (ms) where the last offline settlement ended; 0 = never (server-owned) */
+  offlineUntil: number;
   synthesisLog: Record<string, SynthLogEntry>;
 }
 export const STARTING_SPELL = 'mana_bolt';

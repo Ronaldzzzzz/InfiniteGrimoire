@@ -9,6 +9,12 @@ export function addItems(inv: Inventory, items: ItemId[]): Inventory {
   return out;
 }
 
+export function addCounts(inv: Inventory, counts: Record<ItemId, number>): Inventory {
+  const out: Inventory = { ...inv };
+  for (const [id, n] of Object.entries(counts)) if (n > 0) out[id] = countOf(out, id) + n;
+  return out;
+}
+
 /** Returns null when the inventory lacks any item. Zero-count keys are deleted. */
 export function removeItems(inv: Inventory, items: ItemId[]): Inventory | null {
   const out: Inventory = { ...inv };
