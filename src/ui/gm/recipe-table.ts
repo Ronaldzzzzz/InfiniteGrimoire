@@ -1,5 +1,5 @@
 import { parseCanonical, RUNE_NAMES } from '../../engine/circle';
-import { RARE_CHANCE } from '../../engine/circle-synth';
+import { FAIL_BASE, RARE_CHANCE } from '../../engine/circle-synth';
 import type { Content } from '../../engine/model';
 import type { ElementId } from '../../engine/types';
 import { ELEMENT_NAMES } from '../messages';
@@ -25,7 +25,7 @@ export function circleTable(content: Content): CircleRow[] {
     .filter((s) => s.circle)
     .map((s) => ({
       id: s.id, name: s.name, tier: s.tier, circle: s.circle!, layout: circleLabel(s.circle!),
-      pct: s.rare ? Math.round(RARE_CHANCE * 1000) / 10 : 100, rare: s.rare === true, elements: [...s.elements],
+      pct: s.rare ? Math.round(RARE_CHANCE * 1000) / 10 : Math.round((1 - FAIL_BASE) * 100), rare: s.rare === true, elements: [...s.elements],
     }))
     .sort((a, b) => a.tier - b.tier || (a.id < b.id ? -1 : 1));
 }

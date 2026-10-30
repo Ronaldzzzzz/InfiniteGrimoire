@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FAIL_BASE, FAIL_PER_MISMATCH, RARE_CHANCE, circleCost, failChance, parsePlacement, synthesizeCircle } from './circle-synth';
+import { FAIL_BASE, FAIL_PER_MISMATCH, RARE_CHANCE, SYNTH_LOG_CAP, circleCost, failChance, parsePlacement, synthesizeCircle } from './circle-synth';
 import { circuitMismatches, placementProblems, runesUnlocked } from './circle';
 import type { CircleNode, Placement, RuneId } from './circle';
 import { content } from './content';
@@ -35,7 +35,7 @@ describe('synthesizeCircle', () => {
     expect(s.learned).toEqual(['mana_bolt', FIRE_BOLT]);
     expect(s.inventory).toEqual({ 'el:fire:1': 1 });
     expect(resolveSpell(FIRE_BOLT, content)!.name).toBe(content.spells.fireball!.name);
-    expect(s.synthesisLog[FIRE_BOLT]).toEqual({ attempts: 1, results: { [`learned:${FIRE_BOLT}`]: 1 }, noReaction: false });
+    expect(s.synthesisLog[FIRE_BOLT]).toBe(1);
   });
 
   it('known on repeat spends again, one entry', () => {
@@ -44,7 +44,19 @@ describe('synthesizeCircle', () => {
     expect(result).toEqual({ kind: 'known', spellId: FIRE_BOLT, form: 'bolt' });
     expect(s.learned.filter((x) => x === FIRE_BOLT)).toHaveLength(1);
     expect(s.inventory).toEqual({});
-    expect(s.synthesisLog[FIRE_BOLT]!.attempts).toBe(2);
+    expect(s.synthesisLog[FIRE_BOLT]).toBe(2);
+  });
+
+  it('caps the attempt log, dropping the least-attempted when a new circle is added', () => {
+    const log: Record<string, number> = {};
+    for (let i = 0; i < SYNTH_LOG_CAP; i++) log[`x${i}`] = i === 7 ? 1 : 5;
+    const { state: s } = synthesizeCircle(state({ inventory: { 'el:fire:1': 4 }, synthesisLog: log }), fireBolt(), content, fixed([0.5]));
+    expect(Object.keys(s.synthesisLog)).toHaveLength(SYNTH_LOG_CAP);
+    expect(s.synthesisLog.x7).toBeUndefined();
+    expect(s.synthesisLog[FIRE_BOLT]).toBe(1);
+    const again = synthesizeCircle(s, fireBolt(), content, fixed([0.5])).state;
+    expect(Object.keys(again.synthesisLog)).toHaveLength(SYNTH_LOG_CAP);
+    expect(again.synthesisLog[FIRE_BOLT]).toBe(2);
   });
 
   it('a big failure spends the elements and learns nothing', () => {
@@ -52,7 +64,7 @@ describe('synthesizeCircle', () => {
     expect(result).toEqual({ kind: 'failed', form: 'bolt' });
     expect(s.learned).toEqual(['mana_bolt']);
     expect(s.inventory).toEqual({});
-    expect(s.synthesisLog[FIRE_BOLT]!.results).toEqual({ failed: 1 });
+    expect(s.synthesisLog[FIRE_BOLT]).toBe(1);
   });
 
   it('a core-only circle is a bolt and costs the core only', () => {

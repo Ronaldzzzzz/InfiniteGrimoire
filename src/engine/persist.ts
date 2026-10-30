@@ -3,6 +3,7 @@ import { STARTING_SPELL, type Content, type GameState } from './model';
 import { MAX_SPELL_LEVEL, resolveSpell } from './spells';
 import { circleRules } from './content';
 import { GRADE_CAP } from './circle';
+import { SYNTH_LOG_CAP } from './circle-synth';
 import { CLEAR_TIMES_KEEP } from './offline';
 import { ITEM_ID_RE } from './types';
 
@@ -17,12 +18,6 @@ export function createInitialState(content: Content): GameState {
 
 const MAX_STAGES = 10;
 const count = z.number().int().min(0);
-
-const synthLogEntry = z.strictObject({
-  attempts: count,
-  results: z.record(z.string(), count),
-  noReaction: z.boolean(),
-});
 
 const saveSchema = z.strictObject({
   version: z.literal(2),
@@ -41,7 +36,7 @@ const saveSchema = z.strictObject({
   clearTimes: z.record(z.string(), z.array(count).max(CLEAR_TIMES_KEEP)).default({}),
   awayAt: count.default(0),
   offlineUntil: count.default(0),
-  synthesisLog: z.record(z.string(), synthLogEntry),
+  synthesisLog: z.record(z.string(), z.number().int().min(1)).refine((o) => Object.keys(o).length <= SYNTH_LOG_CAP, 'synthesisLog too long'),
 });
 
 export function serialize(state: GameState): string {

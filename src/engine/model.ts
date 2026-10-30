@@ -62,7 +62,6 @@ export interface Content {
   /** element -> its base spell id (from baseOf) */
   baseSpells: Record<ElementId, string>;
 }
-export interface SynthLogEntry { attempts: number; results: Record<string, number>; noReaction: boolean }
 export interface GameState {
   version: 2; inventory: Inventory; learned: string[]; equipped: string; levels: Record<string, number>;
   /** highest magic circle tier the player may draw (2 at the start, raised by using key items; server-owned) */
@@ -81,8 +80,8 @@ export interface GameState {
   awayAt: number;
   /** server time (ms) where the last offline settlement ended; 0 = never (server-owned) */
   offlineUntil: number;
-  /** magic circle attempts keyed by canonical circle id (server-owned) */
-  synthesisLog: Record<string, SynthLogEntry>;
+  /** magic circle attempt counts keyed by canonical circle id (server-owned) */
+  synthesisLog: Record<string, number>;
 }
 export const STARTING_SPELL = 'mana_bolt';
 export const OVERLOAD_SPELL = 'mana_overload';

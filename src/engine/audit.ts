@@ -11,7 +11,7 @@ import { ELEMENT_ORDER, gradeValue, type ElementId } from './types';
  */
 export const GAIN_TOLERANCE = 1.25;
 export const GAIN_SLACK = 6;
-/** Key items each lift one fog region, so they get no free allowance beyond what bosses could drop. */
+/** Key items open magic circle tiers, so they get no free allowance beyond what bosses could drop. */
 export const KEY_SLACK = 0;
 
 export interface GainBound {

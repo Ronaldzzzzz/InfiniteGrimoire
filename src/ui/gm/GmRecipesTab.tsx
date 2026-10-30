@@ -21,7 +21,7 @@ export function GmRecipesTab({ content }: { content: Content }) {
           <tr>
             <th scope="col">魔法</th>
             <th scope="col">魔法陣</th>
-            <th scope="col">機率</th>
+            <th scope="col">機率（含 10% 大失敗；稀有為成功時再擲的機率）</th>
           </tr>
         </thead>
         <tbody>

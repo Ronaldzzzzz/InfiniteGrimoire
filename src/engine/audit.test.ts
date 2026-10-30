@@ -166,7 +166,7 @@ describe('validateUpload', () => {
       [{ levels: { strong: 2 } }, 'levels'],
       [{ circleTier: 4 }, 'circleTier'],
       [{ passives: ['p1'] }, 'passives'],
-      [{ synthesisLog: { r: { attempts: 1, results: {}, noReaction: true } } }, 'synthesisLog'],
+      [{ synthesisLog: { r: 1 } }, 'synthesisLog'],
     ];
     for (const [change, word] of cases) {
       expect(fail(validateUpload(prev, { ...prev, ...change }, 1000, data)).join(), word).toContain(word);

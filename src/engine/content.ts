@@ -109,6 +109,7 @@ const zoneSchema = z.object({
 });
 
 const materialSchema = z.object({ id: itemId, name: str, nameEn: str, desc: str, elements: z.array(element), words, effect });
+// `reveals` is a leftover of the fog-era grimoire (unused by the magic circle); kept as data only
 const keyItemSchema = z.object({ id: itemId, name: str, nameEn: str, desc: str, reveals: str });
 const passiveSchema = z.object({
   id: str,
@@ -257,6 +258,7 @@ export function loadContent(raw: Record<'spells' | 'monsters' | 'zones' | 'mater
   for (const it of [...materials, ...keyItems]) {
     if (!dropped.has(it.id)) issues.push(`item "${it.id}" is never dropped`);
   }
+  // fog-era leftover: `reveals` is not used by the magic circle, only checked to keep the data consistent
   for (const k of keyItems) {
     if (!regionIds.has(k.reveals)) issues.push(`key item ${k.id}: reveals unknown region "${k.reveals}"`);
   }

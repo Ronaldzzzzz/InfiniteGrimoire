@@ -3,35 +3,35 @@
     "id": "key:storm_heart",
     "name": "風暴之心",
     "nameEn": "Storm Heart",
-    "desc": "迷霧雄鹿留下的奇異結晶，裡面像有風在轉。魔導書的外圍會浮現新的線索。",
+    "desc": "迷霧雄鹿留下的奇異結晶，裡面像有風在轉。使用後，魔法陣開放到 Lv.4。",
     "reveals": "outer"
   },
   {
     "id": "key:thunder_eye",
     "name": "大鵬之眼",
     "nameEn": "Roc Eye",
-    "desc": "風暴大鵬的眼睛，仍閃著電光。用它照向魔導書，裂隙裡的頁面會顯現。",
+    "desc": "風暴大鵬的眼睛，仍閃著電光。使用後，魔法陣開放到 Lv.6。",
     "reveals": "rift"
   },
   {
     "id": "key:magma_seal",
     "name": "熔火封印",
     "nameEn": "Magma Seal",
-    "desc": "火山飛龍守著的封印，燙得拿不住。解開它，魔導書深處的頁面會露出來。",
+    "desc": "火山飛龍守著的封印，燙得拿不住。解開它，魔法陣開放到 Lv.8。",
     "reveals": "abyss"
   },
   {
     "id": "key:titan_crown",
     "name": "巨神之冠",
     "nameEn": "Titan Crown",
-    "desc": "沉沒巨神的王冠。戴上它的瞬間，魔導書最外層的天穹被照亮了。",
+    "desc": "沉沒巨神的王冠。戴上它的瞬間，魔法陣開放到 Lv.9。",
     "reveals": "zenith"
   },
   {
     "id": "key:star_sigil",
     "name": "墮星之印",
     "nameEn": "Star Sigil",
-    "desc": "墮星龍胸口燃燒的印記，帶著星界的光。魔導書的最深處，一頁從未被翻開的星界會在它面前顯現。",
+    "desc": "墮星龍胸口燃燒的印記，帶著星界的光。使用後，魔法陣開放到最高的 Lv.10。",
     "reveals": "astral"
   }
 ]

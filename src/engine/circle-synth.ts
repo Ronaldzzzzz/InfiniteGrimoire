@@ -3,7 +3,7 @@ import { canonicalCircle, circuitMismatches, placementProblems, possibleForms, r
 import type { CircleNode, CircleProblem, Placement } from './circle';
 import { removeItems } from './inventory';
 import { RUNE_IDS } from './model';
-import type { Content, GameState, NamedSpellDef, RuneId, SynthLogEntry } from './model';
+import type { Content, GameState, NamedSpellDef, RuneId } from './model';
 import type { Rng } from './rng';
 import { ELEMENT_ORDER, MAX_ELEMENT_GRADE, elementItem } from './types';
 import type { ItemId } from './types';
@@ -62,10 +62,20 @@ export function rareFor(circleId: string, content: Content): NamedSpellDef | und
   return index.get(circleId);
 }
 
-function logAttempt(log: GameState['synthesisLog'], key: string, resultKey: string): GameState['synthesisLog'] {
-  const prev: SynthLogEntry = Object.hasOwn(log, key) ? log[key]! : { attempts: 0, results: {}, noReaction: false };
-  const n = Object.hasOwn(prev.results, resultKey) ? prev.results[resultKey]! : 0;
-  return { ...log, [key]: { attempts: prev.attempts + 1, results: { ...prev.results, [resultKey]: n + 1 }, noReaction: false } };
+/** Most circles the save's attempt log keeps; a new one past this drops the least-attempted. */
+export const SYNTH_LOG_CAP = 1000;
+
+function logAttempt(log: GameState['synthesisLog'], key: string): GameState['synthesisLog'] {
+  if (Object.hasOwn(log, key)) return { ...log, [key]: log[key]! + 1 };
+  const next = { ...log };
+  const keys = Object.keys(next);
+  if (keys.length >= SYNTH_LOG_CAP) {
+    let least = keys[0]!;
+    for (const k of keys) if (next[k]! < next[least]!) least = k;
+    delete next[least];
+  }
+  next[key] = 1;
+  return next;
 }
 
 /** The synthesis log's result key of an outcome (also what the worker records). */
@@ -99,6 +109,6 @@ export function synthesizeCircle(state: GameState, p: Placement, content: Conten
     result = { kind: known ? 'known' : 'learned', spellId, form, ...(spellId === circleId ? {} : { rare: true }) };
   }
   const learned = result.kind === 'learned' ? [...state.learned, result.spellId] : state.learned;
-  const synthesisLog = logAttempt(state.synthesisLog, circleId, circleResultKey(result));
+  const synthesisLog = logAttempt(state.synthesisLog, circleId);
   return { state: { ...state, inventory, learned, synthesisLog }, result };
 }

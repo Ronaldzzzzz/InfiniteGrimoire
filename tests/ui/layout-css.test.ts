@@ -37,3 +37,14 @@ describe('battle strip layout', () => {
     expect(rule(phone.body, 'body')).toMatch(/padding-bottom:\s*140px/);
   });
 });
+
+describe('magic circle parchment', () => {
+  it('draws the pentagram guide as an outline only, not a filled shape', () => {
+    expect(rule(css, '.parchment-svg .guide')).toMatch(/fill:\s*none/);
+  });
+  it('keeps the picker actions pinned at the top so 關閉 stays in view on a phone', () => {
+    const r = rule(css, '.circle-picker .picker-actions');
+    expect(r).toMatch(/position:\s*sticky/);
+    expect(r).toMatch(/top:\s*0/);
+  });
+});

@@ -25,7 +25,7 @@ function sample(): GameState {
     currentStage: 4,
     clearedStages: { [zone0]: 3 },
     lastClearAt: 123_456,
-    synthesisLog: { k: { attempts: 2, results: { none: 1, fireball: 1 }, noReaction: true } },
+    synthesisLog: { k: 2 },
   };
 }
 const roundtrip = (mutate: (o: any) => void) => {
@@ -107,7 +107,8 @@ describe('persist', () => {
     expect(roundtrip((o) => (o.inventory['el:fire:6'] = 1))).toBeNull();
     expect(roundtrip((o) => (o.inventory['fireball'] = 1))).toBeNull();
     expect(roundtrip((o) => (o.inventory['el:fire:1'] = 1.5))).toBeNull();
-    expect(roundtrip((o) => (o.synthesisLog.k.attempts = -1))).toBeNull();
+    expect(roundtrip((o) => (o.synthesisLog.k = 0))).toBeNull();
+    expect(roundtrip((o) => { for (let i = 0; i < 1001; i++) o.synthesisLog[`x${i}`] = 1; })).toBeNull();
   });
 });
 

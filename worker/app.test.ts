@@ -233,7 +233,7 @@ describe('save', () => {
       [{ levels: { mana_bolt: 9 } }, 'levels changed'],
       [{ circleTier: 4 }, 'circleTier changed'],
       [{ passives: ['ember_affinity'] }, 'passives changed'],
-      [{ synthesisLog: { [FIRE_BOLT]: { attempts: 1, results: { [`learned:${FIRE_BOLT}`]: 1 }, noReaction: false } } }, 'synthesisLog changed'],
+      [{ synthesisLog: { [FIRE_BOLT]: 1 } }, 'synthesisLog changed'],
     ];
     for (const [change, reason] of cases) {
       const res = await app.request('/api/save', json({ state: { ...body.state, ...change }, baseRevision: 0 }, body.token, 'PUT'));
@@ -279,7 +279,7 @@ describe('magic circle', () => {
     expect(out.revision).toBe(1);
     expect(store.synthEvents).toEqual([{ playerId: body.playerId, at: clock, combo: FIRE_BOLT, result: `learned:${FIRE_BOLT}` }]);
     expect(saved(body.playerId).learned).toContain(FIRE_BOLT);
-    expect(saved(body.playerId).synthesisLog[FIRE_BOLT]).toEqual({ attempts: 1, results: { [`learned:${FIRE_BOLT}`]: 1 }, noReaction: false });
+    expect(saved(body.playerId).synthesisLog[FIRE_BOLT]).toBe(1);
     // the next upload keeps the server-learned spell and may equip it
     clock += 1000;
     expect((await app.request('/api/save', json({ state: { ...out.state, equipped: FIRE_BOLT }, baseRevision: 1 }, body.token, 'PUT'))).status).toBe(200);
