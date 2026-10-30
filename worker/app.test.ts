@@ -1721,6 +1721,32 @@ describe('POST /api/away and /api/offline', () => {
     expect((paid.out.result as unknown as { runs: number }).runs).toBe(10);
   });
 
+  it('awayAt is measured from the away mark even after an intervening PUT', async () => {
+    const g = await seeded();
+    const t0 = clock;
+    expect((await put(g.token, g.state, 0)).status).toBe(200);
+    const away = await post('/api/away', g.token, g.state, 1);
+    expect(away.out.state.awayAt).toBe(t0);
+    clock = t0 + 5 * MIN;
+    const up = await put(g.token, away.out.state, away.out.revision);
+    expect(up.status, await up.clone().text()).toBe(200);
+    const rev = ((await up.json()) as { revision: number }).revision;
+    clock = t0 + 10 * MIN;
+    const paid = await post('/api/offline', g.token, away.out.state, rev);
+    expect(paid.status, JSON.stringify(paid.out)).toBe(200);
+    expect((paid.out.result as unknown as { awayMs: number }).awayMs).toBe(10 * MIN);
+  });
+
+  it('the 8 h cap applies through the endpoint', async () => {
+    const g = await seeded();
+    const t0 = clock;
+    expect((await put(g.token, g.state, 0)).status).toBe(200);
+    clock = t0 + 20 * 60 * MIN;
+    const paid = await post('/api/offline', g.token, g.state, 1);
+    expect(paid.status, JSON.stringify(paid.out)).toBe(200);
+    expect(paid.out.result).toMatchObject({ kind: 'offline', capped: true });
+  });
+
   it('offline twice pays once', async () => {
     const g = await seeded();
     const t0 = clock;

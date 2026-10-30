@@ -180,6 +180,14 @@ export class SyncController {
       this.retrying = false;
       return;
     }
+    // The pending away / claim goes first (an upload moves savedAt, which a closed-game claim measures
+    // from). action() refuses while retrying, so lift the flag for the send; a network failure there
+    // makes goOffline schedule the next retry itself.
+    this.retrying = false;
+    await this.flushPresence();
+    if (this.retrying) return;
+    if (this.stopped) return;
+    this.retrying = true;
     const result = await this.doUpload();
     if (result === 'network') return this.scheduleRetry();
     this.retrying = false;
@@ -187,7 +195,6 @@ export class SyncController {
     // done, or a non-network error (server is reachable): resume
     this.setStatus(this.reachableStatus(result));
     this.runtime.setPaused(false);
-    void this.flushPresence();
   }
 
   /** Runs one upload. Never throws. */

@@ -556,6 +556,23 @@ describe('SyncController', () => {
     await vi.advanceTimersByTimeAsync(UPLOAD_INTERVAL_MS * 2);
     expect(offline).toHaveBeenCalledTimes(2); // answered once: not sent again
   });
+  it('on reconnect the pending claim is sent before the upload', async () => {
+    const rt = mk();
+    const calls: string[] = [];
+    const offline = vi
+      .fn()
+      .mockImplementationOnce(async () => { calls.push('offline-fail'); throw new NetworkError('x'); })
+      .mockImplementation(async () => {
+        calls.push('offline');
+        return { kind: 'ok', result: { kind: 'none' }, state: rt.getSnapshot().game, revision: 10 };
+      });
+    const upload = vi.fn(async () => { calls.push('upload'); return { kind: 'ok' as const, revision: 11 }; });
+    const sync = new SyncController(rt, fakeApi({ offline, upload }));
+    await sync.claimOffline();
+    expect(calls).toEqual(['offline-fail']); // the failed action started the retry loop
+    await vi.advanceTimersByTimeAsync(RETRY_MS);
+    expect(calls.slice(1)).toEqual(['offline', 'upload']);
+  });
   it('an away dropped while another action is in flight is delivered afterwards; a return cancels it', async () => {
     const rt = mk();
     const away = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'away' as const }, state: rt.getSnapshot().game, revision: 9 }));
