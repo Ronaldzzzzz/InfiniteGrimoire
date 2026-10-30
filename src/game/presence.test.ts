@@ -70,4 +70,12 @@ describe('watchPresence', () => {
     expect(onAway).not.toHaveBeenCalled();
     expect(listeners.size).toBe(0);
   });
+  it('a page that starts hidden starts the away timer', () => {
+    const { doc, set } = stubDoc();
+    set('hidden');
+    const onAway = vi.fn();
+    watchPresence({ delayMs: 30_000, onAway, onReturn: vi.fn() }, doc);
+    vi.advanceTimersByTime(30_000);
+    expect(onAway).toHaveBeenCalledTimes(1);
+  });
 });

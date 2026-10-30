@@ -509,7 +509,7 @@ describe('SyncController', () => {
     });
   });
 
-  it('boot claims offline before the first upload, and reports only real offline income', async () => {
+  it('boot claims offline before the first upload (claim fired, not awaited), and reports only real offline income', async () => {
     const rt = mk();
     const calls: string[] = [];
     const offline = vi.fn(async () => {
@@ -523,16 +523,59 @@ describe('SyncController', () => {
     const sync = new SyncController(rt, fakeApi({ offline, upload }));
     const seen = vi.fn();
     sync.onOfflineReport(seen);
-    await sync.claimOffline();
+    // main.tsx order: fire the claim, start sync, a hidden-page flush happens meanwhile
+    void sync.claimOffline();
     const stop = sync.start();
+    await sync.uploadNow({ keepalive: true });
+    expect(calls).toEqual(['offline']);
     await vi.advanceTimersByTimeAsync(UPLOAD_INTERVAL_MS);
     expect(calls).toEqual(['offline', 'upload']);
     expect(seen).not.toHaveBeenCalled();
     stop();
+    sync.start(); // a stopped controller never sends again; restart for the second claim
     const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, runs: 5, awayMs: 60_000, capped: false, loot: {} };
     offline.mockResolvedValueOnce({ kind: 'ok', result, state: rt.getSnapshot().game, revision: 10 } as never);
     await sync.claimOffline();
     expect(seen).toHaveBeenCalledWith(result);
+  });
+  it('a claim the server never answered stays pending and is retried on the next tick', async () => {
+    const rt = mk();
+    const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, runs: 5, awayMs: 60_000, capped: false, loot: {} };
+    const offline = vi
+      .fn()
+      .mockRejectedValueOnce(new NetworkError('x'))
+      .mockResolvedValue({ kind: 'ok', result, state: rt.getSnapshot().game, revision: 10 });
+    const sync = new SyncController(rt, fakeApi({ offline }));
+    const seen = vi.fn();
+    sync.onOfflineReport(seen);
+    expect(await sync.claimOffline()).toBeNull();
+    expect(seen).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(RETRY_MS); // connection comes back
+    expect(offline).toHaveBeenCalledTimes(2);
+    expect(seen).toHaveBeenCalledWith(result);
+    await vi.advanceTimersByTimeAsync(UPLOAD_INTERVAL_MS * 2);
+    expect(offline).toHaveBeenCalledTimes(2); // answered once: not sent again
+  });
+  it('an away dropped while another action is in flight is delivered afterwards; a return cancels it', async () => {
+    const rt = mk();
+    const away = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'away' as const }, state: rt.getSnapshot().game, revision: 9 }));
+    const offline = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 10 }));
+    const sync = new SyncController(rt, fakeApi({ away, offline }));
+    rt.setSynthPending(true);
+    await sync.goAway();
+    expect(away).not.toHaveBeenCalled();
+    rt.setSynthPending(false);
+    const stop = sync.start();
+    await vi.advanceTimersByTimeAsync(UPLOAD_INTERVAL_MS);
+    expect(away).toHaveBeenCalledTimes(1);
+    stop();
+
+    const sync2 = new SyncController(rt, fakeApi({ away, offline }));
+    rt.setSynthPending(true);
+    await sync2.goAway();
+    rt.setSynthPending(false);
+    await sync2.claimOffline(); // returned before the away was ever sent
+    expect(away).toHaveBeenCalledTimes(1);
   });
   it('a failed claim does not throw', async () => {
     const sync = new SyncController(mk(), fakeApi({ offline: vi.fn(async () => { throw new ApiError('x', 400); }) }));

@@ -87,30 +87,55 @@ export class SyncController {
     return () => void this.offlineListeners.delete(cb);
   }
 
-  /** Tells the server the player has been away. Never throws; a failure is ignored (the next claim just pays less). */
+  /**
+   * Tells the server the player has been away. Never throws. If the action is dropped (another action in
+   * flight, offline) it stays pending and is retried on the next tick or after the connection resumes,
+   * unless the player returns first (claimOffline replaces it).
+   */
   async goAway(): Promise<void> {
-    try {
-      await this.action('away', {});
-    } catch (e) {
-      console.warn('away failed:', e instanceof Error ? e.message : 'unknown error');
-    }
+    this.pendingPresence = 'away';
+    await this.flushPresence();
   }
 
-  /** Claims offline income. Never throws, so a failed claim cannot block the game. */
+  /**
+   * Claims offline income. Never throws, so a failed claim cannot block the game. Until the server
+   * answers, the claim stays pending and is retried, so a stale away mark never pays for active play.
+   */
   async claimOffline(): Promise<OfflineResult | null> {
+    this.pendingPresence = 'offline';
+    return this.flushPresence();
+  }
+
+  private pendingPresence: 'away' | 'offline' | null = null;
+  private flushing = false;
+
+  /** Sends the pending away / claim; null when the server did not answer (it stays pending). */
+  private async flushPresence(): Promise<OfflineResult | null> {
+    const kind = this.pendingPresence;
+    if (!kind || this.flushing || this.stopped) return null;
+    this.flushing = true;
     try {
-      const result = await this.action('offline', {});
-      if (result?.kind === 'offline') for (const l of [...this.offlineListeners]) l(result);
-      return result?.kind === 'offline' || result?.kind === 'none' ? result : null;
+      const result = await this.action(kind, {});
+      if (result?.kind !== 'away' && result?.kind !== 'offline' && result?.kind !== 'none') return null;
+      if (this.pendingPresence === kind) this.pendingPresence = null;
+      if (result.kind === 'offline') for (const l of [...this.offlineListeners]) l(result);
+      return result.kind === 'away' ? null : result;
     } catch (e) {
-      console.warn('offline claim failed:', e instanceof Error ? e.message : 'unknown error');
+      console.warn(`${kind} failed:`, e instanceof Error ? e.message : 'unknown error');
       return null;
+    } finally {
+      this.flushing = false;
     }
   }
 
   start(): () => void {
     this.stopped = false;
-    const id = this.timers.setInterval(() => void this.uploadNow(), UPLOAD_INTERVAL_MS);
+    const id = this.timers.setInterval(() => {
+      void (async () => {
+        await this.flushPresence();
+        await this.uploadNow();
+      })();
+    }, UPLOAD_INTERVAL_MS);
     const unsubscribeEvents = this.runtime.onEvents((events) => {
       if (this.stopped) return;
       for (const e of events) if (e.type === 'stageCleared') void this.claimStage(e.zoneId, e.stage);
@@ -162,6 +187,7 @@ export class SyncController {
     // done, or a non-network error (server is reachable): resume
     this.setStatus(this.reachableStatus(result));
     this.runtime.setPaused(false);
+    void this.flushPresence();
   }
 
   /** Runs one upload. Never throws. */

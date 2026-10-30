@@ -29,6 +29,7 @@ export function watchPresence(
     }
   };
   doc.addEventListener('visibilitychange', onChange);
+  onChange(); // already hidden at start (a background tab): the away timer starts now
   return () => {
     clear();
     doc.removeEventListener('visibilitychange', onChange);
