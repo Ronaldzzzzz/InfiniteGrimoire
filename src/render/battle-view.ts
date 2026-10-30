@@ -182,6 +182,7 @@ export class BattleView {
   private arena: Arena = makeArena(1, 1);
   private readonly backdrop = new Graphics();
   private scrollPx = 0;
+  private frozen = false;
   private ring = new Graphics();
   private bossBanner: Text | null = null;
   private bossBannerAge = BANNER_MS;
@@ -1191,7 +1192,13 @@ export class BattleView {
     else this.shakeRoot.position.set(0, 0);
   }
 
+  /** While frozen the view keeps its last frame: no clock, scrolling, effects, particles or shake. */
+  setFrozen(frozen: boolean): void {
+    this.frozen = frozen;
+  }
+
   private tick(dtMs: number): void {
+    if (this.frozen) return;
     this.time += dtMs;
     this.frameDt = Math.min(100, dtMs);
     for (const cb of [...this.frameCbs]) cb();

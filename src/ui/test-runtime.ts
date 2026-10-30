@@ -20,6 +20,8 @@ export function fakeRuntime(game: Partial<GameState> = {}, synthPending = false)
       listeners.add(cb);
       return () => void listeners.delete(cb);
     },
+    onEvents: vi.fn(() => () => {}),
+    stepAlpha: () => 0,
     equip: vi.fn((id: string) => set({ game: { equipped: id } })),
     travel: vi.fn((_zoneId: string, _stage: number) => true),
     enterBoss: vi.fn((): void => undefined),

@@ -121,6 +121,8 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .stage-progress-fill { height: 100%; background: var(--rune); transition: width 0.2s linear; }
 .stage-boss-clock { font-size: 12px; color: var(--gold); text-shadow: 0 1px 3px #000; }
 .stage-bar-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+/* away: the whole page greys out (on the root, so fixed elements keep their place) */
+html.away { filter: grayscale(1); }
 .stage-away { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 8px 12px; border-radius: 6px; background: rgba(13, 15, 20, 0.88); border: 1px solid #e8b84a; color: #e8b84a; font-size: 13px; text-align: center; }
 .stage-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; text-shadow: 0 1px 3px #000; }
 .stage-enter-boss { padding: 3px 12px; font-size: 13px; font-weight: 700; color: #1a1305; border: 1px solid var(--gold); background: linear-gradient(180deg, #f3cf72, #c8962a); border-radius: 6px; cursor: pointer; }

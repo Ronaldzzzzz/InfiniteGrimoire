@@ -18,9 +18,22 @@ export function BattleCanvas({ runtime }: { runtime: GameRuntime }) {
       const view = new BattleView(host, content, textures);
       const offEvents = runtime.onEvents((events) => view.handle(events));
       const offFrame = view.onFrame(() => view.sync(runtime.getSnapshot(), runtime.stepAlpha()));
+      // away: the strip stops dead (no scrolling, effects or motion) and the whole page turns grey
+      let wasAway: boolean | null = null;
+      const applyAway = (): void => {
+        const away = runtime.getSnapshot().away;
+        if (away === wasAway) return; // the runtime notifies every step; act only on a change
+        wasAway = away;
+        view.setFrozen(away);
+        document.documentElement.classList.toggle('away', away);
+      };
+      applyAway();
+      const offAway = runtime.subscribe(applyAway);
       cleanup = () => {
         offEvents();
         offFrame();
+        offAway();
+        document.documentElement.classList.remove('away');
         view.destroy();
       };
     });
