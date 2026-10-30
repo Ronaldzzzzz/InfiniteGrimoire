@@ -48,6 +48,7 @@
 | `docs/superpowers/plans/2026-10-28-crowd-ttk.md` | 上述規格的 4 個任務實作計畫（×10、量測工具、調血量、畫面確認） |
 | `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md` | 清怪節奏的帳本：Ruling（P1、P2、C2、C3、T2a～T2d、T3a～T3e、T3-impossible、T4r）、各地點血量係數、調整前後的場上隻數表、路線通關時間 |
 | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` | **【目前最高依據】魔法研究改版總體設計**：使用者「體會不到自己是魔法師」→ 合成改為魔法陣（核心、環、五芒星、迴路分支、相生相剋、符文、預測詞條）、階級＝節點數、核心元素決定上限、共用規律＋每次合成的品質／熟練度／異變、名魔法＝教科書、戰鬥改成畫面下方的橫向長帶與關卡（小怪關、限時魔王關、失敗退回）、存檔重置；四個專案的順序 |
+| `docs/superpowers/specs/2026-10-30-magic-circle-design.md`、`docs/superpowers/plans/2026-10-30-magic-circle.md`、`docs/superpowers/sdd/2026-10-30-magic-circle/` | **專案 2 魔法陣合成（目前合成與魔導書的最高依據）**：牛皮紙魔法陣（核心、一／二環、五芒星、符文）、階級＝節點數受核心元素上限、迴路分支、陣→魔法的公式、伺服器合成（大失敗 10%、稀有 2%）、關鍵道具開放格子、符文從魔王取得、星圖魔導書；規格、7 個任務計畫、帳本（Ruling、延後的小問題）、Task 7 驗收報告 |
 | `docs/superpowers/specs/2026-10-29-side-scroll-battle-strip-design.md`、`docs/superpowers/plans/2026-10-29-battle-strip.md`、`docs/superpowers/sdd/2026-10-29-battle-strip/`、`docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、`docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/` | 專案 1：橫向戰鬥帶與關卡的規格、計畫、帳本（含最終修正一輪）與驗收報告；以及 2026-10-30 的手感、關卡由簡至難與離線收益（規格第 3.8、3.9 節）的計畫與帳本 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼（用 GM 工具重設）、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
@@ -58,9 +59,16 @@
 
 ## 3. 目前狀態（2026-10-30）
 
-### 3.0 接手先看這裡（2026-10-30 更新）
+### 3.0 接手先看這裡（2026-10-31 更新）
 
-**現在停在哪（2026-10-30 晚，專案 1 收尾）：** 專案 1（橫向戰鬥帶與關卡＋手感、關卡由簡至難、離線收益）連同使用者試玩後的修正都做完了，**2026-10-30 使用者同意後已 fast-forward 合併到 `main`**，`feat/battle-strip` 已刪除；`main` 尚未 push（push 由使用者 `! git push`）。試玩後的修正：舊存檔缺離線欄位導致上傳一直被拒（`readStored`）；自動前進不進魔王關、改成重複刷第 9 關並顯示「進入魔王關」（`goToBoss`）；離線改成「遊戲不是使用中的視窗」滿 10 秒就凍結（`setAway`、`BattleView.setFrozen`）、整頁灰階（`html.away`）、畫面正中間顯示「離線中」、分頁標題「💤 離線收益中 - 無限魔導書」（使用者確認維持 💤），收益每 30 秒一個 tick；「離開」「回來」依序排隊、絕不丟掉。`npm test` 77 個檔案 897 個測試全過、`npm run build` 通過。**下一步：** 專案 2（魔法陣合成）的設計討論（進行中）（總體設計 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` 第 4.1、4.2、4.4 節與第 6 節「專案 2」要決定的事）。平衡數值（手感、關卡波數、離線 5 折／8 小時／10 秒凍結／30 秒 tick）**使用者 2026-10-30：先暫定**，之後可再調。
+**現在停在哪（2026-10-31，專案 2：魔法陣合成）：** branch `feat/magic-circle`（從 `main` e7c28de 分出，**未 push、未合併**）。規格 `docs/superpowers/specs/2026-10-30-magic-circle-design.md`、計畫 `docs/superpowers/plans/2026-10-30-magic-circle.md`、帳本 `docs/superpowers/sdd/2026-10-30-magic-circle/progress.md`、Task 7 驗收報告同資料夾 `task-7-report.md`（其餘任務報告與截圖在 `.superpowers/sdd/2026-10-30-magic-circle/`，gitignore）。7 個任務都完成並各自審查；Task 7 做了瀏覽器驗收與文件，**驗收發現的問題清單在 `task-7-report.md`，尚未修**（controller 派工）。測試與建置的結果見該報告與第 10 節。
+- **這個 branch 做了什麼：** 右欄的合成台換成**牛皮紙魔法陣**（`CircleTable`）：先選核心元素，再放一環（最多 5 格，排成五芒星）與二環（最多 4 格）的節點元素，每環選一種符文（形態），擺放時即時顯示預測（主屬性、附加效果、大約階級，**不顯示形態**）與迴路對不上的警告；按「合成」後 3 秒圓形進度條與火花，跑滿揭曉（稀有 5 秒）；被拒絕時陣保留並顯示原因。魔導書換成**星圖**（`StarMap`／`star-layout`）：五元素扇區、離中心越遠階級越高，自創（非教科書）魔法帶琥珀金光環，沒學會的不顯示（迷霧與 `revealed` 移除），點星看陣與數值、裝備、「放到牛皮紙上」再改。舊的兩輸入合成（`crafting.ts`、`recipes.json`、`SynthesisAltar`、自創 id `c(a|b)`、技能樹版面）全部移除。
+- **規則與數字（暫定，只是佔位；詳見第 6 節）：** 階級＝節點數（核心算 1）、核心元素階級決定上限（2／4／6／8／10）；一環要初階以上、二環要高階以上；符文 8 種，開局只有「射」，打倒魔王取得；格子開放靠關鍵道具（Lv.2 → 4 → 6 → 8 → 9 → 10，`circleTier`）；不同環放不同符文時形態各約 50% 擇一；大失敗基本 10%、迴路對不上每層 +25%；稀有魔法對應特定 Lv.10 陣、2%。教科書名魔法有 24 招一般加 7 招稀有（其餘魔法都是自創陣，`m:` id）。migration `0008_magic_circle.sql` **會重置所有存檔**（本機已套用，遠端未套用）。
+- **使用者一定要知道的 Ruling（全文在帳本）：** (1) 擺放時對不上迴路**不是拒絕**，只是提高大失敗機率（規格 3.3、3.4）；超過核心上限、未開放的格子、未取得的符文才是拒絕。(2) 五芒星上相生與相剋由推導得出：相生＝圓周相鄰（水→土→火→雷→風→水）、相剋＝星線相連；所以滿的一環每條星線都是相剋，迴路檢查只看相鄰層。(3) 規格 2.5 的煉獄（火核心＋風節點，火剋風）與萬雷（雷核心＋水節點）依迴路規則違規，教科書陣已改成不相剋的搭配，所以這兩招的節點組成和規格表不同。(4) 分支數（`circle-rules.json` 的 `branches`、`slotShift`）是佔位數字，為了讓所有教科書接得上調過一次；稀有魔法由**自己的 Lv.10 陣產生的一般魔法 × `RARE_BONUS` 1.5 攻擊**衍生（取代手調效果），規則「稀有不比自己的陣的一般結果弱、且至少是 Lv.9 中位數 ×1.5」由 `tier-curve` 把關；稀有魔法的手調多形態要等專案 3。(5) 名魔法多形態先壓成單一形態（規格 2.5，使用者同意）。(6) 稀有魔法的 2% 擲中已學會的稀有魔法時照樣跑 5 秒。(7) 星圖連線照規格字面「同一環有相同節點元素就連」，學滿 31 個教科書陣約 109 條線，**很雜，要不要減少交給使用者試玩時決定**；兩個不相鄰元素（例：火＋土）的魔法依扇區平均角度會落在第三個元素的扇區。(8) 模擬路線的混合路線由火＋風改成雷＋風（火風相剋、舊的命名配方已不存在）；通關時間 99.8～141.2 模擬分鐘（0 次被拒），稀有刷取時間只印報告。
+- **瀏覽器驗收（2026-10-31，headless Chrome＋puppeteer-core，macOS，1280×900 與 390×844）：** 規格第 5 節 1～9 項**功能都通過、無頁面錯誤**：牛皮紙擺放與預測、3 秒進度條與火花、被拒絕時陣保留、不同環符文形態約各一半（34 次成功 22／12）、旋轉後的同一個陣只有一筆、24 招教科書陣用介面全部合出正確名魔法、格子與符文照關鍵道具與魔王逐步開放（Lv.2/4/6/8/9/10）、星圖點選／詳情卡／放到牛皮紙上／裝備、強化 +1、稀有魔法驗收結果見 `task-7-report.md`。**發現的問題（都沒修，看報告）：** 牛皮紙上的五芒星底線是實心黑色（`.guide` 缺 `fill: none`）；學會約 100 個隨機陣時星圖是一團連線、標籤重疊（24 招時 0 個重疊）；手機（390 px）上星圖很小、詳情卡被框住、元素選單要在牛皮紙內捲動才看到「關閉」；`key-items.json` 的說明仍是迷霧時代文案。**種進去的：** 元素存量、已打倒的魔王、關鍵道具、`circleTier`、壓力測試用的 `learned`（90 個隨機陣）都是直接改本機 D1；其餘（擺陣、合成、使用關鍵道具、強化、星圖點選與縮放）是實際操作。沒有在真實手機上測。
+- **接手者先做：** 看 `task-7-report.md` 的問題清單 → 修 → 使用者在真實瀏覽器試玩（牛皮紙手感、星圖密度與連線、教科書陣的數量與數值）→ 決定合併。專案 3（每次合成的手氣：品質、熟練度、異變）、專案 4（教科書與符文任務）、多形態名魔法、三環都還沒做。
+
+**之前停在哪（2026-10-30 晚，專案 1 收尾）：** 專案 1（橫向戰鬥帶與關卡＋手感、關卡由簡至難、離線收益）連同使用者試玩後的修正都做完了，**2026-10-30 使用者同意後已 fast-forward 合併到 `main`**，`feat/battle-strip` 已刪除；`main` 尚未 push（push 由使用者 `! git push`）。試玩後的修正：舊存檔缺離線欄位導致上傳一直被拒（`readStored`）；自動前進不進魔王關、改成重複刷第 9 關並顯示「進入魔王關」（`goToBoss`）；離線改成「遊戲不是使用中的視窗」滿 10 秒就凍結（`setAway`、`BattleView.setFrozen`）、整頁灰階（`html.away`）、畫面正中間顯示「離線中」、分頁標題「💤 離線收益中 - 無限魔導書」（使用者確認維持 💤），收益每 30 秒一個 tick；「離開」「回來」依序排隊、絕不丟掉。`npm test` 77 個檔案 897 個測試全過、`npm run build` 通過。**下一步：** 專案 2（魔法陣合成）的設計討論（進行中）（總體設計 `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` 第 4.1、4.2、4.4 節與第 6 節「專案 2」要決定的事）。平衡數值（手感、關卡波數、離線 5 折／8 小時／10 秒凍結／30 秒 tick）**使用者 2026-10-30：先暫定**，之後可再調。
 
 **之前停在哪（2026-10-30，專案 1 續：手感、關卡由簡至難、離線收益）：** branch `feat/battle-strip`（**未 push、未合併**）。規格第 3.8、3.9 節（已實作）、計畫 `docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、帳本與 Task 1 量測 `docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/`。Task 1～5 已完成並各自審查；最終全 branch 審查找到 1 個 Important（離線回來後第一次通關只量到回來後的時間，會讓下一次離線多給約 12 倍）已修正並複審通過：跨過離開或離線時段的那次通關不記時間、成功通關會結束「離開」、重新連線先送離線結算再上傳。`npm test` 76 個檔案 875 個測試全過（連跑三次有一次 1 個測試逾時，另兩次全過，與已知的負載逾時相同）、`npm run build` 通過（2026-10-30）。
 - **手感（Task 1，以下數值都是提案，待使用者確認）：** `LANE_SPEED` 4 → 2.5、`STOP_X` 0.08 → 0.16、小人 22×38 → 34×58（`HERO_W`／`HERO_H`，眼睛 6 px）；`WALK_MS` 不變。
@@ -103,7 +111,7 @@
 | 順序 | 項目 | 狀態 | 去哪裡看 |
 |---|---|---|---|
 | 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers`、`feat/tier-step-18`、`feat/crowd-ttk`）到 `main` | **已完成（2026-10-29，使用者試玩後同意）**；push 由使用者 `! git push` | 本節 |
-| **0.1（進行中）** | 魔法研究改版（四個專案） | 專案 1（橫向戰鬥帶、關卡、離線收益）**已完成並合併到 `main`（2026-10-30）**；**下一步：專案 2 魔法陣合成的設計討論** | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
+| **0.1（進行中）** | 魔法研究改版（四個專案） | 專案 1（橫向戰鬥帶、關卡、離線收益）**已完成並合併到 `main`（2026-10-30）**；專案 2（魔法陣合成）**程式與驗收完成，在 `feat/magic-circle`（未 push、未合併）**，驗收問題待修、待使用者試玩；之後是專案 3（每次合成的手氣） | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
 | 0.5 | 魔法深度拓展（名稱、類型、定義）剩下的部分 | 第一批（20 招、強度曲線、地圖）**已完成（在 `feat/rare-tuning`）**；Phase 1～3 文案的其餘招式、新施法形態、異變詞綴、Overdrive、禁忌殘頁等**都還沒做**，之後再討論 | `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md`、`2026-10-27-spell-expansion-green-items-review.md` |
 | 1 | 魔法階級強度曲線（含距離魔王還差幾隻、放回上次組合） | **已完成（在 `feat/rare-tuning`）**；`TIER_STEP` 使用者已定 1.8、強化滿 ×1.4；待使用者試玩 | 本節、規格與帳本 |
 | 1b | 稀有魔法落空的保底／補償 | **暫停（使用者 2026-10-29），遊戲性討論之後再提**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
@@ -185,29 +193,30 @@ Node 22.13 以上（資料庫測試用到 `node:sqlite`）。新增 migration �
 ```
 src/engine/   純 TypeScript 遊戲邏輯（瀏覽器與伺服器共用；禁止 DOM/React/Pixi/Workers API）
   model.ts 內容與遊戲狀態的型別 · content.ts 內容載入與交叉檢查（zod）· types.ts 元素／階級／道具 id
-  spells.ts 名魔法與自創魔法的解析（resolveSpell、craftedId、spellAtLevel、攻擊上限）
-  crafting.ts 合成（配方、相性、融合成本、重擲不免費）· tree.ts 魔導書節點與迷霧、深度上限、被動解鎖
+  spells.ts 名魔法與魔法陣魔法的解析（resolveSpell、spellAtLevel、攻擊上限）
+  circle.ts 魔法陣規則（`Placement`、`placementTier`／`GRADE_CAP`／`RING_FLOOR`、`placementProblems`、分支 `branches`、迴路 `circuitMismatches`、相生相剋 `relations`、`possibleForms`、標準化 id `canonicalCircle`／`parseCanonical`、`runesUnlocked`、`tierUnlockOf`；規則數字在 `src/data/content/circle-rules.json`）
+  circle-spell.ts 陣→魔法的公式（`circleSpell`：形態、規模、附加效果、相生相剋；名魔法與稀有魔法由同一套公式＋名字文案產生）
+  circle-synth.ts 伺服器合成（`parsePlacement`、`circleCost`、`failChance`、`synthesizeCircle`；`FAIL_BASE`、`RARE_CHANCE`、稀有衍生 `RARE_BONUS`）· tree.ts 關鍵道具開放格子 `useKeyItem` 與被動解鎖
   empower.ts 魔法強化與被動加成 · inventory.ts 背包與升階
   combat-rules.ts 傷害門檻／越級遞減／相剋 · combat.ts 橫向長帶戰鬥模擬（成群魔物、各種魔法效果、狀態、`RANGE` 射程瞄準、`LANE_Y`／`STOP_X`／`RIGHT_X` 幾何、波次與關卡階段 `createBattle`／`enterStage`、MAX_ACTIVE_FX）
   stages.ts 關卡規則（`WALK_MS`、`BOSS_LIMIT_MS` 180 秒、`stageTotal`、`minStageMs`、`highestPlayable`）· stage-clear.ts 關卡結算戰利品與驗證（`stageLoot`、`LOOT_ROLLS` 2）· offline.ts 離線收益（`offlineStage`、`offlineLoot`、`markAway`、`claimOffline`；伺服器計算）
   persist.ts 初始存檔與存檔解析（zod）· audit.ts 防作弊：上傳上限檢查（取代舊的 validate.ts）· rng.ts
-src/data/content/  魔法 spells、配方 recipes、魔物 monsters、地點 zones、素材 materials、關鍵道具 key-items、
-              被動 passives、魔導書區域 regions（*.json；內容與數值都在這裡）
+src/data/content/  魔法 spells（教科書陣在 `circle` 欄位）、魔法陣規則 circle-rules、魔物 monsters、地點 zones、素材 materials、關鍵道具 key-items、
+              被動 passives、魔導書區域 regions（*.json；內容與數值都在這裡；`recipes.json` 已移除）
 worker/       Cloudflare Worker（Hono）：遊客與帳號（sessions／credentials、password.ts 對瀏覽器雜湊做 HMAC＋pepper）、
-              存檔上傳、伺服器擲骰合成、強化、使用關鍵道具、解鎖被動；
+              存檔上傳、伺服器擲骰合成魔法陣（`POST /api/circle`）、強化、使用關鍵道具、解鎖被動；
               store.ts / d1-store.ts / store-contract.ts（兩種 Store 共用的契約測試）；`discoveries`（稀有魔法的發現紀錄：`recordDiscovery`／`recentDiscoveries`、部分唯一索引保證每個魔法只有一位首位、可疑帳號不寫入）與 `GET /api/discoveries?after=<id>`（最多 20 筆、不回傳 player_id）；GM 端點 `POST /api/gm/login`、`/api/gm/inventory`、`/api/gm/zones`、`/api/gm/reset-password`（`GM_USERNAMES` 未設定時全部 404，檢查在 session 驗證之前；GM token 以 `X-GM-Token` 傳，雜湊後存 `gm_tokens`；`gm_actions` 只寫入、不含密碼）、`excludedFromRecords(player)`（`suspicious || gmUsed`）
-migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔、0005 發現紀錄 `discoveries`：不動存檔、0006 GM 工具 `gm_used`／`gm_tokens`／`gm_actions`：不動存檔、0007 關卡 `currentStage`／`clearedStages`／`lastClearAt`、移除 `zoneKills`：**重置存檔**）
+migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 核心重做：重置存檔、0005 發現紀錄 `discoveries`：不動存檔、0006 GM 工具 `gm_used`／`gm_tokens`／`gm_actions`：不動存檔、0007 關卡 `currentStage`／`clearedStages`／`lastClearAt`、移除 `zoneKills`：**重置存檔**、0008 魔法陣 `circleTier`、移除 `revealed`、舊魔法 id 失效：**重置存檔**）
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳／動作／斷線／錯誤）、loop、boot、presence（不是使用中的視窗滿 10 秒：凍結並送離開）
 src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 橫向長帶幾何（`makeArena(w, h)`）；
               element-fx.ts 各元素的粒子語彙；effects.ts 特效視覺；motion.ts 怪物擺動
-src/ui/       React 介面：TopBar（地點與關卡／魔法選擇器）、StageBar（長帶左上的關卡名稱、進度條、魔王倒數、自動前進、進入魔王關、結算通知）、ElementTable、SynthesisAltar（方形合成台，資料與特效描述在 altar-data）、
+src/ui/       React 介面：TopBar（地點與關卡／魔法選擇器）、StageBar（長帶左上的關卡名稱、進度條、魔王倒數、自動前進、進入魔王關、結算通知）、ElementTable、CircleTable（牛皮紙魔法陣：點格子選元素與符文、預測、3／5 秒圓形進度條與火花、揭曉；幾何與畫線在 circle-draw）、
               DiscoveryBanner（新發現、一網打盡）、Notebook（魔法筆記）、EmpowerPanel（強化）、
-              GrimoirePanel（SVG 技能樹，含迷霧、泡泡 NodeBubble、浮動詳情卡 NodeCard）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
+              GrimoirePanel（星圖魔導書：縮放、拖曳、泡泡 NodeBubble、浮動詳情卡 NodeCard 含魔法陣小圖與強化；星的位置與連線在 star-layout、畫在 StarMap）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
               Onboarding、OfflineOverlay、AwayReport（回來時的「離開期間的收穫」卡片，要手動按掉，不蓋住長帶）；
               useGame.ts 的 useRuntime(selector)；開發用 PerfMeter；戰鬥畫面的 DPS 數字在 src/render/dps.ts（BattleView 左上角）
               BossCounter（戰鬥畫面左上「魔王出現還差 N 隻」）、EquipToasts（學會新魔法的 3 秒裝備通知，戰鬥畫面右上角）、
-              last-combo（合成台「放回上次組合」，localStorage `ig.lastCombo`）、spell-facts＋SpellFactsView（詳情卡的學派／數值／詠唱詞）、
-              grimoire-layout（五元素樹 layoutGrimoire 與光暗樹 layoutLightDark）
+              spell-facts＋SpellFactsView（詳情卡的學派／數值／詠唱詞）
               GmWindow 與 gm/（GM 浮動視窗與四個分頁：GmInventoryTab、GmMapTab、GmRecipesTab＋recipe-table、GmPlayersTab＋temp-password、run-gm）、
               RareReveal（稀有魔法的全螢幕揭曉動畫，React＋CSS，不算戰鬥特效）、DiscoveryBell（頂端鈴鐺與動態清單）、useDiscoveryFeed（60 秒輪詢；未讀記在 localStorage `ig.feedSeen`）
 tests/sim/    專精路線模擬（機器人經由真實 createApp + MemoryStore 遊玩）；measure.ts（強度曲線量測 curveReport，含 Lv.9／稀有兩兩自創的檢查）、
@@ -224,10 +233,18 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - **傷害門檻**：魔法階級 ≥ 魔物階級 − 1，或攻擊力 ≥ 防禦 × 0.7，否則傷害為 0（畫面顯示「無效」）。
 - **越級遞減**：d = 魔法階級 − 魔物階級，d ≥ 2 時掉落效益 = 0.5 + 0.5 × 0.5^(d−1)。例外：`key:` 道具不受遞減影響（R13），每個魔王第一次擊倒一定掉關鍵道具。
 - **小人沒有血條、不會死。**
-- **伺服器是銀行**：`learned`、`levels`、`revealed`、`passives`、`synthesisLog`、`clearedStages`、`lastClearAt`、`clearTimes`、`awayAt`、`offlineUntil` 只能由伺服器改變（合成、強化、使用關鍵道具、解鎖被動、關卡結算與離線收益都是伺服器動作）；**離線收益規則**：全由伺服器依自己記的離開時間與通關時間算，用戶端只送「離開」「回來」；「離開」＝遊戲不是使用中的視窗（失去焦點或頁面隱藏，不論在哪個螢幕；網頁偵測不到部分遮蓋，所以用焦點代替，使用者 2026-10-30 同意）滿 10 秒，用戶端凍結戰鬥（`setAway`，與斷線暫停分開；`BattleView.setFrozen` 讓長帶畫面完全停住）、整頁灰階（`html.away`）並顯示「離線中」（網址列、擴充功能視窗、嵌入式開發者工具拿到焦點也算）；「離開」「回來」依序排隊送出、送不出去就等，絕不丟掉（`SyncController` 的 presence 佇列）；收益以 30 秒一個 tick 計（不足一次通過也照比例給，不滿一個 tick 不給）；整個關掉遊戲時從最後一次上傳存檔起算；只刷最遠已通過的小怪關（魔王關不參與、不推關、不開放地點、不給關鍵道具）；收益是線上的 50%、有效時間上限 8 小時；回來時自動入帳，提示卡片要玩家手動按掉；給過的時間不會重複給（`awayAt`、`offlineUntil`），離開與離線的時間不計入通關時間紀錄（跨過離開或離線區間的那次通關不記時間），成功通關一關即結束「離開」（`awayAt` 歸零）；合成一律伺服器擲骰。被拒絕的動作回 422、不寫入、不算作弊（R9、R11）。
+- **伺服器是銀行**：`learned`、`levels`、`circleTier`、`passives`、`synthesisLog`、`clearedStages`、`lastClearAt`、`clearTimes`、`awayAt`、`offlineUntil` 只能由伺服器改變（合成、強化、使用關鍵道具、解鎖被動、關卡結算與離線收益都是伺服器動作）；**離線收益規則**：全由伺服器依自己記的離開時間與通關時間算，用戶端只送「離開」「回來」；「離開」＝遊戲不是使用中的視窗（失去焦點或頁面隱藏，不論在哪個螢幕；網頁偵測不到部分遮蓋，所以用焦點代替，使用者 2026-10-30 同意）滿 10 秒，用戶端凍結戰鬥（`setAway`，與斷線暫停分開；`BattleView.setFrozen` 讓長帶畫面完全停住）、整頁灰階（`html.away`）並顯示「離線中」（網址列、擴充功能視窗、嵌入式開發者工具拿到焦點也算）；「離開」「回來」依序排隊送出、送不出去就等，絕不丟掉（`SyncController` 的 presence 佇列）；收益以 30 秒一個 tick 計（不足一次通過也照比例給，不滿一個 tick 不給）；整個關掉遊戲時從最後一次上傳存檔起算；只刷最遠已通過的小怪關（魔王關不參與、不推關、不開放地點、不給關鍵道具）；收益是線上的 50%、有效時間上限 8 小時；回來時自動入帳，提示卡片要玩家手動按掉；給過的時間不會重複給（`awayAt`、`offlineUntil`），離開與離線的時間不計入通關時間紀錄（跨過離開或離線區間的那次通關不記時間），成功通關一關即結束「離開」（`awayAt` 歸零）；合成一律伺服器擲骰。被拒絕的動作回 422、不寫入、不算作弊（R9、R11）。
 - **元素五階**：初階／中階／高階／極階／神階；升階成本 3／5／10／20 個低一階的元素（2026-10-28 使用者核准，原本 3／10／30／100；`GRADE_UPGRADE_COST`）。
-- **隨機配方的重試不免費**（R14、R14b）：落空到已會的自創魔法時，照名魔法重複的方式扣成本。
-- **自創魔法 id 只有一種寫法**：`c(<a>|<b>)`，兩個輸入 token 依字串排序（`craftedId`）；不照順序或只有素材的 id 解析成 null（R4）。深度上限 `HARD_MAX_DEPTH`，強化等級上限 `MAX_SPELL_LEVEL`，攻擊上限 `CEILING_FACTOR`。
+- **魔法陣合成（專案 2，數字都是佔位、最終值要給使用者確認）**：
+  - **階級與上限**：階級＝節點數（核心算 1），再受核心元素階級限制（`GRADE_CAP`：初階 2／中階 4／高階 6／極階 8／神階 10）；超過核心上限的格子不能放。一環最多 5 格（要初階以上）、二環最多 4 格（要高階以上、一環要先填滿）（`RING_FLOOR`、`SLOTS`、`MAX_RING2`）。
+  - **開放與符文**：格子開放到哪一階由 `circleTier` 決定（**伺服器擁有**，用戶端上傳不能改）；開局 Lv.2，關鍵道具使用後開放：風暴之心 Lv.4、雷霆之眼 Lv.6、熔岩之印 Lv.8、泰坦之冠 Lv.9、墜星之印 Lv.10（`circle-rules.json` 的 `tierUnlocks`，`tierUnlockOf`）；較低階的關鍵道具在較高階之後使用會被拒絕。符文（射、刃、波、鏈、域、墜、嵐、臨）不扣素材，開局只有「射」，打倒魔王取得（`runeUnlocks`、`runesUnlocked`）；符文不綁屬性。
+  - **形態**：每環一種符文；不同環不同符文時形態各約 50% 擇一（`possibleForms`，伺服器擲骰）；只有核心沒有環時預設「射」。
+  - **魔法 id 只有一種寫法**：標準化後的 `m:<核心>.<實際階級>.<一環>.<二環>.<形態>`（`canonicalCircle`／`parseCanonical`；旋轉、鏡像相同的陣是同一個 id；所有環的符文標準化成實際形態）。同一個標準化陣只有一筆魔法；名魔法＝某個標準化陣有名字與文案（`spells.json` 的 `circle`）。舊的兩輸入合成與自創 id `c(<a>|<b>)`、`recipes.json`、迷霧與 `revealed` 都已移除。
+  - **迴路**：每個節點有朝內、朝外的分支數（`circle-rules.json` 的 `branches`、`slotShift`）；核心算內圈；相鄰兩層朝外總數＝朝內總數、且連在一起的兩個元素不相剋才「對得上」。**對不上不是拒絕**，只是大失敗機率提高；`placementProblems`（超過上限、未開放的格子、未取得的符文、結構不合法）才是拒絕（422、不扣材料、不算作弊）。伺服器要檢查用戶端送來的陣（`parsePlacement`＋`placementProblems`）。
+  - **結果與機率（佔位）**：合成前不花東西；伺服器擲骰；按下後扣核心與每個節點的元素（符文不扣）。結果只有一般成功與大失敗（扣掉元素、什麼也學不到）：大失敗 `FAIL_BASE` 10%、迴路每一層對不上 `FAIL_PER_MISMATCH` +25%；稀有魔法對應特定的 Lv.10 陣、合成時 `RARE_CHANCE` 2%，稀有魔法由自己的 Lv.10 陣的一般魔法 ×`RARE_BONUS`（1.5 攻擊）衍生，永遠不比自己的陣的一般結果弱。介面 3 秒（`PROGRESS_MS`）、稀有 5 秒（`RARE_PROGRESS_MS`）。非常成功、異變、熟練度、品質屬於專案 3。
+  - **魔法的屬性＝陣上出現的所有元素**（核心＋節點），影響相剋、被動加成與星圖位置；名魔法的數值與自創陣由同一套公式產生，強度曲線（`tests/sim/tier-curve.test.ts`）照舊把關。
+  - 強化、強化成本（初階／中階依序）與上限（+50、攻擊 ×1.4）照舊；魔法上限階級是 Lv.10。
+  - 存檔 migration `0008_magic_circle.sql` 會重置所有存檔；舊魔法 id 一律不再有效。
 - **特效上限**：場上同時存在的特效 `MAX_ACTIVE_FX = 24`（`combat.ts`），畫面與引擎共用；新增特效不要繞過它。
 - **範圍魔法的瞄準**：最密、隨機、最強等目標只考慮小人前方射程 `RANGE` 內的魔物（長帶座標 `x <= RANGE`），沒有才退回全部；擊退一律往右、不推出右緣 `RIGHT_X`；怪停在停止線 `STOP_X` 前、不會穿過小人；一網打盡一定要在畫面裡看得到。
 - **關卡與結算**：每個地點 10 關，第 10 關是魔王關；一波清完才出下一波；魔王關要玩家按「進入魔王關」（自動前進不進魔王關：打完第 9 關就重複刷第 9 關，同時顯示「進入魔王關」按鈕，`GameRuntime.goToBoss` 前往並立刻開始；手動選到第 10 關則停在門口等按鈕），**遇到魔王波才開始倒數 180 秒（`BOSS_LIMIT_MS`）**，時間到失敗並退回前一關。打完小怪關後用戶端送 `POST /api/stage-clear` 結算（伺服器擲骰、`stageLoot` 約兩倍掉落、檢查 `minStageMs`、魔王關要魔王真的倒下）。**`clearedStages`、`lastClearAt` 只能由伺服器改變**（上傳被改會被 `audit.ts` 拒絕；錨點窗口照舊）；`zoneKills` 已不存在，`maxKills` 改依「到目前為止能出現的波數」。
@@ -268,6 +285,7 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 - GM 工具留下的小問題（驗收時發現，都是外觀或提示）：元素分頁的數字欄清空後會變 0，接著輸入 5 會顯示成「05」（數值正確）；玩家分頁輸入不合法的帳號名稱（例如含 `-`）時只顯示「連線失敗，請稍後再試」，沒有說明是名稱格式；其他見帳本 `docs/superpowers/sdd/2026-10-23-gm-tool/progress.md` 的 `minor (deferred)`。
 - 合成台改版留下的小問題：手機上點未學會的魔法，上方的線索框高度改變會讓技能樹整個位移，泡泡位置在位移前算好，會偏離節點幾十 px（不會被裁掉）；手機上合成台是方形、把技能樹擠到第一屏之外（規格接受，放入時有提示）；合成台特效沒有針對名魔法各做專屬版本。
 - 第二版 B 留下的小問題（見帳本 `docs/superpowers/sdd/2026-10-23-v2b-rare-discoveries/progress.md`）：存檔寫入成功後、用戶端沒收到回應（斷線）時不補播全螢幕動畫（資訊欄仍有紀錄）；`discoveries` 在存檔寫入之後才寫、不是同一個交易，伺服器剛好在中間當掉最多少記一筆；已經會聖光審判／深淵吞噬的舊存檔不回填 `discoveries`；動態清單的「自己的發現不算未讀」以顯示名稱比對，兩位玩家同名時對方的發現也會被當成自己的；鈴鐺一次只顯示最近 20 則，沒有「更多」；稀有魔法的戰鬥特效與全螢幕動畫只在 headless Edge 看過，沒有在真實瀏覽器與手機上看過；刷取時間超標見待辦 0a。
+- 專案 2（魔法陣合成）驗收留下的問題（`docs/superpowers/sdd/2026-10-30-magic-circle/task-7-report.md`，帳本 `progress.md` 另有各任務延後的小問題）：牛皮紙的五芒星底線是實心黑色（`.guide` 缺 `fill: none`）；手機上元素選擇器要在內部捲動才看到「關閉」、星圖與詳情卡很小；學會上百個陣時星圖連線太密、標籤重疊；`key-items.json` 說明仍是迷霧時代文案；本機 `discoveries` 不隨 0008 清除。
 
 ## 9. 下一步路線（規格第 6 節）
 
@@ -281,6 +299,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-10-31（Claude Code，Sonnet 5.5，macOS，專案 2 驗收與文件）**：branch `feat/magic-circle`（從 `main` e7c28de 分出）Task 1～6（魔法陣規則與標準化 id、陣→魔法公式與教科書、伺服器合成與 migration 0008、模擬機器人、牛皮紙介面、星圖魔導書）完成並各自審查後做 Task 7：本機套用 0008，用 headless Chrome（puppeteer-core 裝在專案外）在 1280×900 與 390×844 逐項驗收規格第 5 節，功能 1～9 項都通過、無頁面錯誤（24 招教科書陣用介面全部合出同名名魔法；稀有焚世之焰真的擲出、5 秒、停在裝備／不裝備）；找到的問題（五芒星底線實心黑、手機選擇器要捲動才看到「關閉」、星圖在上百顆星時很雜、手機星圖與詳情卡太小、關鍵道具文案仍是迷霧時代）列在 `docs/superpowers/sdd/2026-10-30-magic-circle/task-7-report.md`，**沒有修**（任務只做驗收與文件）。種進本機 D1 的：元素、已打倒魔王、關鍵道具、`circleTier`、壓力測試的 `learned`。文件：AGENTS.md（第 2、3.0、5、6 節）、README、上線前檢查清單（遠端 D1 要先套用 0008，重置存檔）、規格狀態行。`npm test` 79 檔 871 個、`npm run build` 通過。停在：`feat/magic-circle` 全部 commit，**未 push、未合併**；dev server 已停。下一步：修驗收問題 → 使用者試玩 → 決定合併；之後專案 3（每次合成的手氣）。
 
 - **2026-10-30（Claude Code，Opus 5.5，macOS，合併專案 1）**：使用者同意合併：`feat/battle-strip` fast-forward 到 `main`、branch 已刪除；`main` 上 `npm test` 77 檔 897 個全過。平衡數值使用者決定先暫定；根目錄的 ChatGPT 統整檔不進版本庫（使用者決定）。停在：`main` 未 push。下一步：專案 2（魔法陣合成）設計討論。
 

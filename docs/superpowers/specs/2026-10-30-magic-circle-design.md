@@ -1,5 +1,7 @@
 # 專案 2：魔法陣合成（設計規格，2026-10-30）
 
+**狀態（2026-10-31）：已實作，在 branch `feat/magic-circle`（未 push、未合併）；瀏覽器驗收報告與待修問題見 `docs/superpowers/sdd/2026-10-30-magic-circle/task-7-report.md`，帳本 `progress.md`（Ruling 以帳本為準）。**
+
 上層文件：`docs/superpowers/specs/2026-10-29-magic-research-rework-design.md`（第 4.1、4.2、4.4、6 節；第 5 節順序 2）。前一個專案：`docs/superpowers/specs/2026-10-29-side-scroll-battle-strip-design.md`（橫向戰鬥帶，已合併到 `main`）。
 
 ## 1. 目的
