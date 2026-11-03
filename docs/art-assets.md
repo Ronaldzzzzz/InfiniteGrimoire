@@ -331,3 +331,36 @@ pixel art, 1-bit / Pico-8 style limited palette, crisp hard edges, no anti-alias
 
 特效（火星、風痕、閃電、碎石、水滴、龍捲、熔岩、冰霜等）全部由程式繪製（`src/render/element-fx.ts`、`src/render/battle-view.ts`），不需要貼圖。
 
+
+## 書房與羊皮紙（魔法陣區，不是像素風）
+
+這兩張是右欄魔法陣區的背景，風格是寫實手繪質感，不套用上面的像素風通則。由使用者用 AI 繪圖生成（2026-11-03 決定）；pngtree 的參考圖只作風格參考，不可放進版本庫。缺檔時程式用暫代的紙張與木桌，放進檔案就會自動換上。
+
+### parchment
+
+- 檔名：`public/assets/parchment.webp`
+- 用途：魔法陣畫在這張紙上（直立）；中間要留白，程式會在上面畫陣。
+- 尺寸：1024×1280（4:5 直立），透明背景（破邊外面要透明）。
+- 提示詞：
+```
+top-down view of a single sheet of old parchment paper, portrait orientation 4:5, aged yellowed vellum with subtle brown stains and faint fibers, irregular torn and slightly burnt-looking ragged edges, the top and bottom edges gently curling upward like a scroll that was just unrolled, soft shadows under the curled edges, the center area plain and empty (no writing, no drawings, no symbols), even soft warm lighting, high detail, realistic painted texture, isolated on a transparent background
+```
+- 負面提示詞：
+```
+text, letters, runes, magic circle, drawings, watermark, logo, signature, frame, border, table, hands, objects, vignette, harsh shadows, blurry
+```
+
+### desk
+
+- 檔名：`public/assets/desk.webp`
+- 用途：右欄（元素表與魔法陣）的背景桌面，羊皮紙放在它上面。整體要暗，不能搶過紙與元素表的文字。
+- 尺寸：1600×1000，不需要透明。
+- 提示詞：
+```
+top-down view of a thick dark oak writing desk in a dim medieval wizard's study, rich wood grain, worn and scratched surface, warm candlelight coming from the top left corner, deep shadows and strong dark vignette toward the edges, the center of the desk empty and clear, moody, low key lighting, fantasy, realistic painted texture, high detail
+```
+- 負面提示詞：
+```
+paper, books, candles visible, quills, objects in the center, people, hands, text, watermark, logo, bright lighting, overexposed, blurry
+```
+- 小技巧：生成後若太亮，整張降低亮度約 30～40%；中間偏暗沒關係，紙張會蓋在上面。

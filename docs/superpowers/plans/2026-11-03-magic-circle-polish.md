@@ -261,7 +261,7 @@ git commit -m "feat(ui): draw each ring's rune as a band around the circle"
 - Create: `src/ui/useArt.test.tsx`
 - Modify: `src/ui/CircleTable.tsx`（外層 `.parchment-sheet`）
 - Modify: `src/ui/App.css`（`.workbench` 木桌、`.parchment-sheet` 紙張）
-- Modify: `docs/art-assets.md`（新增「書房與羊皮紙」一節）
+- Check: `docs/art-assets.md`（「書房與羊皮紙」一節已寫好）
 - Test: `tests/ui/layout-css.test.ts`、`src/ui/CircleTable.test.tsx`
 
 **Interfaces:**
@@ -283,7 +283,7 @@ Expected: FAIL。
 - `.has-art`：背景只剩 `url("/assets/parchment.webp") center / 100% 100% no-repeat`，不 clip。
 - `.workbench`：暗褐木紋（`repeating-linear-gradient`）＋暗角（`radial-gradient` 邊緣變黑）＋左上微弱燭光（暖色 `radial-gradient`），最上層 `url("/assets/desk.webp") center / cover`。只做右欄（`.workbench`），整頁不動（規格第 11 節）。
 - SVG 墨線加 `<filter id="ink-rough">`（`feTurbulence baseFrequency 0.9` ＋ `feDisplacementMap scale 1.2`，佔位），套在 `.draw` 線條上；`prefers-reduced-motion` 不影響（靜態）。
-- `docs/art-assets.md` 新增一節「書房與羊皮紙（不是像素風）」：兩張圖的檔名、尺寸（`parchment.webp` 1024×1280 透明背景、`desk.webp` 1600×1000）、用途、AI 提示詞（羊皮紙：直立、破邊、邊緣微捲、老舊泛黃、斑點、中間留白可畫陣、正面俯視、無文字無浮水印；桌面：昏暗木屋書房的厚木書桌俯視、燭光從左上、暗角、木紋、無物件擋住中間），並註明「pngtree 參考圖不可用，只作風格參考」。
+- `docs/art-assets.md` 的「書房與羊皮紙（魔法陣區，不是像素風）」一節**已經寫好（2026-11-03，提示詞已給使用者）**，只要確認檔名、尺寸與程式一致，不要改提示詞。原本預定內容供對照：新增一節「書房與羊皮紙（不是像素風）」：兩張圖的檔名、尺寸（`parchment.webp` 1024×1280 透明背景、`desk.webp` 1600×1000）、用途、AI 提示詞（羊皮紙：直立、破邊、邊緣微捲、老舊泛黃、斑點、中間留白可畫陣、正面俯視、無文字無浮水印；桌面：昏暗木屋書房的厚木書桌俯視、燭光從左上、暗角、木紋、無物件擋住中間），並註明「pngtree 參考圖不可用，只作風格參考」。
 
 - [ ] **Step 4: 跑測試確認通過**
 
