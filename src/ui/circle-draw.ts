@@ -81,7 +81,6 @@ export function shownPoint(ring: 0 | 1, j: number, shown: number[]): Pt {
   return { x: round(CENTER + RING_R[0] * Math.cos(a)), y: round(CENTER + RING_R[0] * Math.sin(a)) };
 }
 
-
 /** The 相生 circle in the order an element wheel lays them out (water → earth → fire → thunder → wind). */
 export const WHEEL_ORDER: ElementId[] = ['water', 'earth', 'fire', 'thunder', 'wind'];
 /** Radius of a picker wheel, in viewBox units (placeholder). */
@@ -98,4 +97,15 @@ export function wheelPoints(n: number, center: Pt, radius: number): Pt[] {
 /** The wheel's centre for a tapped slot: pushed inwards so the whole wheel stays on the sheet. */
 export function wheelCenter(p: Pt, radius: number): Pt {
   return { x: clamp(p.x, radius, VIEW - radius), y: clamp(p.y, radius, VIEW - radius) };
+}
+
+/** Half the side of one wheel item, in viewBox units (about 22 px on a 300 px sheet). */
+export const ITEM_HALF = 18;
+/** Radius of the grade-step wheel: five items of ITEM_HALF * 2 fit side by side with a gap. */
+export const GRADE_WHEEL_R = 40;
+
+/** Where a wheel's centre and its `n` item centres go: the whole item boxes (radius + half) stay inside the sheet. */
+export function wheelLayout(at: Pt, n: number, radius: number, half = ITEM_HALF): { centre: Pt; points: Pt[] } {
+  const centre = wheelCenter(at, radius + half);
+  return { centre, points: wheelPoints(n, centre, radius) };
 }

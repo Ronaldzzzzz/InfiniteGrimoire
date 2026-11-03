@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CENTER, CIRCLE_PAIRS, circumference, wheelCenter, wheelPoints, pentagramPoints, PROGRESS_R, openSlotCounts, RING2_DEFAULT, RING_R, shownPoint, shownSlots, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
+import { CENTER, CIRCLE_PAIRS, circumference, wheelCenter, wheelPoints, wheelLayout, GRADE_WHEEL_R, ITEM_HALF, VIEW, pentagramPoints, PROGRESS_R, openSlotCounts, RING2_DEFAULT, RING_R, shownPoint, shownSlots, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
 
 const dist = (p: { x: number; y: number }) => Math.hypot(p.x - CENTER, p.y - CENTER);
 const angle = (p: { x: number; y: number }) => Math.atan2(p.y - CENTER, p.x - CENTER);
@@ -77,4 +77,28 @@ describe('element wheel geometry', () => {
     expect(wheelCenter({ x: 120, y: 238 }, 34)).toEqual({ x: 120, y: 206 });
     expect(wheelCenter({ x: 100, y: 90 }, 34)).toEqual({ x: 100, y: 90 });
   });
+});
+
+describe('grade wheel layout', () => {
+  const spots = [
+    { name: 'top of ring 1', at: slotPoint(0, 0) },
+    { name: 'ring 2 corner-ish slot', at: slotPoint(1, 1) },
+    { name: 'ring 2 slot 4', at: slotPoint(1, 4) },
+    { name: 'core', at: { x: CENTER, y: CENTER } },
+  ];
+  for (const { name, at } of spots) {
+    it(`keeps five items inside the sheet and apart: ${name}`, () => {
+      const { points } = wheelLayout(at, 5, GRADE_WHEEL_R);
+      for (const p of points) {
+        expect(p.x - ITEM_HALF).toBeGreaterThanOrEqual(0);
+        expect(p.x + ITEM_HALF).toBeLessThanOrEqual(VIEW);
+        expect(p.y - ITEM_HALF).toBeGreaterThanOrEqual(0);
+        expect(p.y + ITEM_HALF).toBeLessThanOrEqual(VIEW);
+      }
+      for (let i = 0; i < 5; i++) {
+        const a = points[i]!, b = points[(i + 1) % 5]!;
+        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(ITEM_HALF * 2);
+      }
+    });
+  }
 });

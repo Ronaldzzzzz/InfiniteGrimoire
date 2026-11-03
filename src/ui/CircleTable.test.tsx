@@ -180,7 +180,16 @@ describe('CircleTable', () => {
       expect(b.disabled).toBe(true);
       expect(b.title).toBe('二環需要高階以上');
     }
+    expect(within(screen.getByRole('dialog')).getByText('二環需要高階以上')).toBeTruthy();
     expect((dialogBtn(/^高階/) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('a backdrop tap closes the wheel even on the grade step', () => {
+    setup();
+    fireEvent.click(btn(/^核心/));
+    fireEvent.click(dialogBtn('火'));
+    fireEvent.click(document.querySelector('.ring-picker-backdrop')!);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('Escape on the grade step goes back to the elements', () => {

@@ -10,7 +10,7 @@ import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type Elemen
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
 import {
-  CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, VIEW, WHEEL_ORDER, type Pt,
+  CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, GRADE_WHEEL_R, VIEW, WHEEL_ORDER, type Pt,
 } from './circle-draw';
 import { RingPicker, type WheelItem } from './RingPicker';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
@@ -421,7 +421,8 @@ export const CircleTable = memo(function CircleTable({
             held={heldKey ? heldKey.split(',').map(Number) : []}
             onNode={(x) => setNode(target, x)}
             onElement={(el) => setTarget({ ...target, el })}
-            onBack={() => setTarget(target.el ? { ...target, el: undefined } : null)}
+            onBack={() => setTarget({ ...target, el: undefined })}
+            onClose={() => setTarget(null)}
             returnFocus={() => {
               const key = target.kind === 'core' ? 'core' : `${target.ring}-${target.j}`;
               parchment.current?.querySelector<HTMLButtonElement>(`[data-slot="${key}"]`)?.focus();
@@ -460,7 +461,7 @@ export const CircleTable = memo(function CircleTable({
   );
 });
 
-function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, returnFocus }: {
+function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, onClose, returnFocus }: {
   target: Exclude<Target, { kind: 'rune' }>;
   at: Pt;
   draft: Draft;
@@ -468,6 +469,7 @@ function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, retu
   onNode: (x: CircleNode | null) => void;
   onElement: (e: ElementId) => void;
   onBack: () => void;
+  onClose: () => void;
   returnFocus: () => void;
 }) {
   const current = target.kind === 'core' ? draft.core : draft.rings[target.ring][target.j] ?? null;
@@ -482,21 +484,24 @@ function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, retu
     });
     return (
       <RingPicker at={at} title={target.kind === 'core' ? '選擇核心元素' : `選擇${where}的元素`} items={items}
-        onPick={(k) => onElement(k as ElementId)} onRemove={remove} onClose={onBack} returnFocus={returnFocus} />
+        onPick={(k) => onElement(k as ElementId)} onRemove={remove} onClose={onClose} returnFocus={returnFocus} />
     );
   }
   const floor = target.kind === 'node' ? RING_FLOOR[target.ring]! : 1;
   const items: WheelItem[] = Array.from({ length: MAX_ELEMENT_GRADE }, (_, i) => {
     const grade = i + 1, n = countOf(el, grade), low = grade < floor;
-    const label = `${GRADE_NAMES[i]} ×${n}${target.kind === 'core' ? `（上限 Lv.${capOf(grade)}）` : ''}`;
+    const cap = target.kind === 'core' ? `（上限 Lv.${capOf(grade)}）` : '';
+    const ariaLabel = `${GRADE_NAMES[i]} ×${n}${cap}`;
+    const label = `${GRADE_NAMES[i]}\n×${n}${cap ? `\n上限 Lv.${capOf(grade)}` : ''}`;
     return {
-      key: String(grade), label, ariaLabel: label, enabled: n > 0 && !low, on: current?.element === el && current.grade === grade,
+      key: String(grade), label, ariaLabel, enabled: n > 0 && !low, on: current?.element === el && current.grade === grade,
       color: COLORS.element[el], title: low ? '二環需要高階以上' : n > 0 ? undefined : '沒有這個階級',
     };
   });
   return (
     <RingPicker at={at} title={`選擇${where}的${ELEMENT_NAMES[el]}元素階級`} items={items}
-      onPick={(k) => onNode({ element: el, grade: Number(k) })} onRemove={remove} onClose={onBack} />
+      onPick={(k) => onNode({ element: el, grade: Number(k) })} onRemove={remove} onClose={onClose} onBack={onBack}
+      radius={GRADE_WHEEL_R} note={floor > 1 ? '二環需要高階以上' : undefined} />
   );
 }
 
