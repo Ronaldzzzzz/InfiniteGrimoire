@@ -68,6 +68,8 @@ describe('CircleTable', () => {
     expect(sheet).toBeTruthy();
     expect(sheet.classList.contains('has-art')).toBe(false);
     expect(sheet.querySelector('.parchment')).toBeTruthy();
+    // zero-width lines (vertical/horizontal) must not be clipped away by the ink filter
+    expect(document.querySelector('filter#ink-rough')!.getAttribute('filterUnits')).toBe('userSpaceOnUse');
   });
 
   it('shows the prediction (main element, effects, tier) without the form', () => {

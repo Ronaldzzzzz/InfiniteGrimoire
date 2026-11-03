@@ -20,6 +20,7 @@ import { OfflineOverlay } from './OfflineOverlay';
 import { RareReveal } from './RareReveal';
 import { StageBar } from './StageBar';
 import { TopBar } from './TopBar';
+import { DESK_SRC, useArt } from './useArt';
 import { useDiscoveryFeed } from './useDiscoveryFeed';
 import { useConnStatus, useGameState, useRuntime } from './useGame';
 
@@ -38,6 +39,7 @@ export function App({
   onSwitched: (r: LoginResult) => void;
   onLoggedOut: () => void;
 }) {
+  const hasDesk = useArt(DESK_SRC);
   const status = useConnStatus(sync);
   const game = useGameState(runtime);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);
@@ -130,7 +132,7 @@ export function App({
       />
       <main className="main">
         <div className="side">
-          <section className="workbench" aria-label="元素與魔法陣">
+          <section className={`workbench${hasDesk ? ' has-desk' : ''}`} aria-label="元素與魔法陣">
             <CircleTable ref={circle} runtime={runtime} sync={sync} content={content} onResult={onSynthResult} onCharging={onCharging} />
             <ElementTable
               inventory={game.inventory}

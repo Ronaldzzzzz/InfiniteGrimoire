@@ -29,11 +29,12 @@ describe('useArt', () => {
     expect(result.current).toBe(false);
   });
 
-  it('ignores a load that finishes after unmount', () => {
-    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('detaches its handlers on unmount', () => {
     const { unmount } = renderHook(() => useArt('/assets/a.webp'));
+    const img = FakeImage.all[0]!;
+    expect(img.onload).not.toBeNull();
     unmount();
-    act(() => FakeImage.all[0]!.onload?.());
-    expect(err).not.toHaveBeenCalled();
+    expect(img.onload).toBeNull();
+    expect(img.onerror).toBeNull();
   });
 });

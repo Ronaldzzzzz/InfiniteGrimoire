@@ -389,7 +389,7 @@ export const CircleTable = memo(function CircleTable({
       <section ref={parchment} className={`parchment${charging ? ' charging' : ''}`} aria-label="魔法陣" style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
         <svg className="parchment-svg" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
           <defs>
-            <filter id="ink-rough" x="-5%" y="-5%" width="110%" height="110%">
+            <filter id="ink-rough" filterUnits="userSpaceOnUse" x={0} y={0} width={VIEW} height={VIEW}>
               <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="3" result="n" />
               <feDisplacementMap in="SourceGraphic" in2="n" scale="1.2" />
             </filter>

@@ -131,7 +131,6 @@ html.away { filter: grayscale(1); }
 .workbench {
   order: 1; min-width: 0; min-height: 0; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px;
   background:
-    url("/assets/desk.webp") center / cover no-repeat,
     radial-gradient(ellipse at 12% 6%, #e8a24a40, transparent 45%),
     radial-gradient(ellipse at 50% 50%, transparent 45%, #000000cc 100%),
     repeating-linear-gradient(92deg, #2a1c10 0 7px, #231710 7px 13px, #2e2013 13px 15px, #1f150d 15px 22px);
@@ -242,6 +241,13 @@ html.away { filter: grayscale(1); }
 }
 /* ---- magic circle parchment: tap a slot, pick an element or rune; strokes draw on (stroke-dashoffset), 合成 fills a ring ---- */
 .parchment-panel { display: flex; flex-direction: column; gap: 8px; }
+.workbench.has-desk {
+  background:
+    url("/assets/desk.webp") center / cover no-repeat,
+    radial-gradient(ellipse at 12% 6%, #e8a24a40, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, transparent 45%, #000000cc 100%),
+    repeating-linear-gradient(92deg, #2a1c10 0 7px, #231710 7px 13px, #2e2013 13px 15px, #1f150d 15px 22px);
+}
 .parchment-sheet {
   position: relative; width: min(100%, 64vh); margin: 0 auto; aspect-ratio: 4 / 5; display: grid; place-items: center;
   background:

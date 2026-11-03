@@ -51,7 +51,8 @@ describe('study desk and parchment sheet', () => {
   const body = (sel: string) => css.match(new RegExp(`(?:^|[}\\s])${sel.replace(/[.:()]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
   it('the workbench has the desk art on top of a fallback wood look', () => {
     const r = body('.workbench');
-    expect(r).toContain('url("/assets/desk.webp")');
+    expect(body('.workbench.has-desk')).toContain('url("/assets/desk.webp")');
+    expect(r).not.toContain('desk.webp');
     expect(r).toMatch(/repeating-linear-gradient/);
     expect(r).toMatch(/radial-gradient/);
   });
