@@ -140,3 +140,25 @@ describe('equip toast', () => {
     expect(media(600).body).toMatch(/\.battle-strip \{[^}]*height:\s*var\(--strip-h\)/);
   });
 });
+
+describe('parchment layout', () => {
+  it('seals 合成 on the sheet below the circle with a 44 px target', () => {
+    const r = rule(css, '.parchment-sheet .circle-go-row');
+    expect(r).toMatch(/position:\s*absolute/);
+    expect(r).toMatch(/bottom:\s*\d+(\.\d+)?%/);
+    const bottom = Number(/bottom:\s*(\d+(?:\.\d+)?)%/.exec(r)![1]);
+    expect(bottom).toBeLessThan(19);
+    expect(rule(css, '.circle-go')).toMatch(/min-height:\s*44px/);
+  });
+  it('puts the notes beside the sheet only in a wide workbench, stacked otherwise', () => {
+    expect(rule(css, '.workbench')).toMatch(/container-type:\s*inline-size/);
+    // keep in step with SIDE_NOTE_MIN (150 px each side) in CircleTable.tsx
+    expect(css).toMatch(/@container \(min-width: calc\(64vh \+ 300px\)\)[^{]*\{[^]*grid-template-areas/);
+    const wide = css.indexOf('@container (min-width: calc(64vh + 300px))');
+    // the base rule is the stacked one; the wide layout lives only inside the container query
+    const base = css.search(/^\.parchment-panel \{[^}]*grid-template-areas:\s*"sheet" "clear"/m);
+    expect(base).toBeGreaterThan(-1);
+    expect(base).toBeLessThan(wide);
+    expect(rule(css, '.parchment-panel')).toMatch(/grid-template-areas/);
+  });
+});

@@ -6,7 +6,7 @@ import type { Placement } from '../engine/circle';
 import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
-import { CircleTable, PROGRESS_MS, RARE_PROGRESS_MS, placementOfSpell, type CircleTableHandle } from './CircleTable';
+import { CircleTable, PROGRESS_MS, SIDE_NOTE_MIN, RARE_PROGRESS_MS, placementOfSpell, type CircleTableHandle } from './CircleTable';
 import { SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE } from './messages';
 import { fakeRuntime } from './test-runtime';
 
@@ -81,6 +81,41 @@ describe('CircleTable', () => {
     expect(line).toContain('約 Lv.2');
     for (const word of ['射', '魔彈', '飛刃', '鎖鏈', '形態']) expect(line).not.toContain(word);
     expect(synthButton().disabled).toBe(false);
+  });
+
+  describe('parchment layout (seal button and side notes)', () => {
+    it('puts the seal button and its reason on the sheet, below the circle; 清空魔法陣 stays outside', () => {
+      setup();
+      const sheet = document.querySelector('.parchment-sheet')!;
+      const go = btn('合成');
+      expect(sheet.contains(go)).toBe(true);
+      expect(sheet.querySelector('.parchment')!.contains(go)).toBe(false);
+      expect(sheet.querySelector('.circle-why')!.textContent).toBe('先選核心元素');
+      expect(sheet.contains(btn('清空魔法陣'))).toBe(false);
+      expect(sheet.contains(document.querySelector('.synth-message'))).toBe(false);
+    });
+
+    it('the predict note shows the fail chance and the mismatch warning; the cost note marks a short element', () => {
+      expect(SIDE_NOTE_MIN).toBe(150);
+      setup();
+      expect(document.querySelector('.circle-note.predict')).toBeTruthy();
+      choose(/^核心/, /^火・初階/);
+      choose(/^一環 第1格/, /^風・初階/);
+      const predict = document.querySelector('.circle-note.predict')!;
+      expect(predict.textContent).toMatch(/大失敗 \d+%/);
+      expect(predict.textContent).toContain('迴路對不上');
+      const cost = document.querySelector('.circle-note.cost')!;
+      expect(within(cost as HTMLElement).getByText(/初階火/)).toBeTruthy();
+      expect(cost.querySelectorAll('.short')).toHaveLength(0);
+      cleanup();
+      const rt = setup({ inventory: { 'el:fire:1': 3 } });
+      choose(/^核心/, /^火・初階/);
+      choose(/^一環 第1格/, /^火・初階/);
+      act(() => { rt.rt.set({ game: { inventory: { 'el:fire:1': 1 } } }); });
+      const short = document.querySelector('.circle-note.cost .short')!;
+      expect(short.textContent).toContain('初階火');
+      expect(short.textContent).toContain('1');
+    });
   });
 
   it('draws only the open slots', () => {

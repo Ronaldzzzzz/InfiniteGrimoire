@@ -5,7 +5,7 @@ import {
   RING_FLOOR, RUNE_IDS, RUNE_NAMES, runesUnlocked, SLOTS,
 } from '../engine/circle';
 import type { CircleNode, Placement, RuneId } from '../engine/circle';
-import { circleCost } from '../engine/circle-synth';
+import { circleCost, failChance } from '../engine/circle-synth';
 import type { Content } from '../engine/model';
 import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type ElementId, type ItemId } from '../engine/types';
 import type { ActionResult } from '../game/api';
@@ -31,6 +31,9 @@ const SPARKS = 12;
 const STARS = Array.from({ length: 20 }, (_, i) => ({
   left: `${8 + ((i * 37) % 84)}%`, top: `${6 + ((i * 53) % 88)}%`, delay: `${((i * 0.37) % 1.6).toFixed(2)}s`,
 }));
+
+/** Minimum width (px) of each side note; the CSS container query `calc(64vh + 300px)` mirrors 2 x this. */
+export const SIDE_NOTE_MIN = 150;
 
 /** What the parent can do: put a whole circle on the parchment (star map, Task 6) or one element from the element table. */
 export interface CircleTableHandle {
@@ -276,12 +279,13 @@ export const CircleTable = memo(function CircleTable({
 
   // what blocks 合成, first reason only
   const problems = placement ? placementProblems(placement, { unlockedTier, runes }) : [];
-  const short = costKey
+  const needs = costKey
     ? costKey.split('|').map((e) => {
         const [, id, need, held] = /^(.+):(\d+):(\d+)$/.exec(e)!;
         return { id: id!, need: Number(need), held: Number(held) };
-      }).filter((e) => e.held < e.need)
+      })
     : [];
+  const short = needs.filter((e) => e.held < e.need);
   const why = !placement
     ? '先選核心元素'
     : problems.length > 0
@@ -538,22 +542,37 @@ export const CircleTable = memo(function CircleTable({
           />
         )}
       </section>
-      </div>
 
-      <div className="rune-row">
-        <button type="button" className="circle-clear" disabled={busy} onClick={() => { setTarget(null); edit(emptyDraft); }}>清空魔法陣</button>
-      </div>
-
-      {placement && (
-        <p className="circle-predict" aria-label="預測">{predictionOf(placement)}</p>
-      )}
-      {(mismatch[0] || mismatch[1]) && <p className="circle-warn">{MISMATCH_WARNING}</p>}
       <div className="circle-go-row">
         <button type="button" className="primary circle-go" disabled={why !== null || busy} onClick={() => void run()}>
           {busy ? '注入中…' : '合成'}
         </button>
         {why && <span className="circle-why">{why}</span>}
       </div>
+      </div>
+
+      <div className="rune-row">
+        <button type="button" className="circle-clear" disabled={busy} onClick={() => { setTarget(null); edit(emptyDraft); }}>清空魔法陣</button>
+      </div>
+
+      <aside className="circle-note predict" aria-label="預測與風險">
+        {placement ? (
+          <>
+            <p className="circle-predict" aria-label="預測">{predictionOf(placement)}</p>
+            <p className="circle-fail">大失敗 {Math.round(failChance(placement) * 100)}%</p>
+          </>
+        ) : <p className="circle-predict">擺好核心後，這裡會寫下預測。</p>}
+        {(mismatch[0] || mismatch[1]) && <p className="circle-warn">{MISMATCH_WARNING}</p>}
+      </aside>
+      <aside className="circle-note cost" aria-label="所需元素">
+        <p className="circle-note-title">所需元素</p>
+        {needs.length === 0 && <p className="cost-empty">尚未擺放</p>}
+        {needs.map((e) => (
+          <p key={e.id} className={`cost-row${e.held < e.need ? ' short' : ''}`}>
+            {itemName(e.id as ItemId, content)} ×{e.need}（持有 {e.held}）
+          </p>
+        ))}
+      </aside>
       <p className="synth-message" role="status">{message}</p>
     </div>
   );
