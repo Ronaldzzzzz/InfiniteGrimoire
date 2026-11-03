@@ -49,7 +49,7 @@
 | `docs/superpowers/sdd/2026-10-28-crowd-ttk/progress.md` | 清怪節奏的帳本：Ruling（P1、P2、C2、C3、T2a～T2d、T3a～T3e、T3-impossible、T4r）、各地點血量係數、調整前後的場上隻數表、路線通關時間 |
 | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` | **【目前最高依據】魔法研究改版總體設計**：使用者「體會不到自己是魔法師」→ 合成改為魔法陣（核心、環、五芒星、迴路分支、相生相剋、符文、預測詞條）、階級＝節點數、核心元素決定上限、共用規律＋每次合成的品質／熟練度／異變、名魔法＝教科書、戰鬥改成畫面下方的橫向長帶與關卡（小怪關、限時魔王關、失敗退回）、存檔重置；四個專案的順序 |
 | `docs/superpowers/specs/2026-10-30-magic-circle-design.md`、`docs/superpowers/plans/2026-10-30-magic-circle.md`、`docs/superpowers/sdd/2026-10-30-magic-circle/` | **專案 2 魔法陣合成（目前合成與魔導書的最高依據）**：牛皮紙魔法陣（核心、一／二環、五芒星、符文）、階級＝節點數受核心元素上限、迴路分支、陣→魔法的公式、伺服器合成（大失敗 10%、稀有 2%）、關鍵道具開放格子、符文從魔王取得、星圖魔導書；規格、7 個任務計畫、帳本（Ruling、延後的小問題）、Task 7 驗收報告 |
-| `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、`docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md` | **專案 2 試玩回饋與質感改版（草稿，待使用者確認）**：試玩五項回饋＋一個 bug 的原因與四輪問答逐字紀錄；改版規格只改外觀與操作（書房色調與羊皮紙、只畫已開放格子並依格數對稱排列、格子周圍的元素圈、整圈符文帶、合成與失敗演出、星圖扇區改相生順序與星座感、動畫期間不劇透新星），**不改**引擎規則、伺服器、存檔 |
+| `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、`docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md`、`docs/superpowers/plans/2026-11-03-magic-circle-polish.md`、`docs/superpowers/sdd/2026-11-03-magic-circle-polish/` | **專案 2 質感改版（已實作，2026-11-03；目前牛皮紙與星圖外觀與操作的最高依據）**：試玩五項回饋＋一個 bug 的原因與四輪問答逐字紀錄；改版規格只改外觀與操作（書房色調與羊皮紙、只畫已開放格子並依格數對稱排列、格子周圍的元素圈、整圈符文帶、合成與失敗演出、星圖扇區改相生順序與星座感、動畫期間不劇透新星），**不改**引擎規則、伺服器、存檔；8 個任務計畫；帳本（各任務審查、Ruling、延後的小問題）與瀏覽器驗收報告 `acceptance.md` |
 | `docs/superpowers/specs/2026-10-29-side-scroll-battle-strip-design.md`、`docs/superpowers/plans/2026-10-29-battle-strip.md`、`docs/superpowers/sdd/2026-10-29-battle-strip/`、`docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、`docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/` | 專案 1：橫向戰鬥帶與關卡的規格、計畫、帳本（含最終修正一輪）與驗收報告；以及 2026-10-30 的手感、關卡由簡至難與離線收益（規格第 3.8、3.9 節）的計畫與帳本 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼（用 GM 工具重設）、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
@@ -62,7 +62,13 @@
 
 ### 3.0 接手先看這裡（2026-11-03 更新）
 
-**現在停在哪（2026-11-03，專案 2 試玩後的質感改版）：** 使用者 2026-10-31 已在 macOS 試玩 `feat/magic-circle`，回饋五項＋一個 bug，討論四輪後寫成兩份文件（2026-11-03 補 commit）：回饋與問答 `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、改版規格草稿 `docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md`。**規格已確認（2026-11-03），計畫已寫，還沒改程式。**
+**現在停在哪（2026-11-03 晚，專案 2 質感改版完成、瀏覽器驗收完成）：** branch `feat/magic-circle`（**未 push、未合併**）。質感改版 8 個任務（面紗 bug、只畫已開放格子、元素圈、符文帶、書房與羊皮紙、演出、星圖、驗收）都完成並各自審查；`npm test` 81 個檔案 932 個測試全過、`npm run build` 通過（2026-11-03）。驗收報告 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/acceptance.md`（headless Chrome，1280×900 與 390×844，規格第 10 節各項與問題清單都在裡面）。**注意：** headless Chrome 預設回報 `prefers-reduced-motion: reduce`，驗收腳本必須先 `emulateMediaFeatures` 設成 no-preference，否則所有動畫都被關掉、看不到演出。
+- **使用者要試玩的：** 牛皮紙手感（元素圈、符文圈、格子開放與排列、迴路不合時的紅線與震動）、合成 3 秒演出與成功／大失敗／稀有四種的差別、星圖新扇區順序與選中才連線、書房與羊皮紙美術（`public/assets/parchment.webp`、`desk.webp` 目前在本機、**未進版本庫**，是使用者自己 AI 生成的；提示詞在 `docs/art-assets.md`；沒有這兩個檔時有暫代色）、手機版面。
+- **驗收找到、沒有修的問題（細節見 `acceptance.md`）：** 手機 390 px 核心階級圈的三行 11 px 標籤溢出 47 px 圓形；手機合成後「新發現！」橫幅與裝備通知蓋住結果與預測行；符文帶的字在 12 點鐘接縫處重疊；Lv.10 二環最左右的格子貼著羊皮紙邊緣被切到一部分；沒有 `parchment.webp` 時桌機的暫代紙比面板高。功能 9 項都通過、無頁面錯誤。
+- **Pixi 特效層（規格第 9 節，選用）：** 等使用者看過 CSS／SVG 版再決定要不要做。
+- **接手者先做：** 使用者試玩 → 決定要不要修驗收報告列的問題 → 決定合併 `feat/magic-circle`（合併、push 都要先問）。
+
+**之前停在哪（2026-11-03 上午，專案 2 試玩後的質感改版，已完成）：** 使用者 2026-10-31 已在 macOS 試玩 `feat/magic-circle`，回饋五項＋一個 bug，討論四輪後寫成兩份文件（2026-11-03 補 commit）：回饋與問答 `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、改版規格草稿 `docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md`。**規格已確認（2026-11-03），計畫已寫，還沒改程式。**
 - **回饋重點：** (1) 風格太現代 → 昏暗木屋書房＋直立破邊、邊緣微捲的羊皮紙，墨線與金線；介面維持 React＋SVG，華麗特效之後可疊一層 Pixi（使用者同意混合做法）。(2) 開局就看到完整五芒星 → 只畫已開放的格子，一環依已開放格數排成 1 上方／2 上下／3 三角／4 菱形／5 五芒星，二環同樣對齊一環；**規則序號不變**（視覺相鄰可能和規則相鄰不一致，使用者：先這樣）。(3) 符文不在陣上 → 每環一條整圈符文帶（規則不變）。(4) 文字選單難用 → 點格子後周圍長出元素圈（相生順序），再選階級。(5) 流水魔彈・風落在火區 → 星圖扇區改成相生順序（水→土→火→雷→風），選中魔法才顯示連線、教科書＝墨印／自創＝發光星。
 - **Bug（已查證、未修）：** 合成動畫還在跑，星圖已出現新魔法（`sync.ts` 一回應就 `replaceState`；`CircleTable` 只延後揭曉面板）。修法 (a)：動畫期間先藏起剛學會的那顆星（使用者 2026-11-03 同意）。
 - **分階段（規格第 10 節）：** 1 bug → 2 格子排列、元素圈、符文圈 → 3 書房色調與羊皮紙、演出 → 4 星圖 → 5（選用）Pixi 特效層。**待決定：** 羊皮紙與桌面素材來源（pngtree 參考圖有浮水印與授權問題，不進版本庫；AI 生成或可商用素材）、bug 修法、動畫數字。
@@ -120,7 +126,7 @@
 | 順序 | 項目 | 狀態 | 去哪裡看 |
 |---|---|---|---|
 | 0 | 合併 `feat/rare-tuning`（已含 `feat/spell-tiers`、`feat/tier-step-18`、`feat/crowd-ttk`）到 `main` | **已完成（2026-10-29，使用者試玩後同意）**；push 由使用者 `! git push` | 本節 |
-| **0.1（進行中）** | 魔法研究改版（四個專案） | 專案 1（橫向戰鬥帶、關卡、離線收益）**已完成並合併到 `main`（2026-10-30）**；專案 2（魔法陣合成）**程式、驗收與最終審查修正都完成，在 `feat/magic-circle`（未 push、未合併）**；使用者已試玩，**質感改版規格草稿待確認**（`2026-10-31-magic-circle-polish-design.md`）；之後是專案 3（每次合成的手氣） | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
+| **0.1（進行中）** | 魔法研究改版（四個專案） | 專案 1（橫向戰鬥帶、關卡、離線收益）**已完成並合併到 `main`（2026-10-30）**；專案 2（魔法陣合成）**程式、驗收與最終審查修正都完成，在 `feat/magic-circle`（未 push、未合併）**；使用者試玩後的**質感改版已完成並驗收（2026-11-03，`2026-10-31-magic-circle-polish-design.md`、`sdd/2026-11-03-magic-circle-polish/acceptance.md`），待使用者再試玩**；之後是專案 3（每次合成的手氣） | `docs/superpowers/specs/2026-10-29-magic-research-rework-design.md` |
 | 0.5 | 魔法深度拓展（名稱、類型、定義）剩下的部分 | 第一批（20 招、強度曲線、地圖）**已完成（在 `feat/rare-tuning`）**；Phase 1～3 文案的其餘招式、新施法形態、異變詞綴、Overdrive、禁忌殘頁等**都還沒做**，之後再討論 | `docs/superpowers/specs/2026-10-25-spell-depth-expansion-design.md`、`2026-10-27-spell-expansion-green-items-review.md` |
 | 1 | 魔法階級強度曲線（含距離魔王還差幾隻、放回上次組合） | **已完成（在 `feat/rare-tuning`）**；`TIER_STEP` 使用者已定 1.8、強化滿 ×1.4；待使用者試玩 | 本節、規格與帳本 |
 | 1b | 稀有魔法落空的保底／補償 | **暫停（使用者 2026-10-29），遊戲性討論之後再提**（驗收時刷到焚世之焰用了 121 次，平均 50 次） | `docs/superpowers/specs/2026-10-24-spell-tier-balance-notes.md`「稍後再討論」一節 |
@@ -219,9 +225,9 @@ migrations/   D1 schema（0001 初始、0002 錨點窗口、0003 帳號、0004 �
 src/game/     瀏覽器執行層：runtime（固定步進）、api、session（token）、sync（上傳／動作／斷線／錯誤）、loop、boot、presence（不是使用中的視窗滿 10 秒：凍結並送離開）
 src/render/   Pixi 戰鬥畫面（佔位圖形 + 選用貼圖 public/assets/<key>.png）；arena.ts 橫向長帶幾何（`makeArena(w, h)`）；
               element-fx.ts 各元素的粒子語彙；effects.ts 特效視覺；motion.ts 怪物擺動
-src/ui/       React 介面：TopBar（地點與關卡／魔法選擇器）、StageBar（長帶左上的關卡名稱、進度條、魔王倒數、自動前進、進入魔王關、結算通知）、ElementTable、CircleTable（牛皮紙魔法陣：點格子選元素與符文、預測、3／5 秒圓形進度條與火花、揭曉；幾何與畫線在 circle-draw）、
+src/ui/       React 介面：TopBar（地點與關卡／魔法選擇器）、StageBar（長帶左上的關卡名稱、進度條、魔王倒數、自動前進、進入魔王關、結算通知）、ElementTable、CircleTable（牛皮紙魔法陣：羊皮紙與書桌 `parchment-sheet`／`workbench`（有圖用圖、沒有圖用暫代色）、只畫已開放的格子、點格子長出元素圈再選階級（`RingPicker`：圈狀選單，滑鼠、觸控、方向鍵與 Esc 都可用）、每環一條整圈符文帶（點它開符文圈）、預測、迴路不合時紅線閃動與微震、3／5 秒圓形進度條與火花、成功光柱／大失敗焦痕／稀有暗場、揭曉；動畫期間用面紗藏起剛學會的魔法，揭曉才放出；幾何在 circle-draw：`openSlotCounts`、`shownSlots`、`shownPoint`、`wheelLayout`、`wheelPoints`、`WHEEL_ORDER`（相生順序）、`RING2_DEFAULT`）、`useArt`（預載選用美術 `PARCHMENT_SRC`／`DESK_SRC`，載入成功才回 true）、
               DiscoveryBanner（新發現、一網打盡）、Notebook（魔法筆記）、EmpowerPanel（強化）、
-              GrimoirePanel（星圖魔導書：縮放、拖曳、泡泡 NodeBubble、浮動詳情卡 NodeCard 含魔法陣小圖與強化；星的位置與連線在 star-layout、畫在 StarMap）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
+              GrimoirePanel（星圖魔導書：縮放、拖曳、泡泡 NodeBubble、浮動詳情卡 NodeCard 含魔法陣小圖與強化；星的位置與連線在 star-layout、畫在 StarMap：五元素扇區依相生順序 水→土→火→雷→風、離中心越遠階級越高，選中魔法才畫連線，教科書魔法是墨印、自創魔法是發光星）、KeyItemBar（戰鬥畫面上的關鍵道具按鈕）、
               Onboarding、OfflineOverlay、AwayReport（回來時的「離開期間的收穫」卡片，要手動按掉，不蓋住長帶）；
               useGame.ts 的 useRuntime(selector)；開發用 PerfMeter；戰鬥畫面的 DPS 數字在 src/render/dps.ts（BattleView 左上角）
               BossCounter（戰鬥畫面左上「魔王出現還差 N 隻」）、EquipToasts（學會新魔法的 3 秒裝備通知，戰鬥畫面右上角）、
@@ -308,6 +314,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-11-03（Claude Code，Sonnet 5.5，macOS，質感改版 Task 8：瀏覽器驗收與文件）**：branch `feat/magic-circle`（Task 1～7 已完成並各自審查）。本機 D1 已在 0008（沒有新 migration）；`npm run dev` ＋ headless Chrome（puppeteer-core 裝在專案外）在 1280×900 與 390×844（觸控）逐項驗收規格第 10 節，結果與證據在 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/acceptance.md`（截圖在 `.superpowers/sdd/2026-11-03-magic-circle-polish/accept/`，gitignore）。種進本機 D1 的：元素存量、`circleTier`、`defeatedBosses`、關鍵道具；其餘（擺陣、元素圈、符文圈、關鍵道具使用、合成、稀有、星圖點選）都是實際操作。稀有焚世之焰是真的用介面重複合成擲出（沒有改機率）。重要發現：headless Chrome 預設 `prefers-reduced-motion: reduce`，驗收腳本要先設 no-preference；`public/assets/` 的 parchment／desk 是使用者的本機美術（未進版本庫），沒有刪也沒有 commit，驗無圖時暫時搬走再搬回（校驗碼相同）。`npm test` 81 檔 932 個、`npm run build` 通過。沒有改程式。停在：`feat/magic-circle` 未 push、未合併。下一步：使用者試玩 → 決定是否修驗收報告列的問題、是否做 Pixi 特效層（規格第 9 節）→ 決定合併。
 
 - **2026-11-03（Claude Code，Opus 5.5，macOS，更新狀態）**：把 2026-10-31 試玩後留下但沒 commit 的兩份文件（試玩回饋、質感改版規格草稿）與上一筆 Windows 的 AGENTS.md 更新一起整理進 3.0、第 2 節文件表、順序表。沒有改程式、沒有跑測試。停在：`feat/magic-circle` 未 push、未合併；改版規格待使用者確認，bug 修法待回覆。下一步：使用者確認規格 → 計畫 → 執行。
 
