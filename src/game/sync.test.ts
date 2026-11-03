@@ -541,6 +541,20 @@ describe('SyncController', () => {
     await sync.claimOffline();
     expect(seen).toHaveBeenCalledWith(result);
   });
+  it('notifies listeners of a none result with a reason, but not tooShort', async () => {
+    const rt = mk();
+    const offline = vi.fn();
+    const sync = new SyncController(rt, fakeApi({ offline }));
+    const seen = vi.fn();
+    sync.onOfflineReport(seen);
+    offline.mockResolvedValueOnce({ kind: 'ok', result: { kind: 'none', reason: 'tooShort' }, state: rt.getSnapshot().game, revision: 10 } as never);
+    await sync.claimOffline();
+    expect(seen).not.toHaveBeenCalled();
+    const none = { kind: 'none' as const, reason: 'cannotDamage' as const, zoneId: 'mist_meadow' };
+    offline.mockResolvedValueOnce({ kind: 'ok', result: none, state: rt.getSnapshot().game, revision: 11 } as never);
+    await sync.claimOffline();
+    expect(seen).toHaveBeenCalledWith(none);
+  });
   it('a claim the server never answered stays pending and is retried on the next tick', async () => {
     const rt = mk();
     const result = { kind: 'offline' as const, zoneId: 'mist_meadow', stage: 3, ticks: 2, runs: 5, awayMs: 60_000, capped: false, loot: {} };

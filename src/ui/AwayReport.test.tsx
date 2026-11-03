@@ -6,9 +6,9 @@ import type { OfflineReport } from '../game/sync';
 import { AwayReport, mergeReports } from './AwayReport';
 
 afterEach(cleanup);
-const report: OfflineReport = {
-  kind: 'offline', zoneId: 'mist_meadow', stage: 4, ticks: 250, runs: 12, awayMs: (2 * 60 + 5) * 60_000, capped: false, loot: { 'el:fire:1': 7 },
-};
+const report = {
+  kind: 'offline' as const, zoneId: 'mist_meadow', stage: 4, ticks: 250, runs: 12, awayMs: (2 * 60 + 5) * 60_000, capped: false, loot: { 'el:fire:1': 7 },
+} satisfies OfflineReport;
 
 describe('AwayReport', () => {
   it('shows the copy, loot and stays until 知道了', () => {
@@ -38,10 +38,25 @@ describe('AwayReport', () => {
     expect(container.textContent).toContain('離開 5 分');
   });
   it('merges reports: sums runs and loot, keeps the latest stage', () => {
-    const m = mergeReports(report, { ...report, stage: 6, runs: 3, loot: { 'el:fire:1': 1, 'el:wind:1': 2 } });
+    const m = mergeReports(report, { ...report, stage: 6, runs: 3, loot: { 'el:fire:1': 1, 'el:wind:1': 2 } }) as typeof report;
     expect(m.runs).toBe(15);
     expect(m.ticks).toBe(500);
     expect(m.stage).toBe(6);
     expect(m.loot).toEqual({ 'el:fire:1': 8, 'el:wind:1': 2 });
+  });
+  it('explains an away that earned nothing, with only the sentence and 知道了', () => {
+    const onClose = vi.fn();
+    const { container, rerender } = render(<AwayReport report={{ kind: 'none', reason: 'notCleared' }} content={content} onClose={onClose} />);
+    expect(container.textContent).toContain('還沒有通過任何關卡，離線時沒有收穫。');
+    expect(container.querySelector('.away-loot')).toBeNull();
+    rerender(<AwayReport report={{ kind: 'none', reason: 'cannotDamage', zoneId: 'mist_meadow' }} content={content} onClose={onClose} />);
+    expect(container.textContent).toContain('裝備中的魔法打不動迷霧草原，離線時沒有收穫。');
+    fireEvent.click(screen.getByText('知道了'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it('a none report never hides earlier loot when merged', () => {
+    const none: OfflineReport = { kind: 'none', reason: 'notCleared' };
+    expect(mergeReports(report, none)).toBe(report);
+    expect(mergeReports(none, report)).toBe(report);
   });
 });

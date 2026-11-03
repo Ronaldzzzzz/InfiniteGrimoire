@@ -5,6 +5,9 @@ import { itemName } from './messages';
 /** Several reports that arrive before the player closes the card become one: runs and loot add up, the latest stage wins. */
 export function mergeReports(prev: OfflineReport | null, next: OfflineReport): OfflineReport {
   if (!prev) return next;
+  // a report that earned nothing never replaces or hides one that did
+  if (next.kind === 'none') return prev;
+  if (prev.kind === 'none') return next;
   const loot = { ...prev.loot };
   for (const [id, n] of Object.entries(next.loot)) loot[id] = (loot[id] ?? 0) + n;
   return { ...next, ticks: prev.ticks + next.ticks, runs: prev.runs + next.runs, awayMs: prev.awayMs + next.awayMs, capped: prev.capped || next.capped, loot };
@@ -24,6 +27,20 @@ function runsLabel(runs: number): string {
 }
 
 export function AwayReport({ report, content, onClose }: { report: OfflineReport; content: Content; onClose: () => void }) {
+  if (report.kind === 'none') {
+    const text = report.reason === 'notCleared'
+      ? '還沒有通過任何關卡，離線時沒有收穫。'
+      : `裝備中的魔法打不動${content.zones.find((z) => z.id === report.zoneId)?.name ?? report.zoneId}，離線時沒有收穫。`;
+    return (
+      <div className="away-report-backdrop">
+        <div className="away-report" role="dialog" aria-label="離開期間的收穫">
+          <h2>離開期間的收穫</h2>
+          <p>{text}</p>
+          <button type="button" className="primary" onClick={onClose}>知道了</button>
+        </div>
+      </div>
+    );
+  }
   const zone = content.zones.find((z) => z.id === report.zoneId);
   const loot = Object.entries(report.loot).filter(([, n]) => n > 0);
   return (

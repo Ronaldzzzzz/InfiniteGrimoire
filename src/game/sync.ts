@@ -24,7 +24,9 @@ export interface ActionPayloads {
   gmInventory: { gmToken: string; items: Record<ItemId, number> };
   gmZones: { gmToken: string; op: 'unlock_all' | 'reveal_all' | 'boss_ready' };
 }
-export type OfflineReport = Extract<OfflineResult, { kind: 'offline' }>;
+export type OfflineReport =
+  | Extract<OfflineResult, { kind: 'offline' }> | { kind: 'none'; reason: 'notCleared' }
+  | Extract<OfflineResult, { kind: 'none'; reason: 'cannotDamage' }>;
 export type ActionKind = keyof ActionPayloads;
 
 /** Lets a caller shape what an action sends and which of the returned state's client-owned fields to keep. */
@@ -149,7 +151,9 @@ export class SyncController {
             this.awayDelivered = false;
             out = result;
             // after an account switch the old player's income is not this player's to show
-            if (result.kind === 'offline' && !this.stopped) for (const l of [...this.offlineListeners]) l(result);
+            if (!this.stopped && (result.kind === 'offline' || (result.kind === 'none' && result.reason !== 'tooShort'))) {
+              for (const l of [...this.offlineListeners]) l(result as OfflineReport);
+            }
           }
           continue;
         }
