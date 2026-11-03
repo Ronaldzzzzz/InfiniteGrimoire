@@ -9,7 +9,7 @@ import { NodeBubble } from './NodeBubble';
 import { NodeCard } from './NodeCard';
 import { StarMap, type StarMapLayout } from './StarMap';
 import { layoutPassives, layoutStars, starEdges, tierRadius, visiblePassives } from './star-layout';
-import { BUBBLE_SIZE, bubblePlacement, HOME, panBy, viewBoxOf, wheelFactor, zoomAt, type View } from './tree-viewport';
+import { BUBBLE_SIZE, bubblePlacement, HOME, NARROW_PX, panBy, viewBase, viewBoxOf, wheelFactor, zoomAt, type View } from './tree-viewport';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 const SIZE = 600;
@@ -86,7 +86,8 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   }, [flash]);
 
   // the view grows with the map so the outermost stars and the sector labels fit without zooming out
-  const base = Math.max(SIZE, 2 * (layout.outer + 24));
+  const narrow = typeof window !== 'undefined' && !!window.matchMedia?.(`(max-width: ${NARROW_PX}px)`).matches;
+  const base = viewBase(layout.outer, narrow);
   // the view lives in a ref: zooming and dragging only rewrite the viewBox attribute, never re-render the tree
   const viewRef = useRef<View>(HOME);
   const baseRef = useRef(base);

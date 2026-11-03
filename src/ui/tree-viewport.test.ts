@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUBBLE_SIZE, bubblePlacement, panBy, viewBoxOf, zoomAt } from './tree-viewport';
+import { BUBBLE_SIZE, bubblePlacement, panBy, viewBase, viewBoxOf, zoomAt } from './tree-viewport';
 
 describe('tree-viewport', () => {
   it('zoomAt keeps the point under the cursor fixed', () => {
@@ -27,5 +27,12 @@ describe('tree-viewport', () => {
   it('a learned spell bubble reserves room for its wrapped button row (measured 128px in a real browser)', () => {
     expect(BUBBLE_SIZE.learned.h).toBeGreaterThanOrEqual(128);
     expect(BUBBLE_SIZE.locked.h).toBeGreaterThanOrEqual(94); // longest hint, measured
+  });
+});
+
+describe('viewBase', () => {
+  it('a phone shows a tighter view than a desktop for a small map, and both grow with a big map', () => {
+    expect(viewBase(150, true)).toBeLessThan(viewBase(150, false));
+    expect(viewBase(500, true)).toBe(viewBase(500, false));
   });
 });

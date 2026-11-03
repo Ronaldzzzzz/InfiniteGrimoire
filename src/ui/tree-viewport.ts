@@ -52,3 +52,9 @@ export function bubblePlacement(
   const top = Math.max(0, Math.min(stage.h - bubble.h, rawTop));
   return { left, top, side, align };
 }
+
+/** Width of the star map's view in map units: it grows with the map, but never below the minimum (smaller on phones, so the stars look bigger). */
+export const VIEW_MIN = 600;
+export const VIEW_MIN_NARROW = 380;
+export const NARROW_PX = 600;
+export const viewBase = (outer: number, narrow: boolean): number => Math.max(narrow ? VIEW_MIN_NARROW : VIEW_MIN, 2 * (outer + 24));

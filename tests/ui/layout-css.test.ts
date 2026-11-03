@@ -111,3 +111,15 @@ describe('study desk and parchment sheet', () => {
     expect(body('.parchment')).toMatch(/aspect-ratio:\s*1/);
   });
 });
+
+describe('phone node card', () => {
+  it('the <=600px .node-card override comes after the base rule, so it wins', () => {
+    const { at } = media(600);
+    const overrides = [...css.matchAll(/\.node-card \{[^}]*max-height: 70%/g)].map((m) => m.index!);
+    expect(overrides.length).toBeGreaterThan(0);
+    const base = css.search(/^\.node-card \{/m);
+    expect(base).toBeGreaterThanOrEqual(0);
+    expect(Math.min(...overrides)).toBeGreaterThan(base);
+    expect(Math.min(...overrides)).toBeGreaterThan(at);
+  });
+});

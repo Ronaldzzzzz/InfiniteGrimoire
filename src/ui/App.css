@@ -151,9 +151,6 @@ html.away { filter: grayscale(1); }
 }
 
 @media (max-width: 600px) {
-  .tree-stage { min-height: min(70vh, 520px); }
-  .node-card { max-height: 70%; font-size: 14px; }
-  .node-card p, .node-card li { font-size: 13px; }
   /* the strip is fixed to the bottom of the window; the page leaves room for it */
   body { padding-bottom: 140px; }
   .battle-strip { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; flex-basis: auto; height: 140px; }
@@ -208,6 +205,10 @@ html.away { filter: grayscale(1); }
 .key-message { flex-basis: 100%; margin: 0; text-align: center; font-size: 12px; color: var(--gold); text-shadow: 0 1px 3px #000; }
 @keyframes key-glow { from { box-shadow: 0 0 0 rgba(232, 184, 74, 0); } to { box-shadow: 0 0 14px rgba(232, 184, 74, 0.8); } }
 .node-card { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 3; max-height: 60%; overflow-y: auto; padding: 8px 10px; padding-right: 36px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+@media (max-width: 600px) {
+  .node-card { max-height: 70%; }
+  .node-card p, .node-card li { font-size: 13px; }
+}
 .node-card-close { position: absolute; top: 4px; right: 4px; min-height: 28px; padding: 2px 8px; }
 .node-bubble { position: absolute; z-index: 3; width: 220px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--gold); border-radius: 8px; font-size: 14px; }
 .node-bubble .node-actions { margin: 6px 0 0; }
