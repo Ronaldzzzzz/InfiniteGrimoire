@@ -59,7 +59,14 @@ describe('magic circle effects', () => {
   it('the rare charge dims the page behind the sheet', () => {
     expect(rule(css, '.rare-dim')).toMatch(/position:\s*fixed/);
     expect(rule(css, '.rare-dim')).toMatch(/pointer-events:\s*none/);
-    expect(rule(css, '.parchment-sheet.rare')).toMatch(/z-index/);
+    expect(rule(css, '.parchment-sheet.reveal-mutation')).toMatch(/z-index/);
+  });
+  it('the charge phases run on --dur and every reveal has its own rule', () => {
+    expect(rule(css, '.charge-orb')).toMatch(/var\(--dur\)/);
+    expect(rule(css, '.parchment.charging')).toMatch(/circle-charge-shake var\(--dur\)/);
+    expect(css).toMatch(/\.parchment\.hold/);
+    for (const k of ['fail', 'success', 'learned', 'great', 'mutation', 'burst']) expect(css).toContain(`.reveal-${k}`);
+    expect(css).toMatch(/@keyframes circle-bounce \{[^\n]*scale: 1\.05/);
   });
 });
 

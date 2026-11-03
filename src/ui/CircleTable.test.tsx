@@ -6,7 +6,8 @@ import type { Placement } from '../engine/circle';
 import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
-import { CircleTable, PROGRESS_MS, SIDE_NOTE_MIN, RARE_PROGRESS_MS, placementOfSpell, type CircleTableHandle } from './CircleTable';
+import { CircleTable, MUTATION_MS, PROGRESS_MS, SIDE_NOTE_MIN, RARE_PROGRESS_MS, placementOfSpell, type CircleTableHandle } from './CircleTable';
+import type { CircleFxApi } from './circle-reveal';
 import { SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE } from './messages';
 import { fakeRuntime } from './test-runtime';
 
@@ -17,7 +18,7 @@ afterEach(() => {
 
 const FIREBALL = 'm:fire.2.----f.-----.bolt';
 
-function setup(game: Partial<GameState> = {}, reply?: () => Promise<ActionResult | null>) {
+function setup(game: Partial<GameState> = {}, reply?: () => Promise<ActionResult | null>, fx?: CircleFxApi) {
   const rt = fakeRuntime({ inventory: { 'el:fire:1': 3, 'el:fire:2': 1, 'el:wind:1': 2 }, ...game });
   let resolve: (r: ActionResult | null) => void = () => {};
   let rejectReply: (e: unknown) => void = () => {};
@@ -28,7 +29,7 @@ function setup(game: Partial<GameState> = {}, reply?: () => Promise<ActionResult
   const onRender = vi.fn();
   render(
     <Profiler id="parchment" onRender={onRender}>
-      <CircleTable ref={ref} runtime={rt} sync={{ synthesizeCircle }} content={content} onResult={onResult} onCharging={onCharging} />
+      <CircleTable ref={ref} runtime={rt} sync={{ synthesizeCircle }} content={content} onResult={onResult} onCharging={onCharging} fx={fx} />
     </Profiler>,
   );
   return { rt, synthesizeCircle, onResult, onCharging, ref, onRender, reply: (r: ActionResult | null) => resolve(r), fail: (e: unknown) => rejectReply(e) };
@@ -462,12 +463,17 @@ describe('CircleTable', () => {
       expect(document.querySelector('.rare-dim')).toBeNull();
       h.reply({ kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } });
       await flush();
+      // the first 3 s look like any other charge
+      expect(parch().classList.contains('reveal-mutation')).toBe(false);
+      expect(document.querySelector('.rare-dim')).toBeNull();
       act(() => vi.advanceTimersByTime(PROGRESS_MS));
-      expect(parch().classList.contains('rare')).toBe(true);
+      expect(parch().classList.contains('reveal-mutation')).toBe(true);
+      expect(document.querySelector('.parchment-sheet')!.classList.contains('reveal-mutation')).toBe(true);
       expect(document.body.querySelector('.rare-dim')).toBeTruthy();
       expect(document.querySelectorAll('.starfield > *').length).toBe(20);
+      expect(document.querySelector('.mutation-cracks')).toBeTruthy();
       act(() => vi.advanceTimersByTime(RARE_PROGRESS_MS - PROGRESS_MS));
-      expect(parch().classList.contains('rare')).toBe(false);
+      expect(parch().classList.contains('reveal-mutation')).toBe(false);
       expect(document.querySelector('.rare-dim')).toBeNull();
       expect(document.querySelector('.starfield')).toBeNull();
     });
@@ -477,6 +483,7 @@ describe('CircleTable', () => {
       const h = await start(setup());
       h.reply({ kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } });
       await flush();
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
       expect(document.querySelector('.rare-dim')).toBeTruthy();
       cleanup();
       expect(document.querySelector('.rare-dim')).toBeNull();
@@ -504,6 +511,201 @@ describe('CircleTable', () => {
       const core = Number((document.querySelector('.core-mark') as SVGElement).style.getPropertyValue('--k'));
       expect(core).toBe(Math.max(...ks));
       expect(new Set(ks).size).toBe(ks.length);
+    });
+  });
+
+  describe('charge and reveal (spec 2026-11-03 polish 2, section 2)', () => {
+    const fakeFx = () => ({ charge: vi.fn(), hold: vi.fn(), reveal: vi.fn(), stop: vi.fn() });
+    const parch = () => document.querySelector('.parchment')!;
+    const sheet = () => document.querySelector('.parchment-sheet')!;
+    const classesOf = (el: Element) => [...el.classList].sort().join(' ');
+    const replies: [string, ActionResult][] = [
+      ['fail', { kind: 'failed', form: 'bolt' }],
+      ['success', { kind: 'known', spellId: FIREBALL, form: 'bolt' }],
+      ['learned', { kind: 'learned', spellId: FIREBALL, form: 'bolt' }],
+      ['mutation', { kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } }],
+    ];
+
+    it('every outcome charges for exactly PROGRESS_MS with the same classes', async () => {
+      vi.useFakeTimers();
+      const seen: string[] = [];
+      for (const [, r] of replies) {
+        const fx = fakeFx();
+        const h = setup({}, undefined, fx);
+        drawSmall();
+        fireEvent.click(synthButton());
+        expect(fx.charge).toHaveBeenCalledWith(expect.any(Array), PROGRESS_MS);
+        h.reply(r);
+        await flush();
+        act(() => vi.advanceTimersByTime(PROGRESS_MS - 1));
+        seen.push(`${classesOf(sheet())} | ${classesOf(parch())}`);
+        expect(parch().classList.contains('rare')).toBe(false);
+        expect(fx.reveal).not.toHaveBeenCalled();
+        expect(screen.queryByRole('status', { name: '合成結果' })).toBeNull();
+        act(() => vi.advanceTimersByTime(1));
+        expect(fx.reveal).toHaveBeenCalledTimes(1);
+        cleanup();
+      }
+      expect(new Set(seen).size).toBe(1);
+      expect(seen[0]).toContain('charging');
+    });
+
+    it('a reply after 3 s holds the pause, then reveals on arrival', async () => {
+      vi.useFakeTimers();
+      const fx = fakeFx();
+      const h = setup({}, undefined, fx);
+      drawSmall();
+      fireEvent.click(synthButton());
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(sheet().classList.contains('hold')).toBe(true);
+      expect(fx.hold).toHaveBeenCalledTimes(1);
+      expect(h.onCharging.mock.calls).toEqual([[true]]);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(screen.queryByRole('status', { name: '合成結果' })).toBeNull();
+      h.reply({ kind: 'learned', spellId: FIREBALL, form: 'bolt' });
+      await flush();
+      expect(sheet().classList.contains('hold')).toBe(false);
+      expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('火球');
+      expect(fx.reveal).toHaveBeenCalledWith('learned');
+      expect(h.onResult).toHaveBeenCalledTimes(1);
+      expect(h.onCharging.mock.calls).toEqual([[true], [false]]);
+    });
+
+    it('a late rare reply mutates for MUTATION_MS after it arrives', async () => {
+      vi.useFakeTimers();
+      const h = setup();
+      drawSmall();
+      fireEvent.click(synthButton());
+      act(() => vi.advanceTimersByTime(PROGRESS_MS + 1000));
+      h.reply({ kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } });
+      await flush();
+      expect(parch().classList.contains('reveal-mutation')).toBe(true);
+      act(() => vi.advanceTimersByTime(MUTATION_MS - 1));
+      expect(h.onResult).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1));
+      expect(h.onResult).toHaveBeenCalledTimes(1);
+    });
+
+    it('fail, success and learned reveal at 3 s with their own class and fx kind', async () => {
+      vi.useFakeTimers();
+      for (const [kind, r] of replies.slice(0, 3)) {
+        const fx = fakeFx();
+        const h = setup({}, undefined, fx);
+        drawSmall();
+        fireEvent.click(synthButton());
+        h.reply(r);
+        await flush();
+        act(() => vi.advanceTimersByTime(PROGRESS_MS));
+        expect(parch().classList.contains(`reveal-${kind}`)).toBe(true);
+        expect(fx.reveal).toHaveBeenCalledWith(kind);
+        expect(h.onResult).toHaveBeenCalledTimes(1);
+        cleanup();
+      }
+    });
+
+    it('a mutation turns at 3 s (dim, starfield) and shows its card and result at 5 s', async () => {
+      vi.useFakeTimers();
+      const fx = fakeFx();
+      const h = setup({}, undefined, fx);
+      drawSmall();
+      fireEvent.click(synthButton());
+      h.reply(replies[3]![1]);
+      await flush();
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(parch().classList.contains('reveal-mutation')).toBe(true);
+      expect(fx.reveal).toHaveBeenCalledWith('mutation');
+      expect(document.querySelector('.starfield')).toBeTruthy();
+      expect(document.querySelector('.rare-dim')).toBeTruthy();
+      expect(screen.queryByRole('status', { name: '合成結果' })).toBeNull();
+      expect(h.onResult).not.toHaveBeenCalled();
+      expect(h.onCharging.mock.calls).toEqual([[true]]);
+      act(() => vi.advanceTimersByTime(MUTATION_MS));
+      expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('稀有魔法');
+      expect(h.onResult).toHaveBeenCalledTimes(1);
+      expect(h.onCharging.mock.calls).toEqual([[true], [false]]);
+      expect(parch().classList.contains('reveal-burst')).toBe(true);
+    });
+
+    it('an error or refusal mid-charge stops the fx and keeps the circle', async () => {
+      vi.useFakeTimers();
+      const fx = fakeFx();
+      const h = setup({}, undefined, fx);
+      drawSmall();
+      fireEvent.click(synthButton());
+      act(() => vi.advanceTimersByTime(1000));
+      h.fail(new Error('boom'));
+      await flush();
+      expect(fx.stop).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(SYNTH_ERROR_MESSAGE)).toBeTruthy();
+      expect(btn(/^一環 第1格：風・初階/)).toBeTruthy();
+      expect(parch().classList.contains('charging')).toBe(false);
+      // the cancelled charge's 3 s timer does nothing
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(sheet().classList.contains('hold')).toBe(false);
+      expect(fx.hold).not.toHaveBeenCalled();
+      expect(fx.reveal).not.toHaveBeenCalled();
+
+      fireEvent.click(synthButton());
+      act(() => vi.advanceTimersByTime(PROGRESS_MS + 500));
+      expect(sheet().classList.contains('hold')).toBe(true);
+      h.reply({ kind: 'rejected', reason: 'insufficient' });
+      await flush();
+      expect(fx.stop).toHaveBeenCalledTimes(2);
+      expect(sheet().classList.contains('hold')).toBe(false);
+      expect(screen.getByText('材料不足')).toBeTruthy();
+      expect(btn(/^一環 第1格：風・初階/)).toBeTruthy();
+    });
+
+    describe('dev preview', () => {
+      afterEach(() => window.history.replaceState(null, '', '/'));
+      const KINDS = ['失敗', '成功', '新魔法', '大成功', '異變'];
+
+      it('is absent without ?fx', () => {
+        window.history.replaceState(null, '', '/');
+        setup();
+        for (const k of KINDS) expect(screen.queryByRole('button', { name: `預覽${k}` })).toBeNull();
+      });
+
+      it('with ?fx five buttons play the charge and reveal without the server', async () => {
+        vi.useFakeTimers();
+        window.history.replaceState(null, '', '/?fx');
+        const fx = fakeFx();
+        const h = setup({}, undefined, fx);
+        for (const k of KINDS) expect(btn(`預覽${k}`)).toBeTruthy();
+        // works on an empty circle (gold)
+        fireEvent.click(btn('預覽成功'));
+        await flush();
+        expect(fx.charge).toHaveBeenCalledWith([expect.any(String)], PROGRESS_MS);
+        expect(parch().classList.contains('charging')).toBe(true);
+        act(() => vi.advanceTimersByTime(PROGRESS_MS));
+        expect(fx.reveal).toHaveBeenCalledWith('success');
+        expect(parch().classList.contains('reveal-success')).toBe(true);
+        act(() => vi.advanceTimersByTime(2000));
+        drawSmall();
+        fireEvent.click(btn('預覽異變'));
+        await flush();
+        act(() => vi.advanceTimersByTime(PROGRESS_MS));
+        expect(parch().classList.contains('reveal-mutation')).toBe(true);
+        act(() => vi.advanceTimersByTime(MUTATION_MS));
+        expect(fx.reveal).toHaveBeenLastCalledWith('mutation');
+        expect(h.synthesizeCircle).not.toHaveBeenCalled();
+        expect(h.onResult).not.toHaveBeenCalled();
+        expect(h.rt.getSnapshot().game.inventory).toEqual({ 'el:fire:1': 3, 'el:fire:2': 1, 'el:wind:1': 2 });
+      });
+
+      it('大成功 shows its own kicker', async () => {
+        vi.useFakeTimers();
+        window.history.replaceState(null, '', '/?fx');
+        const fx = fakeFx();
+        setup({}, undefined, fx);
+        fireEvent.click(btn('預覽大成功'));
+        await flush();
+        act(() => vi.advanceTimersByTime(PROGRESS_MS));
+        expect(fx.reveal).toHaveBeenCalledWith('great');
+        expect(parch().classList.contains('reveal-great')).toBe(true);
+        expect(sheet().classList.contains('reveal-great')).toBe(true);
+        expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('大成功！');
+      });
     });
   });
 

@@ -17,17 +17,20 @@ import {
 import { RingPicker, type WheelItem } from './RingPicker';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { PARCHMENT_SRC, useArt } from './useArt';
+import { MUTATION_MS, NO_FX, PROGRESS_MS, revealKindOf, type CircleFxApi, type RevealKind } from './circle-reveal';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /**
  * The magic circle parchment (spec 2026-10-30 sections 2.1, 3.5, 3.8): tap a slot to pick an element (or a ring's rune),
- * each placement is drawn on; 合成 injects mana for PROGRESS_MS (RARE_PROGRESS_MS when the result is rare) and then shows
- * the result. A refusal or a failed request keeps the circle as it was. Tap only, no drag.
+ * each placement is drawn on; 合成 injects mana for PROGRESS_MS, the same for every outcome, then reveals it (spec
+ * 2026-11-03 polish 2, section 2); a mutation (rare) turns at 3 s and shows its card MUTATION_MS later. A late reply holds
+ * the pause until it arrives. A refusal or a failed request keeps the circle as it was. Tap only, no drag.
  */
-export const PROGRESS_MS = 3000;
-export const RARE_PROGRESS_MS = 5000;
+export { MUTATION_MS, PROGRESS_MS, RARE_PROGRESS_MS } from './circle-reveal';
 const SPARKS = 12;
 /** the rare charge's stars: a fixed small set on a golden-angle spiral, not a particle system */
+/** the failed reveal's falling ash: fixed positions, not a particle system */
+const ASH = Array.from({ length: 10 }, (_, i) => ({ left: `${18 + ((i * 41) % 64)}%`, delay: `${((i * 0.13) % 0.9).toFixed(2)}s` }));
 const STARS = Array.from({ length: 20 }, (_, i) => ({
   left: `${8 + ((i * 37) % 84)}%`, top: `${6 + ((i * 53) % 88)}%`, delay: `${((i * 0.37) % 1.6).toFixed(2)}s`,
 }));
@@ -111,18 +114,41 @@ export function placementOfSpell(spellId: string, content: Content): Placement |
   };
 }
 
-interface Shown { kicker: string; name: string; tone: 'learned' | 'known' | 'failed' | 'rare' }
+interface Shown { kicker: string; name: string; tone: 'learned' | 'known' | 'failed' | 'rare' | 'great' }
+
+const FAILED_SHOWN: Shown = { kicker: '魔法陣崩解了……', name: '元素已經消耗', tone: 'failed' };
 
 function shownOf(r: ActionResult, content: Content): Shown {
   if (r.kind === 'learned' || r.kind === 'known') {
     const rare = r.kind === 'learned' && 'rare' in r && r.rare;
     return { kicker: rare ? '✦ 稀有魔法 ✦' : r.kind === 'learned' ? '習得新魔法' : '已經會了', name: spellLabel(r.spellId, content), tone: rare ? 'rare' : r.kind };
   }
-  return { kicker: '魔法陣崩解了……', name: '元素已經消耗', tone: 'failed' };
+  return FAILED_SHOWN;
 }
 
-const isRare = (r: ActionResult, content: Content): boolean =>
-  (r.kind === 'learned' || r.kind === 'known') && ((('rare' in r) && !!r.rare) || (Object.hasOwn(content.spells, r.spellId) && !!content.spells[r.spellId]!.rare));
+/** the dev preview's cards: nothing was cast, so the name only says it is a preview */
+const PREVIEW: { kind: RevealKind; label: string; shown: Shown }[] = [
+  { kind: 'fail', label: '失敗', shown: FAILED_SHOWN },
+  { kind: 'success', label: '成功', shown: { kicker: '已經會了', name: '（預覽）', tone: 'known' } },
+  { kind: 'learned', label: '新魔法', shown: { kicker: '習得新魔法', name: '（預覽）', tone: 'learned' } },
+  { kind: 'great', label: '大成功', shown: { kicker: '大成功！', name: '（預覽）', tone: 'great' } },
+  { kind: 'mutation', label: '異變', shown: { kicker: '✦ 稀有魔法 ✦', name: '（預覽）', tone: 'rare' } },
+];
+/** how long each reveal's classes stay (fail: ash falls for 1.5 s; the scorch itself stays until the next edit) */
+const REVEAL_MS: Record<RevealKind | 'burst', number> = { fail: 1500, success: 900, learned: 900, great: 1200, mutation: 900, burst: 900 };
+/** an outcome to reveal (`applied` goes to onResult; the preview has none), or a message: nothing was spent */
+type Outcome = { kind: RevealKind; shown: Shown; applied?: ActionResult } | { message: string };
+const fxPreviewOn = (): boolean =>
+  import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('fx');
+/** the mutation's cracks from the core: fixed angles, alternating purple and the core's colour */
+const CRACKS = [20, 95, 160, 230, 300].map((deg, i) => {
+  const a = (deg * Math.PI) / 180;
+  const pts = [0.08, 0.2, 0.32, 0.44].map((f, k) => {
+    const wob = ((k % 2 ? 1 : -1) * 0.12);
+    return `${(CENTER + f * VIEW * Math.cos(a + wob)).toFixed(1)},${(CENTER + f * VIEW * Math.sin(a + wob)).toFixed(1)}`;
+  });
+  return { pts: pts.join(' '), purple: i % 2 === 0 };
+});
 
 function Line({ a, b, className, k }: { a: Pt; b: Pt; className: string; k: number }) {
   return <line className={`draw ${className}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} pathLength={1} style={{ '--k': k } as CSSProperties} />;
@@ -134,6 +160,7 @@ export const CircleTable = memo(function CircleTable({
   content,
   onResult,
   onCharging,
+  fx = NO_FX,
   ref,
 }: {
   runtime: RuntimeStore;
@@ -143,11 +170,19 @@ export const CircleTable = memo(function CircleTable({
   onResult?: (r: ActionResult) => void;
   /** true when 合成 starts, false when the result is revealed (or refused, failed, unmounted) */
   onCharging?: (charging: boolean) => void;
+  /** the particle layer over the sheet (Task 8: Pixi); a no-op by default */
+  fx?: CircleFxApi;
   ref?: Ref<CircleTableHandle>;
 }) {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [target, setTarget] = useState<Target | null>(null);
-  const [charging, setCharging] = useState<{ ms: number; rare: boolean } | null>(null);
+  const [charging, setCharging] = useState<{ ms: number } | null>(null);
+  // the reply is late: the charge holds its pause
+  const [hold, setHold] = useState(false);
+  // 3 s into a rare cast until its card: the light is pulled back in, dim, stars, cracks
+  const [mutating, setMutating] = useState(false);
+  // the reveal's transient classes (reveal-<kind>; reveal-burst ends a mutation)
+  const [flash, setFlash] = useState<RevealKind | 'burst' | null>(null);
   const [burnt, setBurnt] = useState(false);
   const [success, setSuccess] = useState(false);
   const [shake, setShake] = useState(false);
@@ -195,10 +230,13 @@ export const CircleTable = memo(function CircleTable({
     }, ms);
     timers.current.add(t);
   };
-  const latest = useRef({ onResult, onCharging, busy });
+  const latest = useRef({ onResult, onCharging, busy, fx });
   useEffect(() => {
-    latest.current = { onResult, onCharging, busy };
-  }, [onResult, onCharging, busy]);
+    latest.current = { onResult, onCharging, busy, fx };
+  }, [onResult, onCharging, busy, fx]);
+  // the playing charge's id: a refusal, an error or unmounting bumps it so its timers and reply do nothing
+  const playId = useRef(0);
+  const playing = useRef(false);
   // whether the parent was told we are charging, so unmounting mid-charge still lifts its veil
   const announced = useRef(false);
   const announce = (on: boolean): void => {
@@ -207,6 +245,11 @@ export const CircleTable = memo(function CircleTable({
     latest.current.onCharging?.(on);
   };
   useEffect(() => () => {
+    playId.current++;
+    if (playing.current) {
+      playing.current = false;
+      latest.current.fx.stop();
+    }
     if (announced.current) {
       announced.current = false;
       latest.current.onCharging?.(false);
@@ -314,54 +357,112 @@ export const CircleTable = memo(function CircleTable({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unmatched]);
 
-  const run = async (): Promise<void> => {
-    if (!placement || why || busy) return;
-    const start = Date.now();
+  // element colours on the circle, for the sparks, the progress ring and the particles (gold on an empty preview)
+  const colours = placement
+    ? [placement.core, ...placement.ring1, ...placement.ring2].filter((x): x is CircleNode => x != null).map((x) => COLORS.element[x.element])
+    : [COLORS.amber];
+
+  /**
+   * One charge and reveal: the charge is PROGRESS_MS for every outcome; at 3 s the outcome reveals, or the pause holds
+   * until it arrives. `veil` tells the parent (the star map hides the new star until the reveal); the preview does not.
+   */
+  const play = (outcome: Promise<Outcome>, veil: boolean): void => {
+    const id = ++playId.current;
+    const live = (): boolean => alive.current && playId.current === id;
+    const fxNow = latest.current.fx;
+    playing.current = true;
     setTarget(null);
     setShown(null);
     setMessage('');
     setBurnt(false);
     setSuccess(false);
-    setCharging({ ms: PROGRESS_MS, rare: false });
-    announce(true);
-    let result: ActionResult | null;
-    try {
-      result = await sync.synthesizeCircle(placement);
-    } catch {
-      if (!alive.current) return;
+    setFlash(null);
+    setHold(false);
+    setMutating(false);
+    setCharging({ ms: PROGRESS_MS });
+    if (veil) announce(true);
+    fxNow.charge(colours, PROGRESS_MS);
+    let charged = false;
+    let got: Exclude<Outcome, { message: string }> | null = null;
+
+    const finish = (o: Exclude<Outcome, { message: string }>): void => {
+      playing.current = false;
       announce(false);
       setCharging(null);
-      setMessage(SYNTH_ERROR_MESSAGE);
-      return;
-    }
-    if (!alive.current) return;
-    if (!result || result.kind === 'rejected' || (result.kind !== 'learned' && result.kind !== 'known' && result.kind !== 'failed')) {
-      // nothing was spent: no reveal, the circle stays as drawn
-      announce(false);
-      setCharging(null);
-      setMessage(result ? synthMessage(result, content) : SYNTH_RETRY_MESSAGE);
-      return;
-    }
-    const applied = result;
-    const total = isRare(applied, content) ? RARE_PROGRESS_MS : PROGRESS_MS;
-    if (total !== PROGRESS_MS) setCharging({ ms: total, rare: true });
-    later(() => {
-      announce(false);
-      setCharging(null);
-      setShown(shownOf(applied, content));
-      if (applied.kind === 'failed') setBurnt(true);
+      setHold(false);
+      setMutating(false);
+      setShown(o.shown);
+      const cls = o.kind === 'mutation' ? 'burst' : o.kind;
+      setFlash(cls);
+      later(() => { if (playId.current === id) setFlash(null); }, REVEAL_MS[cls]);
+      if (o.kind === 'fail') setBurnt(true);
       else {
         setSuccess(true);
-        later(() => setSuccess(false), 900);
+        later(() => { if (playId.current === id) setSuccess(false); }, 900);
       }
-      latest.current.onResult?.(applied);
-    }, Math.max(0, total - (Date.now() - start)));
+      if (o.applied) latest.current.onResult?.(o.applied);
+    };
+    const reveal = (o: Exclude<Outcome, { message: string }>): void => {
+      setHold(false);
+      fxNow.reveal(o.kind);
+      if (o.kind !== 'mutation') return finish(o);
+      setMutating(true);
+      later(() => { if (live()) finish(o); }, MUTATION_MS);
+    };
+    const abort = (message: string): void => {
+      // nothing was spent: no reveal, the circle stays as drawn
+      playId.current++;
+      playing.current = false;
+      fxNow.stop();
+      announce(false);
+      setCharging(null);
+      setHold(false);
+      setMessage(message);
+    };
+
+    later(() => {
+      if (!live()) return;
+      charged = true;
+      if (got) reveal(got);
+      else {
+        setHold(true);
+        fxNow.hold();
+      }
+    }, PROGRESS_MS);
+    outcome.then(
+      (o) => {
+        if (!live()) return;
+        if ('message' in o) return abort(o.message);
+        got = o;
+        if (charged) reveal(o);
+      },
+      () => { if (live()) abort(SYNTH_ERROR_MESSAGE); },
+    );
   };
 
-  // element colours on the circle, for the sparks and the progress ring
-  const colours = placement
-    ? [placement.core, ...placement.ring1, ...placement.ring2].filter((x): x is CircleNode => x != null).map((x) => COLORS.element[x.element])
-    : [COLORS.rune];
+  const run = (): void => {
+    if (!placement || why || busy) return;
+    let reply: Promise<ActionResult | null>;
+    try {
+      reply = sync.synthesizeCircle(placement);
+    } catch (e) {
+      reply = Promise.reject(e);
+    }
+    play(reply.then((r): Outcome => {
+      if (!r) return { message: SYNTH_RETRY_MESSAGE };
+      if (r.kind !== 'learned' && r.kind !== 'known' && r.kind !== 'failed') return { message: synthMessage(r, content) };
+      return { kind: revealKindOf(r, content), shown: shownOf(r, content), applied: r };
+    }), true);
+  };
+  const preview = (kind: RevealKind): void => {
+    if (busy) return;
+    const p = PREVIEW.find((x) => x.kind === kind)!;
+    play(Promise.resolve({ kind, shown: p.shown }), false);
+  };
+  const fxPreview = fxPreviewOn();
+  // the sheet's and the circle's phase classes: charging (one class, CSS keys the 3 s phases off --dur), hold, then a reveal
+  const phase = `${charging ? ' charging' : ''}${hold ? ' hold' : ''}${mutating ? ' reveal-mutation' : flash ? ` reveal-${flash}` : ''}`;
+
   const centre: Pt = { x: CENTER, y: CENTER };
   const pos = (p: Pt): CSSProperties => ({ left: `${(p.x / VIEW) * 100}%`, top: `${(p.y / VIEW) * 100}%` });
   const ring1 = draft.rings[0], ring2 = draft.rings[1];
@@ -444,11 +545,11 @@ export const CircleTable = memo(function CircleTable({
 
   return (
     <div className="parchment-panel">
-      <div className={`parchment-sheet${hasArt ? ' has-art' : ''}${charging ? ' charging' : ''}${charging?.rare ? ' rare' : ''}`}>
-      {charging?.rare && createPortal(<div className="rare-dim" aria-hidden="true" />, document.body)}
+      <div className={`parchment-sheet${hasArt ? ' has-art' : ''}${phase}`} style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
+      {mutating && createPortal(<div className="rare-dim" aria-hidden="true" />, document.body)}
       <section ref={parchment} aria-label="魔法陣"
-        className={`parchment${charging ? ' charging' : ''}${charging?.rare ? ' rare' : ''}${success ? ' success' : ''}${burnt ? ' burnt' : ''}${shake ? ' shake' : ''}`}
-        style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms`, '--n': drawCount } as CSSProperties}>
+        className={`parchment${phase}${success ? ' success' : ''}${burnt ? ' burnt' : ''}${shake ? ' shake' : ''}`}
+        style={{ '--n': drawCount, '--c': colours[0] } as CSSProperties}>
         <svg className="parchment-svg" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
           <defs>
             <filter id="ink-rough" filterUnits="userSpaceOnUse" x={0} y={0} width={VIEW} height={VIEW}>
@@ -502,12 +603,29 @@ export const CircleTable = memo(function CircleTable({
         >
           {draft.core ? <><span className="glyph">{ELEMENT_NAMES[draft.core.element]}</span><span className="branch">出 {br?.core.out ?? 0}</span></> : <span className="muted">核心</span>}
         </button>
-        {charging?.rare && (
-          <div className="starfield" aria-hidden="true">
-            {STARS.map((st, i) => <span key={i} style={{ left: st.left, top: st.top, animationDelay: st.delay }} />)}
-          </div>
+        {charging && <div className="charge-orb" aria-hidden="true" />}
+        {mutating && (
+          <>
+            <div className="starfield" aria-hidden="true">
+              {STARS.map((st, i) => <span key={i} style={{ left: st.left, top: st.top, animationDelay: st.delay }} />)}
+            </div>
+            <svg className="parchment-svg mutation-cracks" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
+              {CRACKS.map((c, i) => (
+                <polyline key={i} points={c.pts} pathLength={1} style={{ stroke: c.purple ? '#a35cff' : colours[0] } as CSSProperties} />
+              ))}
+            </svg>
+          </>
         )}
         {success && <div className="light-pillar" aria-hidden="true" />}
+        {flash === 'great' && <div className="light-pillar inner" aria-hidden="true" />}
+        {(flash === 'success' || flash === 'learned' || flash === 'great' || flash === 'burst') && <div className="burst-ring" aria-hidden="true" />}
+        {flash === 'learned' && <div className="burst-ring element" aria-hidden="true" />}
+        {flash === 'fail' && (
+          <div className="ash" aria-hidden="true">
+            <span className="smoke" />
+            {ASH.map((a, i) => <span key={i} className="ash-bit" style={{ left: a.left, animationDelay: a.delay }} />)}
+          </div>
+        )}
         {shown1.map((j) => slotButton(0, j))}
         {shown2.map((j) => slotButton(1, j))}
         {charging && <span className="sr-only" role="progressbar" aria-label="注入魔力" aria-valuemin={0} aria-valuemax={charging.ms} />}
@@ -544,11 +662,18 @@ export const CircleTable = memo(function CircleTable({
       </section>
 
       <div className="circle-go-row">
-        <button type="button" className="primary circle-go" disabled={why !== null || busy} onClick={() => void run()}>
+        <button type="button" className="primary circle-go" disabled={why !== null || busy} onClick={run}>
           {busy ? '注入中…' : '合成'}
         </button>
         {why && <span className="circle-why">{why}</span>}
       </div>
+      {fxPreview && (
+        <div className="fx-preview" aria-label="演出預覽">
+          {PREVIEW.map((p) => (
+            <button key={p.kind} type="button" aria-label={`預覽${p.label}`} disabled={busy} onClick={() => preview(p.kind)}>{p.label}</button>
+          ))}
+        </div>
+      )}
       </div>
 
       <div className="rune-row">

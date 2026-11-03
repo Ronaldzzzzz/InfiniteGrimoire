@@ -294,6 +294,7 @@ html.away { filter: grayscale(1); }
     radial-gradient(ellipse at 75% 80%, #c9ab74, transparent 55%),
     radial-gradient(circle at 50% 50%, #e3cc9a 40%, #b8955c 100%);
   filter: drop-shadow(0 4px 10px #000a);
+  --dur: 3000ms;
 }
 .parchment-sheet:not(.has-art) {
   /* the placeholder paper must fit the panel: 52vh x 4:5 = 65vh tall (the art keeps its own size) */
@@ -302,7 +303,7 @@ html.away { filter: grayscale(1); }
 }
 .parchment-sheet.has-art { background: url("/assets/parchment.webp") center / 100% 100% no-repeat; }
 .parchment {
-  --ink: #3b2a17; --dur: 3000ms;
+  --ink: #3b2a17;
   position: relative; width: 76%; min-width: 0; align-self: start; margin: 13.75% auto 0; /* = 11% of the 4:5 sheet's height (margin % is of its width), just under the top roll */ aspect-ratio: 1; border-radius: 12px; overflow: hidden; container-type: inline-size;
 }
 .parchment-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -338,10 +339,64 @@ html.away { filter: grayscale(1); }
 @keyframes circle-draw { to { stroke-dashoffset: 0; } }
 @keyframes circle-fill { to { stroke-dashoffset: 0; } }
 @keyframes circle-spark { 0% { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; transform: scale(1.6); } 100% { opacity: 0; transform: scale(0.2) translateY(-6px); } }
-.parchment.charging { animation: circle-glow 0.8s ease-in-out infinite alternate; }
+/* the charge, the same 3 s for every outcome (spec 2026-11-03 polish 2, 2.2), keyed off --dur: 0-60% the paper brightens,
+   60-90% the centre orb grows and the circle shakes, 90-100% (PAUSE_MS of PROGRESS_MS) the pause: dimmer, still */
+.parchment.charging { animation: circle-glow 0.8s ease-in-out infinite alternate, circle-charge-shake var(--dur) linear forwards; }
 .parchment-sheet { transition: transform 0.3s ease-out; }
-.parchment-sheet.charging { transform: translateY(-3px); }
-.parchment-sheet.rare { z-index: 95; }
+.parchment-sheet.charging { transform: translateY(-3px); animation: circle-brighten var(--dur) ease-in forwards; }
+@keyframes circle-brighten {
+  0% { filter: drop-shadow(0 4px 10px #000a) brightness(1); }
+  60% { filter: drop-shadow(0 4px 10px #000a) brightness(1.12); }
+  90% { filter: drop-shadow(0 4px 14px #e8b84a88) brightness(1.2); }
+  100% { filter: drop-shadow(0 4px 10px #000a) brightness(0.9); }
+}
+@keyframes circle-charge-shake {
+  0%, 60% { translate: 0 0; } 63% { translate: -1px 1px; } 66% { translate: 1px -1px; } 69% { translate: -1px -1px; } 72% { translate: 1px 1px; }
+  75% { translate: -1.5px 0.5px; } 78% { translate: 1.5px -0.5px; } 81% { translate: -1.5px -1px; } 84% { translate: 1.5px 1px; } 87% { translate: -1px 0.5px; }
+  90%, 100% { translate: 0 0; }
+}
+.charge-orb {
+  position: absolute; left: 50%; top: 50%; width: 22%; aspect-ratio: 1; border-radius: 50%; pointer-events: none; translate: -50% -50%;
+  background: radial-gradient(circle, #fffbe8 0, color-mix(in srgb, var(--c, #e8b84a) 70%, #fff3c4) 35%, transparent 70%);
+  filter: blur(1px); opacity: 0; scale: 0; animation: circle-orb var(--dur) ease-in forwards;
+}
+@keyframes circle-orb { 0%, 60% { opacity: 0; scale: 0; } 62% { opacity: 0.7; scale: 0.15; } 90% { opacity: 1; scale: 1; } 100% { opacity: 0.85; scale: 0.95; } }
+.parchment-svg .progress-fill { animation: circle-fill var(--dur) linear forwards, circle-ring-glow var(--dur) ease-in forwards; }
+@keyframes circle-ring-glow { 0%, 60% { filter: drop-shadow(0 0 3px #fff8); } 90%, 100% { filter: drop-shadow(0 0 8px #fffc); } }
+/* the pause: sparks freeze; held (the reply is late) the orb pulses until it comes */
+.parchment.hold .parchment-svg .spark { animation-play-state: paused; }
+.parchment.hold .charge-orb { animation: circle-orb-pulse 0.9s ease-in-out infinite alternate; opacity: 0.85; scale: 0.95; }
+@keyframes circle-orb-pulse { from { scale: 0.9; opacity: 0.75; } to { scale: 1.02; opacity: 1; } }
+/* the mutation (the rare 2%): at 3 s the light is pulled back into the core, the page dims, stars and cracks; burst at 5 s */
+.parchment-sheet.reveal-mutation { z-index: 95; }
+.parchment.reveal-mutation .charge-orb { animation: circle-orb-back 0.7s ease-in forwards; }
+@keyframes circle-orb-back { from { opacity: 1; scale: 1.15; } to { opacity: 0.9; scale: 0.12; } }
+.parchment.reveal-mutation .parchment-svg .spark { display: none; }
+.parchment.reveal-mutation .parchment-svg:not(.mutation-cracks) { filter: brightness(0.6); transition: filter 0.6s ease-out; }
+.mutation-cracks polyline { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 3px #a35cff); animation: circle-draw 1.6s ease-out 0.3s forwards; }
+.parchment.reveal-burst { animation: circle-starburst 0.9s ease-out; }
+@keyframes circle-starburst { from { box-shadow: inset 0 0 60px 20px #e6d0ff, 0 0 40px #a35cffcc; } to { box-shadow: inset 0 0 0 0 #e6d0ff00, 0 0 0 #a35cff00; } }
+/* success: the orb bursts into a gold ring (learned adds an element-coloured one); great: white-gold double pillar, gold edge, 1.05 bounce */
+.burst-ring { position: absolute; left: 50%; top: 50%; width: 24%; aspect-ratio: 1; border-radius: 50%; pointer-events: none; translate: -50% -50%; border: 3px solid #e8b84a; box-shadow: 0 0 12px #e8b84a; animation: circle-burst-ring 0.9s ease-out forwards; }
+.burst-ring.element { border-color: var(--c, #e8b84a); box-shadow: 0 0 12px var(--c, #e8b84a); animation-delay: 0.12s; opacity: 0; }
+@keyframes circle-burst-ring { from { opacity: 1; scale: 0.4; } to { opacity: 0; scale: 3.4; } }
+.parchment.reveal-success .burst-ring, .parchment.reveal-learned .burst-ring:not(.element) { border-width: 3px; }
+.parchment.reveal-learned .light-pillar { filter: blur(3px) brightness(1.15); }
+.light-pillar.inner { left: 43%; right: 43%; background: linear-gradient(0deg, #ffffffee, #fff8e099 60%, transparent); filter: blur(1.5px); animation-duration: 1.2s; }
+.parchment.reveal-great .light-pillar { animation-duration: 1.2s; }
+.parchment.reveal-great { box-shadow: inset 0 0 0 3px #e8b84a, inset 0 0 30px #fff3c4; }
+.parchment-sheet.reveal-great { animation: circle-bounce 0.6s cubic-bezier(0.3, 1.6, 0.5, 1); filter: drop-shadow(0 0 10px #e8b84a) drop-shadow(0 4px 10px #000a); }
+@keyframes circle-bounce { 0% { scale: 1; } 40% { scale: 1.05; } 100% { scale: 1; } }
+/* fail: the orb flashes white (.burnt::after), ink smoke rises, the paper shakes 0.4 s, ash falls for about 1.5 s */
+.parchment.reveal-fail { animation: circle-shake 0.4s linear; }
+.ash { position: absolute; inset: 0; pointer-events: none; }
+.ash .smoke { position: absolute; left: 34%; right: 34%; top: 34%; bottom: 34%; border-radius: 50%; background: radial-gradient(circle, #1a1008cc, #1a100800 70%); animation: circle-smoke 1.4s ease-out forwards; }
+@keyframes circle-smoke { from { opacity: 0.9; transform: translateY(0) scale(0.6); } to { opacity: 0; transform: translateY(-40%) scale(1.8); } }
+.ash .ash-bit { position: absolute; top: 30%; width: 3px; height: 3px; border-radius: 1px; background: #4a3a2a; opacity: 0; animation: circle-ash 1.5s ease-in forwards; }
+@keyframes circle-ash { 0% { opacity: 0; transform: translateY(0) rotate(0); } 15% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(160%) rotate(160deg); } }
+/* the dev preview (DEV and ?fx): five buttons at the sheet's corner */
+.fx-preview { position: absolute; top: 2%; right: 2%; z-index: 3; display: flex; flex-direction: column; gap: 4px; }
+.fx-preview button { padding: 2px 8px; font-size: 12px; min-height: 0; }
 /* charging: each line lights up in turn (--k of --n), the bands spin up, three turns in the charge */
 .parchment.charging .parchment-svg .draw { animation: circle-draw 0.6s ease-out forwards, circle-lit 0.5s ease-out calc(var(--k) * var(--dur) / (var(--n) + 1)) backwards; }
 .parchment.charging .parchment-svg .rune-band { animation: circle-spin var(--dur) cubic-bezier(0.55, 0, 1, 0.45) forwards; transform-box: view-box; transform-origin: 50% 50%; }
