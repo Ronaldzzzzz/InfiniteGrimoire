@@ -148,6 +148,14 @@ describe('parchment layout', () => {
     expect(r).toMatch(/bottom:\s*\d+(\.\d+)?%/);
     const bottom = Number(/bottom:\s*(\d+(?:\.\d+)?)%/.exec(r)![1]);
     expect(bottom).toBeLessThan(19);
+    // geometry at the smallest realistic sheet, W = 300 px (height 1.25 W): the row must clear the circle
+    const W = 300, H = 1.25 * W;
+    const circle = rule(css, '.parchment');
+    const topMargin = Number(/margin:\s*(\d+(?:\.\d+)?)% auto 0/.exec(circle)![1]) / 100 * W;
+    const circleBottom = topMargin + 0.76 * W;
+    const rowTop = H - (bottom / 100) * H - (44 + 15);
+    expect(circle).toMatch(/align-self:\s*start/);
+    expect(rowTop).toBeGreaterThan(circleBottom);
     expect(rule(css, '.circle-go')).toMatch(/min-height:\s*44px/);
   });
   it('puts the notes beside the sheet only in a wide workbench, stacked otherwise', () => {

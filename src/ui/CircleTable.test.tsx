@@ -114,7 +114,8 @@ describe('CircleTable', () => {
       act(() => { rt.rt.set({ game: { inventory: { 'el:fire:1': 1 } } }); });
       const short = document.querySelector('.circle-note.cost .short')!;
       expect(short.textContent).toContain('初階火');
-      expect(short.textContent).toContain('1');
+      expect(short.textContent).toContain('×2');
+      expect(short.textContent).toContain('持有 1');
     });
   });
 

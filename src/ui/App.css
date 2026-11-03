@@ -303,7 +303,7 @@ html.away { filter: grayscale(1); }
 .parchment-sheet.has-art { background: url("/assets/parchment.webp") center / 100% 100% no-repeat; }
 .parchment {
   --ink: #3b2a17; --dur: 3000ms;
-  position: relative; width: 76%; min-width: 0; margin: 0 auto; aspect-ratio: 1; border-radius: 12px; overflow: hidden; container-type: inline-size;
+  position: relative; width: 76%; min-width: 0; align-self: start; margin: 13.75% auto 0; /* = 11% of the 4:5 sheet's height (margin % is of its width), just under the top roll */ aspect-ratio: 1; border-radius: 12px; overflow: hidden; container-type: inline-size;
 }
 .parchment-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .parchment-svg .ring-line { fill: none; stroke: #6b4a2266; stroke-width: 1.2; stroke-dasharray: 3 3; }
@@ -412,7 +412,7 @@ html.away { filter: grayscale(1); }
 .circle-warn { margin: 0; color: var(--fire); font-size: 13px; }
 /* the wax seal sits in the paper's lower band (below the 76% circle, above the bottom roll); never over .parchment */
 .parchment-sheet .circle-go-row {
-  position: absolute; left: 0; right: 0; bottom: 10.5%; z-index: 1;
+  position: absolute; left: 0; right: 0; bottom: 10%; z-index: 1;
   display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none;
 }
 .parchment-sheet .circle-go-row > * { pointer-events: auto; }
