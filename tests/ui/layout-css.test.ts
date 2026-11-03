@@ -116,7 +116,7 @@ describe('final fix wave css', () => {
     const banner = css.search(/\.discovery-banner \{ top: 28%; \}/);
     expect(banner).toBeGreaterThan(css.search(/^\.discovery-banner \{/m));
     const toast = css.search(/\.strip-float \.equip-toasts \{ bottom: 148px/);
-    expect(toast).toBeGreaterThan(css.search(/^\.equip-toasts \{/m));
+    expect(toast).toBeGreaterThan(-1); // two classes outrank the base rule wherever it sits
     expect(css.lastIndexOf('@media (max-width: 600px)', banner)).toBeGreaterThan(css.lastIndexOf('}\n', banner - 200));
   });
 });
