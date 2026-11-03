@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useArt } from './useArt';
+import { resetArtCache, useArt } from './useArt';
 
 class FakeImage {
   static all: FakeImage[] = [];
@@ -12,7 +12,7 @@ class FakeImage {
 }
 
 describe('useArt', () => {
-  beforeEach(() => { FakeImage.all = []; vi.stubGlobal('Image', FakeImage); });
+  beforeEach(() => { resetArtCache(); FakeImage.all = []; vi.stubGlobal('Image', FakeImage); });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it('is false until the image has loaded', () => {
@@ -29,12 +29,21 @@ describe('useArt', () => {
     expect(result.current).toBe(false);
   });
 
-  it('detaches its handlers on unmount', () => {
-    const { unmount } = renderHook(() => useArt('/assets/a.webp'));
-    const img = FakeImage.all[0]!;
-    expect(img.onload).not.toBeNull();
+  it('stops listening on unmount', () => {
+    const { result, unmount } = renderHook(() => useArt('/assets/a.webp'));
     unmount();
-    expect(img.onload).toBeNull();
-    expect(img.onerror).toBeNull();
+    expect(() => act(() => FakeImage.all[0]!.onload?.())).not.toThrow();
+    expect(result.current).toBe(false);
+  });
+
+  it('probes a src once for any number of hooks, and never probes null', () => {
+    const many = renderHook(() => [useArt('/assets/same.webp'), useArt('/assets/same.webp'), useArt(null)]);
+    expect(FakeImage.all.map((i) => i.src)).toEqual(['/assets/same.webp']);
+    act(() => FakeImage.all[0]!.onload?.());
+    expect(many.result.current).toEqual([true, true, false]);
+    // a later mount reads the cached result without another probe
+    const later = renderHook(() => useArt('/assets/same.webp'));
+    expect(later.result.current).toBe(true);
+    expect(FakeImage.all).toHaveLength(1);
   });
 });

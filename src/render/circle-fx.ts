@@ -314,26 +314,36 @@ export class CircleFx implements CircleFxApi {
 
   private async init(): Promise<void> {
     const app = new Application();
-    await app.init({ backgroundAlpha: 0, resizeTo: this.host, antialias: false, autoStart: false });
+    await app.init({
+      backgroundAlpha: 0, resizeTo: this.host, antialias: false, autoStart: false,
+      resolution: window.devicePixelRatio || 1, autoDensity: true,
+    });
     if (this.destroyed) {
       app.destroy(true, { children: true });
       return;
     }
-    const style = app.canvas.style;
-    style.position = 'absolute';
-    style.inset = '0';
-    style.width = '100%';
-    style.height = '100%';
-    style.pointerEvents = 'none';
-    this.host.appendChild(app.canvas);
-    const dot = new Graphics()
-      .circle(DOT_PX / 2, DOT_PX / 2, DOT_PX / 2).fill({ color: 0xffffff, alpha: 0.25 })
-      .circle(DOT_PX / 2, DOT_PX / 2, DOT_PX / 3).fill({ color: 0xffffff, alpha: 0.6 })
-      .circle(DOT_PX / 2, DOT_PX / 2, DOT_PX / 5).fill(0xffffff);
-    this.tex = app.renderer.generateTexture(dot);
-    dot.destroy();
-    app.stage.addChild(this.layer);
-    app.ticker.add((t) => this.frame(t.deltaMS));
+    try {
+      const style = app.canvas.style;
+      style.position = 'absolute';
+      style.inset = '0';
+      style.width = '100%';
+      style.height = '100%';
+      style.pointerEvents = 'none';
+      this.host.appendChild(app.canvas);
+      const dot = new Graphics()
+        .circle(DOT_PX / 2, DOT_PX / 2, DOT_PX / 2).fill({ color: 0xffffff, alpha: 0.25 })
+        .circle(DOT_PX / 2, DOT_PX / 2, DOT_PX / 3).fill({ color: 0xffffff, alpha: 0.6 })
+        .circle(DOT_PX / 2, DOT_PX / 2, DOT_PX / 5).fill(0xffffff);
+      this.tex = app.renderer.generateTexture(dot);
+      dot.destroy();
+      app.stage.addChild(this.layer);
+      app.ticker.add((t) => this.frame(t.deltaMS));
+    } catch (e) {
+      // a half-built overlay must not stay on the page
+      app.canvas.remove();
+      app.destroy(true, { children: true });
+      throw e;
+    }
     this.app = app;
     this.wake();
   }

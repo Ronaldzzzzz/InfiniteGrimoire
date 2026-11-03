@@ -18,7 +18,7 @@ import {
 import { RingPicker, type WheelItem } from './RingPicker';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { PARCHMENT_SRC, useArt } from './useArt';
-import { MUTATION_MS, PROGRESS_MS, revealKindOf, type CircleFxApi, type RevealKind } from './circle-reveal';
+import { MUTATION_MS, PAUSE_MS, PROGRESS_MS, revealKindOf, type CircleFxApi, type RevealKind } from './circle-reveal';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /**
@@ -56,6 +56,9 @@ const emptyDraft = (): Draft => ({ core: null, rings: [emptyRing(), emptyRing()]
 const RING_NAME = ['一環', '二環'] as const;
 const EFFECT_WORD: Record<ElementId, string> = { fire: '燃燒', wind: '擊退', water: '潮濕', earth: '緩速', thunder: '連鎖' };
 export const MISMATCH_WARNING = '迴路對不上：大失敗機率提高';
+export const MATCH_NOTE = '迴路對得上';
+/** an aborted charge's orb fades out this long */
+const ORB_FADE_MS = 300;
 const capOf = (grade: number) => GRADE_CAP[Math.min(Math.max(grade, 1), GRADE_CAP.length) - 1]!;
 const nodeName = (x: CircleNode) => `${ELEMENT_NAMES[x.element]}・${GRADE_NAMES[x.grade - 1]}`;
 const filled = (ring: (CircleNode | null)[]) => ring.filter((x) => x != null).length;
@@ -180,6 +183,9 @@ export const CircleTable = memo(function CircleTable({
   const [charging, setCharging] = useState<{ ms: number } | null>(null);
   // the reply is late: the charge holds its pause
   const [hold, setHold] = useState(false);
+  // the last PAUSE_MS of the charge (sparks freeze) and the orb's fade after a refusal or error
+  const [pausing, setPausing] = useState(false);
+  const [fading, setFading] = useState(false);
   // 3 s into a rare cast until its card: the light is pulled back in, dim, stars, cracks
   const [mutating, setMutating] = useState(false);
   // the reveal's transient classes (reveal-<kind>; reveal-burst ends a mutation)
@@ -397,7 +403,10 @@ export const CircleTable = memo(function CircleTable({
     setFlash(null);
     setHold(false);
     setMutating(false);
+    setPausing(false);
+    setFading(false);
     setCharging({ ms: PROGRESS_MS });
+    later(() => { if (live()) setPausing(true); }, PROGRESS_MS - PAUSE_MS);
     if (veil) announce(true);
     fxNow.charge(colours, PROGRESS_MS);
     let charged = false;
@@ -408,6 +417,7 @@ export const CircleTable = memo(function CircleTable({
       announce(false);
       setCharging(null);
       setHold(false);
+      setPausing(false);
       setMutating(false);
       setShown(o.shown);
       const cls = o.kind === 'mutation' ? 'burst' : o.kind;
@@ -435,6 +445,10 @@ export const CircleTable = memo(function CircleTable({
       announce(false);
       setCharging(null);
       setHold(false);
+      setPausing(false);
+      // the orb fades out rather than vanishing
+      setFading(true);
+      later(() => setFading(false), ORB_FADE_MS);
       setMessage(message);
     };
 
@@ -479,7 +493,7 @@ export const CircleTable = memo(function CircleTable({
   };
   const fxPreview = fxPreviewOn();
   // the sheet's and the circle's phase classes: charging (one class, CSS keys the 3 s phases off --dur), hold, then a reveal
-  const phase = `${charging ? ' charging' : ''}${hold ? ' hold' : ''}${mutating ? ' reveal-mutation' : flash ? ` reveal-${flash}` : ''}`;
+  const phase = `${charging ? ' charging' : ''}${hold ? ' hold' : ''}${pausing ? ' pausing' : ''}${mutating ? ' reveal-mutation' : flash ? ` reveal-${flash}` : ''}`;
 
   const centre: Pt = { x: CENTER, y: CENTER };
   const pos = (p: Pt): CSSProperties => ({ left: `${(p.x / VIEW) * 100}%`, top: `${(p.y / VIEW) * 100}%` });
@@ -622,6 +636,7 @@ export const CircleTable = memo(function CircleTable({
           {draft.core ? <><span className="glyph">{ELEMENT_NAMES[draft.core.element]}</span><span className="branch">出 {br?.core.out ?? 0}</span></> : <span className="muted">核心</span>}
         </button>
         {charging && <div className="charge-orb" aria-hidden="true" />}
+        {!charging && fading && <div className="charge-orb fade" aria-hidden="true" />}
         {mutating && (
           <>
             <div className="starfield" aria-hidden="true">
@@ -707,6 +722,7 @@ export const CircleTable = memo(function CircleTable({
           </>
         ) : <p className="circle-predict">擺好核心後，這裡會寫下預測。</p>}
         {(mismatch[0] || mismatch[1]) && <p className="circle-warn">{MISMATCH_WARNING}</p>}
+        {placement && !mismatch[0] && !mismatch[1] && <p className="circle-ok">{MATCH_NOTE}</p>}
       </aside>
       <aside className="circle-note cost" aria-label="所需元素">
         <p className="circle-note-title">所需元素</p>

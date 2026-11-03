@@ -7,7 +7,7 @@ import { content } from '../engine/content';
 import type { GameState } from '../engine/model';
 import type { ActionResult } from '../game/api';
 import { CircleTable, MUTATION_MS, PROGRESS_MS, SIDE_NOTE_MIN, RARE_PROGRESS_MS, placementOfSpell, type CircleTableHandle } from './CircleTable';
-import type { CircleFxApi } from './circle-reveal';
+import { PAUSE_MS, type CircleFxApi } from './circle-reveal';
 import { SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE } from './messages';
 import { fakeRuntime } from './test-runtime';
 
@@ -106,6 +106,14 @@ describe('CircleTable', () => {
       expect(sheet.contains(document.querySelector('.synth-message'))).toBe(false);
     });
 
+    it('the predict note says the circuit matches when it does', () => {
+      setup();
+      choose(/^核心/, /^火・初階/);
+      const predict = document.querySelector('.circle-note.predict')!;
+      expect(predict.textContent).toContain('迴路對得上');
+      expect(predict.textContent).not.toContain('迴路對不上');
+    });
+
     it('the predict note shows the fail chance and the mismatch warning; the cost note marks a short element', () => {
       expect(SIDE_NOTE_MIN).toBe(150);
       setup();
@@ -115,6 +123,7 @@ describe('CircleTable', () => {
       const predict = document.querySelector('.circle-note.predict')!;
       expect(predict.textContent).toMatch(/大失敗 \d+%/);
       expect(predict.textContent).toContain('迴路對不上');
+      expect(predict.textContent).not.toContain('迴路對得上');
       const cost = document.querySelector('.circle-note.cost')!;
       expect(within(cost as HTMLElement).getByText(/初階火/)).toBeTruthy();
       expect(cost.querySelectorAll('.short')).toHaveLength(0);
@@ -659,6 +668,34 @@ describe('CircleTable', () => {
       expect(h.onResult).toHaveBeenCalledTimes(1);
       expect(h.onCharging.mock.calls).toEqual([[true], [false]]);
       expect(parch().classList.contains('reveal-burst')).toBe(true);
+    });
+
+    it('the sparks freeze for exactly the last PAUSE_MS of the charge', async () => {
+      vi.useFakeTimers();
+      setup({}, undefined, fakeFx());
+      drawSmall();
+      fireEvent.click(synthButton());
+      act(() => vi.advanceTimersByTime(PROGRESS_MS - PAUSE_MS - 1));
+      expect(sheet().classList.contains('pausing')).toBe(false);
+      act(() => vi.advanceTimersByTime(1));
+      expect(sheet().classList.contains('pausing')).toBe(true);
+    });
+
+    it('a refusal mid-charge fades the orb for 300 ms instead of dropping it', async () => {
+      vi.useFakeTimers();
+      const h = setup({}, undefined, fakeFx());
+      drawSmall();
+      fireEvent.click(synthButton());
+      act(() => vi.advanceTimersByTime(1000));
+      expect(document.querySelector('.charge-orb.fade')).toBeNull();
+      h.reply({ kind: 'rejected', reason: 'insufficient' });
+      await flush();
+      expect(document.querySelector('.charge-orb.fade')).toBeTruthy();
+      expect(sheet().classList.contains('charging')).toBe(false);
+      act(() => vi.advanceTimersByTime(299));
+      expect(document.querySelector('.charge-orb.fade')).toBeTruthy();
+      act(() => vi.advanceTimersByTime(1));
+      expect(document.querySelector('.charge-orb')).toBeNull();
     });
 
     it('an error or refusal mid-charge stops the fx and keeps the circle', async () => {

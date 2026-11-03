@@ -5,7 +5,7 @@ import { MUTATION_MS, PAUSE_MS } from '../ui/circle-reveal';
 
 // a stand-in for Pixi: the overlay's ticker, stage and sprites, with a switch to make init fail
 const pixi = vi.hoisted(() => {
-  const state = { fail: false, apps: [] as any[] };
+  const state = { fail: false, failTexture: false, apps: [] as any[] };
   class Ticker {
     fns: ((t: { deltaMS: number }) => void)[] = [];
     started = false;
@@ -31,7 +31,7 @@ const pixi = vi.hoisted(() => {
     ticker = new Ticker();
     stage = new Node();
     canvas = document.createElement('canvas');
-    renderer = { generateTexture: () => ({ destroy() {} }) };
+    renderer = { generateTexture: () => { if (state.failTexture) throw new Error('texture'); return { destroy() {} }; } };
     initOpts: unknown = null;
     render = vi.fn();
     destroyed = false;
@@ -255,6 +255,7 @@ describe('FxSim', () => {
 describe('CircleFx', () => {
   afterEach(() => {
     pixi.state.fail = false;
+    pixi.state.failTexture = false;
     pixi.state.apps.length = 0;
     document.body.innerHTML = '';
   });
@@ -282,6 +283,23 @@ describe('CircleFx', () => {
     expect(app.ticker.started).toBe(false);
     fx.destroy();
     expect(app.destroyed).toBe(true);
+  });
+
+  it('sharp on a dense screen: resolution follows devicePixelRatio with autoDensity', async () => {
+    new CircleFx(host());
+    await flush();
+    expect(pixi.state.apps[0].initOpts).toMatchObject({ resolution: window.devicePixelRatio || 1, autoDensity: true });
+  });
+
+  it('a throw after init destroys the app and removes the canvas', async () => {
+    pixi.state.failTexture = true;
+    const h = host();
+    const fx = new CircleFx(h);
+    await flush();
+    const app = pixi.state.apps[0];
+    expect(app.destroyed).toBe(true);
+    expect(h.querySelector('canvas')).toBeNull();
+    expect(() => { fx.charge(COLS, 3000); fx.stop(); }).not.toThrow();
   });
 
   it('a failed init leaves a silent no-op', async () => {

@@ -17,7 +17,7 @@ const SHAPES: Record<RuneId, string> = {
 
 /** One rune as an SVG group; `null` is the locked 「？」. Uses the optional art image when it has loaded. */
 export function RuneIcon({ id, size }: { id: RuneId | null; size: number }) {
-  const art = useArt(runeArtSrc(id ?? 'locked'));
+  const art = useArt(id === null ? null : runeArtSrc(id));
   const k = size / 24;
   if (id === null) {
     return (

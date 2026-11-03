@@ -105,7 +105,7 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .app { display: flex; flex-direction: column; height: 100vh; }
 .main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 /* the battle is a strip below the main panels; its floating pieces sit above its upper right */
-:root { --strip-h: 180px; --key-row-h: 56px; }
+:root { --strip-h: 180px; --key-row-h: 64px; }
 .battle-strip { position: relative; flex: 0 0 var(--strip-h); height: var(--strip-h); min-width: 0; border-top: 1px solid var(--line); background: var(--bg); }
 .strip-canvas { position: absolute; inset: 0; overflow: hidden; }
 .strip-float { position: absolute; right: 8px; bottom: calc(100% + 8px); z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
@@ -276,6 +276,7 @@ html.away { filter: grayscale(1); }
 .circle-note .circle-predict { color: #3b2a17; font-size: 13px; }
 .circle-note .circle-fail { font-weight: 700; }
 .circle-note .circle-warn { color: #a02a14; font-weight: 700; }
+.circle-note .circle-ok { margin: 0; color: #3d6b1f; font-size: 13px; }
 .circle-note-title { font-weight: 700; color: #8a5a10; }
 .circle-note .cost-row.short { color: #a02a14; font-weight: 700; }
 .circle-note .cost-empty { color: #6b4a22; }
@@ -364,8 +365,11 @@ html.away { filter: grayscale(1); }
 .parchment-svg .progress-fill { animation: circle-fill var(--dur) linear forwards, circle-ring-glow var(--dur) ease-in forwards; }
 @keyframes circle-ring-glow { 0%, 60% { filter: drop-shadow(0 0 3px #fff8); } 90%, 100% { filter: drop-shadow(0 0 8px #fffc); } }
 /* the pause: sparks freeze; held (the reply is late) the orb pulses until it comes */
-.parchment.hold .parchment-svg .spark { animation-play-state: paused; }
+.parchment.hold .parchment-svg .spark, .parchment-sheet.pausing .parchment-svg .spark { animation-play-state: paused; }
 .parchment.hold .charge-orb { animation: circle-orb-pulse 0.9s ease-in-out infinite alternate; opacity: 0.85; scale: 0.95; }
+/* refused or failed mid-charge: the orb fades out in ORB_FADE_MS */
+.charge-orb.fade { opacity: 0.85; scale: 0.95; animation: circle-orb-fade 0.3s ease-out forwards; }
+@keyframes circle-orb-fade { from { opacity: 0.85; scale: 0.95; } to { opacity: 0; scale: 0.6; } }
 @keyframes circle-orb-pulse { from { scale: 0.9; opacity: 0.75; } to { scale: 1.02; opacity: 1; } }
 /* the mutation (the rare 2%): at 3 s the light is pulled back into the core, the page dims, stars and cracks; burst at 5 s */
 .parchment-sheet.reveal-mutation { z-index: 95; }

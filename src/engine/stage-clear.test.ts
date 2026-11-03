@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Content, GameState, Monster, NamedSpellDef, Zone } from './model';
 import { createInitialState } from './persist';
 import { createRng } from './rng';
+import { claimOffline, markAway } from './offline';
 import { claimStage, stageLoot } from './stage-clear';
 import { minStageMs, stageTotal } from './stages';
 
@@ -179,5 +180,27 @@ describe('stageLoot', () => {
       return n;
     };
     expect(sum(5)).toBeLessThan(sum(1));
+  });
+});
+
+describe('clear time across several aways', () => {
+  it('subtracts every away span exactly once, including one still open at the clear', () => {
+    const rng = createRng(1);
+    let s = base({ lastClearAt: T, clearedStages: { z1: 1 }, currentZone: 'z1', equipped: 'mana_bolt' } as Partial<GameState>);
+    s = markAway(s, T + 100_000).state;
+    s = claimOffline(s, T, T + 400_000, data, rng).state; // 300 s away
+    s = markAway(s, T + 500_000).state;
+    s = claimOffline(s, T, T + 800_000, data, rng).state; // another 300 s
+    expect(s.pausedMs).toBe(600_000);
+    s = markAway(s, T + 900_000).state; // still open at the clear: 600 s up to now
+    const now = T + 1_500_000;
+    const r = claimStage(s, 'z1', 2, now, data, rng);
+    expect(r.result.kind).toBe('cleared');
+    // 1,500 s since the last clear - 600 s settled - 600 s open = 300 s played
+    const played = 300_000;
+    expect(minStageMs(data.zones[0]!, 2)).toBeLessThan(played);
+    expect(r.state.clearTimes['z1:2']).toEqual([played]);
+    expect(r.state.pausedMs).toBe(0);
+    expect(r.state.awayAt).toBe(0);
   });
 });
