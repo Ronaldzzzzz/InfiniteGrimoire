@@ -115,8 +115,26 @@ describe('final fix wave css', () => {
   it('on phones the banner and equip toasts move off the result and prediction, after the base rules', () => {
     const banner = css.search(/\.discovery-banner \{ top: 28%; \}/);
     expect(banner).toBeGreaterThan(css.search(/^\.discovery-banner \{/m));
-    const toast = css.search(/\.strip-float \.equip-toasts \{ position: fixed; top: 112px/);
-    expect(toast).toBeGreaterThan(css.search(/^\.strip-float \.key-bar, \.strip-float \.equip-toasts/m));
+    const toast = css.search(/\.strip-float \.equip-toasts \{ bottom: 148px/);
+    expect(toast).toBeGreaterThan(css.search(/^\.equip-toasts \{/m));
     expect(css.lastIndexOf('@media (max-width: 600px)', banner)).toBeGreaterThan(css.lastIndexOf('}\n', banner - 200));
+  });
+});
+
+describe('equip toast', () => {
+  it('is centred over the strip with large touch targets and a draining bar', () => {
+    const r = css.match(/^\.equip-toasts \{([^}]*)\}/m)![1]!;
+    expect(r).toMatch(/left:\s*50%/);
+    expect(r).toMatch(/translateX\(-50%\)/);
+    expect(r).not.toMatch(/\bright:/);
+    expect(rule(css, '.equip-toast button')).toMatch(/min-height:\s*44px/);
+    expect(rule(css, '.equip-toast')).toMatch(/font-size:\s*15px/);
+    expect(rule(css, '.equip-toast-bar')).toMatch(/transform-origin:\s*left/);
+    expect(css).toMatch(/@keyframes toast-drain[^}]*scaleX\(var\(--bar-start/);
+  });
+  it('stays centred on phones (no right offset)', () => {
+    const r = rule(media(600).body, '.strip-float .equip-toasts');
+    expect(r).not.toMatch(/\bright:/);
+    expect(r).not.toMatch(/\bleft:/);
   });
 });

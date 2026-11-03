@@ -71,4 +71,19 @@ describe('EquipToasts', () => {
     act(() => vi.advanceTimersByTime(1));
     expect(onExpire).toHaveBeenCalledWith(1);
   });
+  it('shows a countdown bar that follows the timer through a pause', () => {
+    vi.useFakeTimers();
+    const bar = () => document.querySelector('.equip-toast-bar') as HTMLElement;
+    const { rerender } = render(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={vi.fn()} />);
+    expect(bar().style.animationDuration).toBe(`${EQUIP_TOAST_MS}ms`);
+    expect(bar().style.animationPlayState).toBe('running');
+    act(() => vi.advanceTimersByTime(1000));
+    rerender(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={vi.fn()} paused />);
+    expect(bar().style.animationPlayState).toBe('paused');
+    expect(bar().style.animationDuration).toBe('2000ms');
+    expect(bar().style.getPropertyValue('--bar-start')).toBe(String(2000 / EQUIP_TOAST_MS));
+    rerender(<EquipToasts toasts={[t(1)]} onEquip={vi.fn()} onExpire={vi.fn()} paused={false} />);
+    expect(bar().style.animationPlayState).toBe('running');
+    expect(bar().style.animationDuration).toBe('2000ms');
+  });
 });
