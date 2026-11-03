@@ -50,17 +50,30 @@ describe('StarMap', () => {
     expect(screen.queryByLabelText('迷霧')).toBeNull();
   });
 
-  it('a crafted (non-textbook) star wears an amber halo; a named one does not', () => {
+  it('a crafted star is a glowing star; a textbook one is an ink seal; no amber halo', () => {
     setup({ learned: ['mana_bolt', 'fireball', CRAFTED] });
     const c = star(crafted.name);
     expect(c.getAttribute('aria-label')).toBe(`${crafted.name}（自創）`);
-    expect(c.querySelector('.star-halo')).toBeTruthy();
-    expect(star(content.spells.fireball!.name).querySelector('.star-halo')).toBeNull();
+    expect(c.querySelector('.star-glow')).toBeTruthy();
+    expect(c.querySelector('.star-seal')).toBeNull();
+    const named = star(content.spells.fireball!.name);
+    expect(named.querySelector('.star-seal')).toBeTruthy();
+    expect(named.querySelector('.star-glow')).toBeNull();
+    expect(document.querySelector('.star-halo')).toBeNull();
   });
 
-  it('draws a line between spells that share a node element on the same ring', () => {
-    setup({ learned: ['mana_bolt', 'fireball', FIRE4, 'm:water.2.----a.-----.ring'] });
-    expect(document.querySelectorAll('.star-lines line')).toHaveLength(1);
+  it('no lines until a star is selected, then only that star\'s lines', () => {
+    const a = 'm:fire.4.--fff.-----.bolt', b = 'm:fire.4.-f-ff.-----.bolt', c = 'm:fire.6.fffff.-----.bolt';
+    setup({ learned: ['mana_bolt', a, b, c] });
+    expect(document.querySelectorAll('.star-lines line')).toHaveLength(0);
+    fireEvent.click(star(resolveSpell(a, content)!.name));
+    expect(document.querySelectorAll('.star-lines line')).toHaveLength(2);
+  });
+
+  it('sector labels run 水 土 火 雷 風', () => {
+    setup({ learned: ['mana_bolt'] });
+    const labels = [...document.querySelectorAll('.star-grid text')].map((t) => t.textContent).filter((t) => /^[水土火雷風]$/.test(t ?? ''));
+    expect(labels).toEqual(['水', '土', '火', '雷', '風']);
   });
 
   it('passives sit near the centre; depth passives (the retired depth cap) are hidden', () => {
@@ -94,7 +107,7 @@ describe('StarMap', () => {
 
   it('learning a spell adds a star without moving the others', () => {
     const { rt } = setup({ learned: ['mana_bolt', 'fireball'] });
-    const at = () => star(content.spells.fireball!.name).querySelector('circle:not(.star-halo)')!.getAttribute('cx');
+    const at = () => star(content.spells.fireball!.name).querySelector('circle:not(.star-glow)')!.getAttribute('cx');
     const before = at();
     act(() => rt.set({ game: { learned: ['mana_bolt', 'fireball', CRAFTED, FIRE4] } }));
     expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(4);

@@ -1,11 +1,10 @@
 import { parseCanonical } from '../engine/circle';
 import type { Content, Passive, Spell } from '../engine/model';
-import { ELEMENT_ORDER } from '../engine/types';
 import type { ElementId } from '../engine/types';
 
 /**
  * The grimoire star map (spec 2026-10-30 section 2.8, option A 五元素星域), pure geometry.
- * Five sectors of 72° in ELEMENT_ORDER (火 at the top right, clockwise 風 雷 土 水); the farther from the centre the higher
+ * Five sectors of 72° in SECTOR_ORDER (the 相生 circle, clockwise from the top right: 水 土 火 雷 風); the farther from the centre the higher
  * the tier. Screen-style polar: 0° is up, angles grow clockwise, y points down.
  */
 export interface Pt { x: number; y: number }
@@ -31,8 +30,11 @@ export function polar(deg: number, r: number): Pt {
 
 const norm = (deg: number) => ((deg % 360) + 360) % 360;
 
+/** Sectors run clockwise in the 相生 circle (水 土 火 雷 風), so a non-adjacent pair lands in the element between them. */
+export const SECTOR_ORDER: ElementId[] = ['water', 'earth', 'fire', 'thunder', 'wind'];
+
 /** Centre angle of an element's sector. */
-export const sectorAngle = (e: ElementId): number => SECTOR_DEG / 2 + SECTOR_DEG * ELEMENT_ORDER.indexOf(e);
+export const sectorAngle = (e: ElementId): number => SECTOR_DEG / 2 + SECTOR_DEG * SECTOR_ORDER.indexOf(e);
 
 export const tierRadius = (tier: number): number => TIER_R0 + TIER_STEP_R * (Math.max(1, tier) - 1);
 

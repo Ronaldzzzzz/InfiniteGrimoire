@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { content } from '../engine/content';
 import type { Spell } from '../engine/model';
 import { resolveSpell } from '../engine/spells';
-import { layoutPassives, layoutStars, MIN_STAR_DIST, sectorAngle, starEdges, starPosition, visiblePassives } from './star-layout';
+import { layoutPassives, layoutStars, MIN_STAR_DIST, SECTOR_ORDER, sectorAngle, starEdges, starPosition, visiblePassives } from './star-layout';
 
 const spell = (id: string): Spell => resolveSpell(id, content)!;
 /** Smallest angle between two directions, in degrees. */
@@ -18,6 +18,23 @@ describe('starPosition', () => {
 
   it('a Lv.8 spell sits farther from the centre than a Lv.2 one', () => {
     expect(starPosition(spell('m:fire.8.fffff.---ff.ring')).radius).toBeGreaterThan(starPosition(spell('m:fire.2.----f.-----.bolt')).radius);
+  });
+
+  it('sectors follow the 相生 circle', () => {
+    expect(SECTOR_ORDER).toEqual(['water', 'earth', 'fire', 'thunder', 'wind']);
+    expect([sectorAngle('water'), sectorAngle('earth'), sectorAngle('fire'), sectorAngle('thunder'), sectorAngle('wind')]).toEqual([36, 108, 180, 252, 324]);
+  });
+
+  it('a 水＋風 spell sits between the water and wind sectors', () => {
+    const s = spell('m:water.2.----w.-----.bolt');
+    expect([...s.elements].sort()).toEqual(['water', 'wind']);
+    expect(gap(starPosition(s).angle, 0)).toBeLessThanOrEqual(10 + 1e-9);
+  });
+
+  it('a 水＋火 spell (not neighbours) sits in the earth sector between them', () => {
+    const s = spell('m:water.2.----f.-----.bolt');
+    expect([...s.elements].sort()).toEqual(['fire', 'water']);
+    expect(gap(starPosition(s).angle, 108)).toBeLessThan(36);
   });
 
   it('a 火＋土 spell sits between the fire and earth sectors', () => {
