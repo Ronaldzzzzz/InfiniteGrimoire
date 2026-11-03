@@ -62,11 +62,12 @@
 
 ### 3.0 接手先看這裡（2026-11-03 更新）
 
-**現在停在哪（2026-11-03，專案 2 試玩後的質感改版）：** 使用者 2026-10-31 已在 macOS 試玩 `feat/magic-circle`，回饋五項＋一個 bug，討論四輪後寫成兩份文件（2026-11-03 補 commit）：回饋與問答 `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、改版規格草稿 `docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md`。**規格狀態：草稿，待使用者確認；還沒有計畫、沒有改程式。**
+**現在停在哪（2026-11-03，專案 2 試玩後的質感改版）：** 使用者 2026-10-31 已在 macOS 試玩 `feat/magic-circle`，回饋五項＋一個 bug，討論四輪後寫成兩份文件（2026-11-03 補 commit）：回饋與問答 `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、改版規格草稿 `docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md`。**規格已確認（2026-11-03），計畫已寫，還沒改程式。**
 - **回饋重點：** (1) 風格太現代 → 昏暗木屋書房＋直立破邊、邊緣微捲的羊皮紙，墨線與金線；介面維持 React＋SVG，華麗特效之後可疊一層 Pixi（使用者同意混合做法）。(2) 開局就看到完整五芒星 → 只畫已開放的格子，一環依已開放格數排成 1 上方／2 上下／3 三角／4 菱形／5 五芒星，二環同樣對齊一環；**規則序號不變**（視覺相鄰可能和規則相鄰不一致，使用者：先這樣）。(3) 符文不在陣上 → 每環一條整圈符文帶（規則不變）。(4) 文字選單難用 → 點格子後周圍長出元素圈（相生順序），再選階級。(5) 流水魔彈・風落在火區 → 星圖扇區改成相生順序（水→土→火→雷→風），選中魔法才顯示連線、教科書＝墨印／自創＝發光星。
-- **Bug（已查證、未修）：** 合成動畫還在跑，星圖已出現新魔法（`sync.ts` 一回應就 `replaceState`；`CircleTable` 只延後揭曉面板）。建議修法 (a)：動畫期間先藏起剛學會的那顆星，使用者**尚未回覆**。
+- **Bug（已查證、未修）：** 合成動畫還在跑，星圖已出現新魔法（`sync.ts` 一回應就 `replaceState`；`CircleTable` 只延後揭曉面板）。修法 (a)：動畫期間先藏起剛學會的那顆星（使用者 2026-11-03 同意）。
 - **分階段（規格第 10 節）：** 1 bug → 2 格子排列、元素圈、符文圈 → 3 書房色調與羊皮紙、演出 → 4 星圖 → 5（選用）Pixi 特效層。**待決定：** 羊皮紙與桌面素材來源（pngtree 參考圖有浮水印與授權問題，不進版本庫；AI 生成或可商用素材）、bug 修法、動畫數字。
-- **接手者先做：** 請使用者確認改版規格（與上面待決定的事）→ writing-plans → 執行。合併 `feat/magic-circle` 等改版完成再問。
+- **2026-11-03 使用者確認：** 規格草稿照寫、bug 用 (a)、羊皮紙與書桌用 **AI 生成**（提示詞寫進 `docs/art-assets.md`，圖由使用者生成）。計畫 `docs/superpowers/plans/2026-11-03-magic-circle-polish.md`（8 個任務：面紗 bug → 只畫開放格子 → 元素圈 → 符文帶 → 書房與羊皮紙 → 演出 → 星圖 → 驗收）。
+- **接手者先做：** 依計畫執行（帳本 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/progress.md`）。合併 `feat/magic-circle` 等改版完成再問。
 
 **之前停在哪（2026-10-31，專案 2：魔法陣合成）：** branch `feat/magic-circle`（從 `main` e7c28de 分出，**未 push、未合併**）。規格 `docs/superpowers/specs/2026-10-30-magic-circle-design.md`、計畫 `docs/superpowers/plans/2026-10-30-magic-circle.md`、帳本 `docs/superpowers/sdd/2026-10-30-magic-circle/progress.md`、Task 7 驗收報告、最終審查 `final-review.md`、修正報告 `final-fix-report.md` 都在同資料夾（其餘任務報告與截圖在 `.superpowers/sdd/2026-10-30-magic-circle/`，gitignore）。7 個任務都完成並各自審查；**最終全 branch 審查 0 個 Critical，要求的修正已在 `3dad160` 完成並複審通過**。`npm test` 79 個檔案 874 個測試全過、`npm run build` 通過（2026-10-31 在 Windows 重跑確認）。**現在等使用者在真實瀏覽器試玩，再決定合併。**
 - **Windows 這台還不能直接試玩：** 本機 D1 只到 0006，**缺 0007、0008，兩個都會重置本機存檔**（`.wrangler` 不同步，所以 macOS 已套用不代表這台已套用）。試玩前要跑 `npm run db:migrate:local`，這台的舊存檔會消失；要先經使用者同意。
