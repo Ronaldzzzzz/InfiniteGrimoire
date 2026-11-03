@@ -105,7 +105,8 @@ input, select { background: var(--panel); border: 1px solid var(--line); border-
 .app { display: flex; flex-direction: column; height: 100vh; }
 .main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 /* the battle is a strip below the main panels; its floating pieces sit above its upper right */
-.battle-strip { position: relative; flex: 0 0 180px; height: 180px; min-width: 0; border-top: 1px solid var(--line); background: var(--bg); }
+:root { --strip-h: 180px; --key-row-h: 56px; }
+.battle-strip { position: relative; flex: 0 0 var(--strip-h); height: var(--strip-h); min-width: 0; border-top: 1px solid var(--line); background: var(--bg); }
 .strip-canvas { position: absolute; inset: 0; overflow: hidden; }
 .strip-float { position: absolute; right: 8px; bottom: calc(100% + 8px); z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
 .strip-float > * { pointer-events: auto; }
@@ -153,7 +154,8 @@ html.away { filter: grayscale(1); }
 @media (max-width: 600px) {
   /* the strip is fixed to the bottom of the window; the page leaves room for it */
   body { padding-bottom: 140px; }
-  .battle-strip { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; flex-basis: auto; height: 140px; }
+  :root { --strip-h: 140px; }
+  .battle-strip { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; flex-basis: auto; height: var(--strip-h); }
 }
 
 @media (max-width: 767px) {
@@ -246,7 +248,6 @@ html.away { filter: grayscale(1); }
 /* phones: the banner and the equip toasts sit over the paper's empty top roll, not over its result or the prediction line */
 @media (max-width: 600px) {
   .discovery-banner { top: 28%; }
-  .strip-float .equip-toasts { bottom: 148px; }
 }
 /* ---- magic circle parchment: tap a slot, pick an element or rune; strokes draw on (stroke-dashoffset), 合成 fills a ring ---- */
 .parchment-panel { display: flex; flex-direction: column; gap: 8px; }
@@ -532,7 +533,7 @@ html.away { filter: grayscale(1); }
 .spell-facts-line { margin: 0.25rem 0; font-size: 0.85em; }
 
 /* equip-this-spell toasts: centred just above the battle strip (clear of the stage bar, DPS and boss timer inside it), newest on top, each with a draining countdown bar */
-.equip-toasts { position: fixed; left: 50%; bottom: 188px; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 6px; align-items: center; width: max-content; max-width: min(calc(100% - 32px), 360px); }
+.equip-toasts { position: fixed; left: 50%; bottom: calc(var(--strip-h) + 8px + var(--key-row-h) + 6px); transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 6px; align-items: center; width: max-content; max-width: min(calc(100% - 32px), 360px); }
 .equip-toast { position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; padding: 8px 8px 11px 14px; font-size: 15px; color: var(--gold); background: rgba(13, 15, 20, 0.92); border: 1px solid var(--gold); border-radius: 8px; animation: toast-in 0.25s ease-out; }
 .equip-toast button { min-height: 44px; padding: 2px 16px; font-size: 15px; color: #0d0f14; background: var(--gold); border: 0; border-radius: 5px; cursor: pointer; }
 .equip-toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--gold); transform-origin: left; animation: toast-drain linear forwards; }

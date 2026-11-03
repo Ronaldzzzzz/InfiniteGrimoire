@@ -115,7 +115,7 @@ describe('final fix wave css', () => {
   it('on phones the banner and equip toasts move off the result and prediction, after the base rules', () => {
     const banner = css.search(/\.discovery-banner \{ top: 28%; \}/);
     expect(banner).toBeGreaterThan(css.search(/^\.discovery-banner \{/m));
-    const toast = css.search(/\.strip-float \.equip-toasts \{ bottom: 148px/);
+    const toast = css.search(/\.discovery-banner \{ top: 28%; \}/);
     expect(toast).toBeGreaterThan(-1); // two classes outrank the base rule wherever it sits
     expect(css.lastIndexOf('@media (max-width: 600px)', banner)).toBeGreaterThan(css.lastIndexOf('}\n', banner - 200));
   });
@@ -132,9 +132,11 @@ describe('equip toast', () => {
     expect(rule(css, '.equip-toast-bar')).toMatch(/transform-origin:\s*left/);
     expect(css).toMatch(/@keyframes toast-drain[^}]*scaleX\(var\(--bar-start/);
   });
-  it('stays centred on phones (no right offset)', () => {
-    const r = rule(media(600).body, '.strip-float .equip-toasts');
-    expect(r).not.toMatch(/\bright:/);
-    expect(r).not.toMatch(/\bleft:/);
+  it('sits above the strip and its key-item row, tied to the strip height variable', () => {
+    const r = css.match(/^\.equip-toasts \{([^}]*)\}/m)![1]!;
+    expect(r).toMatch(/bottom:\s*calc\(var\(--strip-h\)[^;]*var\(--key-row-h\)/);
+    expect(css).toMatch(/\.battle-strip \{[^}]*height:\s*var\(--strip-h\)/);
+    expect(media(600).body).toMatch(/:root \{ --strip-h: 140px/);
+    expect(media(600).body).toMatch(/\.battle-strip \{[^}]*height:\s*var\(--strip-h\)/);
   });
 });
