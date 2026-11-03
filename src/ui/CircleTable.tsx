@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from 'react';
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type Ref } from 'react';
 import {
   branches, circuitMismatches, GRADE_CAP, MAX_RING2, overcomes, parseCanonical, placementProblems, placementTier, relations,
   RING_FLOOR, RUNE_IDS, RUNE_NAMES, runesUnlocked, SLOTS,
@@ -9,6 +9,7 @@ import { circleCost, failChance } from '../engine/circle-synth';
 import type { Content } from '../engine/model';
 import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type ElementId, type ItemId } from '../engine/types';
 import type { ActionResult } from '../game/api';
+import { CircleFx } from '../render/circle-fx';
 import { COLORS } from '../render/palette';
 import { RuneIcon, RUNE_BAND_COUNT } from './RuneIcon';
 import {
@@ -17,7 +18,7 @@ import {
 import { RingPicker, type WheelItem } from './RingPicker';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { PARCHMENT_SRC, useArt } from './useArt';
-import { MUTATION_MS, NO_FX, PROGRESS_MS, revealKindOf, type CircleFxApi, type RevealKind } from './circle-reveal';
+import { MUTATION_MS, PROGRESS_MS, revealKindOf, type CircleFxApi, type RevealKind } from './circle-reveal';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /**
@@ -160,7 +161,7 @@ export const CircleTable = memo(function CircleTable({
   content,
   onResult,
   onCharging,
-  fx = NO_FX,
+  fx: fxProp,
   ref,
 }: {
   runtime: RuntimeStore;
@@ -170,7 +171,7 @@ export const CircleTable = memo(function CircleTable({
   onResult?: (r: ActionResult) => void;
   /** true when 合成 starts, false when the result is revealed (or refused, failed, unmounted) */
   onCharging?: (charging: boolean) => void;
-  /** the particle layer over the sheet (Task 8: Pixi); a no-op by default */
+  /** the particle layer over the sheet; by default the Pixi overlay (CircleFx), built on the first charge */
   fx?: CircleFxApi;
   ref?: Ref<CircleTableHandle>;
 }) {
@@ -211,6 +212,23 @@ export const CircleTable = memo(function CircleTable({
   const busy = charging !== null || synthPending;
 
   const hasArt = useArt(PARCHMENT_SRC);
+  // the Pixi particle layer: built on the first charge (never at mount), so an idle table costs nothing
+  const fxHost = useRef<HTMLDivElement>(null);
+  const ownFx = useRef<CircleFx | null>(null);
+  const lazyFx = useMemo<CircleFxApi>(() => ({
+    charge(c, ms) {
+      if (!ownFx.current && fxHost.current) ownFx.current = new CircleFx(fxHost.current);
+      ownFx.current?.charge(c, ms);
+    },
+    hold() { ownFx.current?.hold(); },
+    reveal(k) { ownFx.current?.reveal(k); },
+    stop() { ownFx.current?.stop(); },
+  }), []);
+  useEffect(() => () => {
+    ownFx.current?.destroy();
+    ownFx.current = null;
+  }, []);
+  const fx = fxProp ?? lazyFx;
   const parchment = useRef<HTMLElement>(null);
   const alive = useRef(true);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
@@ -674,6 +692,7 @@ export const CircleTable = memo(function CircleTable({
           ))}
         </div>
       )}
+      <div ref={fxHost} className="circle-fx" aria-hidden="true" />
       </div>
 
       <div className="rune-row">

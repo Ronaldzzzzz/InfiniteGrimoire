@@ -394,6 +394,8 @@ html.away { filter: grayscale(1); }
 @keyframes circle-smoke { from { opacity: 0.9; transform: translateY(0) scale(0.6); } to { opacity: 0; transform: translateY(-40%) scale(1.8); } }
 .ash .ash-bit { position: absolute; top: 30%; width: 3px; height: 3px; border-radius: 1px; background: #4a3a2a; opacity: 0; animation: circle-ash 1.5s ease-in forwards; }
 @keyframes circle-ash { 0% { opacity: 0; transform: translateY(0) rotate(0); } 15% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(160%) rotate(160deg); } }
+/* the Pixi particle layer (CircleFx) over the whole sheet; built on the first charge, never takes the pointer */
+.circle-fx { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
 /* the dev preview (DEV and ?fx): five buttons at the sheet's corner */
 .fx-preview { position: absolute; top: 2%; right: 2%; z-index: 3; display: flex; flex-direction: column; gap: 4px; }
 .fx-preview button { padding: 2px 8px; font-size: 12px; min-height: 0; }

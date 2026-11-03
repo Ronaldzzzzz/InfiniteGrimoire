@@ -11,6 +11,8 @@ import { App } from './App';
 import { fakeRuntime } from './test-runtime';
 
 vi.mock('./BattleCanvas', () => ({ BattleCanvas: () => null }));
+// jsdom has no WebGL: the parchment's particle layer is a no-op here
+vi.mock('../render/circle-fx', () => ({ CircleFx: class { charge() {} hold() {} reveal() {} stop() {} destroy() {} } }));
 // counts a render only when the props changed: the spy sits behind the same shallow comparison the real component has
 const renders = vi.hoisted(() => ({ parchment: vi.fn(), keys: vi.fn() }));
 vi.mock('./CircleTable', async (orig) => {

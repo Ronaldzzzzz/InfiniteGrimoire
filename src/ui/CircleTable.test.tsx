@@ -11,9 +11,19 @@ import type { CircleFxApi } from './circle-reveal';
 import { SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE } from './messages';
 import { fakeRuntime } from './test-runtime';
 
+// jsdom has no WebGL: the default particle layer is a spy (spec 2.4), never a real Pixi app
+const overlay = vi.hoisted(() => ({ made: [] as { host: HTMLElement; charge: ReturnType<typeof vi.fn>; hold: ReturnType<typeof vi.fn>; reveal: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> }[] }));
+vi.mock('../render/circle-fx', () => ({
+  CircleFx: class {
+    charge = vi.fn(); hold = vi.fn(); reveal = vi.fn(); stop = vi.fn(); destroy = vi.fn();
+    constructor(public host: HTMLElement) { overlay.made.push(this); }
+  },
+}));
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  overlay.made.length = 0;
 });
 
 const FIREBALL = 'm:fire.2.----f.-----.bolt';
@@ -548,6 +558,31 @@ describe('CircleTable', () => {
       }
       expect(new Set(seen).size).toBe(1);
       expect(seen[0]).toContain('charging');
+    });
+
+    it('without an fx prop the Pixi overlay is built on the first charge, over the sheet, and destroyed on unmount', async () => {
+      vi.useFakeTimers();
+      const h = setup();
+      drawSmall();
+      expect(overlay.made).toHaveLength(0);
+      fireEvent.click(synthButton());
+      expect(overlay.made).toHaveLength(1);
+      const o = overlay.made[0]!;
+      expect(o.host.classList.contains('circle-fx')).toBe(true);
+      expect(o.host.parentElement).toBe(sheet());
+      expect(o.charge).toHaveBeenCalledWith(expect.any(Array), PROGRESS_MS);
+      h.reply({ kind: 'learned', spellId: FIREBALL, form: 'bolt' });
+      await flush();
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(o.reveal).toHaveBeenCalledWith('learned');
+      // a second cast reuses the same overlay
+      act(() => vi.advanceTimersByTime(2000));
+      drawSmall();
+      fireEvent.click(synthButton());
+      expect(overlay.made).toHaveLength(1);
+      expect(o.charge).toHaveBeenCalledTimes(2);
+      cleanup();
+      expect(o.destroy).toHaveBeenCalledTimes(1);
     });
 
     it('a reply after 3 s holds the pause, then reveals on arrival', async () => {
