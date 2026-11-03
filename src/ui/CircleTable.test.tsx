@@ -62,6 +62,14 @@ describe('CircleTable', () => {
     expect(screen.getByText('先選核心元素')).toBeTruthy();
   });
 
+  it('the parchment sits on a sheet with a fallback paper until the art loads', () => {
+    setup();
+    const sheet = document.querySelector('.parchment-sheet')!;
+    expect(sheet).toBeTruthy();
+    expect(sheet.classList.contains('has-art')).toBe(false);
+    expect(sheet.querySelector('.parchment')).toBeTruthy();
+  });
+
   it('shows the prediction (main element, effects, tier) without the form', () => {
     setup();
     drawSmall();

@@ -46,3 +46,23 @@ describe('magic circle parchment', () => {
     expect(rule(css, '.parchment-svg .rune-band .hit')).toMatch(/pointer-events:\s*stroke/);
   });
 });
+
+describe('study desk and parchment sheet', () => {
+  const body = (sel: string) => css.match(new RegExp(`(?:^|[}\\s])${sel.replace(/[.:()]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+  it('the workbench has the desk art on top of a fallback wood look', () => {
+    const r = body('.workbench');
+    expect(r).toContain('url("/assets/desk.webp")');
+    expect(r).toMatch(/repeating-linear-gradient/);
+    expect(r).toMatch(/radial-gradient/);
+  });
+  it('the sheet shows the parchment art once loaded', () => {
+    expect(body('.parchment-sheet.has-art')).toContain('url("/assets/parchment.webp")');
+  });
+  it('without the art the sheet is a torn paper stand-in', () => {
+    expect(body('.parchment-sheet:not(.has-art)')).toMatch(/clip-path:\s*polygon/);
+  });
+  it('the circle stays square on a portrait sheet', () => {
+    expect(body('.parchment-sheet')).toMatch(/aspect-ratio:\s*4\s*\/\s*5/);
+    expect(body('.parchment')).toMatch(/aspect-ratio:\s*1/);
+  });
+});

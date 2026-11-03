@@ -14,6 +14,7 @@ import {
 } from './circle-draw';
 import { RingPicker, type WheelItem } from './RingPicker';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
+import { PARCHMENT_SRC, useArt } from './useArt';
 import { useRuntime, type RuntimeStore } from './useGame';
 
 /**
@@ -160,6 +161,7 @@ export const CircleTable = memo(function CircleTable({
   const runes = runesKey.split(',') as RuneId[];
   const busy = charging !== null || synthPending;
 
+  const hasArt = useArt(PARCHMENT_SRC);
   const parchment = useRef<HTMLElement>(null);
   const alive = useRef(true);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
@@ -383,8 +385,15 @@ export const CircleTable = memo(function CircleTable({
 
   return (
     <div className="parchment-panel">
+      <div className={`parchment-sheet${hasArt ? ' has-art' : ''}`}>
       <section ref={parchment} className={`parchment${charging ? ' charging' : ''}`} aria-label="魔法陣" style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
         <svg className="parchment-svg" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
+          <defs>
+            <filter id="ink-rough" x="-5%" y="-5%" width="110%" height="110%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="3" result="n" />
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="1.2" />
+            </filter>
+          </defs>
           {shown1.length > 0 && <circle className={`ring-line${mismatch[0] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[0]} />}
           {shown2.length > 0 && <circle className={`ring-line outer${mismatch[1] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[1]} />}
           {draft.core && ring1.map((x, j) => x && (
@@ -468,6 +477,7 @@ export const CircleTable = memo(function CircleTable({
           />
         )}
       </section>
+      </div>
 
       <div className="rune-row">
         <button type="button" className="circle-clear" disabled={busy} onClick={() => { setTarget(null); edit(emptyDraft); }}>清空魔法陣</button>
