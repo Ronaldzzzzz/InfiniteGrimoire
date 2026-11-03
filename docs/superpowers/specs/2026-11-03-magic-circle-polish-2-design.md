@@ -1,6 +1,6 @@
 # 魔法陣第二輪改版設計規格（2026-11-03）
 
-**狀態：** 草稿，待使用者確認。
+**狀態：** 已實作（2026-11-03，`feat/magic-circle`；驗收見 `docs/superpowers/sdd/2026-11-03-magic-circle-polish-2/acceptance.md`）。
 **依據：** 第二次試玩回饋與使用者決定 `docs/superpowers/specs/2026-11-03-magic-circle-playtest-2.md`（第 9 節是決定）。上一輪的外觀規格 `2026-10-31-magic-circle-polish-design.md` 照舊有效，本文件只寫要改的地方。
 **Branch：** 接在 `feat/magic-circle` 上做（還沒合併）。
 
