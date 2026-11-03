@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CENTER, CIRCLE_PAIRS, circumference, wheelCenter, wheelPoints, wheelLayout, GRADE_WHEEL_R, ITEM_HALF, VIEW, pentagramPoints, PROGRESS_R, openSlotCounts, RING2_DEFAULT, RING_R, shownPoint, shownSlots, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
+import { CENTER, CIRCLE_PAIRS, circumference, wheelCenter, wheelPoints, wheelLayout, GRADE_WHEEL_R, RUNE_WHEEL_R, RUNE_BAND_R, ITEM_HALF, VIEW, pentagramPoints, PROGRESS_R, openSlotCounts, RING2_DEFAULT, RING_R, shownPoint, shownSlots, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
 
 const dist = (p: { x: number; y: number }) => Math.hypot(p.x - CENTER, p.y - CENTER);
 const angle = (p: { x: number; y: number }) => Math.atan2(p.y - CENTER, p.x - CENTER);
@@ -101,4 +101,25 @@ describe('grade wheel layout', () => {
       }
     });
   }
+});
+
+describe('rune wheel layout', () => {
+  for (const [ring, name] of [[0, 'ring 1'], [1, 'ring 2']] as const) {
+    it(`keeps eight items inside the sheet and apart: ${name} top`, () => {
+      const { points } = wheelLayout({ x: CENTER, y: CENTER - RING_R[ring] }, 8, RUNE_WHEEL_R);
+      for (const p of points) {
+        expect(p.x - ITEM_HALF).toBeGreaterThanOrEqual(0);
+        expect(p.x + ITEM_HALF).toBeLessThanOrEqual(VIEW);
+        expect(p.y - ITEM_HALF).toBeGreaterThanOrEqual(0);
+        expect(p.y + ITEM_HALF).toBeLessThanOrEqual(VIEW);
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = points[i]!, b = points[(i + 1) % 8]!;
+        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(ITEM_HALF * 2);
+      }
+    });
+  }
+  it('bands sit just outside their rings', () => {
+    expect(RUNE_BAND_R).toEqual([RING_R[0] + 10, RING_R[1] + 10]);
+  });
 });

@@ -42,9 +42,7 @@ describe('magic circle parchment', () => {
   it('marks a clashing wire in red', () => {
     expect(rule(css, '.parchment-svg .wire.clash')).toMatch(/stroke:\s*#b0331d/);
   });
-  it('keeps the picker actions pinned at the top so 關閉 stays in view on a phone', () => {
-    const r = rule(css, '.circle-picker .picker-actions');
-    expect(r).toMatch(/position:\s*sticky/);
-    expect(r).toMatch(/top:\s*0/);
+  it('lets the rune band take taps through the pointer-less svg', () => {
+    expect(rule(css, '.parchment-svg .rune-band .hit')).toMatch(/pointer-events:\s*stroke/);
   });
 });

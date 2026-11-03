@@ -8,6 +8,10 @@ export const VIEW = 240;
 export const CENTER = VIEW / 2;
 /** Radius of ring 1 (the pentagram's points) and ring 2. */
 export const RING_R = [62, 100] as const;
+/** Radius of each ring's rune band, just outside the ring (placeholder). */
+export const RUNE_BAND_R = [RING_R[0] + 10, RING_R[1] + 10] as const;
+/** Radius of the rune wheel: eight items of ITEM_HALF * 2 stay apart (chord of 8 points >= 36). */
+export const RUNE_WHEEL_R = 50;
 /** Radius of the injection progress ring, just outside ring 2. */
 export const PROGRESS_R = 114;
 export const SLOT_COUNT = 5;

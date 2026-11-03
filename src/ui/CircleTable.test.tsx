@@ -396,6 +396,48 @@ describe('CircleTable', () => {
     expect(btn(/^一環 第1格：風・初階/)).toBeTruthy();
   });
 
+  it('draws a rune band only for an open ring', () => {
+    setup();
+    expect(btn('一環符文：空')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^二環符文/ })).toBeNull();
+    cleanup();
+    setup({ circleTier: 7 });
+    expect(btn('一環符文：空')).toBeTruthy();
+    expect(btn('二環符文：空')).toBeTruthy();
+  });
+
+  it('the band shows the chosen rune along the ring', () => {
+    setup();
+    choose(/^一環符文/, /^射/);
+    const band = btn('一環符文：射');
+    const text = band.querySelector('textPath')!.textContent!;
+    expect(text.length).toBeGreaterThanOrEqual(6);
+    expect(text).toBe('射'.repeat(text.length));
+    expect(band.classList.contains('rune-band')).toBe(true);
+  });
+
+  it('tapping the band grows the rune wheel; locked runes say 從魔王取得', () => {
+    setup();
+    fireEvent.click(btn(/^一環符文/));
+    const dialog = screen.getByRole('dialog', { name: '選擇一環符文' });
+    const items = within(dialog).getAllByRole('button').filter((b) => b.classList.contains('ring-item')) as HTMLButtonElement[];
+    expect(items).toHaveLength(8);
+    expect(items.filter((b) => !b.disabled).map((b) => b.textContent)).toEqual(['射']);
+    for (const b of items.filter((x) => x.disabled)) expect(b.title).toBe('從魔王取得');
+  });
+
+  it('the band opens with the keyboard and is inert while injecting', async () => {
+    const { reply } = setup();
+    drawSmall();
+    fireEvent.keyDown(btn('一環符文：射'), { key: 'Enter' });
+    expect(screen.getByRole('dialog', { name: '選擇一環符文' })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    fireEvent.click(synthButton());
+    fireEvent.click(btn('一環符文：射'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    void reply;
+  });
+
   it('removes a node and clears the whole circle', () => {
     setup();
     drawSmall();

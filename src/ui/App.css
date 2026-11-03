@@ -252,6 +252,12 @@ html.away { filter: grayscale(1); }
 .parchment-svg .star { stroke-width: 1.2; }
 .parchment-svg .core-mark { stroke-width: 2.4; }
 .parchment-svg .node-mark { stroke-width: 2; }
+.parchment-svg .rune-band { pointer-events: none; cursor: pointer; outline: none; }
+.parchment-svg .rune-band .hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
+.parchment-svg .rune-band text { font-size: 9px; fill: #6b4a2299; letter-spacing: 0; pointer-events: none; }
+.parchment-svg .rune-band.filled text { fill: var(--ink); font-weight: 700; }
+.parchment-svg .rune-band:hover text, .parchment-svg .rune-band:focus-visible text, .parchment-svg .rune-band.lit text { fill: var(--gold); filter: drop-shadow(0 0 3px #e8b84a); }
+.parchment-svg .rune-band.busy { cursor: default; }
 .parchment-svg .progress-track { fill: none; stroke: #6b4a2233; stroke-width: 4; }
 .parchment-svg .progress-fill { fill: none; stroke-width: 4; stroke-linecap: round; stroke-dashoffset: var(--len); animation: circle-fill var(--dur) linear forwards; filter: drop-shadow(0 0 3px #fff8); }
 .parchment-svg .spark { opacity: 0; animation: circle-spark 0.9s ease-out infinite; animation-delay: calc(var(--i) * 0.11s); transform-box: fill-box; transform-origin: center; }
@@ -290,17 +296,6 @@ html.away { filter: grayscale(1); }
 @keyframes circle-result-in { from { opacity: 0; transform: scale(0.85); } }
 
 .rune-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-.rune-slot b { color: var(--gold); margin-left: 4px; }
-.rune-slot.filled { border-color: var(--gold); }
-.circle-picker {
-  position: absolute; left: 6%; right: 6%; bottom: 6%; max-height: 60%; overflow-y: auto; z-index: 2;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 8px; display: flex; flex-direction: column; gap: 6px;
-  box-shadow: 0 4px 16px #000a; color: var(--text); outline: none;
-}
-.circle-picker .picker-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-.circle-picker .picker-grid button { --c: var(--line); border-left: 4px solid var(--c); padding: 6px 8px; font-size: 13px; }
-.circle-picker .picker-grid button.on { border-color: var(--gold); }
-.circle-picker .picker-actions { display: flex; gap: 6px; justify-content: flex-end; position: sticky; top: 0; z-index: 1; order: -1; background: var(--panel); padding-bottom: 4px; }
 .ring-picker { position: absolute; inset: 0; z-index: 2; outline: none; }
 .ring-picker-backdrop { position: absolute; inset: 0; background: transparent; }
 .ring-picker .ring-item {

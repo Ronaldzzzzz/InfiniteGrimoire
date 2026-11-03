@@ -10,7 +10,7 @@ import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type Elemen
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
 import {
-  CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, GRADE_WHEEL_R, VIEW, WHEEL_ORDER, type Pt,
+  CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, RUNE_BAND_R, RUNE_WHEEL_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, GRADE_WHEEL_R, VIEW, WHEEL_ORDER, type Pt,
 } from './circle-draw';
 import { RingPicker, type WheelItem } from './RingPicker';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
@@ -357,6 +357,30 @@ export const CircleTable = memo(function CircleTable({
     );
   };
 
+  const runeAt = (ring: Ring): Pt => ({ x: CENTER, y: CENTER - RING_R[ring] });
+  const runeBand = (ring: Ring) => {
+    const r = RUNE_BAND_R[ring];
+    const chosen = draft.runes[ring];
+    const id = `rune-path-${ring}`;
+    const unit = chosen ? RUNE_NAMES[chosen] : '·';
+    const text = Array.from({ length: Math.floor(circumference(r) / 14) }, () => unit).join(chosen ? '' : ' ');
+    const open = (): void => {
+      if (busy) return;
+      setMessage('');
+      setTarget({ kind: 'rune', ring });
+    };
+    return (
+      <g key={ring} className={`rune-band${chosen ? ' filled' : ''}${target?.kind === 'rune' && target.ring === ring ? ' lit' : ''}${busy ? ' busy' : ''}`}
+        data-rune={ring} role="button" tabIndex={busy ? -1 : 0} aria-disabled={busy || undefined}
+        aria-label={`${RING_NAME[ring]}符文：${chosen ? RUNE_NAMES[chosen] : '空'}`}
+        onClick={open} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}>
+        <path id={id} d={`M ${CENTER} ${CENTER - r} A ${r} ${r} 0 1 1 ${CENTER - 0.01} ${CENTER - r}`} fill="none" stroke="none" />
+        <circle className="hit" cx={CENTER} cy={CENTER} r={r} />
+        <text><textPath href={`#${id}`} textLength={circumference(r)} lengthAdjust="spacing">{text}</textPath></text>
+      </g>
+    );
+  };
+
   return (
     <div className="parchment-panel">
       <section ref={parchment} className={`parchment${charging ? ' charging' : ''}`} aria-label="魔法陣" style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
@@ -392,6 +416,9 @@ export const CircleTable = memo(function CircleTable({
               ))}
             </>
           )}
+        </svg>
+        <svg className="parchment-svg rune-svg" viewBox={`0 0 ${VIEW} ${VIEW}`}>
+          {([0, 1] as Ring[]).filter((ring) => (ring === 0 ? shown1 : shown2).length > 0).map((ring) => runeBand(ring))}
         </svg>
         <button
           type="button"
@@ -430,18 +457,19 @@ export const CircleTable = memo(function CircleTable({
           />
         )}
         {target && !busy && target.kind === 'rune' && (
-          <Picker target={target} draft={draft} runes={runes} onRune={(r) => setRune(target.ring, r)} onClose={() => setTarget(null)} />
+          <RuneWheel
+            at={runeAt(target.ring)}
+            ring={target.ring}
+            current={draft.runes[target.ring]}
+            runes={runes}
+            onRune={(r) => setRune(target.ring, r)}
+            onClose={() => setTarget(null)}
+            returnFocus={() => parchment.current?.querySelector<SVGGElement>(`[data-rune="${target.ring}"]`)?.focus()}
+          />
         )}
       </section>
 
       <div className="rune-row">
-        {([0, 1] as Ring[]).map((ring) => (
-          <button key={ring} type="button" className={`rune-slot${draft.runes[ring] ? ' filled' : ''}`} disabled={busy}
-            aria-label={`${RING_NAME[ring]}符文：${draft.runes[ring] ? RUNE_NAMES[draft.runes[ring]!] : '空'}`}
-            onClick={() => setTarget({ kind: 'rune', ring })}>
-            {RING_NAME[ring]}符文 <b>{draft.runes[ring] ? RUNE_NAMES[draft.runes[ring]!] : '—'}</b>
-          </button>
-        ))}
         <button type="button" className="circle-clear" disabled={busy} onClick={() => { setTarget(null); edit(emptyDraft); }}>清空魔法陣</button>
       </div>
 
@@ -505,45 +533,29 @@ function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, onCl
   );
 }
 
-function Picker({ target, draft, runes, onRune, onClose }: {
-  target: Extract<Target, { kind: 'rune' }>;
-  draft: Draft;
+function RuneWheel({ at, ring, current, runes, onRune, onClose, returnFocus }: {
+  at: Pt;
+  ring: Ring;
+  current: RuneId | null;
   runes: RuneId[];
   onRune: (r: RuneId | null) => void;
   onClose: () => void;
+  returnFocus: () => void;
 }) {
-  // opening moves focus into the picker (first enabled option); Escape closes it
-  const box = useRef<HTMLDivElement>(null);
-  const targetKey = JSON.stringify(target);
-  useEffect(() => {
-    box.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-  }, [targetKey]);
-  const keys = {
-    ref: box,
-    tabIndex: -1,
-    onKeyDown: (e: { key: string; stopPropagation(): void }) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      onClose();
-    },
-  };
-  const current = draft.runes[target.ring];
+  const items: WheelItem[] = RUNE_IDS.map((r) => {
+    const known = runes.includes(r);
+    return {
+      key: r,
+      label: RUNE_NAMES[r],
+      ariaLabel: known ? RUNE_NAMES[r] : `${RUNE_NAMES[r]}（未取得）`,
+      enabled: known,
+      on: r === current,
+      title: known ? undefined : '從魔王取得',
+    };
+  });
   return (
-    <div className="circle-picker" role="dialog" aria-label={`選擇${RING_NAME[target.ring]}符文`} {...keys}>
-      <div className="picker-grid">
-        {RUNE_IDS.map((r) => {
-          const known = runes.includes(r);
-          return (
-            <button key={r} type="button" className={r === current ? 'on' : ''} disabled={!known} title={known ? undefined : '還沒學會這個符文'} onClick={() => onRune(r)}>
-              {RUNE_NAMES[r]}{known ? '' : '（未取得）'}
-            </button>
-          );
-        })}
-      </div>
-      <div className="picker-actions">
-        {current && <button type="button" onClick={() => onRune(null)}>移除</button>}
-        <button type="button" onClick={onClose}>關閉</button>
-      </div>
-    </div>
+    <RingPicker at={at} title={`選擇${RING_NAME[ring]}符文`} items={items} radius={RUNE_WHEEL_R}
+      onPick={(k) => onRune(k as RuneId)} onRemove={current ? () => onRune(null) : undefined}
+      onClose={onClose} returnFocus={returnFocus} />
   );
 }
