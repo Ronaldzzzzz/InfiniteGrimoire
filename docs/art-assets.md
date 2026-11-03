@@ -364,3 +364,27 @@ top-down view of a thick dark oak writing desk in a dim medieval wizard's study,
 paper, books, candles visible, quills, objects in the center, people, hands, text, watermark, logo, bright lighting, overexposed, blurry
 ```
 - 小技巧：生成後若太亮，整張降低亮度約 30～40%；中間偏暗沒關係，紙張會蓋在上面。
+
+## 符文圖示（魔法陣區的八個符文）
+
+符文帶與符文圈用圖示顯示，缺檔時程式畫暫代線稿，放進檔案就會自動換上。
+
+- 檔名：`public/assets/rune-<id>.webp`，id 對應：`bolt` 射、`blades` 刃、`ring` 波、`chain` 鏈、`zone` 域、`meteor` 墜、`storm` 嵐、`field` 臨。
+- 尺寸：256×256，透明背景，深色墨線（要能放在羊皮紙上），單色為主，可帶一點金色點綴；小尺寸（約 14 px）也要看得出輪廓。
+- 共用提示詞前綴：
+```
+a single arcane rune icon, hand-inked dark brown ink line art on transparent background, bold simple silhouette, slight gold leaf accent, medieval grimoire style, centered, no text, no border, flat, high contrast,
+```
+- 各符文接在前綴後面：
+  - 射 `bolt`：`a straight arrow pointing right`
+  - 刃 `blades`：`two crossed curved blades`
+  - 波 `ring`：`concentric ripple arcs spreading outward`
+  - 鏈 `chain`：`three interlocked chain rings`
+  - 域 `zone`：`a circle filled with a square grid`
+  - 墜 `meteor`：`a falling star with a streaking tail`
+  - 嵐 `storm`：`a spiral whirlwind`
+  - 臨 `field`：`an inverted triangle with a dot at its center`
+- 負面提示詞：
+```
+text, letters, background, frame, border, color gradient, photo, realistic shading, watermark, logo, blurry
+```

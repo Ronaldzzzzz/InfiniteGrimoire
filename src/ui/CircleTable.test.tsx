@@ -503,9 +503,9 @@ describe('CircleTable', () => {
     setup();
     choose(/^一環符文/, /^射/);
     const band = btn('一環符文：射');
-    const text = band.querySelector('textPath')!.textContent!;
-    expect(text.length).toBeGreaterThanOrEqual(6);
-    expect(text).toBe('射'.repeat(text.length));
+    expect(band.querySelectorAll('[data-rune="bolt"]')).toHaveLength(12);
+    expect(band.querySelector('textPath')).toBeNull();
+    expect(band.textContent).toBe('');
     expect(band.classList.contains('rune-band')).toBe(true);
   });
 
@@ -517,6 +517,9 @@ describe('CircleTable', () => {
     expect(items).toHaveLength(8);
     expect(items.filter((b) => !b.disabled).map((b) => b.textContent)).toEqual(['射']);
     for (const b of items.filter((x) => x.disabled)) expect(b.title).toBe('從魔王取得');
+    const known = items.find((b) => !b.disabled)!;
+    expect(known.querySelector('[data-rune="bolt"]')).toBeTruthy();
+    expect(known.querySelector('.ring-item-name')!.textContent).toBe('射');
   });
 
   it('the band opens with the keyboard and is inert while injecting', async () => {
@@ -625,6 +628,7 @@ describe('placementOfSpell', () => {
       expect(locked.length).toBeGreaterThan(0);
       for (const b of locked) {
         expect(b.textContent).toBe('？');
+        expect(b.querySelector('[data-rune="locked"]')).toBeTruthy();
         expect((b as HTMLButtonElement).disabled || b.getAttribute('aria-disabled') === 'true').toBe(true);
       }
       expect(dlg.queryByRole('button', { name: /^刃/ })).toBeNull();
@@ -644,15 +648,14 @@ describe('placementOfSpell', () => {
       expect(document.querySelector('.parchment')!.classList.contains('charging')).toBe(true);
     });
 
-    it('the rune band glyphs are hidden from readers and start away from the 12 o clock seam', () => {
+    it('the rune band icons are hidden from readers and start away from the 12 o clock seam', () => {
       setup();
       choose(/^一環符文/, /^射/);
       const band = btn('一環符文：射');
-      expect(band.querySelector('text')!.getAttribute('aria-hidden')).toBe('true');
-      const d = band.querySelector('path')!.getAttribute('d')!;
-      const [, sx, sy] = /^M ([\d.]+) ([\d.]+)/.exec(d)!;
+      const first = band.querySelector('[data-rune="bolt"]')!.parentElement!;
+      expect(first.getAttribute('aria-hidden')).toBe('true');
+      const [, sx] = /translate\(([\d.]+) ([\d.]+)\)/.exec(first.getAttribute('transform')!)!;
       expect(Math.abs(Number(sx) - 200)).toBeGreaterThan(1);
-      expect(sy).toBeTruthy();
     });
   });
 });

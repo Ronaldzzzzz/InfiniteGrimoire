@@ -16,3 +16,6 @@ export function useArt(src: string): boolean {
   }, [src]);
   return loaded;
 }
+
+/** Optional art for one rune (256x256, transparent); missing files fall back to the drawn glyph. */
+export const runeArtSrc = (id: string): string => `/assets/rune-${id}.webp`;

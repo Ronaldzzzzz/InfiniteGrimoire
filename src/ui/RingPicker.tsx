@@ -1,9 +1,11 @@
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { ITEM_HALF, VIEW, WHEEL_R, wheelLayout, type Pt } from './circle-draw';
 
 export interface WheelItem {
   key: string;
   label: string;
+  /** drawn above the label (rune icons) */
+  icon?: ReactNode;
   ariaLabel: string;
   enabled: boolean;
   on?: boolean;
@@ -70,7 +72,7 @@ export function RingPicker({ at, title, items, onPick, onRemove, onClose, onBack
       {items.map((it, i) => (
         <button key={it.key} type="button" className={`ring-item${it.on ? ' on' : ''}`} style={{ ...pos(points[i]!), width: size, height: size, '--c': it.color ?? 'var(--line)' } as CSSProperties}
           aria-label={it.ariaLabel} title={it.title} disabled={!it.enabled} onClick={() => onPick(it.key)}>
-          {it.label}
+          {it.icon}{it.icon ? <span className="ring-item-name">{it.label}</span> : it.label}
         </button>
       ))}
       {note && <p className="ring-note" role="note">{note}</p>}

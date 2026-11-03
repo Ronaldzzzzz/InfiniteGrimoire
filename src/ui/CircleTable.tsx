@@ -10,6 +10,7 @@ import type { Content } from '../engine/model';
 import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type ElementId, type ItemId } from '../engine/types';
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
+import { RuneIcon, RUNE_BAND_COUNT } from './RuneIcon';
 import {
   CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, RUNE_BAND_R, RUNE_WHEEL_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, GRADE_WHEEL_R, VIEW, WHEEL_ORDER, type Pt,
 } from './circle-draw';
@@ -411,12 +412,8 @@ export const CircleTable = memo(function CircleTable({
   const runeBand = (ring: Ring) => {
     const r = RUNE_BAND_R[ring];
     const chosen = draft.runes[ring];
-    const id = `rune-path-${ring}`;
-    const unit = chosen ? RUNE_NAMES[chosen] : '·';
-    const text = Array.from({ length: Math.floor((circumference(r) - 14) / 14) }, () => unit).join(chosen ? '' : ' ');
-    // the band starts between two slots (36 deg) so the seam never sits under a node, and one glyph's gap closes the loop
-    const a0 = (36 * Math.PI) / 180, a1 = a0 - 0.0005;
-    const at = (a: number) => `${(CENTER + r * Math.sin(a)).toFixed(3)} ${(CENTER - r * Math.cos(a)).toFixed(3)}`;
+    // the band starts between two slots (36 deg) so the seam never sits under a node; icons sit mid-way between 30 deg steps
+    const a0 = (36 * Math.PI) / 180;
     const open = (): void => {
       if (busy) return;
       setMessage('');
@@ -427,9 +424,16 @@ export const CircleTable = memo(function CircleTable({
         data-rune={ring} role="button" tabIndex={busy ? -1 : 0} aria-disabled={busy || undefined}
         aria-label={`${RING_NAME[ring]}符文：${chosen ? RUNE_NAMES[chosen] : '空'}`}
         onClick={open} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}>
-        <path id={id} d={`M ${at(a0)} A ${r} ${r} 0 1 1 ${at(a1)}`} fill="none" stroke="none" />
         <circle className="hit" cx={CENTER} cy={CENTER} r={r} />
-        <text aria-hidden="true"><textPath href={`#${id}`} textLength={circumference(r) - 14} lengthAdjust="spacing">{text}</textPath></text>
+        <circle className="rune-dash" cx={CENTER} cy={CENTER} r={r} />
+        {chosen && Array.from({ length: RUNE_BAND_COUNT }, (_, k) => {
+          const a = a0 + ((k + 0.5) * 2 * Math.PI) / RUNE_BAND_COUNT;
+          return (
+            <g key={k} aria-hidden="true" transform={`translate(${(CENTER + r * Math.sin(a)).toFixed(2)} ${(CENTER - r * Math.cos(a)).toFixed(2)})`}>
+              <RuneIcon id={chosen} size={14} />
+            </g>
+          );
+        })}
       </g>
     );
   };
@@ -612,7 +616,8 @@ function RuneWheel({ at, ring, current, runes, onRune, onClose, returnFocus }: {
     const known = runes.includes(r);
     return {
       key: r,
-      label: known ? RUNE_NAMES[r] : '？',
+      icon: <svg className="ring-item-icon" viewBox="-12 -12 24 24" aria-hidden="true"><RuneIcon id={known ? r : null} size={20} /></svg>,
+      label: known ? RUNE_NAMES[r] : '',
       ariaLabel: known ? RUNE_NAMES[r] : '未取得的符文',
       enabled: known,
       on: r === current,
