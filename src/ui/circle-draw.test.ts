@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CENTER, CIRCLE_PAIRS, circumference, pentagramPoints, PROGRESS_R, RING_R, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
+import { CENTER, CIRCLE_PAIRS, circumference, pentagramPoints, PROGRESS_R, openSlotCounts, RING2_DEFAULT, RING_R, shownPoint, shownSlots, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
 
 const dist = (p: { x: number; y: number }) => Math.hypot(p.x - CENTER, p.y - CENTER);
 const angle = (p: { x: number; y: number }) => Math.atan2(p.y - CENTER, p.x - CENTER);
@@ -34,5 +34,34 @@ describe('circle-draw', () => {
     expect(s).toHaveLength(8);
     for (const p of s) expect(dist(p)).toBeCloseTo(PROGRESS_R, 1);
     expect(circumference(10)).toBeCloseTo(62.83, 2);
+  });
+
+  it('opens slots by the unlocked tier only', () => {
+    expect(openSlotCounts(1)).toEqual([0, 0]);
+    expect(openSlotCounts(2)).toEqual([1, 0]);
+    expect(openSlotCounts(4)).toEqual([3, 0]);
+    expect(openSlotCounts(6)).toEqual([5, 0]);
+    expect(openSlotCounts(7)).toEqual([5, 1]);
+    expect(openSlotCounts(10)).toEqual([5, 4]);
+    expect(RING2_DEFAULT[2]).toEqual([1, 4]);
+  });
+
+  it('shows the default slots plus any filled ones, ascending', () => {
+    expect(shownSlots(0, 2, [])).toEqual([0, 1]);
+    expect(shownSlots(0, 2, [0, 2])).toEqual([0, 1, 2]);
+    expect(shownSlots(1, 2, [])).toEqual([1, 4]);
+    expect(shownSlots(1, 3, [1])).toEqual([0, 1, 2, 3]);
+  });
+
+  it('spreads the shown ring-1 slots evenly from the top; ring 2 stays on its ray', () => {
+    expect(shownPoint(0, 0, [0])).toEqual({ x: CENTER, y: CENTER - RING_R[0] });
+    expect(shownPoint(0, 1, [0, 1])).toEqual({ x: CENTER, y: CENTER + RING_R[0] });
+    const four = shownPoint(0, 1, [0, 1, 2, 3]);
+    expect(four.x).toBeCloseTo(CENTER + RING_R[0], 1);
+    expect(four.y).toBeCloseTo(CENTER, 1);
+    for (let j = 0; j < 5; j++) {
+      expect(shownPoint(0, j, [0, 1, 2, 3, 4])).toEqual(slotPoint(0, j));
+      expect(shownPoint(1, j, [1, 4])).toEqual(slotPoint(1, j));
+    }
   });
 });

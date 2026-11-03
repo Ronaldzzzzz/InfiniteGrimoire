@@ -39,8 +39,8 @@ describe('battle strip layout', () => {
 });
 
 describe('magic circle parchment', () => {
-  it('draws the pentagram guide as an outline only, not a filled shape', () => {
-    expect(rule(css, '.parchment-svg .guide')).toMatch(/fill:\s*none/);
+  it('marks a clashing wire in red', () => {
+    expect(rule(css, '.parchment-svg .wire.clash')).toMatch(/stroke:\s*#b0331d/);
   });
   it('keeps the picker actions pinned at the top so 關閉 stays in view on a phone', () => {
     const r = rule(css, '.circle-picker .picker-actions');

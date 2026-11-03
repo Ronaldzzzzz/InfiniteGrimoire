@@ -43,7 +43,7 @@ export const GENERATES: Record<ElementId, ElementId> = {
 
 const filled = (ring: (CircleNode | null)[]) => ring.filter((x): x is CircleNode => x != null).length;
 const slot = <T,>(ring: (T | null)[] | undefined, j: number): T | null => ring?.[j] ?? null;
-const overcomes = (a: ElementId, b: ElementId) => COUNTERS[a] === b || COUNTERS[b] === a;
+export const overcomes = (a: ElementId, b: ElementId) => COUNTERS[a] === b || COUNTERS[b] === a;
 const capOf = (grade: number) => GRADE_CAP[Math.min(Math.max(Math.round(grade), 1), 5) - 1]!;
 
 /** Tier = node count with the core counted as 1. */

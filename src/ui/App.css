@@ -247,7 +247,7 @@ html.away { filter: grayscale(1); }
 .parchment-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .parchment-svg .ring-line { fill: none; stroke: #6b4a2266; stroke-width: 1.2; stroke-dasharray: 3 3; }
 .parchment-svg .ring-line.mismatch { stroke: #b0331d; stroke-width: 1.8; stroke-dasharray: 6 3; }
-.parchment-svg .guide { fill: none; stroke: #6b4a2233; stroke-width: 0.8; }
+.parchment-svg .wire.clash { stroke: #b0331d; }
 .parchment-svg .draw { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: circle-draw 0.6s ease-out forwards; }
 .parchment-svg .star { stroke-width: 1.2; }
 .parchment-svg .core-mark { stroke-width: 2.4; }

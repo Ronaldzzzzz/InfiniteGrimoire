@@ -52,3 +52,29 @@ export function sparkPoints(n: number, radius = PROGRESS_R): Pt[] {
     return { x: round(CENTER + radius * Math.cos(a)), y: round(CENTER + radius * Math.sin(a)) };
   });
 }
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** How many slots of ring 1 and ring 2 are open at a tier (only the unlocked tier, never the core: nothing jumps when the core changes). */
+export function openSlotCounts(unlockedTier: number): [ring1: number, ring2: number] {
+  return [clamp(unlockedTier - 1, 0, 5), clamp(unlockedTier - 6, 0, 4)];
+}
+
+/** Ring-2 rule slots drawn by default for an open count (symmetric about the vertical axis, on ring 1's star rays). */
+export const RING2_DEFAULT: Record<1 | 2 | 3 | 4, number[]> = { 1: [0], 2: [1, 4], 3: [0, 2, 3], 4: [1, 2, 3, 4] };
+
+/** The rule slot indices drawn for a ring: the default ones for `open` plus any already filled (a loaded circle), ascending. */
+export function shownSlots(ring: 0 | 1, open: number, filled: number[]): number[] {
+  const base = ring === 0
+    ? Array.from({ length: open }, (_, i) => i)
+    : open >= 1 ? RING2_DEFAULT[Math.min(open, 4) as 1 | 2 | 3 | 4] : [];
+  return [...new Set([...base, ...filled])].sort((a, b) => a - b);
+}
+
+/** Centre of rule slot j: ring 1 spreads its shown slots evenly from the top clockwise; ring 2 stays on its ray. */
+export function shownPoint(ring: 0 | 1, j: number, shown: number[]): Pt {
+  if (ring === 1) return rayPoint(j, RING_R[1]);
+  const k = Math.max(0, shown.indexOf(j));
+  const a = -Math.PI / 2 + (2 * Math.PI * k) / Math.max(1, shown.length);
+  return { x: round(CENTER + RING_R[0] * Math.cos(a)), y: round(CENTER + RING_R[0] * Math.sin(a)) };
+}

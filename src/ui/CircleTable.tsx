@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from 'react';
 import {
-  branches, circuitMismatches, GRADE_CAP, MAX_RING2, parseCanonical, placementProblems, placementTier, relations,
+  branches, circuitMismatches, GRADE_CAP, MAX_RING2, overcomes, parseCanonical, placementProblems, placementTier, relations,
   RING_FLOOR, RUNE_IDS, RUNE_NAMES, runesUnlocked, SLOTS,
 } from '../engine/circle';
 import type { CircleNode, Placement, RuneId } from '../engine/circle';
@@ -10,7 +10,7 @@ import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type Elemen
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
 import {
-  CENTER, CIRCLE_PAIRS, circumference, PROGRESS_R, RING_R, slotPoint, sparkPoints, STAR_PAIRS, starPath, VIEW, type Pt,
+  CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, VIEW, type Pt,
 } from './circle-draw';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { useRuntime, type RuntimeStore } from './useGame';
@@ -43,6 +43,7 @@ export const MISMATCH_WARNING = '迴路對不上：大失敗機率提高';
 const capOf = (grade: number) => GRADE_CAP[Math.min(Math.max(grade, 1), GRADE_CAP.length) - 1]!;
 const nodeName = (x: CircleNode) => `${ELEMENT_NAMES[x.element]}・${GRADE_NAMES[x.grade - 1]}`;
 const filled = (ring: (CircleNode | null)[]) => ring.filter((x) => x != null).length;
+const filledIdx = (ring: (CircleNode | null)[]): number[] => ring.flatMap((x, j) => (x ? [j] : []));
 
 const toPlacement = (d: Draft): Placement | null =>
   d.core ? { core: d.core, ring1: [...d.rings[0]], ring2: [...d.rings[1]], runes: [...d.runes] } : null;
@@ -316,6 +317,10 @@ export const CircleTable = memo(function CircleTable({
   const centre: Pt = { x: CENTER, y: CENTER };
   const pos = (p: Pt): CSSProperties => ({ left: `${(p.x / VIEW) * 100}%`, top: `${(p.y / VIEW) * 100}%` });
   const ring1 = draft.rings[0], ring2 = draft.rings[1];
+  const [open1, open2] = openSlotCounts(unlockedTier);
+  const shown1 = shownSlots(0, open1, filledIdx(ring1));
+  const shown2 = shownSlots(1, open2, filledIdx(ring2));
+  const pt = (ring: Ring, j: number): Pt => shownPoint(ring, j, ring === 0 ? shown1 : shown2);
 
   const slotButton = (ring: Ring, j: number) => {
     const x = draft.rings[ring][j] ?? null;
@@ -328,7 +333,7 @@ export const CircleTable = memo(function CircleTable({
         key={`${ring}-${j}`}
         type="button"
         className={`circle-slot ring${ring + 1}${x ? ' filled' : ''}${block ? ' blocked' : ''}`}
-        style={{ ...pos(slotPoint(ring, j)), ...(x ? { '--c': COLORS.element[x.element] } : {}) } as CSSProperties}
+        style={{ ...pos(pt(ring, j)), ...(x ? { '--c': COLORS.element[x.element] } : {}) } as CSSProperties}
         aria-label={label}
         title={block ?? undefined}
         disabled={busy}
@@ -352,22 +357,25 @@ export const CircleTable = memo(function CircleTable({
     <div className="parchment-panel">
       <section className={`parchment${charging ? ' charging' : ''}`} aria-label="魔法陣" style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
         <svg className="parchment-svg" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
-          <circle className={`ring-line${mismatch[0] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[0]} />
-          <circle className={`ring-line outer${mismatch[1] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[1]} />
-          <path className="guide" d={starPath()} />
-          {draft.core && ring1.map((x, j) => x && <Line key={`w${j}-${x.element}`} a={centre} b={slotPoint(0, j)} className="wire" />)}
+          {shown1.length > 0 && <circle className={`ring-line${mismatch[0] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[0]} />}
+          {shown2.length > 0 && <circle className={`ring-line outer${mismatch[1] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[1]} />}
+          {draft.core && ring1.map((x, j) => x && (
+            <Line key={`w${j}-${x.element}`} a={centre} b={pt(0, j)} className={`wire${overcomes(draft.core!.element, x.element) ? ' clash' : ''}`} />
+          ))}
           {CIRCLE_PAIRS.map(([a, b]) => ring1[a] && ring1[b] && (
-            <Line key={`c${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={slotPoint(0, a)} b={slotPoint(0, b)} className="edge" />
+            <Line key={`c${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={pt(0, a)} b={pt(0, b)} className="edge" />
           ))}
           {STAR_PAIRS.map(([a, b]) => ring1[a] && ring1[b] && (
-            <Line key={`s${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={slotPoint(0, a)} b={slotPoint(0, b)} className="star" />
+            <Line key={`s${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={pt(0, a)} b={pt(0, b)} className="star" />
           ))}
-          {ring2.map((x, j) => x && ring1[j] && <Line key={`o${j}-${x.element}`} a={slotPoint(0, j)} b={slotPoint(1, j)} className="wire" />)}
+          {ring2.map((x, j) => x && ring1[j] && (
+            <Line key={`o${j}-${x.element}`} a={pt(0, j)} b={pt(1, j)} className={`wire${overcomes(ring1[j]!.element, x.element) ? ' clash' : ''}`} />
+          ))}
           {draft.core && (
             <circle key={`core-${draft.core.element}-${draft.core.grade}`} className="draw core-mark" cx={CENTER} cy={CENTER} r={16} pathLength={1}
               style={{ stroke: COLORS.element[draft.core.element] }} />
           )}
-          {[...ring1.map((x, j) => [x, slotPoint(0, j)] as const), ...ring2.map((x, j) => [x, slotPoint(1, j)] as const)].map(([x, p], k) => x && (
+          {[...ring1.map((x, j) => [x, pt(0, j)] as const), ...ring2.map((x, j) => [x, pt(1, j)] as const)].map(([x, p], k) => x && (
             <circle key={`n${k}-${x.element}-${x.grade}`} className="draw node-mark" cx={p.x} cy={p.y} r={11} pathLength={1} style={{ stroke: COLORS.element[x.element] }} />
           ))}
           {charging && (
@@ -391,8 +399,8 @@ export const CircleTable = memo(function CircleTable({
         >
           {draft.core ? <><span className="glyph">{ELEMENT_NAMES[draft.core.element]}</span><span className="branch">出 {br?.core.out ?? 0}</span></> : <span className="muted">核心</span>}
         </button>
-        {[0, 1, 2, 3, 4].map((j) => slotButton(0, j))}
-        {[0, 1, 2, 3, 4].map((j) => slotButton(1, j))}
+        {shown1.map((j) => slotButton(0, j))}
+        {shown2.map((j) => slotButton(1, j))}
         {charging && <span className="sr-only" role="progressbar" aria-label="注入魔力" aria-valuemin={0} aria-valuemax={charging.ms} />}
         {shown && (
           <div className={`circle-result tone-${shown.tone}`} role="status" aria-label="合成結果" onClick={() => setShown(null)}>

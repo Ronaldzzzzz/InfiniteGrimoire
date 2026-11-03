@@ -67,20 +67,59 @@ describe('CircleTable', () => {
     expect(synthButton().disabled).toBe(false);
   });
 
-  it('greys out slots past the unlocked tier with 尚未開放 and past the core cap with 超過核心上限', () => {
-    setup({ circleTier: 3 });
-    choose(/^核心/, /^火・初階/);
-    choose(/^一環 第1格/, /^火・初階/);
-    // 初階 core caps the circle at Lv.2
-    const next = btn(/^一環 第2格/) as HTMLButtonElement;
-    expect(next.getAttribute('aria-disabled')).toBe('true');
-    expect(next.getAttribute('aria-label')).toContain('超過核心上限');
-    // a 中階 core reaches Lv.4, past the unlocked Lv.3: the 3rd ring node is not open yet
+  it('draws only the open slots', () => {
+    const slots = (re: RegExp) => screen.queryAllByRole('button', { name: re });
+    setup({ circleTier: 2 });
+    expect(slots(/^一環 第/)).toHaveLength(1);
+    expect(slots(/^二環 第/)).toHaveLength(0);
+    expect(document.querySelector('.guide')).toBeNull();
+    cleanup();
+    setup({ circleTier: 4 });
+    expect(slots(/^一環 第/)).toHaveLength(3);
+    cleanup();
+    setup({ circleTier: 7 });
+    expect(slots(/^一環 第/)).toHaveLength(5);
+    expect(slots(/^二環 第/)).toHaveLength(1);
+    expect(btn(/^二環 第1格/)).toBeTruthy();
+  });
+
+  it('shows a loaded node outside the default open slots', () => {
+    const { ref } = setup({ circleTier: 3, inventory: { 'el:fire:1': 5, 'el:fire:2': 1 } });
+    const loaded: Placement = {
+      core: { element: 'fire', grade: 2 },
+      ring1: [{ element: 'fire', grade: 1 }, null, { element: 'fire', grade: 1 }, null, null],
+      ring2: [null, null, null, null, null],
+      runes: ['bolt', null],
+    };
+    act(() => ref.current!.loadPlacement(loaded));
+    expect(btn(/^一環 第1格：火/)).toBeTruthy();
+    const mid = btn(/^一環 第2格：空/) as HTMLButtonElement;
+    expect(mid.getAttribute('aria-disabled')).toBe('true');
+    expect(btn(/^一環 第3格：火/)).toBeTruthy();
+    expect(synthButton().disabled).toBe(false);
+  });
+
+  it('lowering the core greys extra slots without moving them', () => {
+    setup({ circleTier: 6, inventory: { 'el:fire:1': 9, 'el:fire:2': 1, 'el:fire:3': 1 } });
     choose(/^核心/, /^火・中階/);
-    choose(/^一環 第2格/, /^火・初階/);
-    const locked = btn(/^一環 第3格/) as HTMLButtonElement;
-    expect(locked.getAttribute('aria-disabled')).toBe('true');
-    expect(locked.getAttribute('aria-label')).toContain('尚未開放');
+    for (const n of [1, 2, 3]) choose(new RegExp(`^一環 第${n}格`), /^火・初階/);
+    const places = () => [1, 2, 3, 4, 5].map((n) => {
+      const el = btn(new RegExp(`^一環 第${n}格`));
+      return `${el.style.left}/${el.style.top}`;
+    });
+    const before = places();
+    choose(/^核心/, /^火・初階/);
+    expect(places()).toEqual(before);
+    expect(btn(/^一環 第4格：空/).getAttribute('aria-label')).toContain('超過核心上限');
+  });
+
+  it('marks a clashing wire', () => {
+    setup({ circleTier: 3, inventory: { 'el:fire:1': 3, 'el:water:1': 3, 'el:earth:1': 3 } });
+    choose(/^核心/, /^火・初階/);
+    choose(/^一環 第1格/, /^水・初階/);
+    expect(document.querySelector('.wire.clash')).toBeTruthy();
+    choose(/^一環 第1格/, /^土・初階/);
+    expect(document.querySelector('.wire.clash')).toBeNull();
   });
 
   it('tapping a greyed slot shows its reason (phones have no hover) and opens no picker', () => {
@@ -91,8 +130,6 @@ describe('CircleTable', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('status', { name: '' }).textContent).toBe('超過核心上限');
     expect(btn(/^一環 第2格：空/)).toBeTruthy(); // still empty
-    fireEvent.click(btn(/^二環 第1格/));
-    expect(screen.getByText('一環要先放滿五格才能放二環')).toBeTruthy();
   });
 
   it('the picker opens over the parchment with focus inside, and Escape closes it', () => {
@@ -287,7 +324,8 @@ describe('CircleTable', () => {
     fireEvent.click(synthButton());
     expect((btn(/^核心/) as HTMLButtonElement).disabled).toBe(true);
     act(() => h.ref.current!.placeItem('el:fire:1'));
-    expect(btn(/^一環 第2格：空/)).toBeTruthy();
+    expect(btn(/^一環 第1格：風/)).toBeTruthy();
+    expect(screen.queryAllByRole('button', { name: /^一環 第/ })).toHaveLength(1);
   });
 
   it('placeItem puts an element into the core, then the first open ring slot', () => {

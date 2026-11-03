@@ -216,7 +216,7 @@ describe('App layout', () => {
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
     fireEvent.click(within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放到牛皮紙上' }));
     expect(coreText()).toBe('核心：火・初階');
-    expect(circleTexts()[5]).toBe('一環 第5格：火・初階');
+    expect(circleTexts()[2]).toBe('一環 第5格：火・初階');
     expect(screen.getByRole('button', { name: '一環符文：射' })).toBeTruthy();
   });
 
@@ -316,7 +316,7 @@ describe('App layout', () => {
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
     expect((within(screen.getByRole('group', { name: '魔法操作' })).getByRole('button', { name: '放到牛皮紙上' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.doubleClick(screen.getByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) }));
-    expect(circleTexts()[5]).toBe('一環 第5格：空');
+    expect(circleTexts()[1]).toBe('一環 第1格：空');
   });
 
   it('has no 放入魔法 combobox and no 嘗試紀錄 heading any more', () => {
