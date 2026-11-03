@@ -47,4 +47,8 @@ Task 7: minor (deferred): BACKDROP dots radius up to ~400 can fall outside the i
 Task 7: fix round 1/5 (2 addressed, 0 open — phone node-card override order, phone viewBase 380; commits e359989..c31d99c)
 Task 7: minor (deferred): phone width read at render (resize across 600px applies on next render); no test of narrow detection in GrimoirePanel
 Task 7: complete (commits c38494b..c31d99c, review clean)
-Task 8: browser acceptance and hand-off docs done (acceptance.md; problems listed there, none fixed in this task; npm test 81 files 932 tests pass, build ok)
+Task 8: complete (commits c31d99c..f34a9e2, docs-only acceptance; 9/9 functional pass; 5 UI problems listed in acceptance.md go to final review)
+Final review: With fixes — 0 Critical, 3 Important (placeItem ring-2 index, 390px grade wheel overflow, Lv.10 ring-2 clipped), 9 Minor; all sent as one fix wave (final-findings.md)
+Ruling: final-review "declined to judge" items (Pixi layer, placeholder numbers, visual vs rule adjacency, desk only on right column, committing art, old star-map density, Lv.4/6/8/10 wording, old progress-fill/picker-lock behaviour) stay out of this branch — spec defers them to the user — user decides after playtest.
+Final fix wave: 13/13 addressed (commit f34a9e2..5888b9d), re-review clean. npm test 81/945, build ok.
+Final: minor (deferred): module-level `short` shadowed inside CircleTable; wheel items ~42px at 390px (< 44px touch target) after .parchment 76%; ≤600px toasts fixed at top 112px assume topbar height

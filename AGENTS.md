@@ -62,11 +62,11 @@
 
 ### 3.0 接手先看這裡（2026-11-03 更新）
 
-**現在停在哪（2026-11-03 晚，專案 2 質感改版完成、瀏覽器驗收完成）：** branch `feat/magic-circle`（**未 push、未合併**）。質感改版 8 個任務（面紗 bug、只畫已開放格子、元素圈、符文帶、書房與羊皮紙、演出、星圖、驗收）都完成並各自審查；`npm test` 81 個檔案 932 個測試全過、`npm run build` 通過（2026-11-03）。驗收報告 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/acceptance.md`（headless Chrome，1280×900 與 390×844，規格第 10 節各項與問題清單都在裡面）。**注意：** headless Chrome 預設回報 `prefers-reduced-motion: reduce`，驗收腳本必須先 `emulateMediaFeatures` 設成 no-preference，否則所有動畫都被關掉、看不到演出。
+**現在停在哪（2026-11-03 晚，專案 2 質感改版完成、驗收與最終審查修正都完成）：** branch `feat/magic-circle`（**未 push、未合併**）。質感改版 8 個任務（面紗 bug、只畫已開放格子、元素圈、符文帶、書房與羊皮紙、演出、星圖、驗收）都完成並各自審查；最終全 branch 審查（0 Critical、3 Important、9 Minor）的 13 項已在 `5888b9d` 一次修完並複審通過；`npm test` 81 個檔案 945 個測試全過、`npm run build` 通過（2026-11-03）。驗收報告 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/acceptance.md`（headless Chrome，1280×900 與 390×844，規格第 10 節各項與問題清單都在裡面）。**注意：** headless Chrome 預設回報 `prefers-reduced-motion: reduce`，驗收腳本必須先 `emulateMediaFeatures` 設成 no-preference，否則所有動畫都被關掉、看不到演出。
 - **使用者要試玩的：** 牛皮紙手感（元素圈、符文圈、格子開放與排列、迴路不合時的紅線與震動）、合成 3 秒演出與成功／大失敗／稀有四種的差別、星圖新扇區順序與選中才連線、書房與羊皮紙美術（`public/assets/parchment.webp`、`desk.webp` 目前在本機、**未進版本庫**，是使用者自己 AI 生成的；提示詞在 `docs/art-assets.md`；沒有這兩個檔時有暫代色）、手機版面。
-- **驗收找到、沒有修的問題（細節見 `acceptance.md`）：** 手機 390 px 核心階級圈的三行 11 px 標籤溢出 47 px 圓形；手機合成後「新發現！」橫幅與裝備通知蓋住結果與預測行；符文帶的字在 12 點鐘接縫處重疊；Lv.10 二環最左右的格子貼著羊皮紙邊緣被切到一部分；沒有 `parchment.webp` 時桌機的暫代紙比面板高。功能 9 項都通過、無頁面錯誤。
+- **驗收找到的問題已在最終修正一輪處理（`acceptance.md` 末段「Final fix wave」有每項證據）：** 手機核心階級圈標籤改縮寫（`≤Lv.2`、`×1.2k`，完整文字在 aria-label）並依寬度縮字；`.parchment` 在紙上縮成 76%，Lv.10 二環不再被切；手機橫幅與裝備通知移開、不蓋預測行；符文帶接縫移到兩格之間；無美術圖時暫代紙不再比面板高。另修：從元素表放入二環會放進沒開放的序號、上方魔法選擇器在稀有 5 秒內劇透、選完元素後焦點掉到 body、未取得符文在手機看不到說明。**剩下的小問題**（帳本末段）：手機元素圈項目約 42 px（略小於 44 px 觸控建議）、手機通知固定在 top 112 px（假設上方列高度）。
 - **Pixi 特效層（規格第 9 節，選用）：** 等使用者看過 CSS／SVG 版再決定要不要做。
-- **接手者先做：** 使用者試玩 → 決定要不要修驗收報告列的問題 → 決定合併 `feat/magic-circle`（合併、push 都要先問）。
+- **接手者先做：** 使用者試玩 → 決定美術圖要不要進版本庫、要不要做 Pixi 特效層 → 決定合併 `feat/magic-circle`（合併、push 都要先問）。
 
 **之前停在哪（2026-11-03 上午，專案 2 試玩後的質感改版，已完成）：** 使用者 2026-10-31 已在 macOS 試玩 `feat/magic-circle`，回饋五項＋一個 bug，討論四輪後寫成兩份文件（2026-11-03 補 commit）：回饋與問答 `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、改版規格草稿 `docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md`。**規格已確認（2026-11-03），計畫已寫，還沒改程式。**
 - **回饋重點：** (1) 風格太現代 → 昏暗木屋書房＋直立破邊、邊緣微捲的羊皮紙，墨線與金線；介面維持 React＋SVG，華麗特效之後可疊一層 Pixi（使用者同意混合做法）。(2) 開局就看到完整五芒星 → 只畫已開放的格子，一環依已開放格數排成 1 上方／2 上下／3 三角／4 菱形／5 五芒星，二環同樣對齊一環；**規則序號不變**（視覺相鄰可能和規則相鄰不一致，使用者：先這樣）。(3) 符文不在陣上 → 每環一條整圈符文帶（規則不變）。(4) 文字選單難用 → 點格子後周圍長出元素圈（相生順序），再選階級。(5) 流水魔彈・風落在火區 → 星圖扇區改成相生順序（水→土→火→雷→風），選中魔法才顯示連線、教科書＝墨印／自創＝發光星。
@@ -314,6 +314,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-11-03（Claude Code，Opus 5.5，macOS，質感改版：subagent-driven 收尾）**：依計畫 `docs/superpowers/plans/2026-11-03-magic-circle-polish.md` 以 subagent-driven 跑完 8 個任務（每個任務獨立審查；Task 3、5、6、7 各修一輪），最終全 branch 審查 0 Critical，3 Important＋9 Minor 一次修完（`5888b9d`）並複審通過。帳本、最終審查清單與修正報告複製到 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/`。`npm test` 81 檔 945 個、build 通過。停在：`feat/magic-circle` 未 push、未合併；`public/assets/` 的美術圖未進版本庫。下一步：使用者試玩 → 決定合併。
 
 - **2026-11-03（Claude Code，Sonnet 5.5，macOS，質感改版 Task 8：瀏覽器驗收與文件）**：branch `feat/magic-circle`（Task 1～7 已完成並各自審查）。本機 D1 已在 0008（沒有新 migration）；`npm run dev` ＋ headless Chrome（puppeteer-core 裝在專案外）在 1280×900 與 390×844（觸控）逐項驗收規格第 10 節，結果與證據在 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/acceptance.md`（截圖在 `.superpowers/sdd/2026-11-03-magic-circle-polish/accept/`，gitignore）。種進本機 D1 的：元素存量、`circleTier`、`defeatedBosses`、關鍵道具；其餘（擺陣、元素圈、符文圈、關鍵道具使用、合成、稀有、星圖點選）都是實際操作。稀有焚世之焰是真的用介面重複合成擲出（沒有改機率）。重要發現：headless Chrome 預設 `prefers-reduced-motion: reduce`，驗收腳本要先設 no-preference；`public/assets/` 的 parchment／desk 是使用者的本機美術（未進版本庫），沒有刪也沒有 commit，驗無圖時暫時搬走再搬回（校驗碼相同）。`npm test` 81 檔 932 個、`npm run build` 通過。沒有改程式。停在：`feat/magic-circle` 未 push、未合併。下一步：使用者試玩 → 決定是否修驗收報告列的問題、是否做 Pixi 特效層（規格第 9 節）→ 決定合併。
 
