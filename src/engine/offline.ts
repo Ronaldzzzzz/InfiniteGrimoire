@@ -83,6 +83,8 @@ export function claimOffline(
     state: state.awayAt === 0 && awayMs === 0 ? state : { ...state, ...paused, awayAt: 0, offlineUntil: now },
     result,
   });
+  // under one tick there is nothing to explain, whatever the reason would have been
+  if (Math.floor(Math.min(awayMs, OFFLINE_CAP_MS) / OFFLINE_TICK_MS) < 1) return none({ kind: 'none', reason: 'tooShort' });
   const target = offlineStage(state, content);
   if (!target) return none({ kind: 'none', reason: 'notCleared' });
   const { zone } = target;

@@ -119,6 +119,13 @@ describe('claimOffline', () => {
     expect(r.result).toEqual({ kind: 'none', reason: 'tooShort' });
   });
 
+  it('a player with nothing cleared gets tooShort under one tick and notCleared after it', () => {
+    const fresh = base({});
+    expect(claimOffline(fresh, NOW, NOW, data, createRng(1)).result).toEqual({ kind: 'none', reason: 'tooShort' });
+    expect(claimOffline(fresh, NOW - 20_000, NOW, data, createRng(1)).result).toEqual({ kind: 'none', reason: 'tooShort' });
+    expect(claimOffline(fresh, NOW - 40_000, NOW, data, createRng(1)).result).toEqual({ kind: 'none', reason: 'notCleared' });
+  });
+
   it('none reasons', () => {
     const cases: [GameState, unknown][] = [
       [base({ awayAt: 5 }), { kind: 'none', reason: 'notCleared' }],
