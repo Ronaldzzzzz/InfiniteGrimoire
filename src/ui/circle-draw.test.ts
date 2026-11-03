@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CENTER, CIRCLE_PAIRS, circumference, pentagramPoints, PROGRESS_R, openSlotCounts, RING2_DEFAULT, RING_R, shownPoint, shownSlots, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
+import { CENTER, CIRCLE_PAIRS, circumference, wheelCenter, wheelPoints, pentagramPoints, PROGRESS_R, openSlotCounts, RING2_DEFAULT, RING_R, shownPoint, shownSlots, slotPoint, sparkPoints, STAR_PAIRS, starPath } from './circle-draw';
 
 const dist = (p: { x: number; y: number }) => Math.hypot(p.x - CENTER, p.y - CENTER);
 const angle = (p: { x: number; y: number }) => Math.atan2(p.y - CENTER, p.x - CENTER);
@@ -63,5 +63,18 @@ describe('circle-draw', () => {
       expect(shownPoint(0, j, [0, 1, 2, 3, 4])).toEqual(slotPoint(0, j));
       expect(shownPoint(1, j, [1, 4])).toEqual(slotPoint(1, j));
     }
+  });
+});
+
+describe('element wheel geometry', () => {
+  it('wheelPoints lays n points from the top, clockwise', () => {
+    const pts = wheelPoints(4, { x: 120, y: 120 }, 30);
+    expect(pts.map((p) => [Math.round(p.x), Math.round(p.y)])).toEqual([[120, 90], [150, 120], [120, 150], [90, 120]]);
+  });
+
+  it('wheelCenter keeps the wheel inside the sheet', () => {
+    expect(wheelCenter({ x: 5, y: 120 }, 34)).toEqual({ x: 34, y: 120 });
+    expect(wheelCenter({ x: 120, y: 238 }, 34)).toEqual({ x: 120, y: 206 });
+    expect(wheelCenter({ x: 100, y: 90 }, 34)).toEqual({ x: 100, y: 90 });
   });
 });

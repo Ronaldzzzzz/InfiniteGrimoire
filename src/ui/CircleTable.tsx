@@ -10,8 +10,9 @@ import { ELEMENT_ORDER, elementItem, GRADE_NAMES, MAX_ELEMENT_GRADE, type Elemen
 import type { ActionResult } from '../game/api';
 import { COLORS } from '../render/palette';
 import {
-  CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, VIEW, type Pt,
+  CENTER, CIRCLE_PAIRS, circumference, openSlotCounts, PROGRESS_R, RING_R, shownPoint, shownSlots, sparkPoints, STAR_PAIRS, VIEW, WHEEL_ORDER, type Pt,
 } from './circle-draw';
+import { RingPicker, type WheelItem } from './RingPicker';
 import { ELEMENT_NAMES, itemName, spellLabel, SYNTH_ERROR_MESSAGE, SYNTH_RETRY_MESSAGE, synthMessage } from './messages';
 import { useRuntime, type RuntimeStore } from './useGame';
 
@@ -33,7 +34,8 @@ export interface CircleTableHandle {
 type Sync = { synthesizeCircle(p: Placement): Promise<ActionResult | null> };
 type Ring = 0 | 1;
 interface Draft { core: CircleNode | null; rings: [(CircleNode | null)[], (CircleNode | null)[]]; runes: [RuneId | null, RuneId | null] }
-type Target = { kind: 'core' } | { kind: 'node'; ring: Ring; j: number } | { kind: 'rune'; ring: Ring };
+/** `el` is the wheel's second step: the element already chosen, now picking its grade */
+type Target = { kind: 'core'; el?: ElementId } | { kind: 'node'; ring: Ring; j: number; el?: ElementId } | { kind: 'rune'; ring: Ring };
 
 const emptyRing = (): (CircleNode | null)[] => Array<CircleNode | null>(SLOTS).fill(null);
 const emptyDraft = (): Draft => ({ core: null, rings: [emptyRing(), emptyRing()], runes: [null, null] });
@@ -158,6 +160,7 @@ export const CircleTable = memo(function CircleTable({
   const runes = runesKey.split(',') as RuneId[];
   const busy = charging !== null || synthPending;
 
+  const parchment = useRef<HTMLElement>(null);
   const alive = useRef(true);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   useEffect(() => {
@@ -333,6 +336,7 @@ export const CircleTable = memo(function CircleTable({
         key={`${ring}-${j}`}
         type="button"
         className={`circle-slot ring${ring + 1}${x ? ' filled' : ''}${block ? ' blocked' : ''}`}
+        data-slot={`${ring}-${j}`}
         style={{ ...pos(pt(ring, j)), ...(x ? { '--c': COLORS.element[x.element] } : {}) } as CSSProperties}
         aria-label={label}
         title={block ?? undefined}
@@ -355,7 +359,7 @@ export const CircleTable = memo(function CircleTable({
 
   return (
     <div className="parchment-panel">
-      <section className={`parchment${charging ? ' charging' : ''}`} aria-label="魔法陣" style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
+      <section ref={parchment} className={`parchment${charging ? ' charging' : ''}`} aria-label="魔法陣" style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
         <svg className="parchment-svg" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
           {shown1.length > 0 && <circle className={`ring-line${mismatch[0] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[0]} />}
           {shown2.length > 0 && <circle className={`ring-line outer${mismatch[1] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[1]} />}
@@ -392,6 +396,7 @@ export const CircleTable = memo(function CircleTable({
         <button
           type="button"
           className={`circle-slot core${draft.core ? ' filled' : ''}`}
+          data-slot="core"
           style={{ ...pos(centre), ...(draft.core ? { '--c': COLORS.element[draft.core.element] } : {}) } as CSSProperties}
           aria-label={draft.core ? `核心：${nodeName(draft.core)}（出 ${br?.core.out ?? 0}・上限 Lv.${capOf(draft.core.grade)}）` : '核心：空'}
           disabled={busy}
@@ -408,16 +413,23 @@ export const CircleTable = memo(function CircleTable({
             <span className="circle-result-name">{shown.name}</span>
           </div>
         )}
-        {target && !busy && (
-          <Picker
+        {target && !busy && target.kind !== 'rune' && (
+          <ElementWheel
             target={target}
+            at={target.kind === 'core' ? centre : pt(target.ring, target.j)}
             draft={draft}
             held={heldKey ? heldKey.split(',').map(Number) : []}
-            runes={runes}
             onNode={(x) => setNode(target, x)}
-            onRune={(r) => target.kind === 'rune' && setRune(target.ring, r)}
-            onClose={() => setTarget(null)}
+            onElement={(el) => setTarget({ ...target, el })}
+            onBack={() => setTarget(target.el ? { ...target, el: undefined } : null)}
+            returnFocus={() => {
+              const key = target.kind === 'core' ? 'core' : `${target.ring}-${target.j}`;
+              parchment.current?.querySelector<HTMLButtonElement>(`[data-slot="${key}"]`)?.focus();
+            }}
           />
+        )}
+        {target && !busy && target.kind === 'rune' && (
+          <Picker target={target} draft={draft} runes={runes} onRune={(r) => setRune(target.ring, r)} onClose={() => setTarget(null)} />
         )}
       </section>
 
@@ -448,12 +460,50 @@ export const CircleTable = memo(function CircleTable({
   );
 });
 
-function Picker({ target, draft, held, runes, onNode, onRune, onClose }: {
-  target: Target;
+function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, returnFocus }: {
+  target: Exclude<Target, { kind: 'rune' }>;
+  at: Pt;
   draft: Draft;
   held: number[];
-  runes: RuneId[];
   onNode: (x: CircleNode | null) => void;
+  onElement: (e: ElementId) => void;
+  onBack: () => void;
+  returnFocus: () => void;
+}) {
+  const current = target.kind === 'core' ? draft.core : draft.rings[target.ring][target.j] ?? null;
+  const where = target.kind === 'core' ? '核心' : `${RING_NAME[target.ring]} 第${target.j + 1}格`;
+  const countOf = (e: ElementId, g: number) => held[ELEMENT_ORDER.indexOf(e) * MAX_ELEMENT_GRADE + g - 1] ?? 0;
+  const remove = current ? () => onNode(null) : undefined;
+  const el = target.el;
+  if (!el) {
+    const items: WheelItem[] = WHEEL_ORDER.map((e) => {
+      const has = Array.from({ length: MAX_ELEMENT_GRADE }, (_, g) => countOf(e, g + 1)).some((n) => n > 0);
+      return { key: e, label: ELEMENT_NAMES[e], ariaLabel: ELEMENT_NAMES[e], enabled: has, on: current?.element === e, color: COLORS.element[e], title: has ? undefined : '沒有這種元素' };
+    });
+    return (
+      <RingPicker at={at} title={target.kind === 'core' ? '選擇核心元素' : `選擇${where}的元素`} items={items}
+        onPick={(k) => onElement(k as ElementId)} onRemove={remove} onClose={onBack} returnFocus={returnFocus} />
+    );
+  }
+  const floor = target.kind === 'node' ? RING_FLOOR[target.ring]! : 1;
+  const items: WheelItem[] = Array.from({ length: MAX_ELEMENT_GRADE }, (_, i) => {
+    const grade = i + 1, n = countOf(el, grade), low = grade < floor;
+    const label = `${GRADE_NAMES[i]} ×${n}${target.kind === 'core' ? `（上限 Lv.${capOf(grade)}）` : ''}`;
+    return {
+      key: String(grade), label, ariaLabel: label, enabled: n > 0 && !low, on: current?.element === el && current.grade === grade,
+      color: COLORS.element[el], title: low ? '二環需要高階以上' : n > 0 ? undefined : '沒有這個階級',
+    };
+  });
+  return (
+    <RingPicker at={at} title={`選擇${where}的${ELEMENT_NAMES[el]}元素階級`} items={items}
+      onPick={(k) => onNode({ element: el, grade: Number(k) })} onRemove={remove} onClose={onBack} />
+  );
+}
+
+function Picker({ target, draft, runes, onRune, onClose }: {
+  target: Extract<Target, { kind: 'rune' }>;
+  draft: Draft;
+  runes: RuneId[];
   onRune: (r: RuneId | null) => void;
   onClose: () => void;
 }) {
@@ -472,52 +522,21 @@ function Picker({ target, draft, held, runes, onNode, onRune, onClose }: {
       onClose();
     },
   };
-  if (target.kind === 'rune') {
-    const current = draft.runes[target.ring];
-    return (
-      <div className="circle-picker" role="dialog" aria-label={`選擇${RING_NAME[target.ring]}符文`} {...keys}>
-        <div className="picker-grid">
-          {RUNE_IDS.map((r) => {
-            const known = runes.includes(r);
-            return (
-              <button key={r} type="button" className={r === current ? 'on' : ''} disabled={!known} title={known ? undefined : '還沒學會這個符文'} onClick={() => onRune(r)}>
-                {RUNE_NAMES[r]}{known ? '' : '（未取得）'}
-              </button>
-            );
-          })}
-        </div>
-        <div className="picker-actions">
-          {current && <button type="button" onClick={() => onRune(null)}>移除</button>}
-          <button type="button" onClick={onClose}>關閉</button>
-        </div>
-      </div>
-    );
-  }
-  const current = target.kind === 'core' ? draft.core : draft.rings[target.ring][target.j] ?? null;
-  const floor = target.kind === 'node' ? RING_FLOOR[target.ring]! : 1;
-  const title = target.kind === 'core' ? '選擇核心元素' : `選擇${RING_NAME[target.ring]} 第${target.j + 1}格的元素`;
-  const options = ELEMENT_ORDER.flatMap((e, ei) =>
-    Array.from({ length: MAX_ELEMENT_GRADE }, (_, g) => ({ e, grade: g + 1, n: held[ei * MAX_ELEMENT_GRADE + g] ?? 0 })),
-  ).filter((o) => o.n > 0);
+  const current = draft.runes[target.ring];
   return (
-    <div className="circle-picker" role="dialog" aria-label={title} {...keys}>
-      {options.length === 0 && <p className="muted">還沒有元素，先去打怪收集吧</p>}
+    <div className="circle-picker" role="dialog" aria-label={`選擇${RING_NAME[target.ring]}符文`} {...keys}>
       <div className="picker-grid">
-        {options.map((o) => {
-          const low = o.grade < floor;
-          const on = current?.element === o.e && current.grade === o.grade;
-          const extra = target.kind === 'core' ? `（上限 Lv.${capOf(o.grade)}）` : low ? '（二環需要高階以上）' : '';
+        {RUNE_IDS.map((r) => {
+          const known = runes.includes(r);
           return (
-            <button key={`${o.e}${o.grade}`} type="button" className={on ? 'on' : ''} disabled={low}
-              style={{ '--c': COLORS.element[o.e] } as CSSProperties}
-              onClick={() => onNode({ element: o.e, grade: o.grade })}>
-              {ELEMENT_NAMES[o.e]}・{GRADE_NAMES[o.grade - 1]} ×{o.n}{extra}
+            <button key={r} type="button" className={r === current ? 'on' : ''} disabled={!known} title={known ? undefined : '還沒學會這個符文'} onClick={() => onRune(r)}>
+              {RUNE_NAMES[r]}{known ? '' : '（未取得）'}
             </button>
           );
         })}
       </div>
       <div className="picker-actions">
-        {current && <button type="button" onClick={() => onNode(null)}>移除</button>}
+        {current && <button type="button" onClick={() => onRune(null)}>移除</button>}
         <button type="button" onClick={onClose}>關閉</button>
       </div>
     </div>

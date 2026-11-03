@@ -35,9 +35,15 @@ function setup(game: Partial<GameState> = {}, reply?: () => Promise<ActionResult
 }
 
 const btn = (name: string | RegExp) => screen.getByRole('button', { name });
+const dialogBtn = (name: string | RegExp) => within(screen.getByRole('dialog')).getByRole('button', { name });
+/** an option like /^火・初階/ is the wheel's two steps (element, then grade); anything else is one click */
 const choose = (slot: string | RegExp, option: string | RegExp) => {
   fireEvent.click(btn(slot));
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: option }));
+  const m = typeof option === 'string' ? null : /^\^(.)・(.階)/.exec(option.source);
+  if (m) {
+    fireEvent.click(dialogBtn(m[1]!));
+    fireEvent.click(dialogBtn(new RegExp(`^${m[2]}`)));
+  } else fireEvent.click(dialogBtn(option));
 };
 /** core 初階火 + one ring-1 風 + 射: a tier-2 circle the starting player can draw */
 const drawSmall = () => {
@@ -138,6 +144,51 @@ describe('CircleTable', () => {
     const dialog = screen.getByRole('dialog', { name: '選擇核心元素' });
     expect(screen.getByRole('region', { name: '魔法陣' }).contains(dialog)).toBe(true);
     expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('tapping the core grows an element wheel in 相生 order', () => {
+    setup();
+    fireEvent.click(btn(/^核心/));
+    const dialog = screen.getByRole('dialog', { name: '選擇核心元素' });
+    const items = [...dialog.querySelectorAll<HTMLButtonElement>('.ring-item')];
+    expect(items.map((b) => b.textContent)).toEqual(['水', '土', '火', '雷', '風']);
+    expect(items.map((b) => b.disabled)).toEqual([true, true, false, true, false]);
+    expect(items[0]!.title).toBe('沒有這種元素');
+  });
+
+  it('picking an element then a grade places it', () => {
+    setup();
+    fireEvent.click(btn(/^核心/));
+    fireEvent.click(dialogBtn('火'));
+    expect((dialogBtn('初階 ×3（上限 Lv.2）') as HTMLButtonElement).disabled).toBe(false);
+    expect((dialogBtn('高階 ×0（上限 Lv.6）') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(dialogBtn('初階 ×3（上限 Lv.2）'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(btn(/^核心：火・初階（.*上限 Lv\.2）/)).toBeTruthy();
+  });
+
+  it('ring 2 greys grades below 高階', () => {
+    setup({ circleTier: 10, inventory: { 'el:fire:1': 9, 'el:fire:3': 9, 'el:fire:5': 1 } });
+    choose(/^核心/, /^火・神階/);
+    for (let n = 1; n <= 5; n++) choose(new RegExp(`^一環 第${n}格`), /^火・初階/);
+    fireEvent.click(btn(/^二環 第2格/));
+    fireEvent.click(dialogBtn('火'));
+    for (const name of [/^初階/, /^中階/]) {
+      const b = dialogBtn(name) as HTMLButtonElement;
+      expect(b.disabled).toBe(true);
+      expect(b.title).toBe('二環需要高階以上');
+    }
+    expect((dialogBtn(/^高階/) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('Escape on the grade step goes back to the elements', () => {
+    setup();
+    fireEvent.click(btn(/^核心/));
+    fireEvent.click(dialogBtn('火'));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: '選擇核心元素' })).toBeTruthy();
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
   });

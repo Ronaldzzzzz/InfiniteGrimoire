@@ -1,3 +1,5 @@
+import type { ElementId } from '../engine/types';
+
 /**
  * SVG geometry of the magic circle parchment (pure). The parchment's viewBox is VIEW x VIEW with the core at the centre;
  * ring 1 holds the 5 pentagram slots, ring-2 slot j sits on the same ray as ring-1 slot j, further out.
@@ -77,4 +79,23 @@ export function shownPoint(ring: 0 | 1, j: number, shown: number[]): Pt {
   const k = Math.max(0, shown.indexOf(j));
   const a = -Math.PI / 2 + (2 * Math.PI * k) / Math.max(1, shown.length);
   return { x: round(CENTER + RING_R[0] * Math.cos(a)), y: round(CENTER + RING_R[0] * Math.sin(a)) };
+}
+
+
+/** The 相生 circle in the order an element wheel lays them out (water → earth → fire → thunder → wind). */
+export const WHEEL_ORDER: ElementId[] = ['water', 'earth', 'fire', 'thunder', 'wind'];
+/** Radius of a picker wheel, in viewBox units (placeholder). */
+export const WHEEL_R = 34;
+
+/** `n` points evenly around `center` at `radius`, the first straight above, clockwise. */
+export function wheelPoints(n: number, center: Pt, radius: number): Pt[] {
+  return Array.from({ length: n }, (_, i) => {
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / n;
+    return { x: round(center.x + radius * Math.cos(a)), y: round(center.y + radius * Math.sin(a)) };
+  });
+}
+
+/** The wheel's centre for a tapped slot: pushed inwards so the whole wheel stays on the sheet. */
+export function wheelCenter(p: Pt, radius: number): Pt {
+  return { x: clamp(p.x, radius, VIEW - radius), y: clamp(p.y, radius, VIEW - radius) };
 }
