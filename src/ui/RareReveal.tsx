@@ -32,14 +32,6 @@ function motesOf(spell: Spell, n: number): Mote[] {
   });
 }
 
-function prefersReducedMotion(): boolean {
-  try {
-    return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  } catch {
-    return false;
-  }
-}
-
 /** Where the parchment sits, relative to the screen centre, so the orb can fly from it. */
 function parchmentOffset(): { x: number; y: number } {
   const el = typeof document !== 'undefined' ? document.querySelector('.parchment') : null;
@@ -58,12 +50,11 @@ function hintText(spell: Spell): string | null {
 
 /**
  * The full-screen reveal of a rare spell, over everything. A click in the first two phases jumps to the title,
- * the title waits for 裝備 / 不裝備 (a click elsewhere does nothing); under prefers-reduced-motion it starts on the title.
+ * the title waits for 裝備 / 不裝備 (a click elsewhere does nothing).
  * Pure CSS transforms and opacity, so the battle canvas keeps its frame rate.
  */
 export function RareReveal({ spell, first, onChoose }: { spell: Spell; first: boolean; onChoose: (equip: boolean) => void }) {
-  const [reduced] = useState(prefersReducedMotion);
-  const [phase, setPhase] = useState<Phase>(() => (reduced ? 'title' : 'gather'));
+  const [phase, setPhase] = useState<Phase>('gather');
   const [origin] = useState(parchmentOffset);
   const [motes] = useState(() => ({ burst: motesOf(spell, BURST_PARTICLES), gather: motesOf(spell, GATHER_MOTES), embers: motesOf(spell, EMBERS) }));
 
@@ -79,13 +70,12 @@ export function RareReveal({ spell, first, onChoose }: { spell: Spell; first: bo
   };
 
   useEffect(() => {
-    if (reduced) return;
     const ts = [
       setTimeout(() => setPhase((p) => (p === 'gather' ? 'burst' : p)), BURST_AT_MS),
       setTimeout(() => setPhase('title'), TITLE_AT_MS),
     ];
     return () => ts.forEach(clearTimeout);
-  }, [reduced]);
+  }, []);
 
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -175,8 +165,7 @@ export function RareReveal({ spell, first, onChoose }: { spell: Spell; first: bo
         {phase === 'title' && (
           <>
             <span className="rr-glow" aria-hidden="true" />
-            {!reduced &&
-              motes.embers.map((m, i) => (
+            {motes.embers.map((m, i) => (
                 <span
                   key={i}
                   className={`rr-ember p-${m.shape}`}

@@ -612,8 +612,8 @@ function RuneWheel({ at, ring, current, runes, onRune, onClose, returnFocus }: {
     const known = runes.includes(r);
     return {
       key: r,
-      label: RUNE_NAMES[r],
-      ariaLabel: known ? RUNE_NAMES[r] : `${RUNE_NAMES[r]}（未取得）`,
+      label: known ? RUNE_NAMES[r] : '？',
+      ariaLabel: known ? RUNE_NAMES[r] : '未取得的符文',
       enabled: known,
       on: r === current,
       title: known ? undefined : '從魔王取得',

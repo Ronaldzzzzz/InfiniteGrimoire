@@ -48,36 +48,8 @@ describe('magic circle parchment', () => {
 });
 
 describe('magic circle effects', () => {
-  /** every `@media (prefers-reduced-motion: reduce)` block, concatenated */
-  const reduced = (() => {
-    let out = '';
-    let from = 0;
-    for (;;) {
-      const at = css.indexOf('@media (prefers-reduced-motion: reduce)', from);
-      if (at < 0) return out;
-      let depth = 0;
-      const open = css.indexOf('{', at);
-      let i = open;
-      for (; i < css.length; i++) {
-        if (css[i] === '{') depth++;
-        else if (css[i] === '}' && --depth === 0) break;
-      }
-      out += css.slice(open + 1, i);
-      from = i;
-    }
-  })();
-  it('turns the circle animations off for reduced motion', () => {
-    for (const sel of ['.burnt', '.shake', '.success', '.rune-band', '.light-pillar']) {
-      const hit = reduced.split('}').find((r) => r.includes(sel) && /animation:\s*none/.test(r));
-      expect(hit, `${sel} in reduced motion`).toBeTruthy();
-    }
-  });
-  it('reduced motion also stops the charging spin and line light-up (their selectors are more specific)', () => {
-    for (const sel of ['.parchment.charging .parchment-svg .rune-band', '.parchment.charging .parchment-svg .draw']) {
-      const hit = reduced.split('}').find((r) => r.includes(sel) && /animation:\s*none/.test(r));
-      expect(hit, sel).toBeTruthy();
-      expect(hit!.split('{')[0]).toContain(sel);
-    }
+  it('has no prefers-reduced-motion rule (development always animates)', () => {
+    expect(css).not.toContain('prefers-reduced-motion');
   });
   it('a chosen rune band glows gently at rest', () => {
     const r = rule(css, '.parchment-svg .rune-band.filled');
@@ -146,9 +118,5 @@ describe('final fix wave css', () => {
     const toast = css.search(/\.strip-float \.equip-toasts \{ position: fixed; top: 112px/);
     expect(toast).toBeGreaterThan(css.search(/^\.strip-float \.key-bar, \.strip-float \.equip-toasts/m));
     expect(css.lastIndexOf('@media (max-width: 600px)', banner)).toBeGreaterThan(css.lastIndexOf('}\n', banner - 200));
-  });
-  it('reduced motion hides the light pillar', () => {
-    const rm = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce) {\n  .parchment-svg .draw'));
-    expect(rm.slice(0, rm.indexOf('\n}\n'))).toMatch(/\.light-pillar \{ display: none; \}/);
   });
 });

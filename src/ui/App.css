@@ -381,16 +381,7 @@ html.away { filter: grayscale(1); }
 .circle-go { min-width: 96px; }
 .circle-why { color: var(--muted); font-size: 13px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .parchment-svg .draw { animation: none; stroke-dashoffset: 0; }
-  .parchment-svg .spark, .parchment.charging, .circle-result { animation: none; }
-  .parchment.burnt, .parchment.shake, .parchment.success, .parchment-svg .rune-band, .parchment-svg .rune-band.filled, .light-pillar, .starfield span { animation: none; }
-  .parchment.charging .parchment-svg .rune-band, .parchment.charging .parchment-svg .draw, .parchment-svg .core-mark, .parchment-svg .node-mark, .parchment-svg .wire.clash { animation: none; stroke-dashoffset: 0; }
-  .parchment.burnt::after { animation: none; opacity: 0; }
-  .parchment-sheet { transition: none; }
-  .parchment-svg .spark { opacity: 0.8; }
-  .light-pillar { display: none; }
-}
+/* 上線前決定要不要加遊戲內精簡特效設定（2026-11-03 使用者：開發階段全程呈現動畫） */
 
 /* rare spell: a full-screen reveal over everything (CSS transforms and opacity only, so the battle canvas keeps its frame rate) */
 .rare-reveal {
@@ -489,10 +480,7 @@ html.away { filter: grayscale(1); }
 @keyframes rr-kick { from { opacity: 0; transform: scale(1.6); } }
 @keyframes rr-rise { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .rare-reveal *, .rare-reveal *::before { animation: none !important; }
-  .rr-p, .rr-mote, .rr-stage > .rr-ember { display: none; }
-}
+/* 上線前決定要不要加遊戲內精簡特效設定（2026-11-03 使用者：開發階段全程呈現動畫） */
 
 .bell { position: relative; }
 .bell-button { position: relative; padding: 6px 10px; }

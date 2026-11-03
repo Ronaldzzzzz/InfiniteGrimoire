@@ -16,15 +16,6 @@ const worldfire = resolveSpell('worldfire', content) as NamedSpellDef;
 const dialog = () => screen.getByRole('dialog', { name: '稀有魔法' });
 const phase = () => /phase-(gather|burst|title)/.exec(dialog().className)?.[1];
 
-function stubReducedMotion(reduce: boolean) {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: reduce && query.includes('prefers-reduced-motion'),
-    media: query,
-    addEventListener() {},
-    removeEventListener() {},
-  }));
-}
-
 describe('RareReveal', () => {
   it('plays gather → burst → title, then waits for a choice (no auto-close)', () => {
     vi.useFakeTimers();
@@ -91,12 +82,6 @@ describe('RareReveal', () => {
     expect(b).toHaveBeenCalledWith(false);
   });
 
-  it('reduced motion: 裝備 has focus immediately', () => {
-    stubReducedMotion(true);
-    render(<RareReveal spell={worldfire} first onChoose={vi.fn()} />);
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '裝備' }));
-  });
-
   it('a click during the burst also jumps to the title', () => {
     vi.useFakeTimers();
     render(<RareReveal spell={worldfire} first={false} onChoose={vi.fn()} />);
@@ -146,22 +131,6 @@ describe('RareReveal', () => {
     expect(ps.length).toBeGreaterThan(0);
     expect(dialog().querySelectorAll('.rr-p.p-spark').length).toBe(ps.length);
     expect((ps[0] as HTMLElement).style.getPropertyValue('--c')).toBe('#e2643b');
-  });
-
-  it('starts on the title under prefers-reduced-motion, with both buttons', () => {
-    vi.useFakeTimers();
-    stubReducedMotion(true);
-    const onChoose = vi.fn();
-    render(<RareReveal spell={worldfire} first onChoose={onChoose} />);
-    expect(phase()).toBe('title');
-    expect(dialog().textContent).toContain('✦ 全服首次發現 ✦');
-    expect(screen.getByRole('button', { name: '不裝備' })).toBeTruthy();
-  });
-
-  it('plays normally when motion is allowed', () => {
-    stubReducedMotion(false);
-    render(<RareReveal spell={worldfire} first onChoose={vi.fn()} />);
-    expect(phase()).toBe('gather');
   });
 
   it('clears its timers on unmount', () => {

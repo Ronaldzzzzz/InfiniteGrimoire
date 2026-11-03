@@ -617,6 +617,19 @@ describe('placementOfSpell', () => {
       expect(within(screen.getByRole('dialog')).getByText('未取得的符文從魔王取得')).toBeTruthy();
     });
 
+    it('shows a locked rune as 「？」, disabled, without its name', () => {
+      setup();
+      fireEvent.click(btn(/^一環符文/));
+      const dlg = within(screen.getByRole('dialog'));
+      const locked = dlg.getAllByRole('button', { name: '未取得的符文' });
+      expect(locked.length).toBeGreaterThan(0);
+      for (const b of locked) {
+        expect(b.textContent).toBe('？');
+        expect((b as HTMLButtonElement).disabled || b.getAttribute('aria-disabled') === 'true').toBe(true);
+      }
+      expect(dlg.queryByRole('button', { name: /^刃/ })).toBeNull();
+    });
+
     it('re-synthesising right after a success drops the success glow at once', async () => {
       vi.useFakeTimers();
       const h = setup();
