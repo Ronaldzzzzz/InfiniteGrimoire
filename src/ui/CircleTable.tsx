@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from 'react';
 import {
   branches, circuitMismatches, GRADE_CAP, MAX_RING2, overcomes, parseCanonical, placementProblems, placementTier, relations,
@@ -25,6 +26,10 @@ import { useRuntime, type RuntimeStore } from './useGame';
 export const PROGRESS_MS = 3000;
 export const RARE_PROGRESS_MS = 5000;
 const SPARKS = 12;
+/** the rare charge's stars: a fixed small set on a golden-angle spiral, not a particle system */
+const STARS = Array.from({ length: 20 }, (_, i) => ({
+  left: `${8 + ((i * 37) % 84)}%`, top: `${6 + ((i * 53) % 88)}%`, delay: `${((i * 0.37) % 1.6).toFixed(2)}s`,
+}));
 
 /** What the parent can do: put a whole circle on the parchment (star map, Task 6) or one element from the element table. */
 export interface CircleTableHandle {
@@ -113,8 +118,8 @@ function shownOf(r: ActionResult, content: Content): Shown {
 const isRare = (r: ActionResult, content: Content): boolean =>
   (r.kind === 'learned' || r.kind === 'known') && ((('rare' in r) && !!r.rare) || (Object.hasOwn(content.spells, r.spellId) && !!content.spells[r.spellId]!.rare));
 
-function Line({ a, b, className }: { a: Pt; b: Pt; className: string }) {
-  return <line className={`draw ${className}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} pathLength={1} />;
+function Line({ a, b, className, k }: { a: Pt; b: Pt; className: string; k: number }) {
+  return <line className={`draw ${className}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} pathLength={1} style={{ '--k': k } as CSSProperties} />;
 }
 
 export const CircleTable = memo(function CircleTable({
@@ -136,7 +141,10 @@ export const CircleTable = memo(function CircleTable({
 }) {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [target, setTarget] = useState<Target | null>(null);
-  const [charging, setCharging] = useState<{ ms: number } | null>(null);
+  const [charging, setCharging] = useState<{ ms: number; rare: boolean } | null>(null);
+  const [burnt, setBurnt] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [shake, setShake] = useState(false);
   const [shown, setShown] = useState<Shown | null>(null);
   const [message, setMessage] = useState('');
 
@@ -201,6 +209,7 @@ export const CircleTable = memo(function CircleTable({
 
   const edit = useCallback((next: (d: Draft) => Draft): void => {
     setDraft(next);
+    setBurnt(false);
     setShown(null);
     setMessage('');
   }, []);
@@ -229,6 +238,7 @@ export const CircleTable = memo(function CircleTable({
         }
         return d;
       });
+      setBurnt(false);
       setShown(null);
       setMessage('');
     },
@@ -278,13 +288,26 @@ export const CircleTable = memo(function CircleTable({
       })()
     : [false, false] as const;
 
+  // the circuit just stopped matching: one 0.4 s shake (not again while it stays mismatched)
+  const unmatched = mismatch[0] || mismatch[1];
+  const wasUnmatched = useRef(false);
+  useEffect(() => {
+    if (unmatched && !wasUnmatched.current) {
+      setShake(true);
+      later(() => setShake(false), 400);
+    }
+    wasUnmatched.current = unmatched;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unmatched]);
+
   const run = async (): Promise<void> => {
     if (!placement || why || busy) return;
     const start = Date.now();
     setTarget(null);
     setShown(null);
     setMessage('');
-    setCharging({ ms: PROGRESS_MS });
+    setBurnt(false);
+    setCharging({ ms: PROGRESS_MS, rare: false });
     announce(true);
     let result: ActionResult | null;
     try {
@@ -306,11 +329,16 @@ export const CircleTable = memo(function CircleTable({
     }
     const applied = result;
     const total = isRare(applied, content) ? RARE_PROGRESS_MS : PROGRESS_MS;
-    if (total !== PROGRESS_MS) setCharging({ ms: total });
+    if (total !== PROGRESS_MS) setCharging({ ms: total, rare: true });
     later(() => {
       announce(false);
       setCharging(null);
       setShown(shownOf(applied, content));
+      if (applied.kind === 'failed') setBurnt(true);
+      else {
+        setSuccess(true);
+        later(() => setSuccess(false), 900);
+      }
       latest.current.onResult?.(applied);
     }, Math.max(0, total - (Date.now() - start)));
   };
@@ -326,6 +354,16 @@ export const CircleTable = memo(function CircleTable({
   const shown1 = shownSlots(0, open1, filledIdx(ring1));
   const shown2 = shownSlots(1, open2, filledIdx(ring2));
   const pt = (ring: Ring, j: number): Pt => shownPoint(ring, j, ring === 0 ? shown1 : shown2);
+
+  // the order the lines light up while charging: nodes, ring-1 edges, star lines, ring-2 wires, core wires, the core last
+  const nodeMarks = [...ring1.map((x, j) => [x, pt(0, j)] as const), ...ring2.map((x, j) => [x, pt(1, j)] as const)].flatMap(([x, p]) => (x ? [{ x, p }] : []));
+  const edgePairs = CIRCLE_PAIRS.filter(([a, b]) => ring1[a] && ring1[b]);
+  const starPairs = STAR_PAIRS.filter(([a, b]) => ring1[a] && ring1[b]);
+  const outerJs = ring2.flatMap((x, j) => (x && ring1[j] ? [j] : []));
+  const coreJs = draft.core ? ring1.flatMap((x, j) => (x ? [j] : [])) : [];
+  const kEdge = nodeMarks.length, kStar = kEdge + edgePairs.length, kOuter = kStar + starPairs.length, kCore = kOuter + outerJs.length;
+  const kLast = kCore + coreJs.length;
+  const drawCount = kLast + (draft.core ? 1 : 0);
 
   const slotButton = (ring: Ring, j: number) => {
     const x = draft.rings[ring][j] ?? null;
@@ -385,8 +423,11 @@ export const CircleTable = memo(function CircleTable({
 
   return (
     <div className="parchment-panel">
-      <div className={`parchment-sheet${hasArt ? ' has-art' : ''}`}>
-      <section ref={parchment} className={`parchment${charging ? ' charging' : ''}`} aria-label="魔法陣" style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms` } as CSSProperties}>
+      <div className={`parchment-sheet${hasArt ? ' has-art' : ''}${charging ? ' charging' : ''}${charging?.rare ? ' rare' : ''}`}>
+      {charging?.rare && createPortal(<div className="rare-dim" aria-hidden="true" />, document.body)}
+      <section ref={parchment} aria-label="魔法陣"
+        className={`parchment${charging ? ' charging' : ''}${charging?.rare ? ' rare' : ''}${success ? ' success' : ''}${burnt ? ' burnt' : ''}${shake ? ' shake' : ''}`}
+        style={{ '--dur': `${charging?.ms ?? PROGRESS_MS}ms`, '--n': drawCount } as CSSProperties}>
         <svg className="parchment-svg" viewBox={`0 0 ${VIEW} ${VIEW}`} aria-hidden="true">
           <defs>
             <filter id="ink-rough" filterUnits="userSpaceOnUse" x={0} y={0} width={VIEW} height={VIEW}>
@@ -396,24 +437,24 @@ export const CircleTable = memo(function CircleTable({
           </defs>
           {shown1.length > 0 && <circle className={`ring-line${mismatch[0] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[0]} />}
           {shown2.length > 0 && <circle className={`ring-line outer${mismatch[1] ? ' mismatch' : ''}`} cx={CENTER} cy={CENTER} r={RING_R[1]} />}
-          {draft.core && ring1.map((x, j) => x && (
-            <Line key={`w${j}-${x.element}`} a={centre} b={pt(0, j)} className={`wire${overcomes(draft.core!.element, x.element) ? ' clash' : ''}`} />
+          {coreJs.map((j, i) => (
+            <Line key={`w${j}-${ring1[j]!.element}`} a={centre} b={pt(0, j)} k={kCore + i} className={`wire${overcomes(draft.core!.element, ring1[j]!.element) ? ' clash' : ''}`} />
           ))}
-          {CIRCLE_PAIRS.map(([a, b]) => ring1[a] && ring1[b] && (
-            <Line key={`c${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={pt(0, a)} b={pt(0, b)} className="edge" />
+          {edgePairs.map(([a, b], i) => (
+            <Line key={`c${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={pt(0, a)} b={pt(0, b)} k={kEdge + i} className="edge" />
           ))}
-          {STAR_PAIRS.map(([a, b]) => ring1[a] && ring1[b] && (
-            <Line key={`s${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={pt(0, a)} b={pt(0, b)} className="star" />
+          {starPairs.map(([a, b], i) => (
+            <Line key={`s${a}-${ring1[a]!.element}${ring1[b]!.element}`} a={pt(0, a)} b={pt(0, b)} k={kStar + i} className="star" />
           ))}
-          {ring2.map((x, j) => x && ring1[j] && (
-            <Line key={`o${j}-${x.element}`} a={pt(0, j)} b={pt(1, j)} className={`wire${overcomes(ring1[j]!.element, x.element) ? ' clash' : ''}`} />
+          {outerJs.map((j, i) => (
+            <Line key={`o${j}-${ring2[j]!.element}`} a={pt(0, j)} b={pt(1, j)} k={kOuter + i} className={`wire${overcomes(ring1[j]!.element, ring2[j]!.element) ? ' clash' : ''}`} />
           ))}
           {draft.core && (
             <circle key={`core-${draft.core.element}-${draft.core.grade}`} className="draw core-mark" cx={CENTER} cy={CENTER} r={16} pathLength={1}
-              style={{ stroke: COLORS.element[draft.core.element] }} />
+              style={{ stroke: COLORS.element[draft.core.element], '--k': kLast } as CSSProperties} />
           )}
-          {[...ring1.map((x, j) => [x, pt(0, j)] as const), ...ring2.map((x, j) => [x, pt(1, j)] as const)].map(([x, p], k) => x && (
-            <circle key={`n${k}-${x.element}-${x.grade}`} className="draw node-mark" cx={p.x} cy={p.y} r={11} pathLength={1} style={{ stroke: COLORS.element[x.element] }} />
+          {nodeMarks.map(({ x, p }, k) => (
+            <circle key={`n${k}-${x.element}-${x.grade}`} className="draw node-mark" cx={p.x} cy={p.y} r={11} pathLength={1} style={{ stroke: COLORS.element[x.element], '--k': k } as CSSProperties} />
           ))}
           {charging && (
             <>
@@ -440,6 +481,12 @@ export const CircleTable = memo(function CircleTable({
         >
           {draft.core ? <><span className="glyph">{ELEMENT_NAMES[draft.core.element]}</span><span className="branch">出 {br?.core.out ?? 0}</span></> : <span className="muted">核心</span>}
         </button>
+        {charging?.rare && (
+          <div className="starfield" aria-hidden="true">
+            {STARS.map((st, i) => <span key={i} style={{ left: st.left, top: st.top, animationDelay: st.delay }} />)}
+          </div>
+        )}
+        {success && <div className="light-pillar" aria-hidden="true" />}
         {shown1.map((j) => slotButton(0, j))}
         {shown2.map((j) => slotButton(1, j))}
         {charging && <span className="sr-only" role="progressbar" aria-label="注入魔力" aria-valuemin={0} aria-valuemax={charging.ms} />}

@@ -388,6 +388,90 @@ describe('CircleTable', () => {
     expect(screen.getByRole('status', { name: '合成結果' }).textContent).toContain('魔法陣崩解了');
   });
 
+  describe('effects', () => {
+    const start = async (h: ReturnType<typeof setup>) => {
+      drawSmall();
+      fireEvent.click(synthButton());
+      return h;
+    };
+    const parch = () => document.querySelector('.parchment')!;
+
+    it('a failed circle scorches the paper until the next placement', async () => {
+      vi.useFakeTimers();
+      const h = await start(setup());
+      h.reply({ kind: 'failed', form: 'bolt' });
+      await flush();
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(parch().classList.contains('burnt')).toBe(true);
+      fireEvent.click(btn('清空魔法陣'));
+      expect(parch().classList.contains('burnt')).toBe(false);
+    });
+
+    it('success raises a light pillar briefly', async () => {
+      vi.useFakeTimers();
+      const h = await start(setup());
+      h.reply({ kind: 'learned', spellId: FIREBALL, form: 'bolt' });
+      await flush();
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(parch().classList.contains('success')).toBe(true);
+      expect(document.querySelector('.light-pillar')).toBeTruthy();
+      act(() => vi.advanceTimersByTime(900));
+      expect(parch().classList.contains('success')).toBe(false);
+      expect(document.querySelector('.light-pillar')).toBeNull();
+    });
+
+    it('the rare charge darkens the page and shows a starfield', async () => {
+      vi.useFakeTimers();
+      const h = await start(setup());
+      expect(document.querySelector('.rare-dim')).toBeNull();
+      h.reply({ kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } });
+      await flush();
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(parch().classList.contains('rare')).toBe(true);
+      expect(document.body.querySelector('.rare-dim')).toBeTruthy();
+      expect(document.querySelectorAll('.starfield > *').length).toBe(20);
+      act(() => vi.advanceTimersByTime(RARE_PROGRESS_MS - PROGRESS_MS));
+      expect(parch().classList.contains('rare')).toBe(false);
+      expect(document.querySelector('.rare-dim')).toBeNull();
+      expect(document.querySelector('.starfield')).toBeNull();
+    });
+
+    it('removes the dim page when unmounted mid-charge', async () => {
+      vi.useFakeTimers();
+      const h = await start(setup());
+      h.reply({ kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } });
+      await flush();
+      expect(document.querySelector('.rare-dim')).toBeTruthy();
+      cleanup();
+      expect(document.querySelector('.rare-dim')).toBeNull();
+    });
+
+    it('a circuit that stops matching shakes once', () => {
+      vi.useFakeTimers();
+      setup();
+      choose(/^核心/, /^火・初階/);
+      expect(parch().classList.contains('shake')).toBe(false);
+      choose(/^一環 第1格/, /^風・初階/);
+      expect(parch().classList.contains('shake')).toBe(true);
+      act(() => vi.advanceTimersByTime(400));
+      expect(parch().classList.contains('shake')).toBe(false);
+      choose(/^核心/, /^火・中階/);
+      expect(screen.getByText('迴路對不上：大失敗機率提高')).toBeTruthy();
+      expect(parch().classList.contains('shake')).toBe(false);
+    });
+
+    it('charging lines light up in order, the core last', async () => {
+      const h = await start(setup());
+      expect(h).toBeTruthy();
+      const ks = [...document.querySelectorAll<SVGElement>('.draw')].map((el) => Number(el.style.getPropertyValue('--k')));
+      expect(ks.length).toBeGreaterThan(1);
+      expect(ks.every((k) => Number.isFinite(k))).toBe(true);
+      const core = Number((document.querySelector('.core-mark') as SVGElement).style.getPropertyValue('--k'));
+      expect(core).toBe(Math.max(...ks));
+      expect(new Set(ks).size).toBe(ks.length);
+    });
+  });
+
   it('nothing can be changed while injecting', async () => {
     const h = setup();
     drawSmall();

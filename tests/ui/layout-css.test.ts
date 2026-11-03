@@ -47,6 +47,43 @@ describe('magic circle parchment', () => {
   });
 });
 
+describe('magic circle effects', () => {
+  /** every `@media (prefers-reduced-motion: reduce)` block, concatenated */
+  const reduced = (() => {
+    let out = '';
+    let from = 0;
+    for (;;) {
+      const at = css.indexOf('@media (prefers-reduced-motion: reduce)', from);
+      if (at < 0) return out;
+      let depth = 0;
+      const open = css.indexOf('{', at);
+      let i = open;
+      for (; i < css.length; i++) {
+        if (css[i] === '{') depth++;
+        else if (css[i] === '}' && --depth === 0) break;
+      }
+      out += css.slice(open + 1, i);
+      from = i;
+    }
+  })();
+  it('turns the circle animations off for reduced motion', () => {
+    for (const sel of ['.burnt', '.shake', '.success', '.rune-band', '.light-pillar']) {
+      const hit = reduced.split('}').find((r) => r.includes(sel) && /animation:\s*none/.test(r));
+      expect(hit, `${sel} in reduced motion`).toBeTruthy();
+    }
+  });
+  it('a chosen rune band glows gently at rest', () => {
+    const r = rule(css, '.parchment-svg .rune-band.filled');
+    expect(r).toMatch(/drop-shadow/);
+    expect(r).toMatch(/animation:\s*circle-rune-glow/);
+  });
+  it('the rare charge dims the page behind the sheet', () => {
+    expect(rule(css, '.rare-dim')).toMatch(/position:\s*fixed/);
+    expect(rule(css, '.rare-dim')).toMatch(/pointer-events:\s*none/);
+    expect(rule(css, '.parchment-sheet.rare')).toMatch(/z-index/);
+  });
+});
+
 describe('study desk and parchment sheet', () => {
   const body = (sel: string) => css.match(new RegExp(`(?:^|[}\\s])${sel.replace(/[.:()]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
   it('the workbench has the desk art on top of a fallback wood look', () => {

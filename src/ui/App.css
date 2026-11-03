@@ -271,12 +271,24 @@ html.away { filter: grayscale(1); }
 .parchment-svg .wire.clash { stroke: #b0331d; }
 .parchment-svg .draw { filter: url(#ink-rough); fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: circle-draw 0.6s ease-out forwards; }
 .parchment-svg .star { stroke-width: 1.2; }
+.parchment-svg .wire, .parchment-svg .edge { stroke: var(--gold); animation-delay: 0.4s; }
+.parchment-svg .wire.clash { animation: circle-draw 0.6s ease-out 0.4s forwards, circle-clash 0.5s ease-in-out 1s infinite alternate; }
 .parchment-svg .core-mark { stroke-width: 2.4; }
 .parchment-svg .node-mark { stroke-width: 2; }
+/* ink soaking in: a placed mark blooms from a blurred dot */
+.parchment-svg .core-mark, .parchment-svg .node-mark {
+  transform-box: fill-box; transform-origin: center;
+  animation: circle-draw 0.6s ease-out forwards, circle-bloom 0.6s ease-out;
+}
+@keyframes circle-bloom { from { transform: scale(0.3); opacity: 0; filter: url(#ink-rough) blur(2px); } }
+@keyframes circle-clash { to { opacity: 0.4; } }
+@keyframes circle-lit { from { stroke-width: 4; opacity: 0.5; } }
 .parchment-svg .rune-band { pointer-events: none; cursor: pointer; outline: none; }
 .parchment-svg .rune-band .hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
 .parchment-svg .rune-band text { font-size: 9px; fill: #6b4a2299; letter-spacing: 0; pointer-events: none; }
 .parchment-svg .rune-band.filled text { fill: var(--ink); font-weight: 700; }
+.parchment-svg .rune-band.filled { filter: drop-shadow(0 0 2px #e8b84a99); animation: circle-rune-glow 2.4s ease-in-out infinite alternate; }
+@keyframes circle-rune-glow { to { filter: drop-shadow(0 0 4px #e8b84add); } }
 .parchment-svg .rune-band:hover text, .parchment-svg .rune-band:focus-visible text, .parchment-svg .rune-band.lit text { fill: var(--gold); filter: drop-shadow(0 0 3px #e8b84a); }
 .parchment-svg .rune-band.busy { cursor: default; }
 .parchment-svg .progress-track { fill: none; stroke: #6b4a2233; stroke-width: 4; }
@@ -286,6 +298,28 @@ html.away { filter: grayscale(1); }
 @keyframes circle-fill { to { stroke-dashoffset: 0; } }
 @keyframes circle-spark { 0% { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; transform: scale(1.6); } 100% { opacity: 0; transform: scale(0.2) translateY(-6px); } }
 .parchment.charging { animation: circle-glow 0.8s ease-in-out infinite alternate; }
+.parchment-sheet { transition: transform 0.3s ease-out; }
+.parchment-sheet.charging { transform: translateY(-3px); }
+.parchment-sheet.rare { z-index: 95; }
+/* charging: each line lights up in turn (--k of --n), the bands spin up, three turns in the charge */
+.parchment.charging .parchment-svg .draw { animation: circle-draw 0.6s ease-out forwards, circle-lit 0.5s ease-out calc(var(--k) * var(--dur) / (var(--n) + 1)) backwards; }
+.parchment.charging .parchment-svg .rune-band { animation: circle-spin var(--dur) cubic-bezier(0.55, 0, 1, 0.45) forwards; transform-box: view-box; transform-origin: 50% 50%; }
+@keyframes circle-spin { to { transform: rotate(1080deg); } }
+/* a finished circle: a pillar of light, or scorched paper (white flash, then burnt edges, broken lines) */
+.light-pillar { position: absolute; left: 36%; right: 36%; bottom: 40%; top: -10%; pointer-events: none; background: linear-gradient(0deg, #e8b84acc, #fff3c455 60%, transparent); filter: blur(3px); transform-origin: bottom; animation: circle-pillar 0.9s ease-out forwards; }
+@keyframes circle-pillar { from { opacity: 0; transform: scaleY(0.2); } 30% { opacity: 1; } to { opacity: 0; transform: scaleY(1.1); } }
+.parchment { transition: box-shadow 0.6s ease-out; }
+.parchment.burnt { box-shadow: inset 0 0 46px 10px #1a0d05, inset 0 0 90px 24px #5a2f0e99; }
+.parchment.burnt::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: #fff; animation: circle-flash 0.15s ease-out forwards; }
+@keyframes circle-flash { from { opacity: 0.9; } to { opacity: 0; } }
+.parchment.burnt .parchment-svg .draw { stroke-dasharray: 0.08 0.04; }
+.parchment.shake { animation: circle-shake 0.4s linear; }
+@keyframes circle-shake { 0%, 100% { translate: 0 0; } 20% { translate: -2px 1px; } 40% { translate: 2px -1px; } 60% { translate: -2px -1px; } 80% { translate: 2px 1px; } }
+/* the rare charge: the page goes dark behind the sheet, a few stars flicker on the paper */
+.rare-dim { position: fixed; inset: 0; z-index: 90; background: #000; opacity: 0.75; pointer-events: none; }
+.starfield { position: absolute; inset: 0; pointer-events: none; }
+.starfield span { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff3c4; box-shadow: 0 0 6px 2px #e8b84a; animation: circle-star 1.2s ease-in-out infinite alternate; }
+@keyframes circle-star { from { opacity: 0.15; transform: scale(0.5); } to { opacity: 1; transform: scale(1.2); } }
 @keyframes circle-glow { from { box-shadow: inset 0 0 28px #6b4a2299, 0 0 4px #e8b84a55; } to { box-shadow: inset 0 0 20px #6b4a2266, 0 0 22px #e8b84aaa; } }
 
 .circle-slot {
@@ -337,6 +371,10 @@ html.away { filter: grayscale(1); }
 @media (prefers-reduced-motion: reduce) {
   .parchment-svg .draw { animation: none; stroke-dashoffset: 0; }
   .parchment-svg .spark, .parchment.charging, .circle-result { animation: none; }
+  .parchment.burnt, .parchment.shake, .parchment.success, .parchment-svg .rune-band, .parchment-svg .rune-band.filled, .light-pillar, .starfield span { animation: none; }
+  .parchment.charging .parchment-svg .draw, .parchment-svg .core-mark, .parchment-svg .node-mark, .parchment-svg .wire.clash { animation: none; stroke-dashoffset: 0; }
+  .parchment.burnt::after { animation: none; opacity: 0; }
+  .parchment-sheet { transition: none; }
   .parchment-svg .spark { opacity: 0.8; }
 }
 
