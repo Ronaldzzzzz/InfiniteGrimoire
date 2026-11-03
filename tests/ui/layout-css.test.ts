@@ -33,7 +33,7 @@ describe('battle strip layout', () => {
   it('the phone rule (<= 600 px) comes later, so its lower strip and padding win', () => {
     const tablet = media(1099), phone = media(600);
     expect(phone.at).toBeGreaterThan(tablet.at);
-    expect(rule(phone.body, '.battle-strip')).toMatch(/height:\s*140px/);
+    expect(rule(phone.body, '.battle-strip')).toMatch(/height:\s*var\(--strip-h\)/);
     expect(rule(phone.body, 'body')).toMatch(/padding-bottom:\s*140px/);
   });
 });
