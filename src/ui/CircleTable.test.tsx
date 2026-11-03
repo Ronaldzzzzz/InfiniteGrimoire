@@ -568,4 +568,78 @@ describe('placementOfSpell', () => {
     expect(p.runes).toEqual(['ring', null]);
     expect(placementOfSpell('nope', content)).toBeNull();
   });
+
+  describe('final fix wave', () => {
+    it('placeItem puts a ring-2 element into an open slot, not the first rule index', () => {
+      const { ref } = setup({ circleTier: 8, inventory: { 'el:fire:4': 1, 'el:fire:1': 5, 'el:fire:3': 2 } });
+      act(() => ref.current!.placeItem('el:fire:4'));
+      for (let n = 0; n < 5; n++) act(() => ref.current!.placeItem('el:fire:1'));
+      act(() => ref.current!.placeItem('el:fire:3'));
+      expect(document.querySelectorAll('[data-slot^="1-"]')).toHaveLength(2);
+      expect(document.querySelector('[data-slot="1-1"]')!.classList.contains('filled')).toBe(true);
+      expect(document.querySelector('[data-slot="1-0"]')).toBeNull();
+    });
+
+    it('ring 2 says ring 1 must be full first', () => {
+      setup({ circleTier: 7 });
+      choose(/^核心/, /^火・初階/);
+      fireEvent.click(btn(/^二環 第1格/));
+      expect(screen.getByRole('status', { name: '' }).textContent).toBe('一環要先放滿五格才能放二環');
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('the grade wheel shows short text but keeps the full label for readers', () => {
+      setup({ inventory: { 'el:fire:1': 1200 } });
+      fireEvent.click(btn(/^核心/));
+      fireEvent.click(dialogBtn('火'));
+      const item = dialogBtn('初階 ×1200（上限 Lv.2）');
+      expect(item.textContent).toBe('初階\n×1.2k\n≤Lv.2');
+    });
+
+    it('returns focus to the slot after a pick and after a grade-step close', () => {
+      setup();
+      choose(/^核心/, /^火・初階/);
+      expect(document.activeElement).toBe(document.querySelector('[data-slot="core"]'));
+      fireEvent.click(btn(/^核心/));
+      fireEvent.click(dialogBtn('火'));
+      fireEvent.click(dialogBtn('關閉'));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(document.activeElement).toBe(document.querySelector('[data-slot="core"]'));
+      choose(/^一環 第1格/, /^風・初階/);
+      expect(document.activeElement).toBe(document.querySelector('[data-slot="0-0"]'));
+      choose(/^一環符文/, /^射/);
+      expect(document.activeElement).toBe(document.querySelector('[data-rune="0"]'));
+    });
+
+    it('explains locked runes with a visible note', () => {
+      setup();
+      fireEvent.click(btn(/^一環符文/));
+      expect(within(screen.getByRole('dialog')).getByText('未取得的符文從魔王取得')).toBeTruthy();
+    });
+
+    it('re-synthesising right after a success drops the success glow at once', async () => {
+      vi.useFakeTimers();
+      const h = setup();
+      drawSmall();
+      fireEvent.click(synthButton());
+      h.reply({ kind: 'learned', spellId: FIREBALL, form: 'bolt' });
+      await flush();
+      act(() => vi.advanceTimersByTime(PROGRESS_MS));
+      expect(document.querySelector('.parchment')!.classList.contains('success')).toBe(true);
+      fireEvent.click(synthButton());
+      expect(document.querySelector('.parchment')!.classList.contains('success')).toBe(false);
+      expect(document.querySelector('.parchment')!.classList.contains('charging')).toBe(true);
+    });
+
+    it('the rune band glyphs are hidden from readers and start away from the 12 o clock seam', () => {
+      setup();
+      choose(/^一環符文/, /^射/);
+      const band = btn('一環符文：射');
+      expect(band.querySelector('text')!.getAttribute('aria-hidden')).toBe('true');
+      const d = band.querySelector('path')!.getAttribute('d')!;
+      const [, sx, sy] = /^M ([\d.]+) ([\d.]+)/.exec(d)!;
+      expect(Math.abs(Number(sx) - 200)).toBeGreaterThan(1);
+      expect(sy).toBeTruthy();
+    });
+  });
 });

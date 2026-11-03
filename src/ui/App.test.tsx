@@ -138,6 +138,8 @@ describe('App layout', () => {
     addBolt();
     fireEvent.click(screen.getByRole('button', { name: '合成' }));
     expect(sync.synthesizeCircle).toHaveBeenCalled();
+    // the veil is up: the star map shows only what was learned before the charge
+    expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(1);
     const b = fakeRuntime({ learned: ['mana_bolt', FW] }) as unknown as GameRuntime;
     rerender(ui(b));
     expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(2);

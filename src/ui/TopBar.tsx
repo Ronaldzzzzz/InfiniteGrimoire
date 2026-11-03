@@ -19,6 +19,7 @@ export function TopBar({
   onOpenAccount,
   feed = [],
   ownName = '',
+  veil = null,
 }: {
   runtime: RuntimeStore & Pick<GameRuntime, 'equip' | 'travel'>;
   content: Content;
@@ -27,6 +28,8 @@ export function TopBar({
   onOpenAccount: () => void;
   feed?: Discovery[];
   ownName?: string;
+  /** while set, only these learned spells are listed (a just-learned spell stays hidden until the reveal) */
+  veil?: readonly string[] | null;
 }) {
   const game = useGameState(runtime);
   const bossOnField = useRuntime(runtime, (s) => bossAlive(s, content));
@@ -56,7 +59,7 @@ export function TopBar({
           裝備：<b>{spell?.name ?? game.equipped}</b> <span className="muted">Lv.{spell?.tier ?? '-'}</span>
         </span>
         <div className="only-narrow topbar-spell">
-          <SpellPicker game={game} content={content} sort={sort} onSortChange={changeSort} onEquip={(id) => runtime.equip(id)} disabled={locked} />
+          <SpellPicker game={veil ? { ...game, learned: game.learned.filter((id) => veil.includes(id)) } : game} content={content} sort={sort} onSortChange={changeSort} onEquip={(id) => runtime.equip(id)} disabled={locked} />
         </div>
         {efficiency < 1 && <span className="hud-note">越級：掉落效益 {Math.round(efficiency * 100)}%</span>}
         {stuck && <span className="hud-note warn">{BOSS_HINT}</span>}

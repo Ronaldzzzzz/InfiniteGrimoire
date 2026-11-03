@@ -123,3 +123,32 @@ describe('phone node card', () => {
     expect(Math.min(...overrides)).toBeGreaterThan(at);
   });
 });
+
+describe('final fix wave css', () => {
+  const blockOf = (selector: string): string => {
+    const at = css.search(new RegExp(`^${selector.replace(/[.:()]/g, '\\$&')} \\{`, 'm'));
+    expect(at, selector).toBeGreaterThanOrEqual(0);
+    return css.slice(at, css.indexOf('}', at));
+  };
+  it('the grade wheel text scales with the parchment so three lines fit a phone item', () => {
+    expect(blockOf('.ring-picker .ring-item')).toMatch(/font-size:\s*clamp\(8px,\s*3\.4cqi,\s*11px\)/);
+    expect(blockOf('.parchment')).toMatch(/container-type:\s*inline-size/);
+  });
+  it('the circle stays inside the paper so Lv.10 ring-2 slots are not clipped', () => {
+    expect(blockOf('.parchment')).toMatch(/width:\s*76%/);
+  });
+  it('the placeholder paper fits the panel', () => {
+    expect(blockOf('.parchment-sheet:not(.has-art)')).toMatch(/width:\s*min\(100%,\s*52vh\)/);
+  });
+  it('on phones the banner and equip toasts move off the result and prediction, after the base rules', () => {
+    const banner = css.search(/\.discovery-banner \{ top: 28%; \}/);
+    expect(banner).toBeGreaterThan(css.search(/^\.discovery-banner \{/m));
+    const toast = css.search(/\.strip-float \.equip-toasts \{ position: fixed; top: 112px/);
+    expect(toast).toBeGreaterThan(css.search(/^\.strip-float \.key-bar, \.strip-float \.equip-toasts/m));
+    expect(css.lastIndexOf('@media (max-width: 600px)', banner)).toBeGreaterThan(css.lastIndexOf('}\n', banner - 200));
+  });
+  it('reduced motion hides the light pillar', () => {
+    const rm = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce) {\n  .parchment-svg .draw'));
+    expect(rm.slice(0, rm.indexOf('\n}\n'))).toMatch(/\.light-pillar \{ display: none; \}/);
+  });
+});

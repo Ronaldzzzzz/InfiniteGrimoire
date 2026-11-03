@@ -129,6 +129,7 @@ export function App({
         onOpenAccount={() => setAccountOpen(true)}
         feed={feed}
         ownName={account?.displayName ?? ''}
+        veil={veil}
       />
       <main className="main">
         <div className="side">

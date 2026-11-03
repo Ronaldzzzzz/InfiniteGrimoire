@@ -51,6 +51,8 @@ export const MISMATCH_WARNING = '迴路對不上：大失敗機率提高';
 const capOf = (grade: number) => GRADE_CAP[Math.min(Math.max(grade, 1), GRADE_CAP.length) - 1]!;
 const nodeName = (x: CircleNode) => `${ELEMENT_NAMES[x.element]}・${GRADE_NAMES[x.grade - 1]}`;
 const filled = (ring: (CircleNode | null)[]) => ring.filter((x) => x != null).length;
+/** counts of 1000 and more as ×1.2k, so a wheel item's three lines fit on a phone */
+const short = (n: number): string => (n >= 1000 ? `${Math.floor(n / 100) / 10}k` : String(n));
 const filledIdx = (ring: (CircleNode | null)[]): number[] => ring.flatMap((x, j) => (x ? [j] : []));
 
 const toPlacement = (d: Draft): Placement | null =>
@@ -230,8 +232,9 @@ export const CircleTable = memo(function CircleTable({
         if (!d.core) return { ...d, core: x };
         for (const ring of [0, 1] as Ring[]) {
           if (x.grade < RING_FLOOR[ring]! || slotBlock(d, ring, tier)) continue;
-          const j = d.rings[ring].indexOf(null);
-          if (j < 0) continue;
+          // an open slot as drawn (the ring-2 default indices are not 0..n), never merely the first empty rule index
+          const j = shownSlots(ring, openSlotCounts(tier)[ring], filledIdx(d.rings[ring])).find((k) => d.rings[ring][k] == null);
+          if (j === undefined) continue;
           const rings = [...d.rings] as Draft['rings'];
           rings[ring] = rings[ring].map((y, k) => (k === j ? x : y));
           return { ...d, rings };
@@ -244,6 +247,10 @@ export const CircleTable = memo(function CircleTable({
     },
   }), [edit, runtime]);
 
+  const focusSlot = (t: Target): void => {
+    const sel = t.kind === 'rune' ? `[data-rune="${t.ring}"]` : `[data-slot="${t.kind === 'core' ? 'core' : `${t.ring}-${t.j}`}"]`;
+    parchment.current?.querySelector<HTMLElement | SVGElement>(sel)?.focus();
+  };
   const setNode = (t: Target, x: CircleNode | null): void => {
     edit((d) => {
       if (t.kind === 'core') return { ...d, core: x };
@@ -254,6 +261,7 @@ export const CircleTable = memo(function CircleTable({
       return { ...d, rings };
     });
     setTarget(null);
+    focusSlot(t);
   };
   const setRune = (ring: Ring, r: RuneId | null): void => {
     edit((d) => {
@@ -262,6 +270,7 @@ export const CircleTable = memo(function CircleTable({
       return { ...d, runes: next };
     });
     setTarget(null);
+    focusSlot({ kind: 'rune', ring });
   };
 
   // what blocks 合成, first reason only
@@ -307,6 +316,7 @@ export const CircleTable = memo(function CircleTable({
     setShown(null);
     setMessage('');
     setBurnt(false);
+    setSuccess(false);
     setCharging({ ms: PROGRESS_MS, rare: false });
     announce(true);
     let result: ActionResult | null;
@@ -403,7 +413,10 @@ export const CircleTable = memo(function CircleTable({
     const chosen = draft.runes[ring];
     const id = `rune-path-${ring}`;
     const unit = chosen ? RUNE_NAMES[chosen] : '·';
-    const text = Array.from({ length: Math.floor(circumference(r) / 14) }, () => unit).join(chosen ? '' : ' ');
+    const text = Array.from({ length: Math.floor((circumference(r) - 14) / 14) }, () => unit).join(chosen ? '' : ' ');
+    // the band starts between two slots (36 deg) so the seam never sits under a node, and one glyph's gap closes the loop
+    const a0 = (36 * Math.PI) / 180, a1 = a0 - 0.0005;
+    const at = (a: number) => `${(CENTER + r * Math.sin(a)).toFixed(3)} ${(CENTER - r * Math.cos(a)).toFixed(3)}`;
     const open = (): void => {
       if (busy) return;
       setMessage('');
@@ -414,9 +427,9 @@ export const CircleTable = memo(function CircleTable({
         data-rune={ring} role="button" tabIndex={busy ? -1 : 0} aria-disabled={busy || undefined}
         aria-label={`${RING_NAME[ring]}符文：${chosen ? RUNE_NAMES[chosen] : '空'}`}
         onClick={open} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}>
-        <path id={id} d={`M ${CENTER} ${CENTER - r} A ${r} ${r} 0 1 1 ${CENTER - 0.01} ${CENTER - r}`} fill="none" stroke="none" />
+        <path id={id} d={`M ${at(a0)} A ${r} ${r} 0 1 1 ${at(a1)}`} fill="none" stroke="none" />
         <circle className="hit" cx={CENTER} cy={CENTER} r={r} />
-        <text><textPath href={`#${id}`} textLength={circumference(r)} lengthAdjust="spacing">{text}</textPath></text>
+        <text aria-hidden="true"><textPath href={`#${id}`} textLength={circumference(r) - 14} lengthAdjust="spacing">{text}</textPath></text>
       </g>
     );
   };
@@ -506,10 +519,7 @@ export const CircleTable = memo(function CircleTable({
             onElement={(el) => setTarget({ ...target, el })}
             onBack={() => setTarget({ ...target, el: undefined })}
             onClose={() => setTarget(null)}
-            returnFocus={() => {
-              const key = target.kind === 'core' ? 'core' : `${target.ring}-${target.j}`;
-              parchment.current?.querySelector<HTMLButtonElement>(`[data-slot="${key}"]`)?.focus();
-            }}
+            returnFocus={() => focusSlot(target)}
           />
         )}
         {target && !busy && target.kind === 'rune' && (
@@ -520,7 +530,7 @@ export const CircleTable = memo(function CircleTable({
             runes={runes}
             onRune={(r) => setRune(target.ring, r)}
             onClose={() => setTarget(null)}
-            returnFocus={() => parchment.current?.querySelector<SVGGElement>(`[data-rune="${target.ring}"]`)?.focus()}
+            returnFocus={() => focusSlot(target)}
           />
         )}
       </section>
@@ -529,7 +539,6 @@ export const CircleTable = memo(function CircleTable({
       <div className="rune-row">
         <button type="button" className="circle-clear" disabled={busy} onClick={() => { setTarget(null); edit(emptyDraft); }}>清空魔法陣</button>
       </div>
-
 
       {placement && (
         <p className="circle-predict" aria-label="預測">{predictionOf(placement)}</p>
@@ -577,7 +586,7 @@ function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, onCl
     const grade = i + 1, n = countOf(el, grade), low = grade < floor;
     const cap = target.kind === 'core' ? `（上限 Lv.${capOf(grade)}）` : '';
     const ariaLabel = `${GRADE_NAMES[i]} ×${n}${cap}`;
-    const label = `${GRADE_NAMES[i]}\n×${n}${cap ? `\n上限 Lv.${capOf(grade)}` : ''}`;
+    const label = `${GRADE_NAMES[i]}\n×${short(n)}${cap ? `\n≤Lv.${capOf(grade)}` : ''}`;
     return {
       key: String(grade), label, ariaLabel, enabled: n > 0 && !low, on: current?.element === el && current.grade === grade,
       color: COLORS.element[el], title: low ? '二環需要高階以上' : n > 0 ? undefined : '沒有這個階級',
@@ -586,7 +595,7 @@ function ElementWheel({ target, at, draft, held, onNode, onElement, onBack, onCl
   return (
     <RingPicker at={at} title={`選擇${where}的${ELEMENT_NAMES[el]}元素階級`} items={items}
       onPick={(k) => onNode({ element: el, grade: Number(k) })} onRemove={remove} onClose={onClose} onBack={onBack}
-      radius={GRADE_WHEEL_R} note={floor > 1 ? '二環需要高階以上' : undefined} />
+      radius={GRADE_WHEEL_R} note={floor > 1 ? '二環需要高階以上' : undefined} returnFocus={returnFocus} />
   );
 }
 
@@ -613,6 +622,6 @@ function RuneWheel({ at, ring, current, runes, onRune, onClose, returnFocus }: {
   return (
     <RingPicker at={at} title={`選擇${RING_NAME[ring]}符文`} items={items} radius={RUNE_WHEEL_R}
       onPick={(k) => onRune(k as RuneId)} onRemove={current ? () => onRune(null) : undefined}
-      onClose={onClose} returnFocus={returnFocus} />
+      onClose={onClose} returnFocus={returnFocus} note={runes.length < RUNE_IDS.length ? '未取得的符文從魔王取得' : undefined} />
   );
 }

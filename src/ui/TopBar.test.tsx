@@ -63,4 +63,16 @@ describe('TopBar', () => {
     fireEvent.click(button);
     expect(onOpenAccount).toHaveBeenCalled();
   });
+
+  it('veils a just-learned spell in the spell picker while the veil is up', () => {
+    const g = { ...createInitialState(content), learned: ['mana_bolt', 'fireball'] };
+    render(<TopBar runtime={runtime(g)} content={content} status="online" bound={true} onOpenAccount={() => {}} veil={['mana_bolt']} />);
+    fireEvent.click(screen.getByRole('button', { name: '裝備魔法' }));
+    expect(screen.queryByRole('option', { name: /火球/ })).toBeNull();
+    expect(screen.getByRole('option', { name: /魔力彈/ })).toBeTruthy();
+    cleanup();
+    render(<TopBar runtime={runtime(g)} content={content} status="online" bound={true} onOpenAccount={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: '裝備魔法' }));
+    expect(screen.getByRole('option', { name: /火球/ })).toBeTruthy();
+  });
 });
