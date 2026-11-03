@@ -14,6 +14,15 @@ const bad = 'm:fire.3.--a-f.-----.bolt';
 const sync = () => ({ action: vi.fn(async () => null) });
 
 describe('Notebook', () => {
+  it('a veiled spell is not listed until the veil lifts', () => {
+    const rt = fakeRuntime({ learned: ['mana_bolt', good, bad] });
+    const ui = (veil: readonly string[] | null) => <Notebook runtime={rt} sync={sync()} content={content} onPick={vi.fn()} veil={veil} />;
+    const { rerender } = render(ui(['mana_bolt', good]));
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    rerender(ui(null));
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+
   it('Notebook lists only crafted spells and picks into the slots', () => {
     const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball', good, bad], levels: { [good]: 3 } });
     const onPick = vi.fn();

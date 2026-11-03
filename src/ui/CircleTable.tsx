@@ -118,6 +118,7 @@ export const CircleTable = memo(function CircleTable({
   sync,
   content,
   onResult,
+  onCharging,
   ref,
 }: {
   runtime: RuntimeStore;
@@ -125,6 +126,8 @@ export const CircleTable = memo(function CircleTable({
   content: Content;
   /** called with an applied result (learned / known / failed) when the progress ring has filled */
   onResult?: (r: ActionResult) => void;
+  /** true when 合成 starts, false when the result is revealed (or refused, failed, unmounted) */
+  onCharging?: (charging: boolean) => void;
   ref?: Ref<CircleTableHandle>;
 }) {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -172,10 +175,23 @@ export const CircleTable = memo(function CircleTable({
     }, ms);
     timers.current.add(t);
   };
-  const latest = useRef({ onResult, busy });
+  const latest = useRef({ onResult, onCharging, busy });
   useEffect(() => {
-    latest.current = { onResult, busy };
-  }, [onResult, busy]);
+    latest.current = { onResult, onCharging, busy };
+  }, [onResult, onCharging, busy]);
+  // whether the parent was told we are charging, so unmounting mid-charge still lifts its veil
+  const announced = useRef(false);
+  const announce = (on: boolean): void => {
+    if (announced.current === on) return;
+    announced.current = on;
+    latest.current.onCharging?.(on);
+  };
+  useEffect(() => () => {
+    if (announced.current) {
+      announced.current = false;
+      latest.current.onCharging?.(false);
+    }
+  }, []);
 
   const edit = useCallback((next: (d: Draft) => Draft): void => {
     setDraft(next);
@@ -263,11 +279,13 @@ export const CircleTable = memo(function CircleTable({
     setShown(null);
     setMessage('');
     setCharging({ ms: PROGRESS_MS });
+    announce(true);
     let result: ActionResult | null;
     try {
       result = await sync.synthesizeCircle(placement);
     } catch {
       if (!alive.current) return;
+      announce(false);
       setCharging(null);
       setMessage(SYNTH_ERROR_MESSAGE);
       return;
@@ -275,6 +293,7 @@ export const CircleTable = memo(function CircleTable({
     if (!alive.current) return;
     if (!result || result.kind === 'rejected' || (result.kind !== 'learned' && result.kind !== 'known' && result.kind !== 'failed')) {
       // nothing was spent: no reveal, the circle stays as drawn
+      announce(false);
       setCharging(null);
       setMessage(result ? synthMessage(result, content) : SYNTH_RETRY_MESSAGE);
       return;
@@ -283,6 +302,7 @@ export const CircleTable = memo(function CircleTable({
     const total = isRare(applied, content) ? RARE_PROGRESS_MS : PROGRESS_MS;
     if (total !== PROGRESS_MS) setCharging({ ms: total });
     later(() => {
+      announce(false);
       setCharging(null);
       setShown(shownOf(applied, content));
       latest.current.onResult?.(applied);

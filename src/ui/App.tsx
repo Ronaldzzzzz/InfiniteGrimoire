@@ -51,6 +51,7 @@ export function App({
   const [rareQueue, setRareQueue] = useState<{ spell: Spell; spellId: string; first: boolean; n: number }[]>([]);
   const [awayReport, setAwayReport] = useState<OfflineReport | null>(null);
   useEffect(() => sync.onOfflineReport((r) => setAwayReport((prev) => mergeReports(prev, r))), [sync]);
+  const [veil, setVeil] = useState<readonly string[] | null>(null);
   const [toasts, setToasts] = useState<EquipToast[]>([]);
   const toastN = useRef(0);
   const endDiscovery = useCallback(() => setDiscovery(null), []);
@@ -93,6 +94,10 @@ export function App({
     const p = placementOfSpell(id, content);
     if (p) circle.current?.loadPlacement(p);
   }, [runtime, content]);
+  const onCharging = useCallback((on: boolean) => {
+    setVeil(on ? [...runtime.getSnapshot().game.learned] : null);
+  }, [runtime]);
+  useEffect(() => setVeil(null), [runtime]);
   const onSynthResult = useCallback((result: ActionResult): void => {
     if (result.kind !== 'learned' && result.kind !== 'known') return;
     const spell = resolveSpell(result.spellId, content);
@@ -126,7 +131,7 @@ export function App({
       <main className="main">
         <div className="side">
           <section className="workbench" aria-label="元素與魔法陣">
-            <CircleTable ref={circle} runtime={runtime} sync={sync} content={content} onResult={onSynthResult} />
+            <CircleTable ref={circle} runtime={runtime} sync={sync} content={content} onResult={onSynthResult} onCharging={onCharging} />
             <ElementTable
               inventory={game.inventory}
               onPick={pick}
@@ -142,9 +147,9 @@ export function App({
               <button type="button" role="tab" aria-selected={tab === 'notebook'} onClick={() => setTab('notebook')}>魔法筆記</button>
             </div>
             {tab === 'stars' ? (
-              <GrimoirePanel runtime={runtime} sync={sync} onPick={pick} content={content} />
+              <GrimoirePanel runtime={runtime} sync={sync} onPick={pick} content={content} veil={veil} />
             ) : (
-              <Notebook runtime={runtime} sync={sync} content={content} onPick={pick} />
+              <Notebook runtime={runtime} sync={sync} content={content} onPick={pick} veil={veil} />
             )}
           </section>
         </div>

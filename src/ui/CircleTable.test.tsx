@@ -23,14 +23,15 @@ function setup(game: Partial<GameState> = {}, reply?: () => Promise<ActionResult
   let rejectReply: (e: unknown) => void = () => {};
   const synthesizeCircle = vi.fn(reply ?? (() => new Promise<ActionResult | null>((res, rej) => { resolve = res; rejectReply = rej; })));
   const onResult = vi.fn();
+  const onCharging = vi.fn();
   const ref = createRef<CircleTableHandle>();
   const onRender = vi.fn();
   render(
     <Profiler id="parchment" onRender={onRender}>
-      <CircleTable ref={ref} runtime={rt} sync={{ synthesizeCircle }} content={content} onResult={onResult} />
+      <CircleTable ref={ref} runtime={rt} sync={{ synthesizeCircle }} content={content} onResult={onResult} onCharging={onCharging} />
     </Profiler>,
   );
-  return { rt, synthesizeCircle, onResult, ref, onRender, reply: (r: ActionResult | null) => resolve(r), fail: (e: unknown) => rejectReply(e) };
+  return { rt, synthesizeCircle, onResult, onCharging, ref, onRender, reply: (r: ActionResult | null) => resolve(r), fail: (e: unknown) => rejectReply(e) };
 }
 
 const btn = (name: string | RegExp) => screen.getByRole('button', { name });
@@ -201,6 +202,56 @@ describe('CircleTable', () => {
     // the circle stays on the parchment for another try
     expect(btn(/^一環 第1格：風・初階/)).toBeTruthy();
     expect(PROGRESS_MS).toBe(3000);
+  });
+
+  it('calls onCharging(true) before the request and onCharging(false) when the result is revealed', async () => {
+    vi.useFakeTimers();
+    const h = setup();
+    drawSmall();
+    fireEvent.click(synthButton());
+    expect(h.onCharging.mock.calls).toEqual([[true]]);
+    h.reply({ kind: 'learned', spellId: FIREBALL, form: 'bolt' });
+    await flush();
+    expect(h.onCharging.mock.calls).toEqual([[true]]);
+    act(() => vi.advanceTimersByTime(PROGRESS_MS));
+    expect(h.onCharging.mock.calls).toEqual([[true], [false]]);
+  });
+
+  it('lifts the veil on refusal, error and unmount', async () => {
+    const refused = setup();
+    drawSmall();
+    fireEvent.click(synthButton());
+    refused.reply({ kind: 'rejected', reason: 'overCap' } as ActionResult);
+    await flush();
+    expect(refused.onCharging.mock.calls).toEqual([[true], [false]]);
+    cleanup();
+
+    const failed = setup();
+    drawSmall();
+    fireEvent.click(synthButton());
+    failed.fail(new Error('boom'));
+    await flush();
+    expect(failed.onCharging.mock.calls).toEqual([[true], [false]]);
+    cleanup();
+
+    const gone = setup();
+    drawSmall();
+    fireEvent.click(synthButton());
+    cleanup();
+    expect(gone.onCharging.mock.calls).toEqual([[true], [false]]);
+  });
+
+  it('a rare result keeps the veil for 5 s', async () => {
+    vi.useFakeTimers();
+    const h = setup();
+    drawSmall();
+    fireEvent.click(synthButton());
+    h.reply({ kind: 'learned', spellId: 'worldfire', form: 'bolt', rare: { first: true } });
+    await flush();
+    act(() => vi.advanceTimersByTime(PROGRESS_MS));
+    expect(h.onCharging.mock.calls).toEqual([[true]]);
+    act(() => vi.advanceTimersByTime(RARE_PROGRESS_MS - PROGRESS_MS));
+    expect(h.onCharging.mock.calls).toEqual([[true], [false]]);
   });
 
   it('a rare result keeps injecting for 5 s', async () => {

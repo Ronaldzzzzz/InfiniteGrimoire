@@ -126,6 +126,23 @@ describe('App layout', () => {
     expect(api.getAccount).toHaveBeenCalledTimes(2);
   });
 
+  it('a new runtime drops the veil', () => {
+    const FW = 'm:fire.2.----w.-----.bolt';
+    const sync = { status: 'online', onStatus: () => () => {}, onOfflineReport: () => () => {}, synthesizeCircle: vi.fn(() => new Promise(() => {})), action: vi.fn(), uploadNow: vi.fn(async () => {}) } as unknown as SyncController;
+    const api = { getAccount: vi.fn(async () => ({ displayName: 'A', username: null, sessions: 1 })), recentDiscoveries: vi.fn(async () => []) } as unknown as ApiClient;
+    const a = fakeRuntime({ inventory: { 'el:fire:1': 3, 'el:wind:1': 1 }, learned: ['mana_bolt'] }) as unknown as GameRuntime;
+    const ui = (rt: GameRuntime) => <App runtime={rt} sync={sync} content={content} api={api} onSwitched={vi.fn()} onLoggedOut={vi.fn()} />;
+    const { rerender } = render(ui(a));
+    fireEvent.click(screen.getByRole('button', { name: '初階火 ×3' }));
+    fireEvent.click(screen.getByRole('button', { name: '初階風 ×1' }));
+    addBolt();
+    fireEvent.click(screen.getByRole('button', { name: '合成' }));
+    expect(sync.synthesizeCircle).toHaveBeenCalled();
+    const b = fakeRuntime({ learned: ['mana_bolt', FW] }) as unknown as GameRuntime;
+    rerender(ui(b));
+    expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(2);
+  });
+
   it('puts the battle strip after the main panels, with a stage bar and without the old boss counter', () => {
     setup();
     const strip = document.querySelector('.battle-strip')!;

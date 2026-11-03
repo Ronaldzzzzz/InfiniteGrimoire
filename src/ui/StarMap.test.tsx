@@ -29,6 +29,18 @@ function setup(game: Partial<GameState>) {
 }
 
 describe('StarMap', () => {
+  it('a veiled spell has no star until the veil lifts', () => {
+    const rt = fakeRuntime({ learned: ['mana_bolt', 'fireball'] });
+    const sync = { action: vi.fn(async () => null) };
+    const ui = (veil: readonly string[] | null) => <GrimoirePanel runtime={rt} sync={sync} onPick={vi.fn()} content={content} veil={veil} />;
+    const { rerender } = render(ui(['mana_bolt']));
+    expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: new RegExp(`^${content.spells.fireball!.name}`) })).toBeNull();
+    rerender(ui(null));
+    expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(2);
+    expect(star(content.spells.fireball!.name)).toBeTruthy();
+  });
+
   it('draws only the learned spells: no fog, no empty places', () => {
     setup({ learned: ['mana_bolt', 'fireball', CRAFTED] });
     expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(3);

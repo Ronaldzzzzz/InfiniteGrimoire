@@ -26,6 +26,7 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   runtime,
   sync,
   onPick,
+  veil = null,
   content = defaultContent,
 }: {
   runtime: Runtime;
@@ -33,8 +34,11 @@ export const GrimoirePanel = memo(function GrimoirePanel({
   /** Puts a learned spell's circle on the parchment. */
   onPick: (spellId: string) => void;
   content?: Content;
+  /** while set, only these learned spells are shown (a just-learned spell stays hidden until the reveal) */
+  veil?: readonly string[] | null;
 }) {
-  const learned = useRuntime(runtime, (s) => s.game.learned);
+  const allLearned = useRuntime(runtime, (s) => s.game.learned);
+  const learned = useMemo(() => (veil ? allLearned.filter((id) => veil.includes(id)) : allLearned), [allLearned, veil]);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const passives = useRuntime(runtime, (s) => s.game.passives);
   const synthPending = useRuntime(runtime, (s) => s.synthPending);

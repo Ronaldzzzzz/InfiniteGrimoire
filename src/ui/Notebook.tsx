@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { Content } from '../engine/model';
 import { resolveSpell, spellAtLevel } from '../engine/spells';
 import type { GameRuntime } from '../game/runtime';
@@ -15,13 +15,17 @@ export const Notebook = memo(function Notebook({
   sync,
   content,
   onPick,
+  veil = null,
 }: {
   runtime: RuntimeStore & Pick<GameRuntime, 'equip'>;
   sync: Pick<SyncController, 'action'>;
   content: Content;
   onPick: (spellId: string) => void;
+  /** while set, only these learned spells are listed */
+  veil?: readonly string[] | null;
 }) {
-  const learned = useRuntime(runtime, (s) => s.game.learned);
+  const allLearned = useRuntime(runtime, (s) => s.game.learned);
+  const learned = useMemo(() => (veil ? allLearned.filter((id) => veil.includes(id)) : allLearned), [allLearned, veil]);
   const levels = useRuntime(runtime, (s) => s.game.levels);
   const equipped = useRuntime(runtime, (s) => s.game.equipped);
   const pending = useRuntime(runtime, (s) => s.synthPending);
