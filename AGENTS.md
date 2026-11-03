@@ -62,6 +62,8 @@
 
 ### 3.0 接手先看這裡（2026-11-03 更新）
 
+**第二次試玩回饋（2026-11-03，還沒實作）：** 使用者回報 8 項，原因與待決定事項在 `docs/superpowers/specs/2026-11-03-magic-circle-playtest-2.md`。重點：(1) 合成特效看不到，主因是這台 Mac 開著「減少動態效果」，reduced-motion 規則把演出幾乎全關，而且演出本來就偏弱；(4) 離線收益不是被伺服器擋（`ron` 帳號 0 次被拒），是 `clearTimes` 空的：跨過「離開」的通關都不記時間，最遠那關沒有紀錄就不給收益；其餘是合成按鈕移到紙上、紙左右放資訊、前幾關太慢、符文要美術、未取得符文顯示「？」、裝備通知位置與倒數條。**接手者先做：** 和使用者逐項決定，再寫規格與計畫。
+
 **現在停在哪（2026-11-03 晚，專案 2 質感改版完成、驗收與最終審查修正都完成）：** branch `feat/magic-circle`（**未 push、未合併**）。質感改版 8 個任務（面紗 bug、只畫已開放格子、元素圈、符文帶、書房與羊皮紙、演出、星圖、驗收）都完成並各自審查；最終全 branch 審查（0 Critical、3 Important、9 Minor）的 13 項已在 `5888b9d` 一次修完並複審通過；`npm test` 81 個檔案 945 個測試全過、`npm run build` 通過（2026-11-03）。驗收報告 `docs/superpowers/sdd/2026-11-03-magic-circle-polish/acceptance.md`（headless Chrome，1280×900 與 390×844，規格第 10 節各項與問題清單都在裡面）。**注意：** headless Chrome 預設回報 `prefers-reduced-motion: reduce`，驗收腳本必須先 `emulateMediaFeatures` 設成 no-preference，否則所有動畫都被關掉、看不到演出。
 - **使用者要試玩的：** 牛皮紙手感（元素圈、符文圈、格子開放與排列、迴路不合時的紅線與震動）、合成 3 秒演出與成功／大失敗／稀有四種的差別、星圖新扇區順序與選中才連線、書房與羊皮紙美術（`public/assets/parchment.webp`、`desk.webp`，使用者自己 AI 生成的，**2026-11-03 已進版本庫**；另一個版本 `parchment-square.webp`（方形，放進 4:5 框會變形）、`desk-wide.webp`（寬版，直長右欄會被裁掉大半）也一起保留，換版本就對調檔名；提示詞在 `docs/art-assets.md`；沒有這兩個檔時有暫代色）、手機版面。
 - **驗收找到的問題已在最終修正一輪處理（`acceptance.md` 末段「Final fix wave」有每項證據）：** 手機核心階級圈標籤改縮寫（`≤Lv.2`、`×1.2k`，完整文字在 aria-label）並依寬度縮字；`.parchment` 在紙上縮成 76%，Lv.10 二環不再被切；手機橫幅與裝備通知移開、不蓋預測行；符文帶接縫移到兩格之間；無美術圖時暫代紙不再比面板高。另修：從元素表放入二環會放進沒開放的序號、上方魔法選擇器在稀有 5 秒內劇透、選完元素後焦點掉到 body、未取得符文在手機看不到說明。**剩下的小問題**（帳本末段）：手機元素圈項目約 42 px（略小於 44 px 觸控建議）、手機通知固定在 top 112 px（假設上方列高度）。
@@ -314,6 +316,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-11-03（Claude Code，Opus 5.5，macOS，第二次試玩回饋）**：記錄使用者 8 項回饋並查原因，寫成 `docs/superpowers/specs/2026-11-03-magic-circle-playtest-2.md`；查本機 D1（`ron`：0 次被拒、`clearTimes` 空）與系統設定（減少動態效果開著）。使用者指示先不實作，沒有改程式。停在：`feat/magic-circle` 未 push、未合併。下一步：逐項決定 → 規格 → 計畫。
 
 - **2026-11-03（Claude Code，Opus 5.5，macOS，放上美術圖）**：使用者生成兩版羊皮紙與書桌；選直式 `parchment2`（符合 4:5 紙框）與方形 `desk2`（直長右欄不會裁掉道具），改檔名成程式讀的 `parchment.webp`／`desk.webp`，另一版改名 `parchment-square.webp`／`desk-wide.webp` 保留；headless Chrome 1280×900、390×844 截圖確認、無頁面錯誤；四張 webp 依使用者指示 commit（png／jpeg 原檔使用者已刪）。沒有改程式。停在：`feat/magic-circle` 未 push、未合併。下一步：使用者試玩 → 決定合併。
 
