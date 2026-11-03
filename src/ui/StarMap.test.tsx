@@ -107,7 +107,7 @@ describe('StarMap', () => {
 
   it('learning a spell adds a star without moving the others', () => {
     const { rt } = setup({ learned: ['mana_bolt', 'fireball'] });
-    const at = () => star(content.spells.fireball!.name).querySelector('circle:not(.star-glow)')!.getAttribute('cx');
+    const at = () => star(content.spells.fireball!.name).querySelector('.star-seal')!.getAttribute('x');
     const before = at();
     act(() => rt.set({ game: { learned: ['mana_bolt', 'fireball', CRAFTED, FIRE4] } }));
     expect(document.querySelectorAll('.grimoire-node.star')).toHaveLength(4);
