@@ -72,6 +72,13 @@ describe('magic circle effects', () => {
       expect(hit, `${sel} in reduced motion`).toBeTruthy();
     }
   });
+  it('reduced motion also stops the charging spin and line light-up (their selectors are more specific)', () => {
+    for (const sel of ['.parchment.charging .parchment-svg .rune-band', '.parchment.charging .parchment-svg .draw']) {
+      const hit = reduced.split('}').find((r) => r.includes(sel) && /animation:\s*none/.test(r));
+      expect(hit, sel).toBeTruthy();
+      expect(hit!.split('{')[0]).toContain(sel);
+    }
+  });
   it('a chosen rune band glows gently at rest', () => {
     const r = rule(css, '.parchment-svg .rune-band.filled');
     expect(r).toMatch(/drop-shadow/);

@@ -461,8 +461,7 @@ describe('CircleTable', () => {
     });
 
     it('charging lines light up in order, the core last', async () => {
-      const h = await start(setup());
-      expect(h).toBeTruthy();
+      await start(setup());
       const ks = [...document.querySelectorAll<SVGElement>('.draw')].map((el) => Number(el.style.getPropertyValue('--k')));
       expect(ks.length).toBeGreaterThan(1);
       expect(ks.every((k) => Number.isFinite(k))).toBe(true);
