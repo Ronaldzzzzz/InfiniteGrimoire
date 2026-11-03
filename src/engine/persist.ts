@@ -12,7 +12,7 @@ export function createInitialState(content: Content): GameState {
   const first = content.zones[0]!.id;
   return {
     version: 2, inventory: {}, learned: [STARTING_SPELL], equipped: STARTING_SPELL, levels: {}, circleTier: circleRules.startTier, passives: [],
-    currentZone: first, unlockedZones: [first], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {},
+    currentZone: first, unlockedZones: [first], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, pausedMs: 0, synthesisLog: {},
   };
 }
 
@@ -36,6 +36,7 @@ const saveSchema = z.strictObject({
   clearTimes: z.record(z.string(), z.array(count).max(CLEAR_TIMES_KEEP)).default({}),
   awayAt: count.default(0),
   offlineUntil: count.default(0),
+  pausedMs: count.default(0),
   synthesisLog: z.record(z.string(), z.number().int().min(1)).refine((o) => Object.keys(o).length <= SYNTH_LOG_CAP, 'synthesisLog too long'),
 });
 
@@ -49,7 +50,7 @@ export function serialize(state: GameState): string {
  * compares like with like.
  */
 export function readStored(json: string): GameState {
-  return { clearTimes: {}, awayAt: 0, offlineUntil: 0, ...(JSON.parse(json) as Partial<GameState>) } as GameState;
+  return { clearTimes: {}, awayAt: 0, offlineUntil: 0, pausedMs: 0, ...(JSON.parse(json) as Partial<GameState>) } as GameState;
 }
 
 const unique = (xs: string[]): boolean => new Set(xs).size === xs.length;

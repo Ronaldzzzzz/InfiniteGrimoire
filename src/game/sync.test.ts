@@ -517,7 +517,7 @@ describe('SyncController', () => {
     const calls: string[] = [];
     const offline = vi.fn(async () => {
       calls.push('offline');
-      return { kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 8 };
+      return { kind: 'ok' as const, result: { kind: 'none' as const, reason: 'tooShort' as const }, state: rt.getSnapshot().game, revision: 8 };
     });
     const upload = vi.fn(async () => {
       calls.push('upload');
@@ -567,7 +567,7 @@ describe('SyncController', () => {
       .mockImplementationOnce(async () => { calls.push('offline-fail'); throw new NetworkError('x'); })
       .mockImplementation(async () => {
         calls.push('offline');
-        return { kind: 'ok', result: { kind: 'none' }, state: rt.getSnapshot().game, revision: 10 };
+        return { kind: 'ok', result: { kind: 'none', reason: 'tooShort' }, state: rt.getSnapshot().game, revision: 10 };
       });
     const upload = vi.fn(async () => { calls.push('upload'); return { kind: 'ok' as const, revision: 11 }; });
     const sync = new SyncController(rt, fakeApi({ offline, upload }));
@@ -579,7 +579,7 @@ describe('SyncController', () => {
   it('an away blocked by another action is delivered once it ends; a return before that cancels it', async () => {
     const rt = mk();
     const away = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'away' as const }, state: rt.getSnapshot().game, revision: 9 }));
-    const offline = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 10 }));
+    const offline = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'none' as const, reason: 'tooShort' as const }, state: rt.getSnapshot().game, revision: 10 }));
     const sync = new SyncController(rt, fakeApi({ away, offline }));
     rt.setSynthPending(true);
     void sync.goAway();
@@ -608,7 +608,7 @@ describe('SyncController', () => {
     }));
     const offline = vi.fn(async () => {
       calls.push('offline');
-      return { kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 10 };
+      return { kind: 'ok' as const, result: { kind: 'none' as const, reason: 'tooShort' as const }, state: rt.getSnapshot().game, revision: 10 };
     });
     const sync = new SyncController(rt, fakeApi({ away, offline } as never));
     const leaving = sync.goAway();
@@ -625,7 +625,7 @@ describe('SyncController', () => {
     const offline = vi
       .fn()
       .mockImplementationOnce(async () => { calls.push('offline-fail'); throw new NetworkError('x'); })
-      .mockImplementation(async () => { calls.push('offline'); return { kind: 'ok', result: { kind: 'none' }, state: rt.getSnapshot().game, revision: 10 }; });
+      .mockImplementation(async () => { calls.push('offline'); return { kind: 'ok', result: { kind: 'none', reason: 'tooShort' }, state: rt.getSnapshot().game, revision: 10 }; });
     const away = vi.fn(async () => { calls.push('away'); return { kind: 'ok' as const, result: { kind: 'away' as const }, state: rt.getSnapshot().game, revision: 11 }; });
     const sync = new SyncController(rt, fakeApi({ offline, away } as never));
     await sync.claimOffline();
@@ -649,7 +649,7 @@ describe('SyncController', () => {
       .fn()
       .mockRejectedValueOnce(new NetworkError('x'))
       .mockResolvedValue({ kind: 'ok', result: { kind: 'away' }, state: rt.getSnapshot().game, revision: 9 });
-    const offline = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'none' as const }, state: rt.getSnapshot().game, revision: 10 }));
+    const offline = vi.fn(async () => ({ kind: 'ok' as const, result: { kind: 'none' as const, reason: 'tooShort' as const }, state: rt.getSnapshot().game, revision: 10 }));
     const sync = new SyncController(rt, fakeApi({ away, offline } as never));
     const leaving = sync.goAway();
     void sync.claimOffline(); // back while the away is on the wire

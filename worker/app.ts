@@ -382,6 +382,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       clearTimes: current.clearTimes,
       awayAt: current.awayAt,
       offlineUntil: current.offlineUntil,
+      pausedMs: current.pausedMs,
     };
     const elapsed = Math.min(Math.max(0, t - save.anchorAt), MAX_WINDOW_MS);
     const verdict = validateUpload(baseline, next, elapsed, content);

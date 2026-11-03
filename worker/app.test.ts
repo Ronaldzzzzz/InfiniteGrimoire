@@ -1831,7 +1831,7 @@ describe('POST /api/away and /api/offline', () => {
     const g = await seeded();
     const row = store.saves.get(g.playerId)!;
     const legacy = (s: string) => {
-      const { clearTimes: _c, awayAt: _a, offlineUntil: _o, ...rest } = JSON.parse(s);
+      const { clearTimes: _c, awayAt: _a, offlineUntil: _o, pausedMs: _p, ...rest } = JSON.parse(s);
       return JSON.stringify(rest);
     };
     row.state = legacy(row.state);
@@ -1844,7 +1844,7 @@ describe('POST /api/away and /api/offline', () => {
     clock += 10 * MIN;
     const paid = await post('/api/offline', g.token, got.state, 1);
     expect(paid.status, JSON.stringify(paid.out)).toBe(200);
-    expect(paid.out.result.kind).toBe('none');
+    expect(paid.out.result.kind).toBe('offline');
     expect(store.rejections).toHaveLength(0);
   });
 

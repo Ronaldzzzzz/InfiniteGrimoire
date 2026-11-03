@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Content, GameState, Monster, NamedSpellDef, Zone } from './model';
 import {
-  claimOffline, markAway, offlineLoot, offlineStage, OFFLINE_CAP_MS, OFFLINE_RATE, OFFLINE_TICK_MS,
+  CLEAR_TIME_FALLBACK, claimOffline, markAway, offlineLoot, offlineStage, OFFLINE_CAP_MS, OFFLINE_RATE, OFFLINE_TICK_MS,
 } from './offline';
 import { overlevelEfficiency } from './combat-rules';
 import { createInitialState } from './persist';
 import { createRng } from './rng';
 import { LOOT_ROLLS } from './stage-clear';
-import { stageTotal } from './stages';
+import { minStageMs, stageTotal } from './stages';
 
 const words = { pre: 'p', noun: 'n', preEn: 'p', nounEn: 'n' };
 const spell = (o: Partial<NamedSpellDef> & { id: string }): NamedSpellDef => ({
@@ -111,23 +111,23 @@ describe('claimOffline', () => {
 
   it('none below one tick', () => {
     const r = claimOffline(away({ awayAt: NOW - (OFFLINE_TICK_MS - 1) }), NOW - HOUR, NOW, data, createRng(1));
-    expect(r.result).toEqual({ kind: 'none' });
+    expect(r.result).toEqual({ kind: 'none', reason: 'tooShort' });
   });
 
   it('clamps negative time to none', () => {
     const r = claimOffline(away(), NOW + HOUR, NOW, data, createRng(1));
-    expect(r.result).toEqual({ kind: 'none' });
+    expect(r.result).toEqual({ kind: 'none', reason: 'tooShort' });
   });
 
-  it('none without clear times, with a spell that cannot damage, or below one tick', () => {
-    const cases: GameState[] = [
-      away({ clearTimes: {}, awayAt: 5 }),
-      base({ clearedStages: { late: 3 }, clearTimes: { 'late:3': [150_000] }, awayAt: 5, offlineUntil: 7 }),
-      away({ awayAt: 5, offlineUntil: NOW - 1000 }),
+  it('none reasons', () => {
+    const cases: [GameState, unknown][] = [
+      [base({ awayAt: 5 }), { kind: 'none', reason: 'notCleared' }],
+      [base({ clearedStages: { late: 3 }, clearTimes: { 'late:3': [150_000] }, awayAt: 5, offlineUntil: 7 }), { kind: 'none', reason: 'cannotDamage', zoneId: 'late' }],
+      [away({ awayAt: 5, offlineUntil: NOW - 1000 }), { kind: 'none', reason: 'tooShort' }],
     ];
-    for (const s of cases) {
+    for (const [s, want] of cases) {
       const r = claimOffline(s, NOW - HOUR, NOW, data, createRng(1));
-      expect(r.result).toEqual({ kind: 'none' });
+      expect(r.result).toEqual(want);
       expect(r.state.awayAt).toBe(0);
       // a real away still ends here, so the frozen time is never recorded as a clear time
       expect(r.state.offlineUntil).toBe(NOW);
@@ -135,15 +135,36 @@ describe('claimOffline', () => {
     }
   });
 
-  it('a none claim without an away mark (a reload) leaves offlineUntil alone', () => {
-    const s = away({ awayAt: 0, clearTimes: {} });
+  it('falls back to minStageMs x CLEAR_TIME_FALLBACK without records', () => {
+    expect(CLEAR_TIME_FALLBACK).toBe(2);
+    const s = base({ clearedStages: { mist_meadow: 3 }, clearTimes: {} });
+    const r = claimOffline(s, NOW - 10 * 60_000, NOW, data, createRng(1)).result;
+    expect(r.kind).toBe('offline');
+    if (r.kind !== 'offline') return;
+    expect(r.runs).toBeCloseTo(600_000 / (minStageMs(mist, 3) * CLEAR_TIME_FALLBACK));
+    expect(Object.keys(r.loot).length).toBeGreaterThan(0);
+  });
+
+  it('claim adds the away span to pausedMs, also when nothing is paid', () => {
+    const A = NOW - HOUR;
+    const paid = claimOffline(away({ awayAt: A, lastClearAt: A - 5, pausedMs: 7 }), A - 1, NOW, data, createRng(1)).state;
+    expect(paid.pausedMs).toBe(7 + HOUR);
+    const none = claimOffline(base({ awayAt: A, lastClearAt: A - 5 }), A - 1, NOW, data, createRng(1));
+    expect(none.result).toMatchObject({ kind: 'none' });
+    expect(none.state.pausedMs).toBe(HOUR);
+    const closed = claimOffline(away({ lastClearAt: 5, offlineUntil: 10 }), NOW - 60_000, NOW, data, createRng(1)).state;
+    expect(closed.pausedMs).toBe(60_000);
+  });
+
+  it('a claim with no time away leaves the state alone', () => {
+    const s = away({ awayAt: 0, offlineUntil: NOW });
     expect(claimOffline(s, NOW - HOUR, NOW, data, createRng(1)).state).toBe(s);
   });
 
   it('a second claim at the same moment pays nothing', () => {
     const first = claimOffline(away(), NOW - HOUR, NOW, data, createRng(1));
     expect(first.result.kind).toBe('offline');
-    expect(claimOffline(first.state, NOW - HOUR, NOW, data, createRng(2)).result).toEqual({ kind: 'none' });
+    expect(claimOffline(first.state, NOW - HOUR, NOW, data, createRng(2)).result).toEqual({ kind: 'none', reason: 'tooShort' });
   });
 
   it('never pays key items', () => {

@@ -38,7 +38,7 @@ describe('persist', () => {
   it('initial state: mana_bolt only, first zone, nothing else', () => {
     expect(createInitialState(content)).toEqual({
       version: 2, inventory: {}, learned: ['mana_bolt'], equipped: 'mana_bolt', levels: {}, circleTier: 2, passives: [],
-      currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, synthesisLog: {},
+      currentZone: 'mist_meadow', unlockedZones: ['mist_meadow'], defeatedBosses: [], currentStage: 1, clearedStages: {}, lastClearAt: 0, clearTimes: {}, awayAt: 0, offlineUntil: 0, pausedMs: 0, synthesisLog: {},
     });
   });
 
@@ -162,10 +162,10 @@ describe('stage fields', () => {
   });
   it('parses a save without the offline fields and rejects bad clearTimes keys', () => {
     const s = createInitialState(content);
-    const { clearTimes, awayAt, offlineUntil, ...old } = s;
-    void clearTimes; void awayAt; void offlineUntil;
+    const { clearTimes, awayAt, offlineUntil, pausedMs, ...old } = s;
+    void clearTimes; void awayAt; void offlineUntil; void pausedMs;
     const parsed = parseState(old, content);
-    expect(parsed).toMatchObject({ clearTimes: {}, awayAt: 0, offlineUntil: 0 });
+    expect(parsed).toMatchObject({ clearTimes: {}, awayAt: 0, offlineUntil: 0, pausedMs: 0 });
     const z = content.zones[0]!;
     expect(parseState({ ...s, clearTimes: { [`${z.id}:3`]: [1000, 2000] }, awayAt: 5, offlineUntil: 9 }, content)).not.toBeNull();
     expect(parseState({ ...s, clearTimes: { [`${z.id}:${z.stages.length}`]: [1000] } }, content)).toBeNull();

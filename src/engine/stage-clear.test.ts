@@ -116,15 +116,20 @@ describe('claimStage', () => {
     expect(s.clearTimes['z1:1']).toEqual([2, 3, 4, 5, 10_000]);
   });
 
-  it('records nothing when the interval straddles an offline window, then records normally; away records nothing', () => {
-    const afterOffline = base({ lastClearAt: 5, offlineUntil: T - 20_000 });
-    const first = claimStage(afterOffline, 'z1', 1, T, data, createRng(1)).state;
-    expect(first.clearTimes).toEqual({});
-    const next = claimStage(first, 'z1', 1, T + 30_000, data, createRng(1)).state;
-    expect(next.clearTimes['z1:1']).toEqual([30_000]);
-    const gone = claimStage(base({ lastClearAt: T - 20_000, awayAt: T - 10_000 }), 'z1', 1, T, data, createRng(1));
-    expect(gone.result.kind).toBe('cleared');
-    expect(gone.state.clearTimes).toEqual({});
+  it('subtracts away time from the recorded clear time', () => {
+    const s = claimStage(base({ lastClearAt: T, pausedMs: 600_000 }), 'z1', 1, T + 900_000, data, createRng(1)).state;
+    expect(s.clearTimes['z1:1']).toEqual([Math.max(minStageMs(data.zones[0]!, 1), 300_000)]);
+    expect(s.pausedMs).toBe(0);
+  });
+
+  it('records a clear even after an away', () => {
+    const s = claimStage(base({ lastClearAt: 5, offlineUntil: T - 20_000 }), 'z1', 1, T, data, createRng(1)).state;
+    expect(s.clearTimes['z1:1']).toHaveLength(1);
+  });
+
+  it('an away still open at clear time is subtracted', () => {
+    const s = claimStage(base({ lastClearAt: T, awayAt: T + 100_000 }), 'z1', 1, T + 400_000, data, createRng(1)).state;
+    expect(s.clearTimes['z1:1']).toEqual([Math.max(minStageMs(data.zones[0]!, 1), 100_000)]);
   });
 
   it('a successful clear ends away', () => {

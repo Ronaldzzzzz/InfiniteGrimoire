@@ -188,12 +188,13 @@ describe('validateUpload', () => {
   });
 
   it('an upload may not change clearTimes, awayAt or offlineUntil', () => {
-    const prev: GameState = { ...base(), clearTimes: { 'z1:1': [2000] }, awayAt: 5, offlineUntil: 7 };
+    const prev: GameState = { ...base(), clearTimes: { 'z1:1': [2000] }, awayAt: 5, offlineUntil: 7, pausedMs: 9 };
     const cases: [Partial<GameState>, string][] = [
       [{ clearTimes: { 'z1:1': [1000] } }, 'clearTimes'],
       [{ clearTimes: {} }, 'clearTimes'],
       [{ awayAt: 0 }, 'awayAt'],
       [{ offlineUntil: 8 }, 'offlineUntil'],
+      [{ pausedMs: 0 }, 'pausedMs changed'],
     ];
     expect(validateUpload(prev, { ...prev }, 1000, data)).toEqual({ ok: true });
     for (const [change, word] of cases) {

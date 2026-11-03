@@ -3,7 +3,7 @@ import { addCounts } from './inventory';
 import type { Content, GameState, Zone } from './model';
 import type { Rng } from './rng';
 import { damagesZone, equippedSpell, LOOT_ROLLS } from './stage-clear';
-import { stageCount, stageTotal } from './stages';
+import { minStageMs, stageCount, stageTotal } from './stages';
 import type { ItemId } from './types';
 
 /** Offline income pays this share of what playing would have dropped. */
@@ -16,9 +16,12 @@ export const AWAY_DELAY_MS = 10_000;
 export const OFFLINE_TICK_MS = 30_000;
 /** Clear times kept per stage. */
 export const CLEAR_TIMES_KEEP = 5;
+/** Without recorded clear times, a clear is assumed to take this many times the fastest possible. */
+export const CLEAR_TIME_FALLBACK = 2;
 
 export type OfflineResult =
-  | { kind: 'none' }
+  | { kind: 'none'; reason: 'notCleared' | 'tooShort' }
+  | { kind: 'none'; reason: 'cannotDamage'; zoneId: string }
   /** runs: clears the paid ticks are worth (may be fractional) */
   | { kind: 'offline'; zoneId: string; stage: number; ticks: number; runs: number; awayMs: number; capped: boolean; loot: Record<ItemId, number> };
 
@@ -71,27 +74,30 @@ const median = (xs: number[]): number => {
 export function claimOffline(
   state: GameState, prevSavedAt: number, now: number, content: Content, rng: Rng,
 ): { state: GameState; result: OfflineResult } {
-  // a real away that pays nothing still ends at now, so the frozen time is never recorded as a clear time
-  const none = { state: state.awayAt === 0 ? state : { ...state, awayAt: 0, offlineUntil: now }, result: { kind: 'none' } as const };
-  const target = offlineStage(state, content);
-  if (!target) return none;
-  const { zone } = target;
-  const key = `${target.zoneId}:${target.stage}`;
-  const times = Object.hasOwn(state.clearTimes, key) ? state.clearTimes[key]! : [];
-  if (times.length === 0) return none;
-  const spell = equippedSpell(state, content);
-  if (!spell || !damagesZone(spell, zone, content)) return none;
   const start = Math.max(state.awayAt > 0 ? state.awayAt : prevSavedAt, state.offlineUntil, state.lastClearAt);
   const awayMs = Math.max(0, now - start);
+  // every settlement stops the clear clock for the time away, paid or not
+  const paused = awayMs > 0 ? { pausedMs: state.pausedMs + awayMs, offlineUntil: now } : {};
+  // a real away that pays nothing still ends at now, so the frozen time is never recorded as a clear time
+  const none = (result: OfflineResult) => ({
+    state: state.awayAt === 0 && awayMs === 0 ? state : { ...state, ...paused, awayAt: 0, offlineUntil: now },
+    result,
+  });
+  const target = offlineStage(state, content);
+  if (!target) return none({ kind: 'none', reason: 'notCleared' });
+  const { zone } = target;
+  const spell = equippedSpell(state, content);
+  if (!spell || !damagesZone(spell, zone, content)) return none({ kind: 'none', reason: 'cannotDamage', zoneId: target.zoneId });
+  const key = `${target.zoneId}:${target.stage}`;
+  const times = Object.hasOwn(state.clearTimes, key) ? state.clearTimes[key]! : [];
+  const per = times.length > 0 ? median(times) : minStageMs(zone, target.stage) * CLEAR_TIME_FALLBACK;
   const counted = Math.min(awayMs, OFFLINE_CAP_MS);
-  const per = median(times);
-  if (!(per > 0)) return none;
   const ticks = Math.floor(counted / OFFLINE_TICK_MS);
-  if (ticks < 1) return none;
+  if (ticks < 1 || !(per > 0)) return none({ kind: 'none', reason: 'tooShort' });
   const runs = (ticks * OFFLINE_TICK_MS) / per;
   const loot = offlineLoot(zone, target.stage, runs, spell.tier, content, rng);
   return {
-    state: { ...state, inventory: addCounts(state.inventory, loot), offlineUntil: now, awayAt: 0 },
+    state: { ...state, ...paused, inventory: addCounts(state.inventory, loot), offlineUntil: now, awayAt: 0 },
     result: { kind: 'offline', zoneId: target.zoneId, stage: target.stage, ticks, runs, awayMs, capped: awayMs > OFFLINE_CAP_MS, loot },
   };
 }

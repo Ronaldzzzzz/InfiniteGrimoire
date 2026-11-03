@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { describeStoreContract } from '../../worker/store-contract';
 import { D1Store } from '../../worker/d1-store';
 import { content } from '../../src/engine/content';
-import { createInitialState, parseState, serialize } from '../../src/engine/persist';
+import { createInitialState, parseState, readStored, serialize } from '../../src/engine/persist';
 import { applyMigrations, createD1, MIGRATIONS } from './d1-shim';
 
 describeStoreContract('D1Store (sqlite)', async () => {
@@ -95,7 +95,8 @@ describe('migration 0008', () => {
 
     const store = new D1Store(d1);
     const save = (await store.getSave('p1'))!;
-    expect(save.state).toBe(serialize(createInitialState(content)));
+    // the migration literal predates server-owned pausedMs; it reads as 0 through the defaults
+    expect(readStored(save.state)).toEqual(createInitialState(content));
     expect(parseState(JSON.parse(save.state), content)).toEqual(createInitialState(content));
     expect(save.anchorState).toBe(save.state);
     expect(save.anchorAt).toBe(6000);

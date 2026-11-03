@@ -80,6 +80,8 @@ export interface GameState {
   awayAt: number;
   /** server time (ms) where the last offline settlement ended; 0 = never (server-owned) */
   offlineUntil: number;
+  /** ms spent away since the last clear, taken off the next recorded clear time (server-owned) */
+  pausedMs: number;
   /** magic circle attempt counts keyed by canonical circle id (server-owned) */
   synthesisLog: Record<string, number>;
 }

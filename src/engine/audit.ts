@@ -158,6 +158,7 @@ export function validateUpload(prev: GameState, next: GameState, elapsedMs: numb
   if (canonical(prev.clearTimes) !== canonical(next.clearTimes)) reasons.push('clearTimes changed');
   if (prev.awayAt !== next.awayAt) reasons.push('awayAt changed');
   if (prev.offlineUntil !== next.offlineUntil) reasons.push('offlineUntil changed');
+  if (prev.pausedMs !== next.pausedMs) reasons.push('pausedMs changed');
   for (const id of next.learned) if (!resolveSpell(id, content)) reasons.push(`learned spell ${id} does not resolve`);
   if (!next.learned.includes(next.equipped)) reasons.push(`equipped spell ${next.equipped} is not learned`);
   if (!next.unlockedZones.includes(next.currentZone)) reasons.push(`currentZone ${next.currentZone} is not unlocked`);
