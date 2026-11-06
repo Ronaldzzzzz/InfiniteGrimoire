@@ -51,6 +51,8 @@
 | `docs/superpowers/specs/2026-10-30-magic-circle-design.md`、`docs/superpowers/plans/2026-10-30-magic-circle.md`、`docs/superpowers/sdd/2026-10-30-magic-circle/` | **專案 2 魔法陣合成（目前合成與魔導書的最高依據）**：牛皮紙魔法陣（核心、一／二環、五芒星、符文）、階級＝節點數受核心元素上限、迴路分支、陣→魔法的公式、伺服器合成（大失敗 10%、稀有 2%）、關鍵道具開放格子、符文從魔王取得、星圖魔導書；規格、7 個任務計畫、帳本（Ruling、延後的小問題）、Task 7 驗收報告 |
 | `docs/superpowers/specs/2026-10-31-magic-circle-playtest-feedback.md`、`docs/superpowers/specs/2026-10-31-magic-circle-polish-design.md`、`docs/superpowers/plans/2026-11-03-magic-circle-polish.md`、`docs/superpowers/sdd/2026-11-03-magic-circle-polish/` | **專案 2 質感改版（已實作，2026-11-03；目前牛皮紙與星圖外觀與操作的最高依據）**：試玩五項回饋＋一個 bug 的原因與四輪問答逐字紀錄；改版規格只改外觀與操作（書房色調與羊皮紙、只畫已開放格子並依格數對稱排列、格子周圍的元素圈、整圈符文帶、合成與失敗演出、星圖扇區改相生順序與星座感、動畫期間不劇透新星），**不改**引擎規則、伺服器、存檔；8 個任務計畫；帳本（各任務審查、Ruling、延後的小問題）與瀏覽器驗收報告 `acceptance.md` |
 | `docs/superpowers/specs/2026-10-29-side-scroll-battle-strip-design.md`、`docs/superpowers/plans/2026-10-29-battle-strip.md`、`docs/superpowers/sdd/2026-10-29-battle-strip/`、`docs/superpowers/plans/2026-10-30-strip-feel-and-offline.md`、`docs/superpowers/sdd/2026-10-30-strip-feel-and-offline/` | 專案 1：橫向戰鬥帶與關卡的規格、計畫、帳本（含最終修正一輪）與驗收報告；以及 2026-10-30 的手感、關卡由簡至難與離線收益（規格第 3.8、3.9 節）的計畫與帳本 |
+| `docs/superpowers/specs/2026-11-04-roadmap-overview.md` | **【目前最高依據】路線總表與新的實作順序（2026-11-06 使用者核准）**：所有尚未實裝的構想、與魔法陣和今天設計的重疊、十大標的與沉浸感 7 項的處置（保留／改寫／合併／廢止）、**第 10 節：P0～P13 的實作順序、依賴與切割**（取代舊的順序；計畫等真正要開始時才寫） |
+| `docs/superpowers/specs/2026-11-04-item-catalyst-discussion.md` | **框架討論紀錄（2026-11-04～06，參考《煉金工房》）**：物品圖鑑（素材 × 4 品質 × 特性、可疊加）、三步掉落、催化劑格、背包與倉庫、`gold`、專案 3 分工（熟練度階段制、一般與專屬異變、稀有併入異變）、光暗元素（異變解鎖、中性、互斥 70～80% 大失敗）、雙重詠唱＋元素反應＋專注、施法媒介、書與靈光、煉金工坊、線性彈出地圖、採集點、主城（倉庫、學院、工坊、一般商店、委託商、抽獎）、學院任務與升年級開格子、排行榜（只用伺服器資料、總榜、每日至尊、「曾經的」稱號、經濟便利效果）。各節標明使用者的決定與 Claude 的決定；**不是定稿規格**，每個專案開始時再寫規格 |
 | `docs/prelaunch-checklist.md` | **上線前檢查清單**：部署必做事項、忘記密碼（用 GM 工具重設）、延後的小問題；上線前逐項決定 |
 | `docs/art-assets.md` | 美術素材清單與 AI 繪圖提示詞 |
 | `docs/design/mockups/` | 設計討論時的草圖 |
@@ -60,7 +62,9 @@
 
 ## 3. 目前狀態（2026-10-31）
 
-### 3.0 接手先看這裡（2026-11-03 更新）
+### 3.0 接手先看這裡（2026-11-06 更新）
+
+**新的整體路線（2026-11-06，使用者核准）：** 參考《煉金工房》做了一輪完整的框架討論（不動程式），結果在 `docs/superpowers/specs/2026-11-04-item-catalyst-discussion.md`（各系統的決定）與 `docs/superpowers/specs/2026-11-04-roadmap-overview.md`（第 9 節：舊構想的處置；**第 10 節：新的實作順序 P0～P13**，取代下方順序表與舊的專案 3、4 範圍）。順序：P0 收尾 `feat/magic-circle` → P1 物品圖鑑與背包（存檔重置，使用者已同意）→ P2 催化劑 → P3 熟練度與異變 → P4 書與靈光 → P5 雙重詠唱、元素反應、專注 → P6 光暗元素 → P7 地圖改版 → P8 採集區 → P9 主城骨架 → P10 學院與任務 → P11 煉金工坊與施法媒介 → P12 委託商與抽獎 → P13 排行榜與稱號（P4、P5 可插隊）。每個專案開始時才寫規格與計畫。**`feat/magic-circle` 已於 2026-11-06 依使用者指示 fast-forward 合併到 `main`**（尚未 push；branch 還沒刪；P0 的「使用者試玩」改在 `main` 上進行，下方 2026-11-03 留下的小問題仍未修）。**待辦 0b（稀有保底）不另做**（由熟練度承擔）；**0d 的雙重詠唱已併入 P5**；**0e 光暗元素是 P6**；**第二版 C+D 的舊規劃作廢**，由 P13 取代。
 
 **現在停在哪（2026-11-03 晚，第二輪質感改版完成、瀏覽器驗收通過）：** branch `feat/magic-circle`（**未 push、未合併**）。第二輪改版（規格 `docs/superpowers/specs/2026-11-03-magic-circle-polish-2-design.md`：五種演出與 Pixi 粒子層、開發階段不看減少動態效果、合成鍵上紙、紙兩側放預測與消耗、離線停錶 `pausedMs` 與預設時間、符文圖示、未取得符文「？」、裝備通知置中＋倒數條）9 個任務都完成；`npm test` 84 個檔案 988 個測試全過、`npm run build` 通過（2026-11-03）。驗收報告 `docs/superpowers/sdd/2026-11-03-magic-circle-polish-2/acceptance.md`（headless Chrome，1280×900 與 390×844，寬版面 1920；`?fx` 預覽五種演出、真實失敗與成功各一次、離線真實失焦約 46 秒（伺服器記錄的離開 36 秒）：有收益、cannotDamage、notCleared 三種卡片，離開不足一個 tick 沒有卡片）：全部通過、無頁面錯誤，也沒有在卸載魔法陣時出現 Pixi 錯誤。**留下的小問題（都沒修）：** `?fx` 預覽按鈕在 390 px 蓋在紙右緣（只有 DEV）；桌面 `KeyItemBar` 壓在紙右下角；390 px 裝備通知與鍵列只隔 4 px（假設 56 px、實際 59 px）；寬版面（1920）預測與消耗欄只有約 152 px、要 ≥ 約 1750 px 才切換成兩側。**接手者先做：** 使用者試玩（五種演出夠不夠有抽卡感、符文圖示、紙的版面、通知）→ 決定合併 `feat/magic-circle`（合併、push 都要先問）。
 
@@ -152,7 +156,7 @@
 
 **接手者務必遵守（摘要，全文見第 6、7 節與記憶）：** 用繁體中文溝通；**不部署、不主動提部署**；**push、合併、部署前都要先問**；只改文件可以直接在 `main` commit（但目前文件都跟著 `feat/rare-tuning`，合併後就會到 `main`）；不要 commit `.dev.vars`；平衡數值現在是進行中的工作，但倍率、機率等數字的最終值要給使用者確認；結束前更新本節與第 10 節交接紀錄。
 
-- **Branch：** `main`（e7c28de，依本機紀錄比 `origin/main` 多 2 個 commit，都是文件）與 `feat/magic-circle`（比 `main` 多 12 個 commit，未 push、未合併）。新功能照慣例從 `main` 開 branch。
+- **Branch：** `main`（2026-11-06 已 fast-forward 合併 `feat/magic-circle`，未 push）。新功能照慣例從 `main` 開 branch。
 - **跨電腦同步（Syncthing，Windows ↔ macOS）：**
   - Syncthing 的資料夾根目錄是 `~/syncthing/code`，忽略規則在 `~/syncthing/code/.stignore`（`**/node_modules`、`**/.wrangler`、`**/dist`）。
   - 每台電腦各自 `npm i`。如果看到 `Permission denied`（`.bin`）或 `Cannot find native binding`，代表 `node_modules` 是別的平台裝的：確認 `.stignore` 生效後，刪掉 `node_modules` 重新 `npm i` 即可。
@@ -318,6 +322,8 @@ TS 分兩個專案：`tsconfig.app.json`（src，含 DOM）與 `tsconfig.worker.
 ## 10. 交接紀錄
 
 最新的放最上面。每次結束工作時新增一筆：日期、做了什麼、停在哪裡、下一步。
+
+- **2026-11-04～06（Claude Code，Sonnet 5.5 → Opus 5.5，macOS，框架討論）**：使用者想參考《煉金工房》；依使用者指示**不動程式**，把整個遊戲的框架討論完：物品圖鑑與催化劑、背包與倉庫、熟練度與異變、光暗元素、雙重詠唱與元素反應、書與靈光、煉金工坊與施法媒介、地圖與採集點、主城與學院、委託商與抽獎、排行榜與稱號；舊的十大標的與沉浸感 7 項逐條處置；擬出新的實作順序 P0～P13 並經使用者核准。文件：`2026-11-04-item-catalyst-discussion.md`、`2026-11-04-roadmap-overview.md`（地圖版面草圖在 `.superpowers/brainstorm/8364-1793936914/`，未進版本庫）。之後依使用者指示把 `feat/magic-circle` fast-forward 合併到 `main`（54 個 commit），再在 `main` 上 commit 本次文件。停在：`main` 比 `origin/main` 多 57 個 commit，未 push（使用者自己 push）；`feat/magic-circle` 還沒刪。下一步：使用者在 `main` 上試玩魔法陣 → P1 物品圖鑑與背包的規格。
 
 - **2026-11-03（Claude Code，Opus 5.5，macOS，第二次試玩回饋）**：記錄使用者 8 項回饋並查原因，寫成 `docs/superpowers/specs/2026-11-03-magic-circle-playtest-2.md`；查本機 D1（`ron`：0 次被拒、`clearTimes` 空）與系統設定（減少動態效果開著）。使用者指示先不實作，沒有改程式。停在：`feat/magic-circle` 未 push、未合併。下一步：逐項決定 → 規格 → 計畫。
 
